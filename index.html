@@ -824,15 +824,33 @@ function draw(){
     if(tile.mid!==null){
       const m=G.machines[tile.mid];
       if(m&&m.type==='belt'){
-        // Simple static belt — dark bg, border, direction arrow
         ctx.fillStyle='#181818'; ctx.fillRect(px,py,ts,ts);
         ctx.strokeStyle=MACH_COL.belt; ctx.lineWidth=1.5; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
-        if(ts>14){
-          ctx.fillStyle='rgba(100,100,100,0.45)'; ctx.font=`${Math.floor(ts*.38)}px serif`;
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText(D_ARR[m.dir],px+ts/2,py+ts/2);
+        // Static chevron texture — clipped inside border
+        if(ts>10){
+          const [dvx,dvy]=D_VEC[m.dir];
+          ctx.save();
+          ctx.beginPath(); ctx.rect(px+2,py+2,ts-4,ts-4); ctx.clip();
+          ctx.strokeStyle='rgba(110,110,110,0.38)';
+          ctx.lineWidth=Math.max(1,ts*.055);
+          const chevSpacing=ts*.28;
+          // Static — no time offset, chevrons fixed in place
+          for(let ci=0;ci<5;ci++){
+            const t2=ci*chevSpacing;
+            const bx=px+ts/2+dvx*(t2-ts/2*0.5);
+            const by=py+ts/2+dvy*(t2-ts/2*0.5);
+            const ex=dvy, ey=-dvx;
+            const hw=ts*.28;
+            const wing=ts*.1;
+            ctx.beginPath();
+            ctx.moveTo(bx+ex*hw - dvx*wing, by+ey*hw - dvy*wing);
+            ctx.lineTo(bx,                   by);
+            ctx.lineTo(bx-ex*hw - dvx*wing,  by-ey*hw - dvy*wing);
+            ctx.stroke();
+          }
+          ctx.restore();
         }
-        // Animate only the items — clipped inside belt border
+        // Items — clipped, centred, animated along direction
         if(tile.items.length>0){
           const [dvx,dvy]=D_VEC[m.dir];
           const beltSpeed=(G.research.done.includes('logistics')?.15:.1);
@@ -1450,11 +1468,26 @@ function gameTick(){
   lastTickMs=performance.now();
   G.tick++;
   G.power.out=0; G.power.in=0;
-  // Pass 1: generators and burners — establish power supply first
+
+  // Pre-pass: accumulate total power demand across ALL consumer machines
+  // This must happen before any machine logic runs, so powerRatio() always
+  // sees the full picture — not a partial tally.
+  const pm0=perkMult();
+  for(const m of Object.values(G.machines)){
+    if(!m.active)continue;
+    const def=MDEFS[m.type]; if(!def||def.power<=0)continue;
+    // power-immune machines don't draw from grid
+    if(m.type==='stone_furnace'||m.type==='blast_furnace')continue;
+    const mods=m.modules||[];
+    const modEff=mods.some(x=>x==='eff_module')?0.7:1;
+    G.power.in+=def.power*pm0.power*modEff;
+  }
+
+  // Pass 1: generators and burners — establish power supply
   for(const m of Object.values(G.machines)){
     if(m.type==='generator'||m.type==='burner')runMachine(m);
   }
-  // Pass 2: all other machines — can now read correct powerRatio()
+  // Pass 2: all other machines — powerRatio() now correct
   for(const m of Object.values(G.machines)){
     if(m.type!=='generator'&&m.type!=='burner')runMachine(m);
   }
@@ -1509,9 +1542,8 @@ function runMachine(m){
   const mods=m.modules||[];
   const modSpeed=1+mods.filter(x=>x==='speed_module').length*0.25;
   const modYield=1+mods.filter(x=>x==='prod_module').length*0.25;
-  const modEff=mods.some(x=>x==='eff_module')?0.7:1; // -30% power draw
-  // Consumers: count power draw, reduced by power1 perk and eff module
-  if(def.power>0){const pm=perkMult(); G.power.in+=def.power*pm.power*modEff;}
+  const modEff=mods.some(x=>x==='eff_module')?0.7:1;
+  // NOTE: G.power.in is pre-calculated in gameTick pre-pass — do NOT add here
 
   if(m.type==='generator'){
     // Burns 1 coal from inBuf every 4s — only burns when consumers are drawing power
@@ -3391,12 +3423,17 @@ function startGame(isNew){
   // Run one synchronous power pass before the tick loop starts so power state
   // is correct immediately — prevents any single-frame window of stale values.
   G.power.out=0; G.power.in=0;
+  const _pm=perkMult();
   for(const m of Object.values(G.machines)){
+    if(!m.active)continue;
     if(m.type==='generator'||m.type==='burner'){
       if((m.inBuf.coal||0)>0) G.power.out+=Math.abs(MDEFS[m.type].power);
-    } else {
+    } else if(m.type!=='stone_furnace'&&m.type!=='blast_furnace'){
       const def=MDEFS[m.type];
-      if(def&&def.power>0) G.power.in+=def.power;
+      if(def&&def.power>0){
+        const modEff=(m.modules||[]).some(x=>x==='eff_module')?0.7:1;
+        G.power.in+=def.power*_pm.power*modEff;
+      }
     }
   }
   updateHUD();
