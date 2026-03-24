@@ -107,10 +107,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .tname{color:var(--text3);font-size:4px;text-align:center;white-space:nowrap}
 
 /* SIDE PANEL */
-.spanel{position:fixed;top:44px;right:0;bottom:70px;width:min(300px,88vw);background:var(--panel);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
+.spanel{position:fixed;top:44px;right:0;bottom:70px;width:min(300px,88vw);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
 .spanel.open{transform:translateX(0)}
 .ph{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
-.ph-title{color:var(--amber);font-size:7px}
+.ph-title{color:var(--amber);font-size:8px}
 .ph-x{background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;padding:2px 6px}
 .ph-x:hover{color:var(--red)}
 .pbody{flex:1;overflow-y:auto;padding:12px}
@@ -133,21 +133,21 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .mf{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 
 /* MISC */
-.sec-label{font-size:5px;color:var(--teal);letter-spacing:2px;margin-bottom:6px;display:block}
-.irow{display:flex;justify-content:space-between;font-size:6px;margin-bottom:5px}
-.irow .lbl{color:var(--text3)}
+.sec-label{font-size:6px;color:var(--teal);letter-spacing:2px;margin-bottom:6px;display:block}
+.irow{display:flex;justify-content:space-between;font-size:6px;margin-bottom:6px}
+.irow .lbl{color:var(--text2)}
 .prog-wrap{height:5px;background:var(--bg);border:1px solid var(--border);margin:3px 0}
 .prog-fill{height:100%;background:var(--teal);transition:width .1s}
 .prog-fill.amber{background:var(--amber)}
 .prog-fill.green{background:var(--green)}
-.card{border:1px solid var(--border);background:var(--bg3);padding:9px;margin-bottom:8px}
+.card{border:1px solid var(--border2);background:var(--bg3);padding:9px;margin-bottom:8px}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
-.inv-item{border:1px solid var(--border);background:var(--bg3);padding:5px 3px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.inv-item{border:1px solid var(--border2);background:var(--bg3);padding:5px 3px;display:flex;flex-direction:column;align-items:center;gap:2px}
 .inv-item .ii{font-size:16px}
-.inv-item .iv{font-size:5px;color:var(--amber)}
-.inv-item .in{font-size:4px;color:var(--text3);text-align:center;line-height:1.4}
-.craft-row{display:flex;align-items:center;justify-content:space-between;padding:7px;border:1px solid var(--border);background:var(--bg3);margin-bottom:5px}
-.mini-btn{font-family:var(--font);font-size:5px;padding:5px 9px;border:1px solid var(--border);background:transparent;cursor:pointer}
+.inv-item .iv{font-size:6px;color:var(--amber)}
+.inv-item .in{font-size:5px;color:var(--text2);text-align:center;line-height:1.4}
+.craft-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:5px}
+.mini-btn{font-family:var(--font);font-size:5px;padding:6px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer}
 .mini-btn.amber{border-color:var(--amber);color:var(--amber)}
 .mini-btn.amber:hover{background:rgba(245,166,35,.1)}
 .mini-btn.dim{color:var(--text3);cursor:not-allowed}
@@ -413,8 +413,8 @@ function sfx(type) {
 const ITEMS = {
   iron_ore:     {name:'Iron Ore',       icon:'🪨', cat:'raw', desc:'The backbone of your factory. Smelt 2 ore into 1 Iron Plate.', uses:['Iron Plate → Iron Gear, Iron Rod', 'Iron Plate → Circuit Board (with Copper Wire)', 'Iron Plate → Smelter, Assembler, Lab costs']},
   copper_ore:   {name:'Copper Ore',     icon:'🟫', cat:'raw', desc:'Essential for electronics. Smelt 2 ore into 1 Copper Plate.', uses:['Copper Plate → Copper Wire', 'Copper Wire → Circuit Board, Field Notes', 'Copper Wire → Flight Computer (rocket)']},
-  coal:         {name:'Coal',           icon:'⬛', cat:'raw', desc:'Your first power source. Feeds generators and makes propellant.', uses:['Generator fuel (1 coal / 4s per generator)', 'Coal Propellant (rocket component)', 'Stone Furnace needs no coal — it uses heat directly']},
-  stone:        {name:'Stone',          icon:'🔲', cat:'raw', desc:'A humble start. Used for your very first machines.', uses:['Hand-craft Stone Furnace (5 stone)', 'Hand-craft Generator (5 stone)', 'Coal Propellant recipe (5 stone)']},
+  coal:         {name:'Coal',           icon:'⬛', cat:'raw', desc:'Your primary fuel. Feeds furnaces, generators and makes propellant.', uses:['Stone Furnace & Blast Furnace fuel', 'Generator fuel (1 coal / 4s per generator)', 'Coal Propellant (rocket component)']},
+  stone:        {name:'Stone',          icon:'🔲', cat:'raw', desc:'A humble start. Used for your very first machines.', uses:['Hand-craft Stone Furnace (8 stone)', 'Hand-craft Burner Generator (5 stone)', 'Coal Propellant recipe (5 stone)']},
   iron_plate:   {name:'Iron Plate',     icon:'🔘', cat:'smelted'},
   copper_plate: {name:'Copper Plate',   icon:'🟠', cat:'smelted'},
   steel_plate:  {name:'Steel Plate',    icon:'⬜', cat:'smelted'},
@@ -439,14 +439,19 @@ const ITEMS = {
 //  RECIPES
 // ═══════════════════════════════════════════════════
 const RECIPES = {
-  // Stone furnace (no power)
-  fn_iron:    {name:'Smelt Iron',       machine:'stone_furnace', time:16, in:{iron_ore:2},                   out:{iron_plate:1}},
-  fn_copper:  {name:'Smelt Copper',     machine:'stone_furnace', time:16, in:{copper_ore:2},                 out:{copper_plate:1}},
-  // Smelter
-  sm_iron:    {name:'Smelt Iron',       machine:'smelter', time:8,  in:{iron_ore:2},                         out:{iron_plate:1}},
-  sm_copper:  {name:'Smelt Copper',     machine:'smelter', time:8,  in:{copper_ore:2},                       out:{copper_plate:1}},
-  sm_steel:   {name:'Smelt Steel',      machine:'smelter', time:16, in:{iron_plate:5},                       out:{steel_plate:1}},
-  sm_prop:    {name:'Coal Propellant',  machine:'smelter', time:20, in:{coal:10,stone:5},                    out:{r_propellant:1}},
+  // Stone furnace — needs coal + ore
+  fn_iron:    {name:'Smelt Iron',       machine:'stone_furnace', time:16, in:{iron_ore:2,coal:1},                out:{iron_plate:1}},
+  fn_copper:  {name:'Smelt Copper',     machine:'stone_furnace', time:16, in:{copper_ore:2,coal:1},              out:{copper_plate:1}},
+  // Blast Furnace — needs coal, 2× speed
+  bf_iron:    {name:'Smelt Iron',       machine:'blast_furnace', time:8,  in:{iron_ore:2,coal:1},                out:{iron_plate:1}},
+  bf_copper:  {name:'Smelt Copper',     machine:'blast_furnace', time:8,  in:{copper_ore:2,coal:1},              out:{copper_plate:1}},
+  bf_steel:   {name:'Smelt Steel',      machine:'blast_furnace', time:16, in:{iron_plate:5,coal:2},              out:{steel_plate:1}},
+  bf_prop:    {name:'Coal Propellant',  machine:'blast_furnace', time:20, in:{coal:10,stone:5},                  out:{r_propellant:1}},
+  // Electric Smelter — no coal, 3× speed, needs power
+  es_iron:    {name:'Smelt Iron',       machine:'electric_smelter', time:6,  in:{iron_ore:2},                   out:{iron_plate:1}},
+  es_copper:  {name:'Smelt Copper',     machine:'electric_smelter', time:6,  in:{copper_ore:2},                 out:{copper_plate:1}},
+  es_steel:   {name:'Smelt Steel',      machine:'electric_smelter', time:10, in:{iron_plate:5},                 out:{steel_plate:1}},
+  es_prop:    {name:'Coal Propellant',  machine:'electric_smelter', time:14, in:{coal:10,stone:5},              out:{r_propellant:1}},
   // Assembler
   mk_gear:    {name:'Iron Gear',        machine:'assembler', time:4,  in:{iron_plate:2},                     out:{iron_gear:1}},
   mk_wire:    {name:'Copper Wire',      machine:'assembler', time:2,  in:{copper_plate:1},                   out:{copper_wire:2}},
@@ -468,37 +473,48 @@ const RECIPES = {
 //  MACHINES
 // ═══════════════════════════════════════════════════
 const MDEFS = {
-  miner:        {name:'Miner',          icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},            unlock:null,         recipes:[], desc:'Extracts resources from deposits'},
-  stone_furnace:{name:'Stone Furnace',  icon:'🪨', size:[1,1], power:0,   cost:{stone:8},                              unlock:null,         recipes:['fn_iron','fn_copper'], desc:'Slow smelter — no power needed'},
-  smelter:      {name:'Smelter',        icon:'🔥', size:[2,2], power:8,   cost:{iron_plate:8, iron_gear:4},            unlock:'automation', recipes:['sm_iron','sm_copper','sm_steel','sm_prop'], desc:'Fast smelter — needs power'},
-  assembler:    {name:'Assembler',      icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},  unlock:'automation', recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame'], desc:'Crafts parts and components'},
-  lab:          {name:'Research Lab',   icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},              unlock:'automation', recipes:['sci_r','sci_g'], desc:'Produces Field Notes and Circuit Diagrams'},
-  burner:       {name:'Burner Generator',icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},              unlock:null,         recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
-  generator:    {name:'Generator',      icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},            unlock:null,         recipes:[], desc:'Burns coal → 60kW power'},
-  belt:         {name:'Belt',           icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                         unlock:null,         recipes:[], desc:'Moves items in one direction'},
-  splitter:     {name:'Splitter',       icon:'⑂',  size:[1,1], power:0,   cost:{iron_plate:3, iron_gear:1},            unlock:null,         recipes:[], desc:'Splits belt output left and right alternately'},
-  tunnel:       {name:'Belt Tunnel',    icon:'⬛', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},            unlock:null,         recipes:[], desc:'Tunnels items under machines. Place two to connect'},
-  inserter:     {name:'Inserter',       icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},            unlock:null,         recipes:[], desc:'Transfers items to/from machines'},
-  chest:        {name:'Chest',          icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                         unlock:null,         recipes:[], desc:'Stores up to 200 items'},
-  rail:         {name:'Inter-zone Rail',icon:'🛤️', size:[2,1], power:0,   cost:{iron_plate:5, iron_gear:2},            unlock:'logistics',  recipes:[], desc:'[FUTURE] Connects to other zones', stub:true},
+  miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits'},
+  stone_furnace:  {name:'Stone Furnace',    icon:'🪨', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter — needs coal'},
+  blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel','bf_prop'], desc:'Fast coal-powered smelter — 2× speed'},
+  electric_smelter:{name:'Electric Smelter',icon:'⚡', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop'], desc:'No coal needed — runs on power. 3× speed'},
+  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame'], desc:'Crafts parts and components'},
+  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g'], desc:'Produces Field Notes and Circuit Diagrams'},
+  burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
+  generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:null,          recipes:[], desc:'Burns coal → 60kW power'},
+  belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
+  splitter:       {name:'Splitter',         icon:'⑂',  size:[1,1], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits belt output left and right alternately'},
+  tunnel:         {name:'Belt Tunnel',      icon:'⬛', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
+  inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines'},
+  chest:          {name:'Chest',            icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                                   unlock:null,          recipes:[], desc:'Stores up to 200 items'},
+  rail:           {name:'Inter-zone Rail',  icon:'🛤️', size:[2,1], power:0,   cost:{iron_plate:5, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'[FUTURE] Connects to other zones', stub:true},
 };
 
 // Hand-craft recipes — click to process raw materials into items
 // clicks = number of hammer clicks to complete one batch
+// unlock = research id required (null = always available)
 const HAND_CRAFTS = [
-  {id:'iron_plate',   name:'Iron Plate',   icon:'🔘', in:{iron_ore:2},                    out:{iron_plate:1},   clicks:5,  desc:'Smelt iron ore by hand'},
-  {id:'copper_plate', name:'Copper Plate', icon:'🟠', in:{copper_ore:2},                  out:{copper_plate:1}, clicks:5,  desc:'Smelt copper ore by hand'},
-  {id:'iron_gear',    name:'Iron Gear',    icon:'⚙️', in:{iron_plate:2},                  out:{iron_gear:1},    clicks:10, desc:'Shape iron plates into gears'},
-  {id:'copper_wire',  name:'Copper Wire',  icon:'〰️', in:{copper_plate:1},                out:{copper_wire:2},  clicks:8,  desc:'Draw copper into wire'},
-  {id:'iron_rod',     name:'Iron Rod',     icon:'➖', in:{iron_plate:1},                  out:{iron_rod:2},     clicks:8,  desc:'Draw iron into rods'},
-  {id:'stone_brick',  name:'Stone Brick',  icon:'🧱', in:{stone:2},                       out:{stone_brick:1},  clicks:3,  desc:'Cut and shape stone blocks'},
-  {id:'sci_red',      name:'Field Notes',    icon:'🗒️', in:{iron_gear:1,copper_wire:2},     out:{sci_red:1},      clicks:12, desc:'Basic research notes — needed for all research'},
+  {id:'iron_plate',   name:'Iron Plate',   icon:'🔘', in:{iron_ore:2},                         out:{iron_plate:1},   clicks:5,  unlock:null,           desc:'Smelt iron ore by hand'},
+  {id:'copper_plate', name:'Copper Plate', icon:'🟠', in:{copper_ore:2},                        out:{copper_plate:1}, clicks:5,  unlock:null,           desc:'Smelt copper ore by hand'},
+  {id:'iron_gear',    name:'Iron Gear',    icon:'⚙️', in:{iron_plate:2},                        out:{iron_gear:1},    clicks:10, unlock:null,           desc:'Shape iron plates into gears'},
+  {id:'copper_wire',  name:'Copper Wire',  icon:'〰️', in:{copper_plate:1},                      out:{copper_wire:2},  clicks:8,  unlock:null,           desc:'Draw copper into wire'},
+  {id:'iron_rod',     name:'Iron Rod',     icon:'➖', in:{iron_plate:1},                        out:{iron_rod:2},     clicks:8,  unlock:null,           desc:'Draw iron into rods'},
+  {id:'stone_brick',  name:'Stone Brick',  icon:'🧱', in:{stone:2},                             out:{stone_brick:1},  clicks:3,  unlock:null,           desc:'Cut and shape stone blocks'},
+  {id:'sci_red',      name:'Field Notes',  icon:'🗒️', in:{iron_gear:1,copper_wire:2},           out:{sci_red:1},      clicks:12, unlock:null,           desc:'Basic research notes — needed for all research'},
+  // Unlocked by automation research
+  {id:'circuit',      name:'Circuit Board',icon:'💚', in:{iron_plate:1,copper_wire:3},          out:{circuit:1},      clicks:20, unlock:'automation',   desc:'Hand-wire a basic circuit board'},
+  {id:'engine',       name:'Engine Block', icon:'🔧', in:{iron_gear:2,iron_rod:2},              out:{engine:1},       clicks:28, unlock:'automation',   desc:'Assemble an engine by hand'},
+  // Unlocked by steel research
+  {id:'steel_plate',  name:'Steel Plate',  icon:'⬜', in:{iron_plate:5,coal:2},                out:{steel_plate:1},  clicks:30, unlock:'steel',        desc:'Forge iron into steel'},
+  // Unlocked by electronics research
+  {id:'speed_module', name:'Speed Module', icon:'🔵', in:{circuit:3,iron_gear:2},              out:{speed_module:1}, clicks:40, unlock:'electronics',  desc:'Hand-build a speed module'},
+  {id:'prod_module',  name:'Prod. Module', icon:'🟢', in:{circuit:4,copper_wire:4},            out:{prod_module:1},  clicks:40, unlock:'electronics',  desc:'Hand-build a production module'},
+  {id:'eff_module',   name:'Eff. Module',  icon:'🔴', in:{circuit:3,iron_rod:3},               out:{eff_module:1},   clicks:40, unlock:'electronics',  desc:'Hand-build an efficiency module'},
 ];
 
 // Machines you build by hand — consume materials, go into placement queue
 const MACHINE_BUILDS = [
   'miner','stone_furnace','burner','generator','belt','splitter','tunnel','inserter','chest',
-  'smelter','assembler','lab',
+  'blast_furnace','electric_smelter','assembler','lab',
 ];
 // ═══════════════════════════════════════════════════
 const TOOLBAR_DEF = [
@@ -514,7 +530,7 @@ const TOOLBAR_DEF = [
     {id:'blueprint', name:'Blueprint', icon:'📐', noMachine:true},
   ]},
   {label:'Extract',    items:[{id:'miner',name:'Miner',icon:'⛏️'},{id:'burner',name:'Burner',icon:'🪵'},{id:'generator',name:'Generator',icon:'⚡'}]},
-  {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'🪨'},{id:'smelter',name:'Smelter',icon:'🔥'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
+  {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'🪨'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'⚡'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
   {label:'Logistics',  items:[{id:'belt',name:'Belt',icon:'➡️'},{id:'splitter',name:'Splitter',icon:'⑂'},{id:'tunnel',name:'Tunnel',icon:'⬛'},{id:'inserter',name:'Inserter',icon:'🦾'},{id:'chest',name:'Chest',icon:'📦'}]},
   {label:'Future',     items:[{id:'rail',name:'Rail',icon:'🛤️'}]},
 ];
@@ -526,7 +542,7 @@ const TECHS = {
   automation: {
     name:'Basic Automation', icon:'⚙️', era:'Era 1',
     cost:{sci_red:5}, req:[],
-    desc:'Unlocks Smelter, Assembler and Research Lab',
+    desc:'Unlocks Blast Furnace, Assembler and Research Lab',
   },
   logistics: {
     name:'Advanced Logistics', icon:'➡️', era:'Era 1',
@@ -536,7 +552,7 @@ const TECHS = {
   steel: {
     name:'Steel Processing', icon:'🔩', era:'Era 2',
     cost:{sci_red:15,sci_green:10}, req:['automation'],
-    desc:'Enables steel smelting recipes',
+    desc:'Enables steel recipes + unlocks Electric Smelter',
   },
   electronics: {
     name:'Electronics', icon:'💚', era:'Era 2',
@@ -650,7 +666,7 @@ let canvas, ctx, rafId;
 let lastTickMs=0; // real timestamp of last gameTick — used for sub-tick interpolation
 
 const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e'};
-const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',smelter:'#e53935',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',chest:'#7d5a3c',rail:'#ab47bc'};
+const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#42d4f4',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',chest:'#7d5a3c',rail:'#ab47bc'};
 
 function initCanvas(){
   canvas=document.getElementById('canvas');
@@ -671,14 +687,15 @@ function startRender(){
 // Port layout per machine type:
 // Output side per machine type — inserters may NOT deposit into the output side
 const PORTS = {
-  miner:        { outputs:[{side:'right',pos:.5}] },
-  stone_furnace:{ outputs:[{side:'right',pos:.5}] },
-  smelter:      { outputs:[{side:'right',pos:.5}] },
-  assembler:    { outputs:[{side:'right',pos:.5}] },
-  lab:          { outputs:[] },
-  generator:    { outputs:[] },
-  burner:       { outputs:[] },
-  chest:        { outputs:[{side:'bottom',pos:.5}] },
+  miner:           { outputs:[{side:'right',pos:.5}] },
+  stone_furnace:   { outputs:[{side:'right',pos:.5}] },
+  blast_furnace:   { outputs:[{side:'right',pos:.5}] },
+  electric_smelter:{ outputs:[{side:'right',pos:.5}] },
+  assembler:       { outputs:[{side:'right',pos:.5}] },
+  lab:             { outputs:[] },
+  generator:       { outputs:[] },
+  burner:          { outputs:[] },
+  chest:           { outputs:[{side:'bottom',pos:.5}] },
 };
 
 function drawPorts(ctx, type, px, py, pw, ph, ts, dir){
@@ -1536,20 +1553,21 @@ function runMachine(m){
   if(def.power>0){const pm=perkMult(); G.power.in+=def.power*pm.power*modEff;}
 
   if(m.type==='generator'){
-    // Burns 1 coal from inBuf every 4s — only produces power when fuelled
+    // Burns 1 coal from inBuf every 4s — only burns when consumers are drawing power
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
-      if(G.tick%16===0) m.inBuf.coal--;
+      // Only consume coal if there are machines actually drawing power
+      if(G.tick%16===0&&G.power.in>0) m.inBuf.coal--;
     }
     return;
   }
   if(m.type==='burner'){
-    // Burns 1 coal every 2s — produces 15kW when fuelled
+    // Burns 1 coal every 2s — only burns when consumers are drawing power
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
-      if(G.tick%8===0) m.inBuf.coal--;
+      if(G.tick%8===0&&G.power.in>0) m.inBuf.coal--;
     }
     return;
   }
@@ -1577,7 +1595,9 @@ function runMachine(m){
   if(!m.recipe)return;
   const rec=RECIPES[m.recipe]; if(!rec)return;
   const pm=perkMult();
-  const ratio=m.type==='stone_furnace'?1:powerRatio();
+  // stone_furnace and blast_furnace are power-immune (coal is an ingredient, not power)
+  const powerImmune=(m.type==='stone_furnace'||m.type==='blast_furnace');
+  const ratio=powerImmune?1:powerRatio();
   if(ratio===0)return; // hard cutoff — no power
   const tierMult=m.tier===3?2:m.tier===2?1.5:1;
   const speedMult=ratio*pm.speed*tierMult*modSpeed;
@@ -1837,13 +1857,21 @@ function updateHUD(){
     const item=ITEMS[id],n=G.inv[id]||0;
     return `<div class="hres"><span class="hres-icon">${item.icon}</span><span class="hres-val">${fmt(n)}</span></div>`;
   }).join('');
-  html+=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${fmt(G.power.out)}kW</span></div>`;
+  // Power: show free capacity (out - in). If no machines placed, show output.
+  const free=G.power.out-G.power.in;
+  const hasConsumers=G.power.in>0;
+  const pwrDisplay=hasConsumers?free:G.power.out;
+  const pwrLabel=hasConsumers?(free>=0?`+${fmt(free)}kW`:`${fmt(free)}kW`):`${fmt(G.power.out)}kW`;
+  html+=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   el.innerHTML=html;
 }
 
 function pwrCol(){
-  const r=G.power.out/Math.max(1,G.power.in);
-  return r<.5?'var(--red)':r<.9?'var(--amber)':'var(--green)';
+  if(G.power.in===0)return'var(--green)'; // no consumers — all good
+  const free=G.power.out-G.power.in;
+  if(free<0)return'var(--red)';
+  if(free<G.power.in*.2)return'var(--amber)'; // less than 20% headroom
+  return'var(--green)';
 }
 function fmt(n){
   if(n>=1e6)return(n/1e6).toFixed(1)+'M';
@@ -2087,9 +2115,18 @@ function renderCraftPanel(){
     </div>`;
   }
 
-  // Recipe list
+  // Recipe list — show unlocked recipes; show locked ones dimmed with unlock hint
   html+=`<span class="sec-label">RECIPES</span>`;
   for(const r of HAND_CRAFTS){
+    const isUnlocked=!r.unlock||G.research.done.includes(r.unlock);
+    if(!isUnlocked){
+      // Show locked recipe as a dim hint
+      const techName=r.unlock?TECHS[r.unlock]?.name||r.unlock:'';
+      html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:8px;margin-bottom:5px;opacity:.3">
+        <div style="font-size:6px;color:var(--text3)">${r.icon} ${r.name} <span style="font-size:4px">🔒 Requires ${techName}</span></div>
+      </div>`;
+      continue;
+    }
     const isActive=cs.recipeId===r.id;
     const canAfford=Object.entries(r.in).every(([k,v])=>(G.inv[k]||0)>=v);
     const inStr=Object.entries(r.in).map(([k,v])=>{
@@ -2329,12 +2366,14 @@ function renderMachPanel(){
     html+=`<div style="font-size:5px;color:var(--blue);margin-bottom:4px">▼ Input buffer: ${inItems.map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ')}</div>`;
     html+=`<button class="full-btn" style="font-size:5px;border-color:var(--blue);color:var(--blue)" onclick="ejectBuf(${m.id})">↩ RETURN INPUTS TO INVENTORY</button>`;
   }
-  // Feed coal manually for generators/burners
-  if((m.type==='generator'||m.type==='burner')){
+  // Feed coal manually for generators/burners/furnaces
+  if((m.type==='generator'||m.type==='burner'||m.type==='stone_furnace'||m.type==='blast_furnace')){
     const coalInInv=G.inv.coal||0;
     const coalInBuf=m.inBuf.coal||0;
+    const isFurnace=(m.type==='stone_furnace'||m.type==='blast_furnace');
     html+=`<div style="margin-top:6px">
       ${irow('Coal in buffer',`<span style="color:${coalInBuf>0?'var(--green)':'var(--red)'}">${coalInBuf}</span>`)}
+      ${isFurnace?`<div style="font-size:4px;color:var(--text3);margin-bottom:4px">Coal is consumed as fuel per recipe. Can also be belt-fed.</div>`:''}
       <div style="display:flex;gap:4px;margin-top:4px">
         <button class="mini-btn ${coalInInv>=1?'amber':'dim'}" style="flex:1" onclick="feedCoal(${m.id},1)" ${coalInInv>=1?'':'disabled'}>+1 Coal</button>
         <button class="mini-btn ${coalInInv>=10?'amber':'dim'}" style="flex:1" onclick="feedCoal(${m.id},10)" ${coalInInv>=10?'':'disabled'}>+10 Coal</button>
@@ -2368,7 +2407,7 @@ function renderMachPanel(){
     html+=`<button class="full-btn teal" onclick="rotateM(${m.id})">↻ ROTATE  ${D_ARR[m.dir]}</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
-  const UPGRADEABLE=['miner','smelter','assembler','lab'];
+  const UPGRADEABLE=['miner','blast_furnace','electric_smelter','assembler','lab'];
   const MODULE_DEFS={
     speed_module:{name:'Speed Module', icon:'🔵', desc:'+25% speed'},
     prod_module: {name:'Prod. Module', icon:'🟢', desc:'+25% yield'},
@@ -2760,18 +2799,26 @@ function renderStatsPanel(){
   const paused=producers.filter(m=>!m.active);
   const typeCounts={};
   for(const m of machines) typeCounts[m.type]=(typeCounts[m.type]||0)+1;
+  const pwrFree=G.power.out-G.power.in;
   const pwrRatio=G.power.in>0?Math.min(1,G.power.out/G.power.in):1;
   const pwrPct=Math.round(pwrRatio*100);
-  const pwrCol=pwrRatio<.5?'var(--red)':pwrRatio<.9?'var(--amber)':'var(--green)';
+  const pwrCol2=pwrFree<0?'var(--red)':pwrFree<G.power.in*.2?'var(--amber)':'var(--green)';
 
   let html=`<div class="card" style="margin-bottom:10px">
     <span class="sec-label">OVERVIEW</span>
     ${irow('Machines placed',`<span style="color:var(--amber)">${machines.length}</span>`)}
     ${irow('Producers active',`<span style="color:var(--green)">${active.length}</span> / ${producers.length}`)}
     ${paused.length?irow('Paused',`<span style="color:var(--text3)">${paused.length}</span>`):''}
-    ${irow('Power',`<span style="color:${pwrCol}">${fmt(G.power.out)}/${fmt(G.power.in)}kW (${pwrPct}%)</span>`)}
     ${irow('Taps',`<span style="color:var(--text2)">${G.stats.taps}</span>`)}
     ${irow('Research',`<span style="color:var(--text2)">${G.research.done.length}/${Object.keys(TECHS).length}</span>`)}
+  </div>
+  <div class="card" style="margin-bottom:10px">
+    <span class="sec-label">⚡ POWER</span>
+    ${irow('Generating',`<span style="color:var(--green)">${fmt(G.power.out)} kW</span>`)}
+    ${irow('Consuming',`<span style="color:var(--amber)">${fmt(G.power.in)} kW</span>`)}
+    ${irow('Free capacity',`<span style="color:${pwrCol2}">${pwrFree>=0?'+':''}${fmt(pwrFree)} kW</span>`)}
+    ${G.power.in>0?irow('Load',`<span style="color:${pwrCol2}">${pwrPct}%</span>`):''}
+    <div class="prog-wrap" style="margin-top:4px"><div class="prog-fill ${pwrFree<0?'amber':'green'}" style="width:${Math.min(100,pwrPct)}%"></div></div>
   </div>`;
 
   if(Object.keys(typeCounts).length){
@@ -2796,6 +2843,12 @@ function renderStatsPanel(){
       if((m.inBuf.coal||0)===0) issues.push({m,status:'nofuel'});
       continue;
     }
+    if(m.type==='stone_furnace'||m.type==='blast_furnace'){
+      // Coal-fuelled furnaces — warn if no coal in buf
+      if((m.inBuf.coal||0)===0) issues.push({m,status:'nofuel'});
+      if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50) issues.push({m,status:'stalled'});
+      continue;
+    }
     if(m.type==='miner'){
       if(def.power>0&&gridRatio===0){issues.push({m,status:'nopower'});continue;}
       if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50) issues.push({m,status:'stalled'});
@@ -2814,7 +2867,7 @@ function renderStatsPanel(){
     starved:  {label:'INPUT EMPTY', col:'var(--amber)', tip:'No items arriving in inBuf'},
     norecipe: {label:'NO RECIPE',   col:'var(--text3)', tip:'Open machine panel to assign a recipe'},
     nopower:  {label:'NO POWER',    col:'var(--red)',   tip:'No generators running — place a Burner or Generator'},
-    nofuel:   {label:'NO COAL',     col:'var(--amber)', tip:'Feed coal into this generator to produce power'},
+    nofuel:   {label:'NO COAL',     col:'var(--amber)', tip:'No coal — feed coal via inserter or machine panel'},
   };
 
   html+=`<span class="sec-label" style="color:${issues.length?'var(--red)':'var(--teal)'}">`;
@@ -3013,8 +3066,9 @@ const TUTORIAL_STEPS=[
   {id:4, text:'Now build a Burner Generator. Open 🔨 Craft → BUILD MACHINES. It needs Stone + Iron Plate.', done:()=>(G.crafted?.burner||0)>=1||Object.values(G.machines).some(m=>m.type==='burner')},
   {id:5, text:'Place the Burner from the Extract toolbar. Then tap it with Select to feed it coal.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
   {id:6, text:'Power is flowing! Now build and place a Miner on a resource deposit. It needs power to run.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes)},
-  {id:7, text:'Your miner is running! Open 🔬 Research and craft Field Notes to unlock automation.', done:()=>G.research.done.includes('automation')},
-  {id:8, text:'Automation unlocked! Build a Smelter, Assembler, and Lab to start your production lines.', done:()=>G.research.done.includes('steel')||G.research.done.includes('electronics')},
+  {id:7, text:'Machines don\'t connect automatically — use 🦾 Inserters to move items between machines, and ➡️ Belts to transport them. Place an Inserter pointing from your Miner\'s output toward a belt or chest.', done:()=>Object.values(G.machines).some(m=>m.type==='inserter')},
+  {id:8, text:'Your miner is running! Open 🔬 Research and craft Field Notes to unlock automation.', done:()=>G.research.done.includes('automation')},
+  {id:9, text:'Automation unlocked! Build a Blast Furnace, Assembler, and Lab to start your production lines.', done:()=>G.research.done.includes('steel')||G.research.done.includes('electronics')},
 ];
 
 function tickTutorial(){
