@@ -109,11 +109,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 /* SIDE PANEL */
 .spanel{position:fixed;top:44px;right:0;bottom:70px;width:min(300px,88vw);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
 .spanel.open{transform:translateX(0)}
-.ph{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:2px solid var(--border2);flex-shrink:0;background:#0f0f0f}
 .ph-title{color:var(--amber);font-size:8px}
 .ph-x{background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;padding:2px 6px}
 .ph-x:hover{color:var(--red)}
-.pbody{flex:1;overflow-y:auto;padding:12px}
+.pbody{flex:1;overflow-y:auto;padding:14px;font-size:6px;line-height:1.9}
 .pbody::-webkit-scrollbar{width:3px}
 .pbody::-webkit-scrollbar-thumb{background:var(--border2)}
 
@@ -133,17 +133,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .mf{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 
 /* MISC */
-.sec-label{font-size:6px;color:var(--teal);letter-spacing:2px;margin-bottom:6px;display:block}
+.sec-label{font-size:6px;color:var(--teal);letter-spacing:2px;margin-bottom:7px;display:block}
 .irow{display:flex;justify-content:space-between;font-size:6px;margin-bottom:6px}
 .irow .lbl{color:var(--text2)}
-.prog-wrap{height:5px;background:var(--bg);border:1px solid var(--border);margin:3px 0}
+.prog-wrap{height:6px;background:var(--bg);border:1px solid var(--border2);margin:4px 0}
 .prog-fill{height:100%;background:var(--teal);transition:width .1s}
 .prog-fill.amber{background:var(--amber)}
 .prog-fill.green{background:var(--green)}
-.card{border:1px solid var(--border2);background:var(--bg3);padding:9px;margin-bottom:8px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
-.inv-item{border:1px solid var(--border2);background:var(--bg3);padding:5px 3px;display:flex;flex-direction:column;align-items:center;gap:2px}
-.inv-item .ii{font-size:16px}
+.card{border:1px solid var(--border2);background:var(--bg3);padding:10px;margin-bottom:9px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.inv-item{border:1px solid var(--border2);background:var(--bg3);padding:6px 3px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.inv-item .ii{font-size:18px}
 .inv-item .iv{font-size:6px;color:var(--amber)}
 .inv-item .in{font-size:5px;color:var(--text2);text-align:center;line-height:1.4}
 .craft-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:5px}
@@ -155,7 +155,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .mini-btn.teal:hover{background:rgba(38,198,160,.1)}
 .mini-btn.red{border-color:var(--red);color:var(--red)}
 .mini-btn.red:hover{background:rgba(229,57,53,.1)}
-.full-btn{width:100%;font-family:var(--font);font-size:6px;padding:9px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;margin-bottom:5px;text-align:left}
+.full-btn{width:100%;font-family:var(--font);font-size:6px;padding:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;margin-bottom:5px;text-align:left}
 .full-btn.amber{border-color:var(--amber);color:var(--amber)}
 .full-btn.amber:hover{background:rgba(245,166,35,.08)}
 .full-btn.teal{border-color:var(--teal);color:var(--teal)}
@@ -228,7 +228,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <button class="btn" onclick="newGame()">NEW GAME</button>
       <button class="btn btn-teal btn-sm" id="btnContinue" onclick="continueGame()" style="display:none">CONTINUE</button>
     </div>
-    <p class="v-num">v0.1.0 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.3.0 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -358,7 +358,7 @@ const TILE     = 48;
 const MAP_W    = 64;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.1.0';
+const VER      = '0.3.0';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -824,55 +824,32 @@ function draw(){
     if(tile.mid!==null){
       const m=G.machines[tile.mid];
       if(m&&m.type==='belt'){
+        // Simple static belt — dark bg, border, direction arrow
         ctx.fillStyle='#181818'; ctx.fillRect(px,py,ts,ts);
         ctx.strokeStyle=MACH_COL.belt; ctx.lineWidth=1.5; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
         if(ts>14){
-          ctx.fillStyle='#777'; ctx.font=`${Math.floor(ts*.45)}px serif`;
+          ctx.fillStyle='rgba(100,100,100,0.45)'; ctx.font=`${Math.floor(ts*.38)}px serif`;
           ctx.textAlign='center'; ctx.textBaseline='middle';
           ctx.fillText(D_ARR[m.dir],px+ts/2,py+ts/2);
         }
-        // Belt chevron texture
-        if(ts>10){
+        // Animate only the items — clipped inside belt border
+        if(tile.items.length>0){
           const [dvx,dvy]=D_VEC[m.dir];
-          ctx.save();
-          ctx.strokeStyle='rgba(120,120,120,0.35)';
-          ctx.lineWidth=Math.max(1,ts*.05);
-          const chevSpacing=ts*.28;
-          // Drive offset from real time — smooth 60fps scroll
-          const beltSpeed=(G.research.done.includes('logistics')?.15:.1);
-          const pxPerMs=beltSpeed*ts/TICK_MS;
-          const offset=(now*pxPerMs)%chevSpacing;
-          for(let ci=-1;ci<4;ci++){
-            const t2=ci*chevSpacing+offset;
-            const bx=px+ts/2+dvx*(t2-ts/2);
-            const by=py+ts/2+dvy*(t2-ts/2);
-            const ex=dvy, ey=-dvx;
-            const hw=ts*.3;
-            const wing=ts*.12;
-            ctx.beginPath();
-            ctx.moveTo(bx+ex*hw - dvx*wing, by+ey*hw - dvy*wing);
-            ctx.lineTo(bx,                   by);
-            ctx.lineTo(bx-ex*hw - dvx*wing,  by-ey*hw - dvy*wing);
-            ctx.stroke();
-          }
-          ctx.restore();
-        }
-        for(let ii=0;ii<tile.items.length;ii++){
-          const it=tile.items[ii];
-          const [dvx,dvy]=D_VEC[m.dir];
-          // Smooth interpolation: extrapolate item position based on time since last tick
           const beltSpeed=(G.research.done.includes('logistics')?.15:.1);
           const subTick=Math.min(1,(now-lastTickMs)/TICK_MS);
-          const smoothProg=Math.min(1,it.prog+beltSpeed*subTick);
-          const travel=(smoothProg-.5)*ts;
-          const lane=(ii%2===0?-1:1)*(ts*.18);
-          const lx= dvy!==0 ? lane : 0;
-          const ly= dvx!==0 ? lane : 0;
-          const ix=px+ts/2 + dvx*travel + lx;
-          const iy=py+ts/2 + dvy*travel + ly;
-          ctx.font=`${Math.floor(ts*.28)}px serif`;
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText(ITEMS[it.id]?.icon||'·',ix,iy);
+          ctx.save();
+          ctx.beginPath(); ctx.rect(px+2,py+2,ts-4,ts-4); ctx.clip();
+          for(let ii=0;ii<tile.items.length;ii++){
+            const it=tile.items[ii];
+            const smoothProg=Math.min(1,it.prog+beltSpeed*subTick);
+            const travel=(smoothProg-.5)*ts;
+            const ix=px+ts/2 + dvx*travel;
+            const iy=py+ts/2 + dvy*travel;
+            ctx.font=`${Math.floor(ts*.32)}px serif`;
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.fillText(ITEMS[it.id]?.icon||'·',ix,iy);
+          }
+          ctx.restore();
         }
       }
     }
@@ -919,9 +896,12 @@ function draw(){
     }
     if(m.recipe&&m.active&&ph>ts*.85){
       const rec=RECIPES[m.recipe];
-      const pct=rec?m.prog/rec.time:0;
-      ctx.fillStyle='#0a0a0a'; ctx.fillRect(px+4,py+ph-10,pw-8,5);
-      ctx.fillStyle=col; ctx.globalAlpha=.9; ctx.fillRect(px+4,py+ph-10,(pw-8)*pct,5); ctx.globalAlpha=1;
+      const pct=rec?Math.min(1,m.prog/rec.time):0;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(px+4,py+ph-12,pw-8,7); ctx.clip();
+      ctx.fillStyle='#0a0a0a'; ctx.fillRect(px+4,py+ph-12,pw-8,7);
+      ctx.fillStyle=col; ctx.globalAlpha=.9; ctx.fillRect(px+4,py+ph-12,(pw-8)*pct,7); ctx.globalAlpha=1;
+      ctx.restore();
     }
     // No-recipe warning dot
     if(m.active&&def.recipes.length>0&&!m.recipe){
@@ -1309,9 +1289,9 @@ function handleTap(tile,isLong){
     if(bp.mode==='idle'){
       // First tap — set selection start
       bp.x1=x; bp.y1=y; bp.x2=x; bp.y2=y; bp.mode='selecting';
-      toast('Tap second corner to select area','ok');
+      toast('Tap second corner to capture area','ok');
     } else if(bp.mode==='selecting'){
-      // Second tap — capture region
+      // Second tap — capture region then prompt to save
       bp.x2=x; bp.y2=y;
       const minX=Math.min(bp.x1,bp.x2), maxX=Math.max(bp.x1,bp.x2);
       const minY=Math.min(bp.y1,bp.y2), maxY=Math.max(bp.y1,bp.y2);
@@ -1325,41 +1305,20 @@ function handleTap(tile,isLong){
         captured.push({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1});
       }
       if(!captured.length){toast('No machines in selection','wrn');bp.mode='idle';return;}
-      bp.data=captured; bp.mode='holding';
-      toast(`Captured ${captured.length} machine${captured.length>1?'s':''}. Tap to paste.`,'ok');
-    } else if(bp.mode==='holding'){
-      // Third tap — paste
-      const canPaste=bp.data.every(e=>{
-        const def=MDEFS[e.type]; if(!def)return false;
-        const[mw,mh]=def.size;
-        for(let dy=0;dy<mh;dy++) for(let dx=0;dx<mw;dx++){
-          const nx=x+e.rx+dx, ny=y+e.ry+dy;
-          if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
-          if(G.map[ny][nx].mid!==null)return false;
-        }
-        return true;
-      });
-      if(!canPaste){toast('Cannot paste here — tiles occupied','bad');sfx('error');return;}
-      for(const e of bp.data){
-        const def=MDEFS[e.type]; if(!def||def.stub)continue;
-        const m=mkMachine(e.type,x+e.rx,y+e.ry,e.dir);
-        m.recipe=e.recipe; m.tier=e.tier||1;
-        if(e.type==='miner')m.mineRes=G.map[y+e.ry][x+e.rx].res||null;
-        G.machines[m.id]=m;
-        const[mw,mh]=def.size;
-        for(let dy=0;dy<mh;dy++) for(let dx=0;dx<mw;dx++)
-          G.map[y+e.ry+dy][x+e.rx+dx].mid=m.id;
-        G.stats.placed++;
-      }
-      const pastedCount=bp.data.length;
-      // Save as named blueprint if under limit
-      const bpName=`Blueprint ${(G.blueprints||[]).length+1}`;
-      if(!G.blueprints)G.blueprints=[];
-      if(G.blueprints.length<8) G.blueprints.push({name:bpName,data:[...bp.data]});
-      bp.mode='idle'; bp.data=[];
-      saveGame(); sfx('place');
-      toast(`Pasted ${pastedCount} machine${pastedCount!==1?'s':''}!`,'ok');
-      renderBlueprintPanel();
+      bp.data=captured; bp.mode='idle';
+      // Show save dialog with cost summary
+      const defaultName=`Blueprint ${(G.blueprints||[]).length+1}`;
+      showModal('💾 SAVE BLUEPRINT',
+        `<div style="font-size:6px;color:var(--text2);margin-bottom:8px">${captured.length} machine${captured.length!==1?'s':''} captured.</div>
+         <input id="bpNameInput" type="text" value="${defaultName}" maxlength="24" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:6px;padding:8px;margin-bottom:10px">
+         <div style="font-size:5px;color:var(--text3);line-height:1.9">Material cost per paste:<br><span style="color:var(--amber)">${blueprintCostStr(captured)}</span></div>`,
+        `<button class="btn btn-teal btn-sm" onclick="saveBlueprintFromModal()">SAVE</button>
+         <button class="btn btn-sm" onclick="closeModal();blueprintState.data=[]">DISCARD</button>`
+      );
+      setTimeout(()=>{const i=document.getElementById('bpNameInput');if(i){i.focus();i.select();}},100);
+    } else if(bp.mode==='pasting'){
+      // Tap to place blueprint at this location — deducts materials
+      pasteBlueprintAt(bp.data, x, y);
     }
     return;
   }
@@ -1505,9 +1464,11 @@ function gameTick(){
 }
 
 function powerRatio(){
-  if(G.power.out===0&&G.power.in===0)return 1; // nothing placed yet
-  if(G.power.out===0)return 0;                  // hard cutoff — no power at all
-  return Math.min(1,G.power.out/Math.max(1,G.power.in));
+  if(G.power.out===0&&G.power.in===0)return 1; // nothing placed yet — free run
+  if(G.power.out===0)return 0;                  // no generators at all
+  if(G.power.in===0)return 1;                   // generators but no consumers
+  if(G.power.out<G.power.in)return 0;           // hard cutoff — supply < demand
+  return 1;                                      // supply meets demand
 }
 
 // Perk multipliers — reads G.perks.spent and returns composite modifiers
@@ -2521,40 +2482,128 @@ function removeModule(machId,slot){
   updateHUD(); renderMachPanel();
 }
 
+// ── Blueprint helpers ──────────────────────────────
+function blueprintCost(data){
+  const totals={};
+  for(const e of data){
+    const def=MDEFS[e.type]; if(!def||def.stub)continue;
+    for(const[item,n]of Object.entries(def.cost))
+      totals[item]=(totals[item]||0)+n;
+  }
+  return totals;
+}
+function blueprintCostStr(data){
+  const c=blueprintCost(data);
+  if(!Object.keys(c).length)return'Free';
+  return Object.entries(c).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ');
+}
+function blueprintCanAfford(data){
+  const c=blueprintCost(data);
+  return Object.entries(c).every(([k,v])=>(G.inv[k]||0)>=v);
+}
+function saveBlueprintFromModal(){
+  const name=(document.getElementById('bpNameInput')?.value||'Blueprint').trim()||'Blueprint';
+  if(!G.blueprints)G.blueprints=[];
+  if(G.blueprints.length>=8){toast('Blueprint limit reached (8)','wrn');closeModal();return;}
+  G.blueprints.push({name, data:[...blueprintState.data]});
+  blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
+  saveGame(); closeModal(); sfx('craft');
+  toast('Blueprint saved!','ok');
+  if(openPanel==='blueprint')renderBlueprintPanel();
+}
+function startPasteBlueprint(idx){
+  const b=(G.blueprints||[])[idx]; if(!b)return;
+  if(!blueprintCanAfford(b.data)){
+    const missing=Object.entries(blueprintCost(b.data))
+      .filter(([k,v])=>(G.inv[k]||0)<v)
+      .map(([k,v])=>`${v-(G.inv[k]||0)}× ${ITEMS[k]?.name||k}`).join(', ');
+    toast(`Need: ${missing}`,'bad'); sfx('error'); return;
+  }
+  blueprintState={mode:'pasting',x1:0,y1:0,x2:0,y2:0,data:[...b.data]};
+  closePanel('blueprint');
+  setTool('blueprint');
+  toast('Tap map to place blueprint','ok');
+}
+function pasteBlueprintAt(data,x,y){
+  const canPlace2=data.every(e=>{
+    const def=MDEFS[e.type]; if(!def)return false;
+    const[mw,mh]=def.size;
+    for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
+      const nx=x+e.rx+dx,ny=y+e.ry+dy;
+      if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
+      if(G.map[ny][nx].mid!==null)return false;
+    }
+    return true;
+  });
+  if(!canPlace2){toast('Cannot place here — tiles occupied','bad');sfx('error');return;}
+  if(!blueprintCanAfford(data)){toast('Not enough materials','bad');sfx('error');return;}
+  const costs=blueprintCost(data);
+  for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
+  for(const e of data){
+    const def=MDEFS[e.type]; if(!def||def.stub)continue;
+    const m=mkMachine(e.type,x+e.rx,y+e.ry,e.dir);
+    m.recipe=e.recipe; m.tier=e.tier||1;
+    if(e.type==='miner')m.mineRes=G.map[y+e.ry][x+e.rx].res||null;
+    G.machines[m.id]=m;
+    const[mw,mh]=def.size;
+    for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
+      G.map[y+e.ry+dy][x+e.rx+dx].mid=m.id;
+    G.stats.placed++;
+  }
+  blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
+  updateHUD(); saveGame(); sfx('place');
+  toast(`Placed ${data.length} machine${data.length!==1?'s':''}!`,'ok');
+}
+function deleteBlueprint(idx){
+  if(!G.blueprints)return;
+  G.blueprints.splice(idx,1);
+  saveGame(); renderBlueprintPanel();
+  toast('Blueprint deleted','ok');
+}
+
 // ── Blueprint Panel ─────────────────────────────────
 function renderBlueprintPanel(){
   const el=document.getElementById('pBlueprintBody'); if(!el)return;
   const bps=G.blueprints||[];
+  const bp=blueprintState;
 
-  let html=`<div style="font-size:5px;color:var(--text3);line-height:2;margin-bottom:10px;padding:7px;border:1px solid var(--border);background:var(--bg3)">
-    Select 📐 Blueprint tool, then:<br>
-    1. Tap first corner<br>
+  let html=`<div style="font-size:6px;color:var(--text2);line-height:2;margin-bottom:10px;padding:8px;border:1px solid var(--border2);background:var(--bg3)">
+    📐 Select Blueprint tool, then:<br>
+    1. Tap first corner of your layout<br>
     2. Tap second corner to capture<br>
-    3. Tap anywhere to paste
+    3. Name &amp; save — then place from below
   </div>`;
 
-  // Active blueprint state
-  const bp=blueprintState;
-  if(bp.mode!=='idle'){
-    const stateLabel={selecting:'Selecting area...',holding:`${bp.data.length} machines captured — tap to paste`}[bp.mode]||'';
-    html+=`<div style="font-size:5px;color:var(--amber);padding:6px;border:1px solid var(--amberDim);margin-bottom:8px">${stateLabel}</div>
+  if(bp.mode==='selecting'){
+    html+=`<div style="font-size:6px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Selecting… tap second corner</div>
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};renderBlueprintPanel()">CANCEL</button>`;
+  } else if(bp.mode==='pasting'){
+    html+=`<div style="font-size:6px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Tap the map to place blueprint</div>
+    <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};setTool('select');renderBlueprintPanel()">CANCEL PASTE</button>`;
   }
 
   html+=`<span class="sec-label">SAVED BLUEPRINTS (${bps.length}/8)</span>`;
   if(!bps.length){
-    html+=`<div style="font-size:5px;color:var(--text3);text-align:center;padding:10px;border:1px solid var(--border)">No blueprints saved yet.</div>`;
+    html+=`<div style="font-size:6px;color:var(--text3);text-align:center;padding:12px;border:1px solid var(--border);line-height:2">No blueprints saved.<br><span style="font-size:5px">Use 📐 tool to capture a layout.</span></div>`;
   } else {
     for(let i=0;i<bps.length;i++){
       const b=bps[i];
-      html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:7px;margin-bottom:4px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:5px;color:var(--text)">${b.name}</span>
-          <span style="font-size:4px;color:var(--text3)">${b.data.length} machines</span>
+      const cost=blueprintCost(b.data);
+      const canAfford=blueprintCanAfford(b.data);
+      const costLines=Object.entries(cost).map(([k,v])=>{
+        const have=G.inv[k]||0;
+        const col=have>=v?'var(--green)':'var(--red)';
+        return `${v}× ${ITEMS[k]?.name||k} <span style="color:${col}">(have ${have})</span>`;
+      }).join('<br>')||'<span style="color:var(--text3)">Free</span>';
+      html+=`<div style="border:1px solid var(--border2);background:var(--bg3);padding:9px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:6px;color:var(--amber)">${b.name}</span>
+          <span style="font-size:5px;color:var(--text3)">${b.data.length} machine${b.data.length!==1?'s':''}</span>
         </div>
+        <div style="font-size:5px;color:var(--text3);margin-bottom:7px;line-height:1.9">${costLines}</div>
         <div style="display:flex;gap:4px">
-          <button class="mini-btn teal" style="flex:1" onclick="pasteBlueprint(${i})">PASTE</button>
-          <button class="mini-btn red" onclick="deleteBlueprint(${i})">✕</button>
+          <button class="mini-btn ${canAfford?'teal':'dim'}" style="flex:1;font-size:5px" onclick="startPasteBlueprint(${i})" ${canAfford?'':'disabled'}>▶ PLACE</button>
+          <button class="mini-btn red" style="font-size:5px" onclick="deleteBlueprint(${i})">✕ DELETE</button>
         </div>
       </div>`;
     }
@@ -2562,20 +2611,6 @@ function renderBlueprintPanel(){
   el.innerHTML=html;
 }
 
-function pasteBlueprint(idx){
-  const b=(G.blueprints||[])[idx]; if(!b)return;
-  blueprintState={mode:'holding',x1:0,y1:0,x2:0,y2:0,data:[...b.data]};
-  closePanel('blueprint');
-  setTool('blueprint');
-  toast('Tap to paste blueprint','ok');
-}
-
-function deleteBlueprint(idx){
-  if(!G.blueprints)return;
-  G.blueprints.splice(idx,1);
-  saveGame(); renderBlueprintPanel();
-  toast('Blueprint deleted','ok');
-}
 function ejectBuf(id){
   const m=G.machines[id]; if(!m)return;
   const items=Object.entries(m.inBuf).filter(([,v])=>v>0);
