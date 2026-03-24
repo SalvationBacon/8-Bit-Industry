@@ -3368,6 +3368,10 @@ function continueGame(){
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
     if(!G.blueprints)G.blueprints=[];
+    // Always reset power on load — first gameTick() recalculates correctly.
+    // Stale saved values would let machines run through powerRatio() checks
+    // until the next tick, which could be 250ms after load.
+    G.power={out:0,in:0};
     startGame(false);
   }catch(e){newGame();}
 }
@@ -3383,7 +3387,19 @@ function newGame(){
 function startGame(isNew){
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
-  initCanvas(); setupInput(); buildToolbar(); updateHUD();
+  initCanvas(); setupInput(); buildToolbar();
+  // Run one synchronous power pass before the tick loop starts so power state
+  // is correct immediately — prevents any single-frame window of stale values.
+  G.power.out=0; G.power.in=0;
+  for(const m of Object.values(G.machines)){
+    if(m.type==='generator'||m.type==='burner'){
+      if((m.inBuf.coal||0)>0) G.power.out+=Math.abs(MDEFS[m.type].power);
+    } else {
+      const def=MDEFS[m.type];
+      if(def&&def.power>0) G.power.in+=def.power;
+    }
+  }
+  updateHUD();
   startTick(); startRender();
   const ts=TILE*G.cam.zoom;
   G.cam.x=26*ts-canvas.width/2+ts*3;
