@@ -1231,30 +1231,25 @@ function draw(){
     ctx.beginPath(); ctx.arc(bcx,bcy,brad,0,Math.PI*2); ctx.fill();
 
     // Arm — smooth semicircle sweep using real time
-    const swingDurMs=6*TICK_MS;
+    const swingDurMs=4*TICK_MS;
     const msSince=now-(m.lastTransferMs||0);
-    // t: 0=just deposited (arm at dest), 1=fully returned to source
-    const rawT=Math.min(1,msSince/swingDurMs);
+    const swingT=msSince<swingDurMs?(1-msSince/swingDurMs):0;
     const[dvx,dvy]=D_VEC[m.dir];
     const destAngle=Math.atan2(dvy,dvx);
     const srcAngle=destAngle+Math.PI;
     const isHolding=m._pending&&m._pending.length>0;
     let armAngle;
-    if(isHolding){
-      // Holding item waiting to deposit — park arm at destination
+    if(isHolding&&swingT<=0.05){
+      // Holding item, waiting — park arm at destination side
       armAngle=destAngle;
-    } else if(rawT<1){
-      // Smoothly sweep from dest back to src using eased arc
-      const ease=rawT<0.5?2*rawT*rawT:1-Math.pow(-2*rawT+2,2)/2;
-      armAngle=destAngle + ease*Math.PI;
     } else {
-      // Fully returned — park at source side
-      armAngle=srcAngle;
+      const sweep=Math.sin(swingT*Math.PI);
+      armAngle=srcAngle - sweep*Math.PI;
     }
-    const armLen=Math.max(4,ts*.42);
+    const armLen=Math.max(4,ts*.40);
     const ax=bcx+Math.cos(armAngle)*armLen;
     const ay=bcy+Math.sin(armAngle)*armLen;
-    const isMoving=rawT<1&&!isHolding;
+    const isMoving=swingT>0.05;
     ctx.strokeStyle=isMoving?'#f5a623':isHolding?'#f5a623':'#777';
     ctx.lineWidth=Math.max(1.5,ts*.07);
     ctx.beginPath(); ctx.moveTo(bcx,bcy); ctx.lineTo(ax,ay); ctx.stroke();
