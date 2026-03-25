@@ -228,7 +228,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.7.0 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.7.4 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -259,6 +259,13 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
   </div>
   <div id="wrap"><canvas id="canvas"></canvas>
     <div id="toolTip" class="hidden"></div>
+    <div id="multiselBar" class="hidden" style="position:absolute;top:0;left:0;right:0;background:rgba(66,165,245,.15);border-bottom:2px solid #42a5f5;padding:6px 12px;display:flex;align-items:center;gap:8px;z-index:91">
+      <span style="font-size:7px;color:#42a5f5;flex:1" id="multiselCount">0 selected</span>
+      <button onclick="multiselStartMove()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer" id="multiselMoveBtn">✥ MOVE</button>
+      <button onclick="multiselRotate()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid #42a5f5;background:transparent;color:#42a5f5;cursor:pointer">↻ ROTATE</button>
+      <button onclick="multiselDemolish()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer">💥 DEMOLISH</button>
+      <button onclick="multiselClear()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✕ CLEAR</button>
+    </div>
     <div id="tutHint" class="hidden" style="position:absolute;bottom:0;left:0;right:0;background:rgba(245,166,35,.12);border-top:1px solid var(--amber);padding:7px 12px;display:flex;align-items:center;justify-content:space-between;z-index:90;pointer-events:all">
       <span id="tutText" style="font-size:5px;color:var(--amber);line-height:1.8"></span>
       <button onclick="skipTutorial()" style="font-family:var(--font);font-size:4px;padding:3px 7px;border:1px solid var(--amberDim);background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;margin-left:10px">SKIP</button>
@@ -362,10 +369,10 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 //  CONSTANTS
 // ═══════════════════════════════════════════════════
 const TILE     = 48;
-const MAP_W    = 64;
+const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.7.0';
+const VER      = '0.7.4';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -684,6 +691,7 @@ const TOOLBAR_DEF = [
   ]},
   {label:'Tools', items:[
     {id:'select',    name:'Select',    icon:'👆', noMachine:true},
+    {id:'multisel',  name:'Multi-Sel', icon:'⬚',  noMachine:true},
     {id:'mine',      name:'Mine',      icon:'⛏️', noMachine:true},
     {id:'demolish',  name:'Demolish',  icon:'💥', noMachine:true},
     {id:'rotate',    name:'Rotate',    icon:'↻',  noMachine:true},
@@ -692,7 +700,7 @@ const TOOLBAR_DEF = [
   ]},
   {label:'Extract',    items:[{id:'miner',name:'Miner',icon:'⛏️'},{id:'burner',name:'Burner',icon:'🪵'},{id:'generator',name:'Generator',icon:'⚡'}]},
   {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'⚱️'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'⚡'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
-  {label:'Logistics',  items:[{id:'belt',name:'Belt',icon:'➡️'},{id:'splitter',name:'Splitter',icon:'⑂'},{id:'tunnel',name:'Tunnel',icon:'⬛'},{id:'inserter',name:'Inserter',icon:'🦾'},{id:'chest',name:'Chest',icon:'📦'}]},
+  {label:'Logistics',  items:[{id:'belt',name:'Belt',icon:'➡️'},{id:'splitter',name:'Splitter',icon:'⑂'},{id:'tunnel',name:'Tunnel',icon:'⏬'},{id:'inserter',name:'Inserter',icon:'🦾'},{id:'chest',name:'Chest',icon:'📦'}]},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -768,17 +776,27 @@ function buildMap() {
     }
     return false;
   };
-  // Guaranteed deposits: guaranteed resources regardless of RNG
+  // Guaranteed deposits — enough of each type to complete the game
+  // Iron: 4 patches (most needed), Copper: 3, Coal: 4 (fuel + propellant), Stone: 3
   const guaranteed=[
-    {res:'iron_ore', w:ri(5,7), h:ri(4,5)},
-    {res:'copper_ore',w:ri(4,6),h:ri(3,5)},
-    {res:'coal',     w:ri(4,5), h:ri(3,4)},
-    {res:'stone',    w:ri(4,5), h:ri(3,4)},
-    {res:'iron_ore', w:ri(4,6), h:ri(3,5)},
-    {res:'copper_ore',w:ri(5,6),h:ri(3,4)},
-    {res:'coal',     w:ri(3,5), h:ri(3,4)},
-    {res:'stone',    w:ri(3,4), h:ri(3,3)},
-    {res:'iron_ore', w:ri(4,6), h:ri(3,4)},
+    // Iron ore — most critical, 4 large patches
+    {res:'iron_ore',   w:ri(6,8), h:ri(5,6)},
+    {res:'iron_ore',   w:ri(5,7), h:ri(4,5)},
+    {res:'iron_ore',   w:ri(5,6), h:ri(4,5)},
+    {res:'iron_ore',   w:ri(4,5), h:ri(3,4)},
+    // Copper ore — 3 patches
+    {res:'copper_ore', w:ri(5,7), h:ri(4,5)},
+    {res:'copper_ore', w:ri(5,6), h:ri(3,5)},
+    {res:'copper_ore', w:ri(4,5), h:ri(3,4)},
+    // Coal — 4 patches (fuel for burners, furnaces, propellant)
+    {res:'coal',       w:ri(5,7), h:ri(4,5)},
+    {res:'coal',       w:ri(5,6), h:ri(3,5)},
+    {res:'coal',       w:ri(4,5), h:ri(3,4)},
+    {res:'coal',       w:ri(3,5), h:ri(3,4)},
+    // Stone — 3 patches
+    {res:'stone',      w:ri(5,6), h:ri(4,5)},
+    {res:'stone',      w:ri(4,5), h:ri(3,4)},
+    {res:'stone',      w:ri(3,4), h:ri(3,3)},
   ];
   for(const d of guaranteed) place(d.res,d.w,d.h);
   return map;
@@ -1140,7 +1158,7 @@ function draw(){
       const fs=Math.floor(Math.min(pw,ph)*.35);
       ctx.font=`${fs}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       // For assembler with recipe: push main icon up, recipe icon down
-      const hasRecipe=m.recipe&&m.type==='assembler'&&ts>24;
+      const hasRecipe=m.recipe&&(m.type==='assembler'||m.type==='lab')&&ts>24;
       const oy=hasRecipe?-ph*.2:(ph>ts*.9?-5*z:0);
       ctx.fillText(def.icon,px+pw/2,py+ph/2+oy);
       // Recipe output icon stacked below main icon
@@ -1351,6 +1369,41 @@ function draw(){
     }
   }
 
+  // Multi-select selection box
+  if(activeTool==='multisel'){
+    const ms=multiselState;
+    if(ms.mode==='selecting'&&hov.x>=0){
+      const px1=Math.min(ms.x1,hov.x)*ts-cx, py1=Math.min(ms.y1,hov.y)*ts-cy;
+      const pw=(Math.abs(hov.x-ms.x1)+1)*ts, ph=(Math.abs(hov.y-ms.y1)+1)*ts;
+      ctx.fillStyle='rgba(66,165,245,.1)'; ctx.fillRect(px1,py1,pw,ph);
+      ctx.strokeStyle='#42a5f5'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.strokeRect(px1,py1,pw,ph); ctx.setLineDash([]);
+    } else if(ms.mode==='selected'||ms.mode==='moving'){
+      // Highlight selected machines
+      for(const id of ms.ids){
+        const m=G.machines[id]; if(!m)continue;
+        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        const px=m.x*ts-cx, py=m.y*ts-cy;
+        ctx.fillStyle='rgba(66,165,245,.15)'; ctx.fillRect(px,py,mw*ts,mh*ts);
+        ctx.strokeStyle='#42a5f5'; ctx.lineWidth=2; ctx.setLineDash([3,3]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
+      }
+      // Ghost preview for move destination
+      if(ms.mode==='moving'&&hov.x>=0){
+        const dx=hov.x-ms.anchorX, dy=hov.y-ms.anchorY;
+        for(const id of ms.ids){
+          const m=G.machines[id]; if(!m)continue;
+          const def=MDEFS[m.type]; const[mw,mh]=def.size;
+          const px=(m.x+dx)*ts-cx, py=(m.y+dy)*ts-cy;
+          ctx.fillStyle='rgba(38,198,160,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
+          ctx.strokeStyle='#26c6a0'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
+          if(ts>12){
+            ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.globalAlpha=.4; ctx.fillText(def.icon,px+mw*ts/2,py+mh*ts/2); ctx.globalAlpha=1;
+          }
+        }
+      }
+    }
+  }
   // Blueprint selection / paste preview
   if(activeTool==='blueprint'){
     const bp=blueprintState;
@@ -1400,6 +1453,7 @@ let mineHold={active:false,tx:0,ty:0,startTime:0};
 let moveState={active:false,machineId:null,origX:0,origY:0};
 // Blueprint tool state
 let blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
+let multiselState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[]};
 
 function wrapRect(){return document.getElementById('wrap').getBoundingClientRect()}
 function scrToTile(sx,sy){const ts=TILE*G.cam.zoom;return{x:Math.floor((sx+G.cam.x)/ts),y:Math.floor((sy+G.cam.y)/ts)}}
@@ -1562,6 +1616,65 @@ function handleTap(tile,isLong){
     }
     return;
   }
+  if(activeTool==='multisel'){
+    const ms=multiselState;
+    if(ms.mode==='idle'){
+      ms.x1=x; ms.y1=y; ms.x2=x; ms.y2=y; ms.mode='selecting';
+      toast('Tap second corner to select area','ok');
+    } else if(ms.mode==='selecting'){
+      ms.x2=x; ms.y2=y;
+      const minX=Math.min(ms.x1,ms.x2),maxX=Math.max(ms.x1,ms.x2);
+      const minY=Math.min(ms.y1,ms.y2),maxY=Math.max(ms.y1,ms.y2);
+      const ids=new Set();
+      for(let ty=minY;ty<=maxY;ty++) for(let tx=minX;tx<=maxX;tx++){
+        const mid=G.map[ty][tx].mid;
+        if(mid!==null) ids.add(mid);
+      }
+      ms.ids=[...ids]; ms.mode='selected';
+      if(!ms.ids.length){toast('No machines in selection','wrn');ms.mode='idle';return;}
+      toast(`${ms.ids.length} machine${ms.ids.length>1?'s':''} selected`,'ok');
+      const bar=document.getElementById('multiselBar');
+      const cnt=document.getElementById('multiselCount');
+      if(bar){bar.classList.remove('hidden');}
+      if(cnt){cnt.textContent=ms.ids.length+' machine'+(ms.ids.length>1?'s':'')+' selected';}
+    } else if(ms.mode==='moving'){
+      const dx=x-ms.anchorX, dy=y-ms.anchorY;
+      if(dx===0&&dy===0){ms.mode='selected';return;}
+      const movingSet=new Set(ms.ids);
+      const canMove=ms.ids.every(id=>{
+        const m=G.machines[id]; if(!m)return true;
+        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        for(let ty2=0;ty2<mh;ty2++) for(let tx2=0;tx2<mw;tx2++){
+          const nx=m.x+dx+tx2, ny=m.y+dy+ty2;
+          if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
+          const occ=G.map[ny][nx].mid;
+          if(occ!==null&&!movingSet.has(occ))return false;
+        }
+        return true;
+      });
+      if(!canMove){toast('Cannot place here — tiles occupied','bad');sfx('error');return;}
+      for(const id of ms.ids){
+        const m=G.machines[id]; if(!m)continue;
+        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        for(let ty2=0;ty2<mh;ty2++) for(let tx2=0;tx2<mw;tx2++)
+          G.map[m.y+ty2][m.x+tx2].mid=null;
+      }
+      for(const id of ms.ids){
+        const m=G.machines[id]; if(!m)continue;
+        m.x+=dx; m.y+=dy;
+        if(m.type==='miner')m.mineRes=G.map[m.y][m.x].res||null;
+        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        for(let ty2=0;ty2<mh;ty2++) for(let tx2=0;tx2<mw;tx2++)
+          G.map[m.y+ty2][m.x+tx2].mid=m.id;
+      }
+      ms.mode='selected';
+      const btn=document.getElementById('multiselMoveBtn');
+      if(btn){btn.style.background='transparent';btn.textContent='✥ MOVE';}
+      saveGame(); sfx('place');
+      toast(`Moved ${ms.ids.length} machine${ms.ids.length>1?'s':''}`, 'ok');
+    }
+    return;
+  }
   if(activeTool==='blueprint'){
     const bp=blueprintState;
     if(bp.mode==='idle'){
@@ -1594,7 +1707,7 @@ function handleTap(tile,isLong){
          <button class="btn btn-sm" onclick="closeModal();blueprintState.data=[]">DISCARD</button>`
       );
       setTimeout(()=>{const i=document.getElementById('bpNameInput');if(i){i.focus();i.select();}},100);
-    } else if(bp.mode==='pasting'){
+    } else if(bp.mode==='holding'){
       // Tap to place blueprint at this location — deducts materials
       pasteBlueprintAt(bp.data, x, y);
     }
@@ -1651,12 +1764,22 @@ function tryPlace(type,tx,ty){
   }
   if(!canPlace(type,tx,ty)){toast('Cannot place here','bad'); sfx('error'); return;}
 
-  // Power warning — check if this machine will exceed available power
-  if(def.power>0){
+  // Power warning — confirm if this machine will exceed available power
+  if(def.power>0&&!G.devFreeBuild){
     const pwrFree=G.power.out-G.power.in;
     if(def.power>pwrFree&&G.power.out>0){
-      // Show warning toast but allow placement
-      toast(`⚡ Warning: ${def.name} needs ${def.power}kW but only ${Math.max(0,Math.round(pwrFree))}kW free`,'wrn');
+      const free=Math.max(0,Math.round(pwrFree));
+      showModal('⚡ POWER WARNING',
+        `<div style="font-size:7px;color:var(--amber);margin-bottom:10px">Not enough power!</div>
+         <div style="font-size:6px;color:var(--text2);line-height:2.2">
+           ${def.name} needs <span style="color:var(--amber)">${def.power}kW</span><br>
+           Available: <span style="color:${free>0?'var(--green)':'var(--red)'}">${free}kW free</span><br>
+           <span style="color:var(--text3)">Machines will slow or stop until you add more power.</span>
+         </div>`,
+        `<button class="btn btn-sm" onclick="closeModal();completePlacement('${type}',${tx},${ty})">PLACE ANYWAY</button>
+         <button class="btn btn-sm btn-red" onclick="closeModal()">CANCEL</button>`
+      );
+      return; // defer — completePlacement will finish if confirmed
     }
   }
 
@@ -1702,6 +1825,41 @@ function tryPlace(type,tx,ty){
   document.getElementById('toolTip').classList.add('hidden');
 }
 
+function completePlacement(type,tx,ty){
+  // Called after player confirms power warning — skip power check and place
+  const def=MDEFS[type]; if(!def)return;
+  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad');sfx('error');return;}
+  const crafted=(G.crafted[type]||0)>0;
+  if(G.devFreeBuild){
+    // free
+  } else if(crafted){
+    G.crafted[type]--;
+  } else {
+    for(const[item,need]of Object.entries(def.cost)){
+      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');return;}
+    }
+    for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
+  }
+  const m=mkMachine(type,tx,ty,placeDir);
+  if(type==='miner')m.mineRes=G.map[ty][tx].res;
+  if(type==='tunnel'){
+    const[dvx,dvy]=D_VEC[placeDir];
+    for(let dist=1;dist<=5;dist++){
+      const lx=tx-dvx*dist,ly=ty-dvy*dist;
+      if(lx<0||ly<0||lx>=MAP_W||ly>=MAP_H)break;
+      const ltile=G.map[ly][lx];
+      if(ltile.mid===null)continue;
+      const lm=G.machines[ltile.mid];
+      if(lm&&lm.type==='tunnel'&&lm.tunnelId===null&&lm.dir===placeDir){m.tunnelId=lm.id;lm.tunnelId=m.id;toast(`Tunnel linked! (${dist} tiles)`,'ok');break;}
+    }
+  }
+  G.machines[m.id]=m;
+  const[mw,mh]=def.size;
+  for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++) G.map[ty+dy][tx+dx].mid=m.id;
+  G.stats.placed++; updateHUD(); saveGame(); sfx('place');
+  toast(`Placed ${def.name}`,'ok');
+  document.getElementById('toolTip').classList.add('hidden');
+}
 function tryRemove(tx,ty){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
   const m=G.machines[mid]; if(!m)return;
@@ -1712,6 +1870,9 @@ function tryRemove(tx,ty){
   // Full refund
   for(const[item,n]of Object.entries(def.cost))
     G.inv[item]=(G.inv[item]||0)+n;
+  // Return input buffer to inventory
+  for(const[item,n]of Object.entries(m.inBuf))
+    if(n>0)G.inv[item]=(G.inv[item]||0)+n;
   // Return output buffer to inventory
   for(const[item,n]of Object.entries(m.outBuf))
     if(n>0)G.inv[item]=(G.inv[item]||0)+n;
@@ -2211,7 +2372,7 @@ function setTool(id){
   if(id==='blueprint'){
     activeTool='blueprint';
     // Don't reset if we're mid-paste — startPasteBlueprint already set the state
-    if(blueprintState.mode!=='pasting') blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
+    if(blueprintState.mode!=='holding') blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
     closeResInfo(); buildToolbar(); return;
   }
   // Switching away from move tool — restore any held machine
@@ -2582,7 +2743,7 @@ function renderMachPanel(){
     ? `<span style="color:var(--text3)">⏸ Paused</span>`
     : noPower
     ? `<span style="color:var(--red)">⚡ No power</span>`
-    : m.recipe ? `<span style="color:var(--green)">▶ Running</span>`
+    : m.recipe ? `<span style="color:var(--green)">▶ ${m.type==='lab'?'Researching':'Running'}: ${RECIPES[m.recipe]?.name||''}</span>`
     : `<span style="color:var(--amber)">⚠ No recipe</span>`;
   const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${Object.values(m.chestInv).reduce((a,b)=>a+b,0)}/200 stored</span>`:null;
   const statusVal = chestCap || minerStatus
@@ -2869,7 +3030,7 @@ function startPasteBlueprint(idx){
       .map(([k,v])=>`${v-(G.inv[k]||0)}× ${ITEMS[k]?.name||k}`).join(', ');
     toast(`Need: ${missing}`,'bad'); sfx('error'); return;
   }
-  blueprintState={mode:'pasting',x1:0,y1:0,x2:0,y2:0,data:[...b.data]};
+  blueprintState={mode:'holding',x1:0,y1:0,x2:0,y2:0,data:[...b.data]};
   closePanel('blueprint');
   setTool('blueprint');
   toast('Tap map to place blueprint','ok');
@@ -2927,7 +3088,7 @@ function renderBlueprintPanel(){
   if(bp.mode==='selecting'){
     html+=`<div style="font-size:6px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Selecting… tap second corner</div>
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};renderBlueprintPanel()">CANCEL</button>`;
-  } else if(bp.mode==='pasting'){
+  } else if(bp.mode==='holding'){
     html+=`<div style="font-size:6px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Tap the map to place blueprint</div>
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};setTool('select');renderBlueprintPanel()">CANCEL PASTE</button>`;
   }
@@ -3316,6 +3477,43 @@ function renderStatsPanel(){
   el.innerHTML=html;
 }
 
+function multiselStartMove(){
+  const ms=multiselState; if(!ms.ids.length)return;
+  // Use centre of bounding box as anchor
+  const machines=ms.ids.map(id=>G.machines[id]).filter(Boolean);
+  const minX=Math.min(...machines.map(m=>m.x));
+  const minY=Math.min(...machines.map(m=>m.y));
+  ms.anchorX=minX; ms.anchorY=minY;
+  ms.mode='moving';
+  const btn=document.getElementById('multiselMoveBtn');
+  if(btn){btn.style.background='rgba(38,198,160,.2)';btn.textContent='✥ TAP DEST';}
+  toast('Tap the map to move selection there','ok');
+}
+function multiselDemolish(){
+  const ms=multiselState; if(!ms.ids.length)return;
+  for(const id of ms.ids){
+    const m=G.machines[id]; if(!m)continue;
+    tryRemove(m.x,m.y);
+  }
+  ms.ids=[]; ms.mode='idle';
+  document.getElementById('multiselBar')?.classList.add('hidden');
+  setTool('select');
+  toast('Selection demolished','ok');
+}
+function multiselRotate(){
+  const ms=multiselState; if(!ms.ids.length)return;
+  for(const id of ms.ids){
+    const m=G.machines[id]; if(!m)continue;
+    m.dir=(m.dir+1)%4;
+  }
+  saveGame(); sfx('place');
+  toast(`Rotated ${ms.ids.length} machine${ms.ids.length>1?'s':''}`, 'ok');
+}
+function multiselClear(){
+  multiselState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[]};
+  document.getElementById('multiselBar')?.classList.add('hidden');
+  setTool('select');
+}
 function pauseAllMachines(){
   for(const m of Object.values(G.machines)){
     if(m.type!=='belt'&&m.type!=='inserter'&&m.type!=='chest') m.active=false;
@@ -3367,6 +3565,18 @@ const ACHIEVEMENTS=[
   {id:'first_diagrams',cat:'Research',   icon:'📋', name:'Going Technical',    desc:'Produce your first Circuit Diagrams'},
   {id:'automation',   cat:'Research',    icon:'⚙️', name:'Automated',          desc:'Unlock Basic Automation'},
   {id:'all_research', cat:'Research',    icon:'🔬', name:'Scholar',            desc:'Complete all research'},
+  // Logistics
+  {id:'first_chest',  cat:'Logistics',   icon:'📦', name:'Safe Storage',       desc:'Place your first chest'},
+  {id:'first_splitter',cat:'Logistics',  icon:'⑂',  name:'Fork in the Road',   desc:'Place your first splitter'},
+  {id:'first_tunnel', cat:'Logistics',   icon:'⏬', name:'Underground',        desc:'Place your first belt tunnel'},
+  {id:'first_generator',cat:'Power',     icon:'⚡', name:'Power Surge',        desc:'Place a Generator'},
+  {id:'first_blueprint',cat:'Production',icon:'📐', name:'Master Planner',     desc:'Save your first blueprint'},
+  {id:'logistics_research',cat:'Research',icon:'➡️',name:'Logistics Master',   desc:'Unlock Advanced Logistics'},
+  {id:'first_schematic',cat:'Research',  icon:'📘', name:'Advanced Scholar',   desc:'Produce your first Adv. Schematic'},
+  {id:'machines_50',  cat:'Production',  icon:'🏭', name:'Mega Factory',       desc:'Have 50 machines placed'},
+  {id:'power_240',    cat:'Power',       icon:'⚡', name:'Power Grid',         desc:'Produce 240kW or more'},
+  {id:'first_module', cat:'Production',  icon:'🔵', name:'Optimiser',          desc:'Install your first module'},
+  {id:'first_upgrade',cat:'Production',  icon:'⬆️', name:'Tier Up',            desc:'Upgrade a machine to T2'},
   // Rocket
   {id:'first_steel_r', cat:'Rocket',     icon:'🔩', name:'Steel Dreams',       desc:'Produce steel for the first time'},
   {id:'rocket_part',  cat:'Rocket',      icon:'🛸', name:'Parts in Motion',    desc:'Craft any rocket component'},
@@ -3403,6 +3613,17 @@ function checkAchievements(){
     first_steel_r:()=>(G.inv.steel_plate||0)>=1,
     rocket_part:  ()=>ROCKET_PARTS.some(p=>(G.inv[p.id]||0)>=1),
     launch:       ()=>G.stats.launched===true,
+    first_chest:  ()=>machines.some(m=>m.type==='chest'),
+    first_splitter:()=>machines.some(m=>m.type==='splitter'),
+    first_tunnel: ()=>machines.some(m=>m.type==='tunnel'),
+    first_generator:()=>machines.some(m=>m.type==='generator'),
+    first_blueprint:()=>(G.blueprints||[]).length>=1,
+    logistics_research:()=>G.research.done.includes('logistics'),
+    first_schematic:()=>(G.inv.sci_blue||0)>=1,
+    machines_50:  ()=>machines.length>=50,
+    power_240:    ()=>G.power.out>=240,
+    first_module: ()=>machines.some(m=>(m.modules||[]).length>0),
+    first_upgrade:()=>machines.some(m=>(m.tier||1)>=2),
   };
 
   let anyNew=false;
@@ -3509,13 +3730,19 @@ function renderRecipesPanel(){
 // ═══════════════════════════════════════════════════
 const TUTORIAL_STEPS=[
   {id:1,  text:'Welcome to 8-BIT INDUSTRY! Select ⛏️ Mine in the toolbar, then HOLD on a rock tile to mine ore.', done:()=>G.stats.taps>=1},
-  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — you\'ll need all three to get started.', done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5},
+  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — you\'ll need all three to get started.', done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5,
+    render:()=>{
+      const needs=[{res:'iron_ore',icon:'🪨',name:'Iron Ore',need:10},{res:'coal',icon:'⬛',name:'Coal',need:5},{res:'stone',icon:'🔲',name:'Stone',need:5}];
+      const tally=needs.map(n=>{const have=Math.min(n.need,G.inv[n.res]||0);const done=have>=n.need;return `${n.icon} ${n.name}: <span style="color:${done?'var(--teal)':'var(--amber)'}">${have}/${n.need}</span>${done?' ✓':''}`;}).join(' &nbsp;·&nbsp; ');
+      return `Good! Mine a mix of ores to get started. &nbsp;&nbsp; ${tally}`;
+    }
+  },
   {id:3,  text:'Open 🔨 Craft in the toolbar. Smelt your Iron Ore into Iron Plates (costs 2 ore each).', done:()=>(G.inv.iron_plate||0)>=3},
   {id:4,  text:'Great! Now craft some Iron Gears (costs 2 Iron Plates). You need these to build machines.', done:()=>(G.inv.iron_gear||0)>=2},
   {id:5,  text:'Open 🔨 Craft → BUILD MACHINES. Build a Burner Generator (needs 5 Stone + 2 Iron Plate).', done:()=>(G.crafted?.burner||0)>=1||Object.values(G.machines).some(m=>m.type==='burner')},
   {id:6,  text:'Place the Burner Generator from the Extract toolbar. Then tap it with Select ☝️ and feed it coal so it can generate power.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
   {id:7,  text:'Power is on! Now build a Miner and place it on a COAL deposit. The miner needs power to run, and will auto-mine coal for you.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='coal')},
-  {id:8,  text:'Now use an 🦾 Inserter to move coal from your Miner to the Burner. Place the inserter between them, pointing TOWARD the Burner.', done:()=>{const b=Object.values(G.machines).find(m=>m.type==='burner');return b&&(b.inBuf.coal||0)>5&&Object.values(G.machines).some(m=>m.type==='inserter');}},
+  {id:8,  text:'Now use an 🦾 Inserter to move coal from your Miner to the Burner. Place the inserter between them, pointing TOWARD the Burner.', done:()=>{const hasInserter=Object.values(G.machines).some(m=>m.type==='inserter');const b=Object.values(G.machines).find(m=>m.type==='burner');return hasInserter&&b&&((b.inBuf.coal||0)>=1||b.produced>0);} },
   {id:9,  text:'Coal is flowing to your Burner automatically! Now place a Miner on an Iron Ore deposit to mine iron.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='iron_ore')},
   {id:10, text:'Build a Stone Furnace (⚱️ in BUILD MACHINES) and place it near your iron miner. The furnace needs BOTH iron ore AND coal to smelt iron plates.', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace')},
   {id:11, text:'Use Inserters to feed iron ore AND coal into the Furnace. Set its recipe to "Smelt Iron". Inserters + Belts are your conveyor system!', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace'&&m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
@@ -3543,22 +3770,31 @@ function tickTutorial(){
     if(t.step>=TUTORIAL_STEPS.length){
       t.step=-1;
       hideTutHint();
-      toast('Tutorial complete — build that rocket! 🚀','ok');
+      showModal('🚀 TUTORIAL COMPLETE',
+        `<div style="font-size:8px;color:var(--amber);margin-bottom:12px;text-align:center">The Factory Must Grow</div>
+         <div style="font-size:6px;color:var(--text2);line-height:2.4;margin-bottom:10px">
+           You've learned the basics of 8-BIT INDUSTRY.<br><br>
+           Your goal: build a <span style="color:var(--amber)">🚀 Rocket</span> and see what awaits in this universe.<br><br>
+           <span style="color:var(--text3)">Research new technologies, automate everything, and expand your factory until launch day.</span>
+         </div>`,
+        `<button class="btn btn-sm" onclick="closeModal();sfx('research')">THE FACTORY MUST GROW ▶</button>`
+      );
+      sfx('research');
       return;
     }
   }
 
   // Show hint for current step
   if(t.step>=0&&t.step<TUTORIAL_STEPS.length){
-    showTutHint(TUTORIAL_STEPS[t.step].text);
+    showTutHint(TUTORIAL_STEPS[t.step]);
   }
 }
 
-function showTutHint(text){
+function showTutHint(step){
   const el=document.getElementById('tutHint');
   const tx=document.getElementById('tutText');
   if(!el||!tx)return;
-  tx.textContent=text;
+  tx.innerHTML=step.render?step.render():step.text;
   el.classList.remove('hidden');
 }
 function hideTutHint(){
