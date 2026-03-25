@@ -273,7 +273,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.7.9 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.8.0 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.7.9';
+const VER      = '0.8.0';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -761,17 +761,17 @@ const TECHS = {
   },
   logistics: {
     name:'Advanced Logistics', icon:'➡️', era:'Era 1',
-    cost:{sci_red:50,sci_green:25}, req:['automation'],
+    cost:{sci_red:50}, req:['automation'],
     desc:'50% faster belt speed + advanced logistics. Unlocks Circuit Diagrams research',
   },
   steel: {
     name:'Steel Processing', icon:'🔩', era:'Era 2',
-    cost:{sci_red:75,sci_green:50}, req:['automation'],
+    cost:{sci_red:75,sci_green:50}, req:['automation','logistics'],
     desc:'Enables steel recipes + unlocks Electric Smelter',
   },
   electronics: {
     name:'Electronics', icon:'💚', era:'Era 2',
-    cost:{sci_red:100,sci_green:75}, req:['automation'],
+    cost:{sci_red:100,sci_green:75}, req:['automation','logistics'],
     desc:'Advanced circuit and computer recipes. Unlocks Adv. Schematics research',
   },
   rocket_tech: {
@@ -2612,9 +2612,14 @@ function renderCraftPanel(){
     </div>`;
   }
 
-  // Recipe list — show unlocked recipes; show locked ones dimmed with unlock hint
+  // Recipe list — active recipe floats to top, then unlocked, then locked
   html+=`<span class="sec-label">RECIPES</span>`;
-  for(const r of HAND_CRAFTS){
+  const sortedCrafts=[...HAND_CRAFTS].sort((a,b)=>{
+    if(a.id===cs.recipeId) return -1;
+    if(b.id===cs.recipeId) return 1;
+    return 0;
+  });
+  for(const r of sortedCrafts){
     const isUnlocked=!r.unlock||G.research.done.includes(r.unlock);
     if(!isUnlocked){
       // Show locked recipe as a dim hint
