@@ -273,7 +273,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.7.6 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.7.7 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -417,7 +417,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.7.6';
+const VER      = '0.7.7';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -3792,7 +3792,9 @@ const TUTORIAL_STEPS=[
   {id:10, text:'Build a Stone Furnace (⚱️ in BUILD MACHINES) and place it near your iron miner. The furnace needs BOTH iron ore AND coal to smelt iron plates.', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace')},
   {id:11, text:'Use Inserters to feed iron ore AND coal into the Furnace. Set its recipe to "Smelt Iron". Inserters + Belts are your conveyor system!', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace'&&m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
   {id:12, text:'Your factory is running! Open 🔬 Research and hand-craft some Field Notes (needs Iron Gear + Copper Wire). Research Basic Automation.', done:()=>G.research.done.includes('automation')},
-  {id:13, text:'🎉 Automation unlocked! You can now build Blast Furnaces, Assemblers and Research Labs. Open 📊 Stats to see your factory overview. Good luck — your goal is to build a 🚀 ROCKET and see what else awaits in this universe!', done:()=>G.research.done.includes('logistics')||Object.keys(G.machines).length>=15},
+  {id:13, text:'🎉 Automation unlocked! You can now build Blast Furnaces, Assemblers and Research Labs. Your goal: build a 🚀 ROCKET and launch!', done:()=>G.research.done.includes('logistics')||Object.keys(G.machines).length>=15,
+    render:()=>`🎉 Automation unlocked! Build Blast Furnaces, Assemblers &amp; Labs. Your goal: build a 🚀 Rocket! &nbsp;<button onclick="completeTutorial()" style="font-family:var(--font);font-size:6px;padding:4px 10px;border:1px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer">THE FACTORY MUST GROW ▶</button>`
+  },
 ];
 
 function tickTutorial(){
@@ -3811,20 +3813,11 @@ function tickTutorial(){
 
   // Check if current step is done
   if(step.done()){
+    // Last step — don't auto-advance, wait for player to click the confirm button
+    if(stepIdx===TUTORIAL_STEPS.length-1) return;
     t.step++;
     if(t.step>=TUTORIAL_STEPS.length){
-      t.step=-1;
-      hideTutHint();
-      showModal('🚀 TUTORIAL COMPLETE',
-        `<div style="font-size:8px;color:var(--amber);margin-bottom:12px;text-align:center">The Factory Must Grow</div>
-         <div style="font-size:6px;color:var(--text2);line-height:2.4;margin-bottom:10px">
-           You've learned the basics of 8-BIT INDUSTRY.<br><br>
-           Your goal: build a <span style="color:var(--amber)">🚀 Rocket</span> and see what awaits in this universe.<br><br>
-           <span style="color:var(--text3)">Research new technologies, automate everything, and expand your factory until launch day.</span>
-         </div>`,
-        `<button class="btn btn-sm" onclick="closeModal();sfx('research')">THE FACTORY MUST GROW ▶</button>`
-      );
-      sfx('research');
+      completeTutorial();
       return;
     }
   }
@@ -3835,6 +3828,21 @@ function tickTutorial(){
   }
 }
 
+function completeTutorial(){
+  if(!G.tutorial)return;
+  G.tutorial.step=-1;
+  hideTutHint();
+  showModal('🚀 TUTORIAL COMPLETE',
+    `<div style="font-size:8px;color:var(--amber);margin-bottom:12px;text-align:center">The Factory Must Grow</div>
+     <div style="font-size:6px;color:var(--text2);line-height:2.4;margin-bottom:10px">
+       You've learned the basics of 8-BIT INDUSTRY.<br><br>
+       Your goal: build a <span style="color:var(--amber)">🚀 Rocket</span> and see what awaits in this universe.<br><br>
+       <span style="color:var(--text3)">Research new technologies, automate everything, and expand your factory until launch day.</span>
+     </div>`,
+    `<button class="btn btn-sm" onclick="closeModal();sfx('research')">THE FACTORY MUST GROW ▶</button>`
+  );
+  sfx('research');
+}
 function showTutHint(step){
   const el=document.getElementById('tutHint');
   const tx=document.getElementById('tutText');
