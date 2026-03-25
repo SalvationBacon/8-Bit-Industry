@@ -68,18 +68,20 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #sGame{display:flex;flex-direction:column}
 
 /* HUD */
-#hud{flex-shrink:0;height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:6px;z-index:100;overflow:hidden}
-.hud-logo{color:var(--amber);font-size:8px;padding-right:8px;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0}
-#hudZones{display:flex;gap:2px;padding-right:8px;border-right:1px solid var(--border);flex-shrink:0}
+#hud{flex-shrink:0;height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 4px;gap:4px;z-index:100;overflow:hidden}
+.hud-logo{color:var(--amber);font-size:7px;padding-right:6px;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0}
+#hudZones{display:flex;gap:2px;padding-right:6px;border-right:1px solid var(--border);flex-shrink:0}
 .zone-tab{font-family:var(--font);font-size:5px;padding:4px 6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:not-allowed;white-space:nowrap}
 .zone-tab.active{border-color:var(--amber);color:var(--amber);cursor:default}
 .zone-tab.locked{opacity:.35}
-#hudRes{display:flex;gap:6px;align-items:center;padding:0 6px;flex-shrink:0}
+#hudRes{display:flex;gap:4px;align-items:center;padding:0 4px;flex-shrink:0}
+@media(max-width:420px){#hudZones{display:none}.hud-logo{display:none}#hudRes{gap:3px;padding:0 2px}}
 .hres{display:flex;align-items:center;gap:3px;white-space:nowrap}
 .hres-icon{font-size:14px;line-height:1}
 .hres-val{color:var(--amber);font-size:8px;min-width:32px}
-.hud-btns{display:flex;gap:4px;flex:1;justify-content:flex-end}
-.hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:16px;padding:5px 0;cursor:pointer;transition:all .1s;border-radius:3px;flex:1;max-width:48px;text-align:center}
+.hud-btns{display:flex;gap:3px;flex:1;overflow-x:auto;scrollbar-width:none;min-width:0}
+.hud-btns::-webkit-scrollbar{display:none}
+.hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:15px;padding:5px 0;cursor:pointer;transition:all .1s;border-radius:3px;flex-shrink:0;width:36px;text-align:center}
 .hbtn:hover{border-color:var(--amber);color:var(--amber)}
 .hbtn.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.08)}
 
@@ -228,7 +230,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.7.4 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.7.5 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -372,7 +374,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.7.4';
+const VER      = '0.7.5';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
