@@ -68,18 +68,18 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #sGame{display:flex;flex-direction:column}
 
 /* HUD */
-#hud{flex-shrink:0;height:44px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:6px;z-index:100;overflow:hidden}
-.hud-logo{color:var(--amber);font-size:7px;padding-right:8px;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0}
+#hud{flex-shrink:0;height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:6px;z-index:100;overflow:hidden}
+.hud-logo{color:var(--amber);font-size:8px;padding-right:8px;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0}
 #hudZones{display:flex;gap:2px;padding-right:8px;border-right:1px solid var(--border);flex-shrink:0}
 .zone-tab{font-family:var(--font);font-size:5px;padding:4px 6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:not-allowed;white-space:nowrap}
 .zone-tab.active{border-color:var(--amber);color:var(--amber);cursor:default}
 .zone-tab.locked{opacity:.35}
-#hudRes{display:flex;gap:10px;flex:1;overflow:hidden}
+#hudRes{display:flex;gap:6px;align-items:center;padding:0 6px;flex-shrink:0}
 .hres{display:flex;align-items:center;gap:3px;white-space:nowrap}
-.hres-icon{font-size:11px;line-height:1}
-.hres-val{color:var(--amber);font-size:6px;min-width:28px}
-.hud-btns{display:flex;gap:4px;flex-shrink:0}
-.hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:7px;padding:5px 7px;cursor:pointer;transition:all .1s}
+.hres-icon{font-size:14px;line-height:1}
+.hres-val{color:var(--amber);font-size:8px;min-width:32px}
+.hud-btns{display:flex;gap:4px;flex:1;justify-content:flex-end}
+.hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:16px;padding:5px 0;cursor:pointer;transition:all .1s;border-radius:3px;flex:1;max-width:48px;text-align:center}
 .hbtn:hover{border-color:var(--amber);color:var(--amber)}
 .hbtn.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.08)}
 
@@ -224,11 +224,11 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <span class="logo-rest">INDUSTRY</span>
     </div>
     <p class="tagline">START WITH NOTHING · AUTOMATE EVERYTHING · LAUNCH</p>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
-      <button class="btn" onclick="newGame()">NEW GAME</button>
-      <button class="btn btn-teal btn-sm" id="btnContinue" onclick="continueGame()" style="display:none">CONTINUE</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:320px;margin:0 auto">
+      <div id="titleSlots" style="width:100%"></div>
+      <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.3.0 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.6.6 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -351,6 +351,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 <script>
 'use strict';
 
+
 // ═══════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════
@@ -358,7 +359,7 @@ const TILE     = 48;
 const MAP_W    = 64;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.3.0';
+const VER      = '0.6.6';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -408,8 +409,149 @@ function sfx(type) {
 }
 
 // ═══════════════════════════════════════════════════
-//  ITEMS
+//  MUSIC ENGINE  (Factory Pulse — 2m10s structured track)
 // ═══════════════════════════════════════════════════
+let _music={nodes:[],gain:null,running:false,loopId:null};
+
+const _MNOTE=0.3;  // seconds per 16th-note slot
+const _MBAR=8*_MNOTE; // 8 slots per bar
+const _MEL_VOL=0.022;  // melody volume (softened)
+const _BASS_VOL=0.030; // bass volume
+
+// Pentatonic in C across 2 octaves: C3 E3 G3 A3 C4 E4 G4 A4 C5
+const _MP=[130.81,164.81,196.00,220.00,261.63,329.63,392.00,440.00,523.25];
+
+const _MSECTIONS=[
+  {bars:8,  style:'intro'},
+  {bars:16, style:'A'},
+  {bars:16, style:'C'},
+  {bars:8,  style:'D'},
+  {bars:12, style:'E'},
+  {bars:16, style:'C'},
+  {bars:8,  style:'outro'},
+];
+
+const _MPAT={
+  intro:[[4,null,null,null,5,null,null,null],[null,null,3,null,null,null,4,null]],
+  A:    [[4,null,5,null,4,null,3,null],[4,5,null,3,4,null,5,null]],
+  B:    [[4,null,5,null,6,null,5,null],[5,null,4,null,3,null,4,null]],
+  C:    [[4,5,4,3,4,5,6,5],[5,4,5,6,5,4,3,4]],
+  D:    [[null,null,null,null,null,null,null,null]],
+  E:    [[4,null,5,null,4,null,6,null],[5,null,4,null,5,null,3,null]],
+  outro:[[4,null,null,null,3,null,null,null],[null,null,2,null,null,null,null,null]],
+};
+const _MBASS={
+  intro:[0,null,null,null,0,null,null,null],
+  A:    [0,null,null,null,2,null,null,null],
+  B:    [0,null,2,null,0,null,2,null],
+  C:    [0,null,2,null,3,null,2,null],
+  D:    [0,null,null,0,null,null,0,null],
+  E:    [0,null,null,null,2,null,null,null],
+  outro:[0,null,null,null,null,null,null,null],
+};
+
+function _buildMusicSchedule(){
+  const sched=[];
+  let t=0;
+  for(const sec of _MSECTIONS){
+    const pat=_MPAT[sec.style];
+    const bass=_MBASS[sec.style];
+    const isIntro=sec.style==='intro', isOutro=sec.style==='outro';
+    for(let bar=0;bar<sec.bars;bar++){
+      const p=pat[bar%pat.length];
+      const fadeVol=isIntro?Math.min(1,bar/4):isOutro?Math.max(0.05,1-(bar/sec.bars)):1;
+      for(let n=0;n<8;n++){
+        const nt=t+n*_MNOTE;
+        if(p[n]!==null){
+          const v=_MEL_VOL*(sec.style==='C'||sec.style==='E'?1.2:1)*fadeVol;
+          sched.push({t:nt,f:_MP[p[n]],d:_MNOTE*0.75,v,w:'square'});
+        }
+        if(bass[n]!==null&&(!isIntro&&!isOutro||bar>1)){
+          sched.push({t:nt,f:_MP[bass[n]]*0.5,d:_MNOTE*1.6,v:_BASS_VOL*fadeVol,w:'triangle'});
+        }
+        if(sec.style==='C'&&n%2===0){
+          sched.push({t:nt,f:880,d:0.04,v:0.01,w:'square'});
+        }
+      }
+      t+=_MBAR;
+    }
+  }
+  return sched;
+}
+
+const _MSCHED=_buildMusicSchedule();
+const _MTOTAL=_MSCHED.length?_MSCHED[_MSCHED.length-1].t+1:130;
+
+function musicStart(){
+  if(_music.running)return;
+  try{
+    const ctx=ac();
+    const mg=ctx.createGain();
+    mg.gain.setValueAtTime(1,ctx.currentTime);
+    mg.connect(ctx.destination);
+    _music.gain=mg;
+    _music.running=true;
+    _scheduleTrack(ctx.currentTime);
+  }catch(e){}
+}
+
+function _scheduleTrack(startTime){
+  if(!_music.running)return;
+  const ctx=ac();
+  _music.nodes=[];
+  for(const n of _MSCHED){
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=n.w;
+    o.frequency.setValueAtTime(n.f,startTime+n.t);
+    g.gain.setValueAtTime(n.v,startTime+n.t);
+    g.gain.exponentialRampToValueAtTime(0.001,startTime+n.t+n.d);
+    o.connect(g); g.connect(_music.gain);
+    o.start(startTime+n.t);
+    o.stop(startTime+n.t+n.d+0.05);
+    _music.nodes.push(o);
+  }
+  // Loop: reschedule just before track ends
+  const loopDelay=(_MTOTAL-0.5)*1000;
+  _music.loopId=setTimeout(()=>{
+    if(_music.running) _scheduleTrack(ac().currentTime+0.1);
+  },loopDelay);
+}
+
+function musicStop(){
+  _music.running=false;
+  if(_music.loopId){clearTimeout(_music.loopId);_music.loopId=null;}
+  for(const n of _music.nodes){try{n.stop();}catch(e){}}
+  _music.nodes=[];
+  if(_music.gain){
+    try{
+      _music.gain.gain.exponentialRampToValueAtTime(0.001,ac().currentTime+0.4);
+      setTimeout(()=>{try{_music.gain.disconnect();}catch(e){}},500);
+    }catch(e){}
+    _music.gain=null;
+  }
+}
+
+function toggleMusic(){
+  G.music=!G.music; saveGame();
+  if(G.music) musicStart(); else musicStop();
+  openMenu();
+}
+
+function toggleSfxMenu(){
+  G.sfx=!G.sfx; saveGame();
+  openMenu();
+}
+
+// Visibility change — pause/resume music
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    musicStop();
+  } else {
+    if(G&&G.music&&_music&&!_music.running) musicStart();
+  }
+});
+
+
 const ITEMS = {
   iron_ore:     {name:'Iron Ore',       icon:'🪨', cat:'raw', desc:'The backbone of your factory. Smelt 2 ore into 1 Iron Plate.', uses:['Iron Plate → Iron Gear, Iron Rod', 'Iron Plate → Circuit Board (with Copper Wire)', 'Iron Plate → Smelter, Assembler, Lab costs']},
   copper_ore:   {name:'Copper Ore',     icon:'🟫', cat:'raw', desc:'Essential for electronics. Smelt 2 ore into 1 Copper Plate.', uses:['Copper Plate → Copper Wire', 'Copper Wire → Circuit Board, Field Notes', 'Copper Wire → Flight Computer (rocket)']},
@@ -422,17 +564,17 @@ const ITEMS = {
   iron_gear:    {name:'Iron Gear',      icon:'⚙️',  cat:'parts'},
   copper_wire:  {name:'Copper Wire',    icon:'〰️', cat:'parts'},
   iron_rod:     {name:'Iron Rod',       icon:'➖', cat:'parts'},
-  circuit:      {name:'Circuit Board',  icon:'💚', cat:'parts'},
+  circuit:      {name:'Circuit Board',  icon:'📟', cat:'parts'},
   engine:       {name:'Engine Block',   icon:'🔧', cat:'parts'},
   speed_module: {name:'Speed Module',   icon:'🔵', cat:'parts', desc:'Increases machine speed by 25%'},
   prod_module:  {name:'Prod. Module',   icon:'🟢', cat:'parts', desc:'Increases machine yield by 25%'},
   eff_module:   {name:'Eff. Module',    icon:'🔴', cat:'parts', desc:'Reduces machine power draw by 30%'},
   sci_red:      {name:'Field Notes',     icon:'🗒️', cat:'science'},
   sci_green:    {name:'Circuit Diagrams',icon:'📋', cat:'science'},
-  r_chassis:    {name:'Rocket Chassis', icon:'🛸', cat:'rocket'},
+  r_chassis:    {name:'Rocket Chassis', icon:'🗜️', cat:'rocket'},
   r_computer:   {name:'Flight Computer',icon:'💾', cat:'rocket'},
   r_frame:      {name:'Struct. Frame',  icon:'🔩', cat:'rocket'},
-  r_propellant: {name:'Coal Propellant',icon:'🔥', cat:'rocket'},
+  r_propellant: {name:'Coal Propellant',icon:'⛽', cat:'rocket'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -474,19 +616,18 @@ const RECIPES = {
 // ═══════════════════════════════════════════════════
 const MDEFS = {
   miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits'},
-  stone_furnace:  {name:'Stone Furnace',    icon:'🪨', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter — needs coal'},
-  blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel','bf_prop'], desc:'Fast coal-powered smelter — 2× speed'},
-  electric_smelter:{name:'Electric Smelter',icon:'⚡', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop'], desc:'No coal needed — runs on power. 3× speed'},
+  stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter — needs coal'},
+  blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter — 2× speed'},
+  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop'], desc:'No coal needed — runs on power. 3× speed. Makes propellant.'},
   assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame'], desc:'Crafts parts and components'},
   lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g'], desc:'Produces Field Notes and Circuit Diagrams'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:null,          recipes:[], desc:'Burns coal → 60kW power'},
   belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
   splitter:       {name:'Splitter',         icon:'⑂',  size:[1,1], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits belt output left and right alternately'},
-  tunnel:         {name:'Belt Tunnel',      icon:'⬛', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
+  tunnel:         {name:'Belt Tunnel',      icon:'⏬', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
   inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines'},
   chest:          {name:'Chest',            icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                                   unlock:null,          recipes:[], desc:'Stores up to 200 items'},
-  rail:           {name:'Inter-zone Rail',  icon:'🛤️', size:[2,1], power:0,   cost:{iron_plate:5, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'[FUTURE] Connects to other zones', stub:true},
 };
 
 // Hand-craft recipes — click to process raw materials into items
@@ -501,7 +642,7 @@ const HAND_CRAFTS = [
   {id:'stone_brick',  name:'Stone Brick',  icon:'🧱', in:{stone:2},                             out:{stone_brick:1},  clicks:3,  unlock:null,           desc:'Cut and shape stone blocks'},
   {id:'sci_red',      name:'Field Notes',  icon:'🗒️', in:{iron_gear:1,copper_wire:2},           out:{sci_red:1},      clicks:12, unlock:null,           desc:'Basic research notes — needed for all research'},
   // Unlocked by automation research
-  {id:'circuit',      name:'Circuit Board',icon:'💚', in:{iron_plate:1,copper_wire:3},          out:{circuit:1},      clicks:20, unlock:'automation',   desc:'Hand-wire a basic circuit board'},
+  {id:'circuit',      name:'Circuit Board',icon:'📟', in:{iron_plate:1,copper_wire:3},          out:{circuit:1},      clicks:20, unlock:'automation',   desc:'Hand-wire a basic circuit board'},
   {id:'engine',       name:'Engine Block', icon:'🔧', in:{iron_gear:2,iron_rod:2},              out:{engine:1},       clicks:28, unlock:'automation',   desc:'Assemble an engine by hand'},
   // Unlocked by steel research
   {id:'steel_plate',  name:'Steel Plate',  icon:'⬜', in:{iron_plate:5,coal:2},                out:{steel_plate:1},  clicks:30, unlock:'steel',        desc:'Forge iron into steel'},
@@ -532,7 +673,6 @@ const TOOLBAR_DEF = [
   {label:'Extract',    items:[{id:'miner',name:'Miner',icon:'⛏️'},{id:'burner',name:'Burner',icon:'🪵'},{id:'generator',name:'Generator',icon:'⚡'}]},
   {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'🪨'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'⚡'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
   {label:'Logistics',  items:[{id:'belt',name:'Belt',icon:'➡️'},{id:'splitter',name:'Splitter',icon:'⑂'},{id:'tunnel',name:'Tunnel',icon:'⬛'},{id:'inserter',name:'Inserter',icon:'🦾'},{id:'chest',name:'Chest',icon:'📦'}]},
-  {label:'Future',     items:[{id:'rail',name:'Rail',icon:'🛤️'}]},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -546,22 +686,22 @@ const TECHS = {
   },
   logistics: {
     name:'Advanced Logistics', icon:'➡️', era:'Era 1',
-    cost:{sci_red:10,sci_green:5}, req:['automation'],
-    desc:'Unlocks inter-zone rails + 50% faster belt speed',
+    cost:{sci_red:50,sci_green:25}, req:['automation'],
+    desc:'50% faster belt speed + advanced logistics',
   },
   steel: {
     name:'Steel Processing', icon:'🔩', era:'Era 2',
-    cost:{sci_red:15,sci_green:10}, req:['automation'],
+    cost:{sci_red:75,sci_green:50}, req:['automation'],
     desc:'Enables steel recipes + unlocks Electric Smelter',
   },
   electronics: {
     name:'Electronics', icon:'💚', era:'Era 2',
-    cost:{sci_red:20,sci_green:15}, req:['automation'],
+    cost:{sci_red:100,sci_green:75}, req:['automation'],
     desc:'Advanced circuit and computer recipes',
   },
   rocket_tech: {
     name:'Rocket Science', icon:'🚀', era:'Era 3',
-    cost:{sci_red:25,sci_green:25}, req:['steel','electronics'],
+    cost:{sci_red:125,sci_green:125}, req:['steel','electronics'],
     desc:'Unlocks all rocket component recipes',
   },
 };
@@ -615,6 +755,7 @@ function defaultState(){
   return {
     ver:VER, tick:0,
     sfx:true,
+    music:true,
     inv:{
       iron_ore:0,copper_ore:0,coal:0,stone:0,
       iron_plate:0,copper_plate:0,steel_plate:0,stone_brick:0,
@@ -666,7 +807,7 @@ let canvas, ctx, rafId;
 let lastTickMs=0; // real timestamp of last gameTick — used for sub-tick interpolation
 
 const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e'};
-const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#42d4f4',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',chest:'#7d5a3c',rail:'#ab47bc'};
+const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',chest:'#7d5a3c'};
 
 function initCanvas(){
   canvas=document.getElementById('canvas');
@@ -824,45 +965,60 @@ function draw(){
     if(tile.mid!==null){
       const m=G.machines[tile.mid];
       if(m&&m.type==='belt'){
-        ctx.fillStyle='#181818'; ctx.fillRect(px,py,ts,ts);
-        ctx.strokeStyle=MACH_COL.belt; ctx.lineWidth=1.5; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
-        // Static chevron texture — clipped inside border
+        const[dvx,dvy]=D_VEC[m.dir];
+        const AMBER='#f5a623';
+        const BELT_BG='#252525';
+        const RW=Math.max(1.5,ts*.05);
+        const inset=RW/2+0.5;
+
+        // Full dark surface
+        ctx.fillStyle=BELT_BG; ctx.fillRect(px,py,ts,ts);
+
         if(ts>10){
-          const [dvx,dvy]=D_VEC[m.dir];
           ctx.save();
-          ctx.beginPath(); ctx.rect(px+2,py+2,ts-4,ts-4); ctx.clip();
-          ctx.strokeStyle='rgba(110,110,110,0.38)';
-          ctx.lineWidth=Math.max(1,ts*.055);
-          const chevSpacing=ts*.28;
-          // Static — no time offset, chevrons fixed in place
-          for(let ci=0;ci<5;ci++){
-            const t2=ci*chevSpacing;
-            const bx=px+ts/2+dvx*(t2-ts/2*0.5);
-            const by=py+ts/2+dvy*(t2-ts/2*0.5);
-            const ex=dvy, ey=-dvx;
-            const hw=ts*.28;
-            const wing=ts*.1;
-            ctx.beginPath();
-            ctx.moveTo(bx+ex*hw - dvx*wing, by+ey*hw - dvy*wing);
-            ctx.lineTo(bx,                   by);
-            ctx.lineTo(bx-ex*hw - dvx*wing,  by-ey*hw - dvy*wing);
-            ctx.stroke();
+          ctx.beginPath(); ctx.rect(px,py,ts,ts); ctx.clip();
+
+          // Direction chevrons
+          if(ts>14){
+            ctx.strokeStyle='rgba(55,55,55,0.9)'; ctx.lineWidth=Math.max(1,ts*.03);
+            const sp=ts*.28;
+            for(let ci=0;ci<5;ci++){
+              const t2=ci*sp-(sp*0.5);
+              const bx=px+ts/2+dvx*t2, by=py+ts/2+dvy*t2;
+              const ex2=dvy, hw=ts*.22, wing=ts*.08;
+              ctx.beginPath();
+              ctx.moveTo(bx+ex2*hw-dvx*wing, by+(-dvx)*hw-dvy*wing);
+              ctx.lineTo(bx+dvx*wing*1.5,    by+dvy*wing*1.5);
+              ctx.lineTo(bx-ex2*hw-dvx*wing, by-(-dvx)*hw-dvy*wing);
+              ctx.stroke();
+            }
+          }
+
+          // Two subtle edge lines (no amber rails)
+          ctx.strokeStyle='rgba(70,70,70,0.8)'; ctx.lineWidth=1; ctx.lineCap='square';
+          if(dvx!==0){
+            ctx.beginPath();ctx.moveTo(px,py+inset);ctx.lineTo(px+ts,py+inset);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(px,py+ts-inset);ctx.lineTo(px+ts,py+ts-inset);ctx.stroke();
+          } else {
+            ctx.beginPath();ctx.moveTo(px+inset,py);ctx.lineTo(px+inset,py+ts);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(px+ts-inset,py);ctx.lineTo(px+ts-inset,py+ts);ctx.stroke();
           }
           ctx.restore();
         }
-        // Items — clipped, centred, animated along direction
+
+        // Items — prog-based position with sub-tick interpolation
         if(tile.items.length>0){
-          const [dvx,dvy]=D_VEC[m.dir];
-          const beltSpeed=(G.research.done.includes('logistics')?.15:.1);
+          const[dvx,dvy]=D_VEC[m.dir];
+          const beltSpeed2=(G.research.done.includes('logistics')?.15:.1);
           const subTick=Math.min(1,(now-lastTickMs)/TICK_MS);
           ctx.save();
           ctx.beginPath(); ctx.rect(px+2,py+2,ts-4,ts-4); ctx.clip();
           for(let ii=0;ii<tile.items.length;ii++){
             const it=tile.items[ii];
-            const smoothProg=Math.min(1,it.prog+beltSpeed*subTick);
-            const travel=(smoothProg-.5)*ts;
-            const ix=px+ts/2 + dvx*travel;
-            const iy=py+ts/2 + dvy*travel;
+            const smoothProg=Math.min(0.99, it.prog+beltSpeed2*subTick);
+            const travel=(smoothProg-0.5)*ts;
+            const ix=px+ts/2+dvx*travel;
+            const iy=py+ts/2+dvy*travel;
             ctx.font=`${Math.floor(ts*.32)}px serif`;
             ctx.textAlign='center'; ctx.textBaseline='middle';
             ctx.fillText(ITEMS[it.id]?.icon||'·',ix,iy);
@@ -873,10 +1029,10 @@ function draw(){
     }
   }
 
-  // Mine hold completion — checked after tile loop to avoid mid-loop side effects
+  // Mine hold completion — restart immediately so holding continues mining
   if(mineHold.active&&(now-mineHold.startTime)>=MINE_HOLD_MS){
     tapCollect(mineHold.tx,mineHold.ty);
-    mineHold={active:false,tx:0,ty:0,startTime:0};
+    mineHold.startTime=now; // restart — keeps mining while held
   }
 
   // Multi-tile machines
@@ -891,16 +1047,28 @@ function draw(){
     if(px+pw<0||py+ph<0||px>W||py>H)continue;
     const col=MACH_COL[m.type]||'#666';
     const busy=m.active&&m.recipe&&m.prog>0;
+    // Power buildings have their own "running" state — fuelled and active
+    const isPowering=(m.type==='generator'||m.type==='burner')&&m.active&&(m.inBuf.coal||0)>0;
     const isStub=def.stub;
 
     ctx.fillStyle='#141414'; ctx.fillRect(px,py,pw,ph);
-    ctx.strokeStyle=busy?col:isStub?'#3a2a4a':'#252525';
-    ctx.lineWidth=busy?2:1; ctx.strokeRect(px+1,py+1,pw-2,ph-2);
+    ctx.strokeStyle=busy||isPowering?col:isStub?'#3a2a4a':'#252525';
+    ctx.lineWidth=busy||isPowering?2:1; ctx.strokeRect(px+1,py+1,pw-2,ph-2);
     ctx.fillStyle='#0c0c0c'; ctx.fillRect(px+4,py+4,pw-8,ph-8);
 
     if(busy){
       ctx.fillStyle=col; ctx.globalAlpha=.07+.05*Math.sin(G.tick*.22);
       ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
+    }
+    // Pulsing amber glow for powered generators/burners
+    if(isPowering){
+      ctx.fillStyle='#ffd600'; ctx.globalAlpha=.06+.04*Math.sin(G.tick*.3);
+      ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
+      // Small green "running" dot bottom-right
+      if(ts>16){
+        ctx.fillStyle='#4caf50';
+        ctx.beginPath(); ctx.arc(px+pw-8,py+ph-8,3,0,Math.PI*2); ctx.fill();
+      }
     }
     if(isStub){
       ctx.fillStyle='#ab47bc'; ctx.globalAlpha=.04; ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
@@ -909,8 +1077,20 @@ function draw(){
     if(ts>10){
       const fs=Math.floor(Math.min(pw,ph)*.35);
       ctx.font=`${fs}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-      const oy=ph>ts*.9?-5*z:0;
+      // For assembler with recipe: push main icon up, recipe icon down
+      const hasRecipe=m.recipe&&m.type==='assembler'&&ts>24;
+      const oy=hasRecipe?-ph*.2:(ph>ts*.9?-5*z:0);
       ctx.fillText(def.icon,px+pw/2,py+ph/2+oy);
+      // Recipe output icon stacked below main icon
+      if(hasRecipe){
+        const rec=RECIPES[m.recipe];
+        const outIcon=rec?ITEMS[Object.keys(rec.out)[0]]?.icon:null;
+        if(outIcon){
+          ctx.font=`${Math.floor(Math.min(pw,ph)*.22)}px serif`;
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(outIcon,px+pw/2,py+ph*.7);
+        }
+      }
     }
     if(m.recipe&&m.active&&ph>ts*.85){
       const rec=RECIPES[m.recipe];
@@ -936,13 +1116,26 @@ function draw(){
         ctx.globalAlpha=1;
       }
     }
-    // Chest: show fill level
+    // Chest: show fill level with bar + count
     if(m.type==='chest'){
       const total=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-      if(total>0&&ts>20){
-        const pct=Math.min(1,total/200);
-        ctx.fillStyle=pct>.8?'#e53935':'#f5a623'; ctx.globalAlpha=.6;
-        ctx.fillRect(px+4,py+ph-10,(pw-8)*pct,5); ctx.globalAlpha=1;
+      const CAP=200;
+      const pct=Math.min(1,total/CAP);
+      if(ts>14){
+        // Background track
+        ctx.fillStyle='#111'; ctx.fillRect(px+4,py+ph-11,pw-8,6);
+        // Fill bar — green→amber→red
+        const barCol=pct>.8?'#e53935':pct>.5?'#f5a623':'#26c6a0';
+        ctx.fillStyle=barCol; ctx.globalAlpha=.9;
+        ctx.fillRect(px+4,py+ph-11,Math.max(0,(pw-8)*pct),6);
+        ctx.globalAlpha=1;
+        // Item count at high zoom
+        if(ts>26&&total>0){
+          ctx.fillStyle=pct>.8?'#ff8a80':'#ccc';
+          ctx.font=`${Math.max(7,Math.floor(ts*.14))}px sans-serif`;
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(`${total}/${CAP}`,px+pw/2,py+ph-14);
+        }
       }
     }
     // Tier badge (T2 = amber, T3 = teal) — top-left corner
@@ -976,25 +1169,30 @@ function draw(){
     ctx.beginPath(); ctx.arc(bcx,bcy,brad,0,Math.PI*2); ctx.fill();
 
     // Arm — smooth semicircle sweep using real time
-    const swingDurMs=4*TICK_MS; // matches inserter fire rate (every 4 ticks)
+    const swingDurMs=4*TICK_MS;
     const msSince=now-(m.lastTransferMs||0);
     const swingT=msSince<swingDurMs?(1-msSince/swingDurMs):0;
     const[dvx,dvy]=D_VEC[m.dir];
     const destAngle=Math.atan2(dvy,dvx);
     const srcAngle=destAngle+Math.PI;
-    const sweep=Math.sin(swingT*Math.PI);
-    const armAngle=srcAngle - sweep*Math.PI;
+    const isHolding=m._pending&&m._pending.length>0;
+    let armAngle;
+    if(isHolding&&swingT<=0.05){
+      // Holding item, waiting — park arm at destination side
+      armAngle=destAngle;
+    } else {
+      const sweep=Math.sin(swingT*Math.PI);
+      armAngle=srcAngle - sweep*Math.PI;
+    }
     const armLen=Math.max(4,ts*.40);
     const ax=bcx+Math.cos(armAngle)*armLen;
     const ay=bcy+Math.sin(armAngle)*armLen;
-    // Colour: amber while moving, gray at rest
     const isMoving=swingT>0.05;
-    ctx.strokeStyle=isMoving?'#f5a623':'#777';
+    ctx.strokeStyle=isMoving?'#f5a623':isHolding?'#f5a623':'#777';
     ctx.lineWidth=Math.max(1.5,ts*.07);
     ctx.beginPath(); ctx.moveTo(bcx,bcy); ctx.lineTo(ax,ay); ctx.stroke();
-    // Claw tip
     const clawR=Math.max(2,ts*.10);
-    ctx.fillStyle=isMoving?'#f5a623':'#999';
+    ctx.fillStyle=isMoving||isHolding?'#f5a623':'#999';
     ctx.beginPath(); ctx.arc(ax,ay,clawR,0,Math.PI*2); ctx.fill();
 
     // Show carried item on arm tip
@@ -1184,7 +1382,7 @@ function onMov(cx,cy){
   const r=wrapRect(); hov=scrToTile(cx-r.left,cy-r.top);
   if(!drag.on)return;
   const dx=cx-drag.sx,dy=cy-drag.sy;
-  if(Math.abs(dx)>8||Math.abs(dy)>8){drag.moved=true;mineHold.active=false;}
+  if(Math.abs(dx)>8||Math.abs(dy)>8){drag.moved=true;}
   G.cam.x=drag.cx-dx; G.cam.y=drag.cy-dy; clampCam();
 }
 function onUp(cx,cy){
@@ -1211,7 +1409,7 @@ function onTouchStart(e){
 function onTouchMove(e){
   if(e.touches.length===1&&drag.on){
     const t=e.touches[0]; const dx=t.clientX-drag.sx,dy=t.clientY-drag.sy;
-    if(Math.abs(dx)>8||Math.abs(dy)>8){drag.moved=true;mineHold.active=false;}
+    if(Math.abs(dx)>8||Math.abs(dy)>8){drag.moved=true;}
     G.cam.x=drag.cx-dx; G.cam.y=drag.cy-dy; clampCam();
     const r=wrapRect(); hov=scrToTile(t.clientX-r.left,t.clientY-r.top);
   } else if(e.touches.length===2&&pinch.on){
@@ -1583,7 +1781,7 @@ function runMachine(m){
     }
     return;
   }
-  if(m.type==='chest'||m.type==='belt'||m.type==='splitter'||m.type==='tunnel'||m.type==='inserter'||m.type==='rail'||m.type==='burner')return;
+  if(m.type==='chest'||m.type==='belt'||m.type==='splitter'||m.type==='tunnel'||m.type==='inserter'||m.type==='burner')return;
 
   if(!m.recipe)return;
   const rec=RECIPES[m.recipe]; if(!rec)return;
@@ -1647,7 +1845,7 @@ function runBelts(){
     const m=G.machines[tile.mid]; if(!m)continue;
     if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
 
-    // Tunnel entrance: teleport items to exit
+    // Tunnel: teleport items to exit
     if(m.type==='tunnel'&&m.tunnelId!==null){
       const exit=G.machines[m.tunnelId];
       if(exit&&tile.items.length>0){
@@ -1655,9 +1853,7 @@ function runBelts(){
         if(arrived.length){
           tile.items=tile.items.filter(it=>it.prog<1);
           const exTile=G.map[exit.y][exit.x];
-          for(const it of arrived){
-            it.prog=0; exTile.items.push(it);
-          }
+          for(const it of arrived){it.prog=0;exTile.items.push(it);}
         }
       }
       continue;
@@ -1668,53 +1864,55 @@ function runBelts(){
     tile.items=tile.items.filter(it=>it.prog<1);
     const[dvx,dvy]=D_VEC[m.dir];
 
-    // Splitter: alternate left/right
+    // Splitter: alternate outputs
     if(m.type==='splitter'){
-      // Perpendicular vectors
-      const outputs=[];
-      // Forward
-      const fx=tx+dvx, fy=ty+dvy;
-      // Left (rotate dir CCW)
-      const lx=tx+dvy, ly=ty-dvx;
-      // Right (rotate dir CW)
-      const rx=tx-dvy, ry=ty+dvx;
-      const candidates=[
-        {x:fx,y:fy},
-        {x:(m.splitSide===0?lx:rx), y:(m.splitSide===0?ly:ry)},
-      ];
+      const fx=tx+dvx,fy=ty+dvy;                 // forward
+      const lx=tx+dvy, ly=ty-dvx;                // left (CCW 90°)
+      const rx=tx-dvy, ry=ty+dvx;                // right (CW 90°)
       for(const it of arrived){
-        const c=candidates[m.splitSide%2];
-        m.splitSide=(m.splitSide+1)%2;
-        // Try primary output, fall back to forward
+        m.splitSide=(m.splitSide||0);
+        // Alternate between left and right; fall back to forward
+        const side=m.splitSide%2;
+        m.splitSide++;
+        const sideA=side===0?{x:lx,y:ly}:{x:rx,y:ry};
+        const sideB=side===0?{x:rx,y:ry}:{x:lx,y:ly};
         let placed=false;
-        for(const dest of [{x:c.x,y:c.y},{x:fx,y:fy}]){
+        for(const dest of [sideA,sideB,{x:fx,y:fy}]){
           if(dest.x<0||dest.y<0||dest.x>=MAP_W||dest.y>=MAP_H)continue;
-          const nt=G.map[dest.y][dest.x];
-          if(nt.mid!==null){
-            const nm=G.machines[nt.mid];
-            if(nm&&nm.type==='belt'&&nt.items.length<4){it.prog=0;nt.items.push(it);placed=true;break;}
+          const nt=G.map[dest.y][dest.x]; if(nt.mid===null)continue;
+          const nm=G.machines[nt.mid];
+          if(nm&&(nm.type==='belt'||nm.type==='splitter')&&nt.items.length<4){
+            it.prog=0;nt.items.push(it);placed=true;break;
           }
         }
-        if(!placed)tile.items.push(it); // back-pressure
+        if(!placed){it.prog=0.99;tile.items.push(it);}
       }
       continue;
     }
 
-    // Normal belt transfer
+    // Normal belt
     const nx=tx+dvx,ny=ty+dvy;
-    if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)continue;
+    if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
+      for(const it of arrived){it.prog=0.99;tile.items.push(it);}
+      continue;
+    }
     const next=G.map[ny][nx];
     for(const it of arrived){
       if(next.mid!==null){
         const nm=G.machines[next.mid];
-        if(nm&&nm.type==='belt'&&next.items.length<4){it.prog=0;next.items.push(it);}
-        else if(nm&&nm.type==='splitter'&&next.items.length<4){it.prog=0;next.items.push(it);}
-        else if(nm&&nm.type==='tunnel'){it.prog=0;next.items.push(it);}
-        else if(nm&&nm.type==='chest'){nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;}
-        else if(nm&&nm.type!=='belt'&&nm.type!=='inserter'){nm.inBuf[it.id]=(nm.inBuf[it.id]||0)+1;}
-        else tile.items.push(it); // back-pressure
+        if((nm.type==='belt'||nm.type==='splitter')&&next.items.length<4){
+          it.prog=0;next.items.push(it);
+        } else if(nm.type==='tunnel'){
+          it.prog=0;next.items.push(it);
+        } else if(nm.type==='chest'){
+          nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
+        } else {
+          // All other machines (assembler, furnace, etc) — belts cannot feed directly, back-pressure
+          it.prog=0.99;tile.items.push(it);
+        }
+      } else {
+        it.prog=0.99;tile.items.push(it);
       }
-      // empty floor: item lost
     }
   }
 
@@ -1726,6 +1924,9 @@ function runBelts(){
 }
 
 function runInserter(m){
+  // Fix 3: inserters need power to operate
+  if(powerRatio()===0)return;
+
   const[dvx,dvy]=D_VEC[m.dir];
   const sx=m.x-dvx, sy=m.y-dvy; // source tile (behind inserter)
   const dx=m.x+dvx, dy=m.y+dvy; // destination tile (in front)
@@ -1740,21 +1941,35 @@ function runInserter(m){
   for(let i=m._pending.length-1;i>=0;i--){
     const p=m._pending[i];
     if(G.tick>=p.at){
-      m._pending.splice(i,1);
-      // Now actually deposit
+      // Now actually deposit — if destination belt is full, retry next tick (hold item)
       if(dst.mid!==null){
         const dm=G.machines[dst.mid];
-        if(dm&&dm.type==='belt'&&dst.items.length<4){
-          dst.items.push({id:p.item,prog:0});
+        if(dm&&dm.type==='belt'){
+          if(dst.items.length<4){
+            dst.items.push({id:p.item,prog:0});
+            m._pending.splice(i,1);
+            m.lastTransferMs=performance.now(); // trigger swing animation on success
+          }
+          // else: belt full — keep pending, arm holds still
         } else if(dm&&dm.type==='chest'){
           dm.chestInv[p.item]=(dm.chestInv[p.item]||0)+1;
+          m._pending.splice(i,1);
+          m.lastTransferMs=performance.now();
         } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
-          dm.inBuf[p.item]=(dm.inBuf[p.item]||0)+1;
+          const inTotal=Object.values(dm.inBuf).reduce((a,b)=>a+b,0);
+          if(inTotal<50){
+            dm.inBuf[p.item]=(dm.inBuf[p.item]||0)+1;
+            m._pending.splice(i,1);
+            m.lastTransferMs=performance.now();
+          }
+          // else: inBuf full — keep pending, arm holds still
         } else {
           returnItem(src,p.item);
+          m._pending.splice(i,1);
         }
       } else {
         returnItem(src,p.item);
+        m._pending.splice(i,1);
       }
     }
   }
@@ -1762,35 +1977,46 @@ function runInserter(m){
   // Only grab a new item if arm is at rest (no pending)
   if(m._pending.length>0)return;
 
-  // Grab one item from source
+  // ── Destination check FIRST — before touching source ──
+  // If destination can't accept right now, don't grab anything
+  if(dst.mid===null)return; // empty floor — nothing to deposit into
+  const dm=G.machines[dst.mid];
+  if(!dm)return;
+  // Can't deposit into the output face of a machine
+  if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&isOutputFacing(dm,dvx,dvy))return;
+  if(dm.type==='chest'&&isOutputFacing(dm,dvx,dvy))return;
+  // Belt full — wait
+  if(dm.type==='belt'&&dst.items.length>=4)return;
+
+  // ── Grab one item from source ──
   let item=null;
   if(src.mid!==null){
     const sm=G.machines[src.mid];
-    if(sm&&sm.type==='belt'&&src.items.length>0){
-      item=src.items.shift().id;
+    if(sm&&sm.type==='belt'){
+      const ready=src.items.filter(it=>it.prog>=0.9);
+      if(ready.length>0){
+        const it=ready[0];
+        src.items.splice(src.items.indexOf(it),1);
+        item=it.id;
+      }
     } else if(sm&&sm.type==='chest'){
       for(const[k,v]of Object.entries(sm.chestInv)){if(v>0){item=k;sm.chestInv[k]--;break;}}
     } else if(sm&&sm.type!=='belt'&&sm.type!=='inserter'){
-      for(const[k,v]of Object.entries(sm.outBuf)){if(v>0){item=k;sm.outBuf[k]--;break;}}
+      if(isOutputFacing(sm,-dvx,-dvy)){
+        for(const[k,v]of Object.entries(sm.outBuf)){if(v>0){item=k;sm.outBuf[k]--;break;}}
+      }
     }
   }
   if(!item)return;
-
-  // Check destination is valid before committing
-  if(dst.mid!==null){
-    const dm=G.machines[dst.mid];
-    const blocked=dm&&dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&isOutputFacing(dm,dvx,dvy);
-    if(blocked){returnItem(src,item);return;}
-    if(dm&&dm.type==='chest'&&isOutputFacing(dm,dvx,dvy)){returnItem(src,item);return;}
-  }
 
   // Queue deposit — arm reaches dest after half swing duration
   const swingDur=10;
   const depositAt=G.tick+Math.floor(swingDur/2);
   m._pending.push({item,at:depositAt});
   m.lastTransfer=G.tick;
-  m.lastTransferMs=performance.now();
+  // Note: lastTransferMs is set only when deposit actually succeeds, so arm only swings then
 }
+
 
 // Returns true if the inserter is trying to deposit into the machine's output side.
 // dvx,dvy = inserter direction vector (toward destination machine).
@@ -1846,17 +2072,11 @@ const HUD_ITEMS=['iron_ore','iron_plate','copper_plate','iron_gear','circuit','s
 
 function updateHUD(){
   const el=document.getElementById('hudRes');
-  let html=HUD_ITEMS.map(id=>{
-    const item=ITEMS[id],n=G.inv[id]||0;
-    return `<div class="hres"><span class="hres-icon">${item.icon}</span><span class="hres-val">${fmt(n)}</span></div>`;
-  }).join('');
-  // Power: show free capacity (out - in). If no machines placed, show output.
+  // Power only — inventory is in the inventory panel
   const free=G.power.out-G.power.in;
   const hasConsumers=G.power.in>0;
-  const pwrDisplay=hasConsumers?free:G.power.out;
   const pwrLabel=hasConsumers?(free>=0?`+${fmt(free)}kW`:`${fmt(free)}kW`):`${fmt(G.power.out)}kW`;
-  html+=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
-  el.innerHTML=html;
+  el.innerHTML=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
 }
 
 function pwrCol(){
@@ -1974,7 +2194,6 @@ function updateToolTip(){
     belt:    'Tap placed belt to rotate direction.',
     inserter:'Points away from source toward destination. Tap to rotate.',
     chest:   'Stores up to 200 items. Input top, output bottom.',
-    rail:    '[FUTURE] Will connect zones.',
   };
 
   const unlockNote=def.unlock&&!G.research.done.includes(def.unlock)
@@ -2067,12 +2286,6 @@ function renderInvPanel(){
       html+=`<div style="font-size:6px;color:var(--amber);margin-bottom:3px">${MDEFS[id]?.icon} ${MDEFS[id]?.name} ×${n}</div>`;
     html+='</div>';
   }
-
-  // Sound toggle at bottom
-  html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px;display:flex;align-items:center;justify-content:space-between">
-    <span style="font-size:6px;color:var(--text3)">Sound effects</span>
-    <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="toggleSfx()">${G.sfx?'ON':'OFF'}</button>
-  </div>`;
 
   document.getElementById('pInvBody').innerHTML=html;
 }
@@ -2252,10 +2465,6 @@ function cancelCraft(){
   toast('Crafting cancelled','ok');
 }
 
-function toggleSfx(){
-  G.sfx=!G.sfx; saveGame(); renderInvPanel();
-  toast(`Sound ${G.sfx?'on':'off'}`,G.sfx?'ok':'');
-}
 
 // ── Machine Inspector ──────────────────────────────
 function openMachinePanel(m){
@@ -2376,8 +2585,25 @@ function renderMachPanel(){
   }
   html+=`</div>`;
 
-  // Recipe picker — buttons instead of select to avoid mobile DOM rebuild issue
+  // Recipe picker — selected recipe shown at top with material requirements
   if(def.recipes.length){
+    // If a recipe is selected, show it prominently at the top
+    if(m.recipe){
+      const rec=RECIPES[m.recipe];
+      if(rec){
+        const inBufItems=Object.entries(m.inBuf).filter(([,v])=>v>0);
+        html+=`<div style="border:2px solid var(--amber);background:rgba(245,166,35,.06);padding:9px;margin-bottom:8px">
+          <div style="font-size:6px;color:var(--amber);margin-bottom:6px">▶ ${rec.name}</div>
+          <div style="font-size:5px;color:var(--text3);margin-bottom:4px">Required inputs:</div>
+          <div style="margin-bottom:4px">`;
+        for(const[item,need]of Object.entries(rec.in)){
+          const inBuf=m.inBuf[item]||0;
+          const col=inBuf>=need?'var(--green)':'var(--amber)';
+          html+=`<div style="font-size:5px;margin-bottom:2px;color:${col}">${ITEMS[item]?.icon||''} ${ITEMS[item]?.name||item}: ${inBuf}/${need} in buffer</div>`;
+        }
+        html+=`</div></div>`;
+      }
+    }
     html+=`<span class="sec-label">RECIPE</span>
     <div style="margin-bottom:8px">
       <div onclick="setRecipe(${m.id},'')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${!m.recipe?'var(--amber)':'var(--border)'};background:${!m.recipe?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer;font-size:5px;color:${!m.recipe?'var(--amber)':'var(--text3)'}">— none —</div>`;
@@ -2861,7 +3087,7 @@ function renderPerksPanel(){
 function renderStatsPanel(){
   const el=document.getElementById('pStatsBody'); if(!el)return;
   const machines=Object.values(G.machines);
-  const producers=machines.filter(m=>!['belt','inserter','chest','rail'].includes(m.type));
+  const producers=machines.filter(m=>!['belt','inserter','chest'].includes(m.type));
   const active=producers.filter(m=>m.active);
   const paused=producers.filter(m=>!m.active);
   const typeCounts={};
@@ -3216,6 +3442,44 @@ function openMenu(){
   const devBtn=G.devMode
     ?`<button class="btn btn-sm" style="border-color:var(--purple);color:var(--purple)" onclick="closeModal();togglePanel('dev')">🛠 DEV</button>`
     :`<button class="btn btn-sm" style="border-color:var(--border);color:var(--text3)" onclick="promptDevUnlock()">🔒 DEV</button>`;
+
+  // Audio settings
+  let audioHtml=`<div style="margin-top:10px"><span class="sec-label">AUDIO</span>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <span style="font-size:6px;color:var(--text2)">🔊 Sound FX</span>
+        <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="toggleSfxMenu()">${G.sfx?'ON':'OFF'}</button>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <span style="font-size:6px;color:var(--text2)">🎵 Music</span>
+        <button class="mini-btn ${G.music?'teal':'dim'}" onclick="toggleMusic()">${G.music?'ON':'OFF'}</button>
+      </div>
+    </div>
+  </div>`;
+  let slotsHtml='<div style="margin-top:10px"><span class="sec-label">SAVE SLOTS</span>';
+  for(let s=1;s<=3;s++){
+    const raw=localStorage.getItem(`ebi_save_slot${s}`);
+    let slotInfo='<span style="color:var(--text3)">Empty</span>';
+    if(raw){
+      try{
+        const d=JSON.parse(raw);
+        const ts=d._savedAt?new Date(d._savedAt).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'?';
+        const launched=d.stats?.launched?'🚀 ':'';
+        const research=d.research?.done?.length||0;
+        slotInfo=`<span style="color:var(--text2)">${launched}T:${d.stats?.taps||0} R:${research}/${Object.keys(TECHS).length} &nbsp;<span style="color:var(--text3);font-size:4px">${ts}</span></span>`;
+      }catch(e){}
+    }
+    slotsHtml+=`
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+      <span style="font-size:6px;color:var(--amber);min-width:16px">S${s}</span>
+      <span style="font-size:5px;flex:1">${slotInfo}</span>
+      <button class="mini-btn teal" onclick="saveToSlot(${s})" style="font-size:4px">SAVE</button>
+      ${raw?`<button class="mini-btn amber" onclick="loadFromSlot(${s})" style="font-size:4px">LOAD</button>`:''}
+      ${raw?`<button class="mini-btn dim" onclick="deleteSlot(${s})" style="font-size:4px">✕</button>`:''}
+    </div>`;
+  }
+  slotsHtml+='</div>';
+
   showModal('☰ MENU',
     `<div style="font-size:6px;color:var(--text2);line-height:2.4">
       Zone 1: Ironfield<br>
@@ -3224,12 +3488,43 @@ function openMenu(){
       Research: ${G.research.done.length} / ${Object.keys(TECHS).length}<br>
       Perk points: ${G.perks?.points||0}<br>
       Launched: ${G.stats.launched?'✓ Yes':'Not yet'}
-    </div>`,
+    </div>${audioHtml}${slotsHtml}`,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">RESUME</button>
-     <button class="btn btn-sm" onclick="saveGame();toast('Saved!','ok');closeModal()">SAVE</button>
      ${devBtn}
      <button class="btn btn-sm btn-red" onclick="quitToTitle()">QUIT</button>`
   );
+}
+
+function saveToSlot(s){
+  try{
+    G._savedAt=Date.now();
+    localStorage.setItem(`ebi_save_slot${s}`,JSON.stringify(G));
+    toast(`Saved to slot ${s}`,'ok'); sfx('craft');
+    openMenu(); // refresh to show updated slot info
+  }catch(e){toast('Save failed','bad');}
+}
+
+function loadFromSlot(s){
+  const raw=localStorage.getItem(`ebi_save_slot${s}`);
+  if(!raw){toast('Slot empty','wrn');return;}
+  try{
+    G=JSON.parse(raw);
+    if(!G.crafted)G.crafted={};
+    if(!G.perks)G.perks={points:0,spent:{}};
+    if(!G.achievements)G.achievements=[];
+    if(!G.tutorial)G.tutorial={step:0};
+    if(!G.blueprints)G.blueprints=[];
+    G.power={out:0,in:0};
+    if(document.getElementById('modal')&&!document.getElementById('modal').classList.contains('hidden'))closeModal();
+    startGame(false);
+    toast(`Loaded slot ${s}`,'ok');
+  }catch(e){toast('Load failed','bad');}
+}
+
+function deleteSlot(s){
+  localStorage.removeItem(`ebi_save_slot${s}`);
+  toast(`Slot ${s} deleted`,'ok');
+  openMenu();
 }
 
 function promptDevUnlock(){
@@ -3374,13 +3669,65 @@ function devReset(){
      <button class="btn btn-sm" onclick="closeModal()">CANCEL</button>`
   );
 }
+function buildTitleSlots(){
+  const el=document.getElementById('titleSlots'); if(!el)return;
+  const slots=[];
+
+  // Autosave slot
+  const auto=localStorage.getItem(SAVE_KEY);
+  if(auto){
+    try{
+      const d=JSON.parse(auto);
+      const ts=d._savedAt?new Date(d._savedAt).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+      const launched=d.stats?.launched?'🚀 ':'';
+      const research=d.research?.done?.length||0;
+      slots.push({label:'AUTO',info:`${launched}Taps ${d.stats?.taps||0} · Research ${research}/${Object.keys(TECHS).length}`,time:ts,load:'continueGame()',del:`localStorage.removeItem('${SAVE_KEY}');buildTitleSlots()`});
+    }catch(e){}
+  }
+
+  // Manual slots
+  for(let s=1;s<=3;s++){
+    const raw=localStorage.getItem(`ebi_save_slot${s}`);
+    if(raw){
+      try{
+        const d=JSON.parse(raw);
+        const ts=d._savedAt?new Date(d._savedAt).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+        const launched=d.stats?.launched?'🚀 ':'';
+        const research=d.research?.done?.length||0;
+        slots.push({label:`S${s}`,info:`${launched}Taps ${d.stats?.taps||0} · Research ${research}/${Object.keys(TECHS).length}`,time:ts,load:`loadFromSlot(${s})`,del:`deleteSlotTitle(${s})`});
+      }catch(e){}
+    }
+  }
+
+  if(!slots.length){el.innerHTML='';return;}
+
+  let html='';
+  for(const slot of slots){
+    html+=`<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px">
+      <span style="font-size:7px;color:var(--amber);min-width:32px;font-family:var(--font)">${slot.label}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:6px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.info}</div>
+        <div style="font-size:5px;color:var(--text3)">${slot.time}</div>
+      </div>
+      <button class="btn btn-teal btn-sm" style="font-size:5px;padding:4px 8px" onclick="${slot.load}">LOAD</button>
+      <button class="btn btn-sm" style="font-size:5px;padding:4px 6px;color:var(--text3)" onclick="${slot.del}">✕</button>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+
+function deleteSlotTitle(s){
+  localStorage.removeItem(`ebi_save_slot${s}`);
+  buildTitleSlots();
+}
 function quitToTitle(){
+  musicStop();
   saveGame(); closeModal();
   clearInterval(tickId); cancelAnimationFrame(rafId);
   rafId=null; tickId=null;
   document.getElementById('sGame').classList.add('hidden');
   document.getElementById('sTitle').classList.remove('hidden');
-  document.getElementById('btnContinue').style.display='';
+  buildTitleSlots();
 }
 
 // ═══════════════════════════════════════════════════
@@ -3438,6 +3785,7 @@ function startGame(isNew){
   }
   updateHUD();
   startTick(); startRender();
+  if(G.music!==false) musicStart();
   const ts=TILE*G.cam.zoom;
   G.cam.x=26*ts-canvas.width/2+ts*3;
   G.cam.y=24*ts-canvas.height/2+ts*2;
@@ -3459,8 +3807,7 @@ function startGame(isNew){
 //  BOOTSTRAP
 // ═══════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded',()=>{
-  if(localStorage.getItem(SAVE_KEY))
-    document.getElementById('btnContinue').style.display='';
+  buildTitleSlots();
   document.addEventListener('contextmenu',e=>e.preventDefault());
 });
 </script>
