@@ -273,7 +273,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.7.8 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.7.9 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -304,19 +304,21 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
   </div>
   <div id="wrap"><canvas id="canvas"></canvas>
     <div id="toolTip" class="hidden"></div>
-    <div id="multiselBar" class="hidden" style="position:absolute;top:0;left:0;right:0;background:rgba(66,165,245,.15);border-bottom:2px solid #42a5f5;padding:6px 12px;display:flex;align-items:center;gap:8px;z-index:91">
-      <span style="font-size:7px;color:#42a5f5;flex:1" id="multiselCount">0 selected</span>
-      <button onclick="multiselStartMove()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer" id="multiselMoveBtn">✥ MOVE</button>
-      <button onclick="multiselRotate()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid #42a5f5;background:transparent;color:#42a5f5;cursor:pointer">↻ ROTATE</button>
-      <button onclick="multiselDemolish()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer">💥 DEMOLISH</button>
-      <button onclick="multiselClear()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✕ CLEAR</button>
-    </div>
   </div>
   <div id="tutHint" class="hidden" style="background:rgba(245,166,35,.12);border-top:1px solid var(--amber);padding:7px 12px;display:flex;align-items:center;justify-content:space-between;z-index:150;flex-shrink:0">
     <span id="tutText" style="font-size:5px;color:var(--amber);line-height:1.8;flex:1"></span>
     <button onclick="skipTutorial()" style="font-family:var(--font);font-size:4px;padding:3px 7px;border:1px solid var(--amberDim);background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;margin-left:10px">SKIP</button>
   </div>
   <div id="toolbar"></div>
+</div>
+
+<!-- Multi-select action bar — fixed, outside canvas touch zone -->
+<div id="multiselBar" class="hidden" style="position:fixed;top:0;left:0;right:0;background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 12px;display:flex;align-items:center;gap:8px;z-index:600;pointer-events:all">
+  <span style="font-size:7px;color:#42a5f5;flex:1" id="multiselCount">0 selected</span>
+  <button onclick="multiselStartMove()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer" id="multiselMoveBtn">✥ MOVE</button>
+  <button onclick="multiselRotate()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid #42a5f5;background:transparent;color:#42a5f5;cursor:pointer">↻ ROTATE</button>
+  <button onclick="multiselDemolish()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer">💥 DEMOLISH</button>
+  <button onclick="multiselClear()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✕ CLEAR</button>
 </div>
 
 <!-- ══ PANELS ══ -->
@@ -417,7 +419,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.7.8';
+const VER      = '0.7.9';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
