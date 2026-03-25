@@ -52,17 +52,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.4)}50%{box-shadow:0 0 0 6px rgba(245,166,35,0)}}
 @keyframes tin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes tout{to{opacity:0;transform:translateY(-6px)}}
-.tagline{color:var(--text3);font-size:7px;letter-spacing:4px;margin-bottom:44px}
+.tagline{color:var(--text3);font-size:5px;letter-spacing:4px;margin-bottom:44px}
 .btn{font-family:var(--font);font-size:8px;padding:12px 28px;cursor:pointer;background:transparent;color:var(--amber);border:2px solid var(--amber);letter-spacing:1px;transition:all .1s}
 .btn::before{content:'▶ '}
 .btn:hover,.btn:active{background:var(--amber);color:#000;box-shadow:0 0 18px rgba(245,166,35,.45)}
-.btn-sm{font-size:8px;padding:9px 18px}
+.btn-sm{font-size:6px;padding:9px 18px}
 .btn-teal{color:var(--teal);border-color:var(--teal)}
 .btn-teal::before{content:'▶ '}
 .btn-teal:hover,.btn-teal:active{background:var(--teal);color:#000}
 .btn-red{color:var(--red);border-color:var(--red)}
 .btn-red:hover,.btn-red:active{background:var(--red);color:#000}
-.v-num{color:var(--text3);font-size:7px;margin-top:28px}
+.v-num{color:var(--text3);font-size:5px;margin-top:28px}
 
 /* ── GAME SHELL ── */
 #sGame{display:flex;flex-direction:column}
@@ -71,7 +71,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #hud{flex-shrink:0;height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:6px;z-index:100;overflow:hidden}
 .hud-logo{color:var(--amber);font-size:8px;padding-right:8px;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0}
 #hudZones{display:flex;gap:2px;padding-right:8px;border-right:1px solid var(--border);flex-shrink:0}
-.zone-tab{font-family:var(--font);font-size:7px;padding:4px 6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:not-allowed;white-space:nowrap}
+.zone-tab{font-family:var(--font);font-size:5px;padding:4px 6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:not-allowed;white-space:nowrap}
 .zone-tab.active{border-color:var(--amber);color:var(--amber);cursor:default}
 .zone-tab.locked{opacity:.35}
 #hudRes{display:flex;gap:6px;align-items:center;padding:0 6px;flex-shrink:0}
@@ -91,7 +91,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #toolbar{flex-shrink:0;height:70px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:stretch;overflow-x:auto;z-index:100;scrollbar-width:none;gap:1px}
 #toolbar::-webkit-scrollbar{display:none}
 .tcat{display:flex;flex-direction:column;border-right:1px solid var(--border)}
-.tcat-lbl{color:var(--text3);font-size:6px;padding:3px 6px 1px;letter-spacing:1px}
+.tcat-lbl{color:var(--text3);font-size:4px;padding:3px 6px 1px;letter-spacing:1px}
 .titems{display:flex;align-items:center;padding:0 4px;gap:2px;flex:1}
 .titem{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 7px;cursor:pointer;border:1px solid transparent;min-width:50px;font-family:var(--font);background:transparent;transition:all .1s}
 .titem:hover{border-color:var(--border2);background:var(--bg3)}
@@ -104,7 +104,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .titem.stub{opacity:.5;cursor:default}
 .titem.stub:hover{border-color:var(--border2);background:var(--bg3)}
 .ticon{font-size:20px;line-height:1}
-.tname{color:var(--text3);font-size:6px;text-align:center;white-space:nowrap}
+.tname{color:var(--text3);font-size:4px;text-align:center;white-space:nowrap}
 
 /* SIDE PANEL */
 .spanel{position:fixed;top:44px;right:0;bottom:70px;width:min(300px,88vw);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
@@ -113,13 +113,13 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .ph-title{color:var(--amber);font-size:8px}
 .ph-x{background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;padding:2px 6px}
 .ph-x:hover{color:var(--red)}
-.pbody{flex:1;overflow-y:auto;padding:14px;font-size:8px;line-height:1.9}
+.pbody{flex:1;overflow-y:auto;padding:14px;font-size:6px;line-height:1.9}
 .pbody::-webkit-scrollbar{width:3px}
 .pbody::-webkit-scrollbar-thumb{background:var(--border2)}
 
 /* TOASTS */
 #toasts{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column-reverse;gap:5px;align-items:center;pointer-events:none}
-.toast{background:var(--panel);border:1px solid var(--border2);padding:7px 14px;font-size:8px;white-space:nowrap;animation:tin .15s ease-out,tout .25s ease-in 1.75s forwards}
+.toast{background:var(--panel);border:1px solid var(--border2);padding:7px 14px;font-size:6px;white-space:nowrap;animation:tin .15s ease-out,tout .25s ease-in 1.75s forwards}
 .toast.ok{border-color:var(--teal);color:var(--teal)}
 .toast.bad{border-color:var(--red);color:var(--red)}
 .toast.wrn{border-color:var(--amber);color:var(--amber)}
@@ -133,8 +133,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .mf{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 
 /* MISC */
-.sec-label{font-size:8px;color:var(--teal);letter-spacing:2px;margin-bottom:7px;display:block}
-.irow{display:flex;justify-content:space-between;font-size:8px;margin-bottom:6px}
+.sec-label{font-size:6px;color:var(--teal);letter-spacing:2px;margin-bottom:7px;display:block}
+.irow{display:flex;justify-content:space-between;font-size:6px;margin-bottom:6px}
 .irow .lbl{color:var(--text2)}
 .prog-wrap{height:6px;background:var(--bg);border:1px solid var(--border2);margin:4px 0}
 .prog-fill{height:100%;background:var(--teal);transition:width .1s}
@@ -144,10 +144,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .inv-item{border:1px solid var(--border2);background:var(--bg3);padding:6px 3px;display:flex;flex-direction:column;align-items:center;gap:2px}
 .inv-item .ii{font-size:18px}
-.inv-item .iv{font-size:8px;color:var(--amber)}
-.inv-item .in{font-size:7px;color:var(--text2);text-align:center;line-height:1.4}
+.inv-item .iv{font-size:6px;color:var(--amber)}
+.inv-item .in{font-size:5px;color:var(--text2);text-align:center;line-height:1.4}
 .craft-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:5px}
-.mini-btn{font-family:var(--font);font-size:7px;padding:6px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer}
+.mini-btn{font-family:var(--font);font-size:5px;padding:6px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer}
 .mini-btn.amber{border-color:var(--amber);color:var(--amber)}
 .mini-btn.amber:hover{background:rgba(245,166,35,.1)}
 .mini-btn.dim{color:var(--text3);cursor:not-allowed}
@@ -155,7 +155,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .mini-btn.teal:hover{background:rgba(38,198,160,.1)}
 .mini-btn.red{border-color:var(--red);color:var(--red)}
 .mini-btn.red:hover{background:rgba(229,57,53,.1)}
-.full-btn{width:100%;font-family:var(--font);font-size:8px;padding:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;margin-bottom:5px;text-align:left}
+.full-btn{width:100%;font-family:var(--font);font-size:6px;padding:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;margin-bottom:5px;text-align:left}
 .full-btn.amber{border-color:var(--amber);color:var(--amber)}
 .full-btn.amber:hover{background:rgba(245,166,35,.08)}
 .full-btn.teal{border-color:var(--teal);color:var(--teal)}
@@ -167,12 +167,12 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .tech-card.locked{opacity:.4}
 .rocket-part{display:flex;align-items:center;justify-content:space-between;padding:9px;border:1px solid var(--border);background:var(--bg3);margin-bottom:5px}
 .rocket-part.done{border-color:var(--teal)}
-.stat-machine{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border:1px solid var(--border);background:var(--bg3);margin-bottom:3px;font-size:7px}
+.stat-machine{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border:1px solid var(--border);background:var(--bg3);margin-bottom:3px;font-size:5px}
 .stat-machine.stalled{border-color:var(--red)}
 .stat-machine.starved{border-color:var(--amber)}
 .stat-machine.norecipe{border-color:var(--text3)}
 .stat-machine.ok{border-color:var(--border)}
-select.game-sel{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:7px;padding:7px;margin-bottom:8px;cursor:pointer}
+select.game-sel{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:5px;padding:7px;margin-bottom:8px;cursor:pointer}
 select.game-sel:focus{outline:none;border-color:var(--amber)}
 
 /* Tool tooltip */
@@ -190,12 +190,12 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 .tt-head{display:flex;align-items:center;gap:7px;margin-bottom:6px}
 .tt-icon{font-size:18px;line-height:1;flex-shrink:0}
 .tt-name{color:var(--amber);font-size:7px}
-.tt-desc{font-size:7px;color:var(--text2);line-height:1.9;margin-bottom:6px}
-.tt-cost{font-size:7px;color:var(--text3);margin-bottom:6px}
+.tt-desc{font-size:5px;color:var(--text2);line-height:1.9;margin-bottom:6px}
+.tt-cost{font-size:5px;color:var(--text3);margin-bottom:6px}
 .tt-cost span{color:var(--amber)}
 .tt-recipes{border-top:1px solid var(--border);padding-top:6px}
-.tt-rlabel{font-size:6px;color:var(--text3);letter-spacing:1px;margin-bottom:4px}
-.tt-recipe{font-size:7px;color:var(--text2);margin-bottom:4px;line-height:1.7;padding:4px;border:1px solid var(--border);background:var(--bg3)}
+.tt-rlabel{font-size:4px;color:var(--text3);letter-spacing:1px;margin-bottom:4px}
+.tt-recipe{font-size:5px;color:var(--text2);margin-bottom:4px;line-height:1.7;padding:4px;border:1px solid var(--border);background:var(--bg3)}
 .tt-recipe .tt-rin{color:var(--blue)}
 .tt-recipe .tt-rout{color:var(--amber)}
 .tt-recipe .tt-rtime{color:var(--text3)}
@@ -228,7 +228,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.6.6 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.7.0 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -250,6 +250,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <button class="hbtn" id="btnRocket"   onclick="togglePanel('rocket')">🚀</button>
       <button class="hbtn" id="btnPerks"    onclick="togglePanel('perks')">⭐</button>
       <button class="hbtn" id="btnStats"   onclick="togglePanel('stats')">📊</button>
+      <button class="hbtn" id="btnRecipes" onclick="togglePanel('recipes')" title="Recipe Book">📖</button>
       <button class="hbtn" id="btnAchieve" onclick="togglePanel('achieve')">🏆</button>
       <button class="hbtn" id="btnBlueprint" onclick="togglePanel('blueprint')">📐</button>
       <button class="hbtn" id="btnDev" onclick="togglePanel('dev')" style="display:none;border-color:var(--purple);color:var(--purple)">🛠</button>
@@ -259,8 +260,8 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
   <div id="wrap"><canvas id="canvas"></canvas>
     <div id="toolTip" class="hidden"></div>
     <div id="tutHint" class="hidden" style="position:absolute;bottom:0;left:0;right:0;background:rgba(245,166,35,.12);border-top:1px solid var(--amber);padding:7px 12px;display:flex;align-items:center;justify-content:space-between;z-index:90;pointer-events:all">
-      <span id="tutText" style="font-size:7px;color:var(--amber);line-height:1.8"></span>
-      <button onclick="skipTutorial()" style="font-family:var(--font);font-size:6px;padding:3px 7px;border:1px solid var(--amberDim);background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;margin-left:10px">SKIP</button>
+      <span id="tutText" style="font-size:5px;color:var(--amber);line-height:1.8"></span>
+      <button onclick="skipTutorial()" style="font-family:var(--font);font-size:4px;padding:3px 7px;border:1px solid var(--amberDim);background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;margin-left:10px">SKIP</button>
     </div>
   </div>
   <div id="toolbar"></div>
@@ -315,6 +316,11 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
   <div class="pbody" id="pAchieveBody"></div>
 </div>
 
+<div id="pRecipes" class="spanel">
+  <div class="ph"><span class="ph-title">📖 RECIPE BOOK</span><button class="ph-x" onclick="togglePanel('recipes')">✕</button></div>
+  <div class="pbody" id="pRecipesBody"></div>
+</div>
+
 <div id="pBlueprint" class="spanel">
   <div class="ph"><span class="ph-title">📐 BLUEPRINTS</span><button class="ph-x" onclick="togglePanel('blueprint')">✕</button></div>
   <div class="pbody" id="pBlueprintBody"></div>
@@ -330,10 +336,10 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       </div>
       <button class="ph-x" onclick="closeResInfo()">✕</button>
     </div>
-    <div id="resInfoDesc" style="font-size:8px;color:var(--text2);line-height:2;margin-bottom:8px"></div>
-    <div id="resInfoStock" style="font-size:8px;color:var(--teal);margin-bottom:8px"></div>
-    <div style="font-size:7px;color:var(--text3);letter-spacing:1px;margin-bottom:5px">USED FOR</div>
-    <div id="resInfoUses" style="font-size:7px;color:var(--text3);line-height:2.2"></div>
+    <div id="resInfoDesc" style="font-size:6px;color:var(--text2);line-height:2;margin-bottom:8px"></div>
+    <div id="resInfoStock" style="font-size:6px;color:var(--teal);margin-bottom:8px"></div>
+    <div style="font-size:5px;color:var(--text3);letter-spacing:1px;margin-bottom:5px">USED FOR</div>
+    <div id="resInfoUses" style="font-size:5px;color:var(--text3);line-height:2.2"></div>
     <div style="margin-top:10px;display:flex;gap:6px">
       <button class="mini-btn amber" onclick="setTool('mine');closeResInfo()">⛏️ MINE THIS</button>
       <button class="mini-btn teal"  onclick="closeResInfo()">CLOSE</button>
@@ -359,7 +365,7 @@ const TILE     = 48;
 const MAP_W    = 64;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.6.6';
+const VER      = '0.7.0';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -487,7 +493,7 @@ function musicStart(){
   try{
     const ctx=ac();
     const mg=ctx.createGain();
-    mg.gain.setValueAtTime(1,ctx.currentTime);
+    mg.gain.setValueAtTime(G&&G.musicVol!==undefined?G.musicVol:0.7,ctx.currentTime);
     mg.connect(ctx.destination);
     _music.gain=mg;
     _music.running=true;
@@ -537,6 +543,18 @@ function toggleMusic(){
   openMenu();
 }
 
+function setMusicVol(v){
+  G.musicVol=parseFloat(v);
+  if(_music.gain){
+    try{_music.gain.gain.setValueAtTime(G.musicVol,ac().currentTime);}catch(e){}
+  }
+  saveGame();
+  // Update slider display without reopening modal
+  const sl=document.getElementById('musicVolSlider');
+  if(sl)sl.value=G.musicVol;
+  const lbl=document.getElementById('musicVolLabel');
+  if(lbl)lbl.textContent=Math.round(G.musicVol*100)+'%';
+}
 function toggleSfxMenu(){
   G.sfx=!G.sfx; saveGame();
   openMenu();
@@ -571,6 +589,7 @@ const ITEMS = {
   eff_module:   {name:'Eff. Module',    icon:'🔴', cat:'parts', desc:'Reduces machine power draw by 30%'},
   sci_red:      {name:'Field Notes',     icon:'🗒️', cat:'science'},
   sci_green:    {name:'Circuit Diagrams',icon:'📋', cat:'science'},
+  sci_blue:     {name:'Adv. Schematics', icon:'📘', cat:'science'},
   r_chassis:    {name:'Rocket Chassis', icon:'🗜️', cat:'rocket'},
   r_computer:   {name:'Flight Computer',icon:'💾', cat:'rocket'},
   r_frame:      {name:'Struct. Frame',  icon:'🔩', cat:'rocket'},
@@ -588,27 +607,28 @@ const RECIPES = {
   bf_iron:    {name:'Smelt Iron',       machine:'blast_furnace', time:8,  in:{iron_ore:2,coal:1},                out:{iron_plate:1}},
   bf_copper:  {name:'Smelt Copper',     machine:'blast_furnace', time:8,  in:{copper_ore:2,coal:1},              out:{copper_plate:1}},
   bf_steel:   {name:'Smelt Steel',      machine:'blast_furnace', time:16, in:{iron_plate:5,coal:2},              out:{steel_plate:1}},
-  bf_prop:    {name:'Coal Propellant',  machine:'blast_furnace', time:20, in:{coal:10,stone:5},                  out:{r_propellant:1}},
+  bf_prop:    {name:'Coal Propellant',  machine:'blast_furnace', time:20, in:{coal:10,stone:5},                  out:{r_propellant:1},  unlock:'rocket_tech'},
   // Electric Smelter — no coal, 3× speed, needs power
   es_iron:    {name:'Smelt Iron',       machine:'electric_smelter', time:6,  in:{iron_ore:2},                   out:{iron_plate:1}},
   es_copper:  {name:'Smelt Copper',     machine:'electric_smelter', time:6,  in:{copper_ore:2},                 out:{copper_plate:1}},
   es_steel:   {name:'Smelt Steel',      machine:'electric_smelter', time:10, in:{iron_plate:5},                 out:{steel_plate:1}},
-  es_prop:    {name:'Coal Propellant',  machine:'electric_smelter', time:14, in:{coal:10,stone:5},              out:{r_propellant:1}},
+  es_prop:    {name:'Coal Propellant',  machine:'electric_smelter', time:14, in:{coal:10,stone:5},              out:{r_propellant:1},  unlock:'rocket_tech'},
   // Assembler
-  mk_gear:    {name:'Iron Gear',        machine:'assembler', time:4,  in:{iron_plate:2},                     out:{iron_gear:1}},
-  mk_wire:    {name:'Copper Wire',      machine:'assembler', time:2,  in:{copper_plate:1},                   out:{copper_wire:2}},
-  mk_rod:     {name:'Iron Rod',         machine:'assembler', time:4,  in:{iron_plate:1},                     out:{iron_rod:2}},
-  mk_circuit: {name:'Circuit Board',    machine:'assembler', time:8,  in:{iron_plate:1,copper_wire:3},       out:{circuit:1}},
-  mk_engine:  {name:'Engine Block',     machine:'assembler', time:16, in:{iron_gear:2,iron_rod:2},           out:{engine:1}},
-  mk_speed_mod:{name:'Speed Module',   machine:'assembler', time:20, in:{circuit:3,iron_gear:2},             out:{speed_module:1}},
-  mk_prod_mod: {name:'Prod. Module',   machine:'assembler', time:20, in:{circuit:4,copper_wire:4},           out:{prod_module:1}},
-  mk_eff_mod:  {name:'Eff. Module',    machine:'assembler', time:20, in:{circuit:3,iron_rod:3},              out:{eff_module:1}},
-  mk_chassis: {name:'Rocket Chassis',   machine:'assembler', time:30, in:{steel_plate:10,iron_gear:5,engine:2},       out:{r_chassis:1}},
-  mk_computer:{name:'Flight Computer',  machine:'assembler', time:30, in:{circuit:8,copper_wire:4},          out:{r_computer:1}},
-  mk_frame:   {name:'Struct. Frame',    machine:'assembler', time:20, in:{steel_plate:8,iron_rod:6},         out:{r_frame:1}},
+  mk_gear:    {name:'Iron Gear',        machine:'assembler', time:4,  in:{iron_plate:2},                     out:{iron_gear:1},    unlock:'automation'},
+  mk_wire:    {name:'Copper Wire',      machine:'assembler', time:2,  in:{copper_plate:1},                   out:{copper_wire:2},   unlock:'automation'},
+  mk_rod:     {name:'Iron Rod',         machine:'assembler', time:4,  in:{iron_plate:1},                     out:{iron_rod:2},      unlock:'automation'},
+  mk_circuit: {name:'Circuit Board',    machine:'assembler', time:8,  in:{iron_plate:1,copper_wire:3},       out:{circuit:1},       unlock:'automation'},
+  mk_engine:  {name:'Engine Block',     machine:'assembler', time:16, in:{iron_gear:2,iron_rod:2},           out:{engine:1},        unlock:'steel'},
+  mk_speed_mod:{name:'Speed Module',   machine:'assembler', time:20, in:{circuit:3,iron_gear:2},             out:{speed_module:1},  unlock:'electronics'},
+  mk_prod_mod: {name:'Prod. Module',   machine:'assembler', time:20, in:{circuit:4,copper_wire:4},           out:{prod_module:1},   unlock:'electronics'},
+  mk_eff_mod:  {name:'Eff. Module',    machine:'assembler', time:20, in:{circuit:3,iron_rod:3},              out:{eff_module:1},    unlock:'electronics'},
+  mk_chassis: {name:'Rocket Chassis',   machine:'assembler', time:30, in:{steel_plate:10,iron_gear:5,engine:2},       out:{r_chassis:1},   unlock:'rocket_tech'},
+  mk_computer:{name:'Flight Computer',  machine:'assembler', time:30, in:{circuit:8,copper_wire:4},          out:{r_computer:1},   unlock:'rocket_tech'},
+  mk_frame:   {name:'Struct. Frame',    machine:'assembler', time:20, in:{steel_plate:8,iron_rod:6},         out:{r_frame:1},      unlock:'rocket_tech'},
   // Lab
   sci_r:      {name:'Field Notes',       machine:'lab', time:8,  in:{iron_gear:1,copper_wire:2},              out:{sci_red:1}},
-  sci_g:      {name:'Circuit Diagrams',  machine:'lab', time:10, in:{circuit:1,iron_rod:2},                   out:{sci_green:1}},
+  sci_g:      {name:'Circuit Diagrams',  machine:'lab', time:10, in:{circuit:1,iron_rod:2},                   out:{sci_green:1},  unlock:'logistics'},
+  sci_b:      {name:'Adv. Schematics',   machine:'lab', time:15, in:{circuit:2,steel_plate:1,copper_wire:3},  out:{sci_blue:1},   unlock:'electronics'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -620,9 +640,9 @@ const MDEFS = {
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter — 2× speed'},
   electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop'], desc:'No coal needed — runs on power. 3× speed. Makes propellant.'},
   assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame'], desc:'Crafts parts and components'},
-  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g'], desc:'Produces Field Notes and Circuit Diagrams'},
+  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b'], desc:'Produces Field Notes and Circuit Diagrams'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
-  generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:null,          recipes:[], desc:'Burns coal → 60kW power'},
+  generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
   belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
   splitter:       {name:'Splitter',         icon:'⑂',  size:[1,1], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits belt output left and right alternately'},
   tunnel:         {name:'Belt Tunnel',      icon:'⏬', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
@@ -671,7 +691,7 @@ const TOOLBAR_DEF = [
     {id:'blueprint', name:'Blueprint', icon:'📐', noMachine:true},
   ]},
   {label:'Extract',    items:[{id:'miner',name:'Miner',icon:'⛏️'},{id:'burner',name:'Burner',icon:'🪵'},{id:'generator',name:'Generator',icon:'⚡'}]},
-  {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'🪨'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'⚡'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
+  {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'⚱️'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'⚡'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
   {label:'Logistics',  items:[{id:'belt',name:'Belt',icon:'➡️'},{id:'splitter',name:'Splitter',icon:'⑂'},{id:'tunnel',name:'Tunnel',icon:'⬛'},{id:'inserter',name:'Inserter',icon:'🦾'},{id:'chest',name:'Chest',icon:'📦'}]},
 ];
 
@@ -687,7 +707,7 @@ const TECHS = {
   logistics: {
     name:'Advanced Logistics', icon:'➡️', era:'Era 1',
     cost:{sci_red:50,sci_green:25}, req:['automation'],
-    desc:'50% faster belt speed + advanced logistics',
+    desc:'50% faster belt speed + advanced logistics. Unlocks Circuit Diagrams research',
   },
   steel: {
     name:'Steel Processing', icon:'🔩', era:'Era 2',
@@ -697,11 +717,11 @@ const TECHS = {
   electronics: {
     name:'Electronics', icon:'💚', era:'Era 2',
     cost:{sci_red:100,sci_green:75}, req:['automation'],
-    desc:'Advanced circuit and computer recipes',
+    desc:'Advanced circuit and computer recipes. Unlocks Adv. Schematics research',
   },
   rocket_tech: {
     name:'Rocket Science', icon:'🚀', era:'Era 3',
-    cost:{sci_red:125,sci_green:125}, req:['steel','electronics'],
+    cost:{sci_red:125,sci_green:125,sci_blue:50}, req:['steel','electronics'],
     desc:'Unlocks all rocket component recipes',
   },
 };
@@ -726,23 +746,41 @@ function buildMap() {
     for(let x=0;x<MAP_W;x++)
       map[y][x]={type:T_FLOOR,res:null,mid:null,items:[]};
   }
-  const deps=[
-    {x:26,y:24,w:6,h:5,res:'iron_ore'},
-    {x:34,y:27,w:5,h:4,res:'copper_ore'},
-    {x:24,y:31,w:4,h:3,res:'coal'},
-    {x:36,y:22,w:5,h:3,res:'stone'},
-    {x:20,y:22,w:4,h:4,res:'iron_ore'},
-    {x:40,y:32,w:6,h:4,res:'copper_ore'},
-    {x:19,y:34,w:4,h:3,res:'coal'},
-    {x:44,y:22,w:3,h:3,res:'stone'},
-    {x:28,y:36,w:5,h:3,res:'iron_ore'},
-  ];
-  for(const d of deps)
-    for(let dy=0;dy<d.h;dy++)for(let dx=0;dx<d.w;dx++){
-      const tx=d.x+dx,ty=d.y+dy;
-      if(tx>=0&&tx<MAP_W&&ty>=0&&ty<MAP_H)
-        map[ty][tx]={type:T_RESOURCE,res:d.res,mid:null,items:[]};
+  // Procedural generation: guaranteed deposits near centre, randomised positions each game
+  const rng=(seed=>{let s=seed;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;}})(Date.now()^0xdeadbeef);
+  const ri=(lo,hi)=>lo+Math.floor(rng()*(hi-lo+1));
+  const safe=(x,y,w,h)=>{
+    for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){
+      const tx=x+dx,ty=y+dy;
+      if(tx<2||ty<2||tx+1>=MAP_W||ty+1>=MAP_H)return false;
+      if(map[ty][tx].type===T_RESOURCE)return false;
     }
+    return true;
+  };
+  const place=(res,w,h)=>{
+    for(let attempt=0;attempt<200;attempt++){
+      const x=ri(10,MAP_W-w-10),y=ri(10,MAP_H-h-10);
+      if(safe(x,y,w,h)){
+        for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)
+          map[y+dy][x+dx]={type:T_RESOURCE,res,mid:null,items:[]};
+        return true;
+      }
+    }
+    return false;
+  };
+  // Guaranteed deposits: guaranteed resources regardless of RNG
+  const guaranteed=[
+    {res:'iron_ore', w:ri(5,7), h:ri(4,5)},
+    {res:'copper_ore',w:ri(4,6),h:ri(3,5)},
+    {res:'coal',     w:ri(4,5), h:ri(3,4)},
+    {res:'stone',    w:ri(4,5), h:ri(3,4)},
+    {res:'iron_ore', w:ri(4,6), h:ri(3,5)},
+    {res:'copper_ore',w:ri(5,6),h:ri(3,4)},
+    {res:'coal',     w:ri(3,5), h:ri(3,4)},
+    {res:'stone',    w:ri(3,4), h:ri(3,3)},
+    {res:'iron_ore', w:ri(4,6), h:ri(3,4)},
+  ];
+  for(const d of guaranteed) place(d.res,d.w,d.h);
   return map;
 }
 
@@ -756,11 +794,12 @@ function defaultState(){
     ver:VER, tick:0,
     sfx:true,
     music:true,
+    musicVol:0.7,
     inv:{
       iron_ore:0,copper_ore:0,coal:0,stone:0,
       iron_plate:0,copper_plate:0,steel_plate:0,stone_brick:0,
       iron_gear:0,copper_wire:0,iron_rod:0,circuit:0,engine:0,
-      sci_red:0,sci_green:0,
+      sci_red:0,sci_green:0,sci_blue:0,
       r_chassis:0,r_computer:0,r_frame:0,r_propellant:0,
     },
     // Crafted-but-not-yet-placed machine pool
@@ -833,7 +872,7 @@ const PORTS = {
   blast_furnace:   { outputs:[{side:'right',pos:.5}] },
   electric_smelter:{ outputs:[{side:'right',pos:.5}] },
   assembler:       { outputs:[{side:'right',pos:.5}] },
-  lab:             { outputs:[] },
+  lab:             { outputs:[{side:'right',pos:.5}] },
   generator:       { outputs:[] },
   burner:          { outputs:[] },
   chest:           { outputs:[{side:'bottom',pos:.5}] },
@@ -1064,11 +1103,34 @@ function draw(){
     if(isPowering){
       ctx.fillStyle='#ffd600'; ctx.globalAlpha=.06+.04*Math.sin(G.tick*.3);
       ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
-      // Small green "running" dot bottom-right
-      if(ts>16){
-        ctx.fillStyle='#4caf50';
-        ctx.beginPath(); ctx.arc(px+pw-8,py+ph-8,3,0,Math.PI*2); ctx.fill();
+      // Green pulsing "running" indicator
+      if(ts>14){
+        ctx.fillStyle='#4caf50'; ctx.globalAlpha=0.8+0.2*Math.sin(G.tick*.4);
+        ctx.beginPath(); ctx.arc(px+pw-8,py+ph-8,4,0,Math.PI*2); ctx.fill();
+        ctx.globalAlpha=1;
       }
+    }
+    // No-fuel indicator for burners/generators — red dot + dim overlay
+    const isPowerBldg=(m.type==='generator'||m.type==='burner');
+    if(isPowerBldg&&!isPowering&&m.active){
+      ctx.fillStyle='rgba(229,57,53,0.08)'; ctx.fillRect(px+1,py+1,pw-2,ph-2);
+      if(ts>14){
+        // Blinking red dot — no fuel
+        const blink=Math.floor(G.tick/4)%2===0;
+        ctx.fillStyle=blink?'#e53935':'#8b0000';
+        ctx.beginPath(); ctx.arc(px+pw-8,py+ph-8,4,0,Math.PI*2); ctx.fill();
+        // "No fuel" label at high zoom
+        if(ts>28){
+          ctx.fillStyle='#e53935'; ctx.globalAlpha=0.9;
+          ctx.font=`${Math.max(7,Math.floor(ts*.11))}px sans-serif`;
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText('NO COAL',px+pw/2,py+ph*.8);
+          ctx.globalAlpha=1;
+        }
+      }
+    }
+    if(isPowerBldg&&!m.active){
+      ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(px+1,py+1,pw-2,ph-2);
     }
     if(isStub){
       ctx.fillStyle='#ab47bc'; ctx.globalAlpha=.04; ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
@@ -1169,25 +1231,30 @@ function draw(){
     ctx.beginPath(); ctx.arc(bcx,bcy,brad,0,Math.PI*2); ctx.fill();
 
     // Arm — smooth semicircle sweep using real time
-    const swingDurMs=4*TICK_MS;
+    const swingDurMs=6*TICK_MS;
     const msSince=now-(m.lastTransferMs||0);
-    const swingT=msSince<swingDurMs?(1-msSince/swingDurMs):0;
+    // t: 0=just deposited (arm at dest), 1=fully returned to source
+    const rawT=Math.min(1,msSince/swingDurMs);
     const[dvx,dvy]=D_VEC[m.dir];
     const destAngle=Math.atan2(dvy,dvx);
     const srcAngle=destAngle+Math.PI;
     const isHolding=m._pending&&m._pending.length>0;
     let armAngle;
-    if(isHolding&&swingT<=0.05){
-      // Holding item, waiting — park arm at destination side
+    if(isHolding){
+      // Holding item waiting to deposit — park arm at destination
       armAngle=destAngle;
+    } else if(rawT<1){
+      // Smoothly sweep from dest back to src using eased arc
+      const ease=rawT<0.5?2*rawT*rawT:1-Math.pow(-2*rawT+2,2)/2;
+      armAngle=destAngle + ease*Math.PI;
     } else {
-      const sweep=Math.sin(swingT*Math.PI);
-      armAngle=srcAngle - sweep*Math.PI;
+      // Fully returned — park at source side
+      armAngle=srcAngle;
     }
-    const armLen=Math.max(4,ts*.40);
+    const armLen=Math.max(4,ts*.42);
     const ax=bcx+Math.cos(armAngle)*armLen;
     const ay=bcy+Math.sin(armAngle)*armLen;
-    const isMoving=swingT>0.05;
+    const isMoving=rawT<1&&!isHolding;
     ctx.strokeStyle=isMoving?'#f5a623':isHolding?'#f5a623':'#777';
     ctx.lineWidth=Math.max(1.5,ts*.07);
     ctx.beginPath(); ctx.moveTo(bcx,bcy); ctx.lineTo(ax,ay); ctx.stroke();
@@ -1525,9 +1592,9 @@ function handleTap(tile,isLong){
       // Show save dialog with cost summary
       const defaultName=`Blueprint ${(G.blueprints||[]).length+1}`;
       showModal('💾 SAVE BLUEPRINT',
-        `<div style="font-size:8px;color:var(--text2);margin-bottom:8px">${captured.length} machine${captured.length!==1?'s':''} captured.</div>
-         <input id="bpNameInput" type="text" value="${defaultName}" maxlength="24" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:8px;padding:8px;margin-bottom:10px">
-         <div style="font-size:7px;color:var(--text3);line-height:1.9">Material cost per paste:<br><span style="color:var(--amber)">${blueprintCostStr(captured)}</span></div>`,
+        `<div style="font-size:6px;color:var(--text2);margin-bottom:8px">${captured.length} machine${captured.length!==1?'s':''} captured.</div>
+         <input id="bpNameInput" type="text" value="${defaultName}" maxlength="24" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:6px;padding:8px;margin-bottom:10px">
+         <div style="font-size:5px;color:var(--text3);line-height:1.9">Material cost per paste:<br><span style="color:var(--amber)">${blueprintCostStr(captured)}</span></div>`,
         `<button class="btn btn-teal btn-sm" onclick="saveBlueprintFromModal()">SAVE</button>
          <button class="btn btn-sm" onclick="closeModal();blueprintState.data=[]">DISCARD</button>`
       );
@@ -1588,6 +1655,15 @@ function tryPlace(type,tx,ty){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); return;
   }
   if(!canPlace(type,tx,ty)){toast('Cannot place here','bad'); sfx('error'); return;}
+
+  // Power warning — check if this machine will exceed available power
+  if(def.power>0){
+    const pwrFree=G.power.out-G.power.in;
+    if(def.power>pwrFree&&G.power.out>0){
+      // Show warning toast but allow placement
+      toast(`⚡ Warning: ${def.name} needs ${def.power}kW but only ${Math.max(0,Math.round(pwrFree))}kW free`,'wrn');
+    }
+  }
 
   // Check crafted pool first, then materials (skip cost if dev free build)
   const crafted=(G.crafted[type]||0)>0;
@@ -1748,8 +1824,10 @@ function runMachine(m){
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
-      // Only consume coal if there are machines actually drawing power
-      if(G.tick%16===0&&G.power.in>0) m.inBuf.coal--;
+      // Only consume coal if there are powered machines that need it (G.power.in from last tick)
+      // Also guard: don't burn if there are NO machines that need power (prevents idle drain)
+      const hasPowerConsumers=Object.values(G.machines).some(mm=>mm.active&&MDEFS[mm.type]?.power>0);
+      if(G.tick%16===0&&hasPowerConsumers) m.inBuf.coal--;
     }
     return;
   }
@@ -1758,7 +1836,8 @@ function runMachine(m){
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
-      if(G.tick%8===0&&G.power.in>0) m.inBuf.coal--;
+      const hasPowerConsumers=Object.values(G.machines).some(mm=>mm.active&&MDEFS[mm.type]?.power>0);
+      if(G.tick%8===0&&hasPowerConsumers) m.inBuf.coal--;
     }
     return;
   }
@@ -1785,6 +1864,8 @@ function runMachine(m){
 
   if(!m.recipe)return;
   const rec=RECIPES[m.recipe]; if(!rec)return;
+  // If recipe requires research not yet done, skip
+  if(rec.unlock&&!G.research.done.includes(rec.unlock)){m.recipe=null;m.prog=0;return;}
   const pm=perkMult();
   // stone_furnace and blast_furnace are power-immune (coal is an ingredient, not power)
   const powerImmune=(m.type==='stone_furnace'||m.type==='blast_furnace');
@@ -1952,9 +2033,13 @@ function runInserter(m){
           }
           // else: belt full — keep pending, arm holds still
         } else if(dm&&dm.type==='chest'){
-          dm.chestInv[p.item]=(dm.chestInv[p.item]||0)+1;
-          m._pending.splice(i,1);
-          m.lastTransferMs=performance.now();
+          const chestTotal=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
+          if(chestTotal<200){
+            dm.chestInv[p.item]=(dm.chestInv[p.item]||0)+1;
+            m._pending.splice(i,1);
+            m.lastTransferMs=performance.now();
+          }
+          // else: chest full — keep pending, arm holds still
         } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
           if((dm.inBuf[p.item]||0)<50){
             dm.inBuf[p.item]=(dm.inBuf[p.item]||0)+1;
@@ -2129,7 +2214,9 @@ function setTool(id){
     closeResInfo(); buildToolbar(); return;
   }
   if(id==='blueprint'){
-    activeTool='blueprint'; blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
+    activeTool='blueprint';
+    // Don't reset if we're mid-paste — startPasteBlueprint already set the state
+    if(blueprintState.mode!=='pasting') blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
     closeResInfo(); buildToolbar(); return;
   }
   // Switching away from move tool — restore any held machine
@@ -2196,7 +2283,7 @@ function updateToolTip(){
   };
 
   const unlockNote=def.unlock&&!G.research.done.includes(def.unlock)
-    ?`<div style="font-size:7px;color:var(--red);margin-bottom:5px">🔒 Requires: ${TECHS[def.unlock]?.name}</div>`:'';
+    ?`<div style="font-size:5px;color:var(--red);margin-bottom:5px">🔒 Requires: ${TECHS[def.unlock]?.name}</div>`:'';
 
   el.innerHTML=`
     <div class="tt-head">
@@ -2234,6 +2321,7 @@ function togglePanel(id){
   if(id==='stats')   renderStatsPanel();
   if(id==='achieve') renderAchievePanel();
   if(id==='blueprint') renderBlueprintPanel();
+  if(id==='recipes') renderRecipesPanel();
 }
 
 function closePanel(id){
@@ -2253,6 +2341,7 @@ function refreshOpenPanel(){
   if(openPanel==='stats')   renderStatsPanel();
   if(openPanel==='achieve') renderAchievePanel();
   if(openPanel==='blueprint') renderBlueprintPanel();
+  if(openPanel==='recipes') renderRecipesPanel();
 }
 
 function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
@@ -2274,7 +2363,7 @@ function renderInvPanel(){
       html+=`<div class="inv-item"><span class="ii">${i.icon}</span><span class="iv">${fmt(i.n)}</span><span class="in">${i.name}</span></div>`;
     html+='</div></div>';
   }
-  if(!html)html=`<div style="color:var(--text3);font-size:8px;text-align:center;padding:20px;line-height:2.2">Collect resources<br>using the ⛏️ Mine tool.</div>`;
+  if(!html)html=`<div style="color:var(--text3);font-size:6px;text-align:center;padding:20px;line-height:2.2">Collect resources<br>using the ⛏️ Mine tool.</div>`;
 
   // Crafted-but-not-placed pool
   const craftedItems=Object.entries(G.crafted||{}).filter(([,v])=>v>0);
@@ -2282,7 +2371,7 @@ function renderInvPanel(){
     html+=`<div style="margin-bottom:10px;padding:8px;border:1px solid var(--amberDim);background:var(--bg3)">
       <span class="sec-label" style="color:var(--amber)">READY TO PLACE</span>`;
     for(const[id,n]of craftedItems)
-      html+=`<div style="font-size:8px;color:var(--amber);margin-bottom:3px">${MDEFS[id]?.icon} ${MDEFS[id]?.name} ×${n}</div>`;
+      html+=`<div style="font-size:6px;color:var(--amber);margin-bottom:3px">${MDEFS[id]?.icon} ${MDEFS[id]?.name} ×${n}</div>`;
     html+='</div>';
   }
 
@@ -2295,7 +2384,7 @@ function renderCraftPanel(){
   const cs=G.craftState||{recipeId:null,clicks:0};
   const active=cs.recipeId?HAND_CRAFTS.find(r=>r.id===cs.recipeId):null;
 
-  let html=`<div style="font-size:7px;color:var(--text3);line-height:2;margin-bottom:10px;padding:7px;border:1px solid var(--border);background:var(--bg3)">
+  let html=`<div style="font-size:5px;color:var(--text3);line-height:2;margin-bottom:10px;padding:7px;border:1px solid var(--border);background:var(--bg3)">
     Process raw materials by hand.<br>Click the hammer to craft.
   </div>`;
 
@@ -2306,17 +2395,17 @@ function renderCraftPanel(){
     const outStr=Object.entries(active.out).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ');
     html+=`<div id="craftActive" style="border:1px solid var(--amber);background:var(--bg3);padding:12px;margin-bottom:10px;text-align:center">
       <div style="font-size:7px;color:var(--amber);margin-bottom:6px">${active.icon} ${active.name}</div>
-      <div style="font-size:7px;color:var(--text3);margin-bottom:8px">→ ${outStr}</div>
+      <div style="font-size:5px;color:var(--text3);margin-bottom:8px">→ ${outStr}</div>
       <div style="height:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:6px">
         <div style="height:100%;background:var(--amber);width:${pct}%;transition:width .1s"></div>
       </div>
-      <div style="font-size:7px;color:var(--text3);margin-bottom:10px">${cs.clicks} / ${active.clicks} clicks &nbsp;·&nbsp; ${remaining} to go</div>
+      <div style="font-size:5px;color:var(--text3);margin-bottom:10px">${cs.clicks} / ${active.clicks} clicks &nbsp;·&nbsp; ${remaining} to go</div>
       <button id="hammerBtn" onclick="hammerClick()" style="
         font-size:28px;background:var(--bg);border:2px solid var(--amber);
         padding:10px 24px;cursor:pointer;display:block;width:100%;
         transition:transform .05s;font-family:serif;line-height:1
       ">🔨</button>
-      <button onclick="cancelCraft()" style="margin-top:8px;font-family:var(--font);font-size:7px;padding:5px 10px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;width:100%">CANCEL</button>
+      <button onclick="cancelCraft()" style="margin-top:8px;font-family:var(--font);font-size:5px;padding:5px 10px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;width:100%">CANCEL</button>
     </div>`;
   }
 
@@ -2328,7 +2417,7 @@ function renderCraftPanel(){
       // Show locked recipe as a dim hint
       const techName=r.unlock?TECHS[r.unlock]?.name||r.unlock:'';
       html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:8px;margin-bottom:5px;opacity:.3">
-        <div style="font-size:8px;color:var(--text3)">${r.icon} ${r.name} <span style="font-size:6px">🔒 Requires ${techName}</span></div>
+        <div style="font-size:6px;color:var(--text3)">${r.icon} ${r.name} <span style="font-size:4px">🔒 Requires ${techName}</span></div>
       </div>`;
       continue;
     }
@@ -2346,11 +2435,11 @@ function renderCraftPanel(){
     html+=`<div style="border:1px solid ${isActive?'var(--amber)':canAfford?'var(--border2)':'var(--border)'};background:var(--bg3);padding:8px;margin-bottom:5px;opacity:${canAfford||isActive?1:.45}">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:8px;color:${isActive?'var(--amber)':'var(--text)'};margin-bottom:3px">${r.icon} ${r.name}</div>
-          <div style="font-size:7px;color:var(--blue);margin-bottom:2px">${inStr}</div>
-          <div style="font-size:7px;color:var(--text3)">→ ${outStr} &nbsp;·&nbsp; ${r.clicks} clicks</div>
+          <div style="font-size:6px;color:${isActive?'var(--amber)':'var(--text)'};margin-bottom:3px">${r.icon} ${r.name}</div>
+          <div style="font-size:5px;color:var(--blue);margin-bottom:2px">${inStr}</div>
+          <div style="font-size:5px;color:var(--text3)">→ ${outStr} &nbsp;·&nbsp; ${r.clicks} clicks</div>
         </div>
-        ${!isActive?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="startCraft('${r.id}')" ${canAfford?'':'disabled'}>START</button>`:'<span style="font-size:8px;color:var(--amber)">▶ active</span>'}
+        ${!isActive?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="startCraft('${r.id}')" ${canAfford?'':'disabled'}>START</button>`:'<span style="font-size:6px;color:var(--amber)">▶ active</span>'}
       </div>
     </div>`;
   }
@@ -2358,7 +2447,7 @@ function renderCraftPanel(){
   // Machine build section
   html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
     <span class="sec-label" style="color:var(--teal)">BUILD MACHINES</span>
-    <div style="font-size:7px;color:var(--text3);margin-bottom:8px;line-height:1.8">Spend materials to build machines.<br>Then place them from the toolbar.</div>`;
+    <div style="font-size:5px;color:var(--text3);margin-bottom:8px;line-height:1.8">Spend materials to build machines.<br>Then place them from the toolbar.</div>`;
   for(const mid of MACHINE_BUILDS){
     const def=MDEFS[mid];
     const canAfford=Object.entries(def.cost).every(([k,v])=>(G.inv[k]||0)>=v);
@@ -2376,8 +2465,8 @@ function renderCraftPanel(){
     html+=`<div style="border:1px solid ${borderCol};background:var(--bg3);padding:7px;margin-bottom:4px;opacity:${opacity};filter:${filterVal}">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:8px;color:${canBuild?'var(--text)':'var(--text3)'};margin-bottom:2px">${def.icon} ${def.name}${queued>0?` <span style="color:var(--amber)">[${queued} ready]</span>`:''}${isLocked?` <span style="color:var(--text3)">🔒</span>`:''}</div>
-          <div style="font-size:7px;color:var(--text3)">${isLocked?`Requires: ${TECHS[def.unlock]?.name||def.unlock}`:costStr}</div>
+          <div style="font-size:6px;color:${canBuild?'var(--text)':'var(--text3)'};margin-bottom:2px">${def.icon} ${def.name}${queued>0?` <span style="color:var(--amber)">[${queued} ready]</span>`:''}${isLocked?` <span style="color:var(--text3)">🔒</span>`:''}</div>
+          <div style="font-size:5px;color:var(--text3)">${isLocked?`Requires: ${TECHS[def.unlock]?.name||def.unlock}`:costStr}</div>
         </div>
         <button class="mini-btn ${canBuild?'teal':'dim'}" onclick="buildMachine('${mid}')" ${canBuild?'':'disabled'}>BUILD</button>
       </div>
@@ -2493,14 +2582,15 @@ function renderMachPanel(){
       : m.mineRes ? `<span style="color:var(--green)">▶ Mining ${ITEMS[m.mineRes]?.name||m.mineRes}</span>`
       : `<span style="color:var(--red)">✗ Not on deposit</span>`)
     : null;
-  const noRecipeTypes=['chest','belt','splitter','tunnel','inserter','generator','burner','miner'];
+  const noRecipeTypes=['belt','splitter','tunnel','inserter','generator','burner','miner'];
   const recipeStatus = !m.active
     ? `<span style="color:var(--text3)">⏸ Paused</span>`
     : noPower
     ? `<span style="color:var(--red)">⚡ No power</span>`
     : m.recipe ? `<span style="color:var(--green)">▶ Running</span>`
     : `<span style="color:var(--amber)">⚠ No recipe</span>`;
-  const statusVal = minerStatus
+  const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${Object.values(m.chestInv).reduce((a,b)=>a+b,0)}/200 stored</span>`:null;
+  const statusVal = chestCap || minerStatus
     || (noRecipeTypes.includes(m.type)
       ? (m.active ? `<span style="color:var(--green)">▶ Active</span>` : `<span style="color:var(--text3)">⏸ Paused</span>`)
       : (m.active ? recipeStatus : `<span style="color:var(--text3)">⏸ Paused</span>`));
@@ -2533,19 +2623,19 @@ function renderMachPanel(){
       for(const[k,v]of stored){
         html+=`<div style="border:1px solid var(--border);background:var(--bg);padding:5px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="chestTakeOne('${k}',${m.id})">
           <span style="font-size:10px">${ITEMS[k]?.icon||'?'}</span>
-          <span style="font-size:7px;color:var(--amber)">${v}</span>
-          <span style="font-size:6px;color:var(--teal)">TAKE</span>
+          <span style="font-size:5px;color:var(--amber)">${v}</span>
+          <span style="font-size:4px;color:var(--teal)">TAKE</span>
         </div>`;
       }
       html+=`</div>`;
     } else {
-      html+=`<div style="font-size:7px;color:var(--text3);margin-top:4px">Empty</div>`;
+      html+=`<div style="font-size:5px;color:var(--text3);margin-top:4px">Empty</div>`;
     }
   }
   if(rec){
-    html+=`<div style="font-size:7px;color:var(--text3);margin:6px 0 2px">Progress</div>
+    html+=`<div style="font-size:5px;color:var(--text3);margin:6px 0 2px">Progress</div>
     <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%"></div></div>
-    <div style="font-size:7px;color:var(--text3)">${pct}%</div>`;
+    <div style="font-size:5px;color:var(--text3)">${pct}%</div>`;
   }
   const inItems=Object.entries(m.inBuf).filter(([,v])=>v>0);
   const outItems=Object.entries(m.outBuf).filter(([,v])=>v>0);
@@ -2556,16 +2646,16 @@ function renderMachPanel(){
   }
   if(outItems.length){
     const bufFull=bufTotal>=50;
-    html+=`<div style="font-size:7px;color:${bufFull?'var(--red)':'var(--amber)'};margin-bottom:4px">
+    html+=`<div style="font-size:5px;color:${bufFull?'var(--red)':'var(--amber)'};margin-bottom:4px">
       ▲ Output${bufFull?' (FULL — stalled)':''}: ${outItems.map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ')}
     </div>`;
     html+=`<button class="full-btn amber" onclick="emptyOutput(${m.id})" style="margin-bottom:6px">↑ EMPTY TO INVENTORY</button>`;
   } else if(def.recipes.length||m.type==='miner'){
-    html+=`<div style="font-size:7px;color:var(--text3);margin-bottom:6px">Output: empty</div>`;
+    html+=`<div style="font-size:5px;color:var(--text3);margin-bottom:6px">Output: empty</div>`;
   }
   if(inItems.length){
-    html+=`<div style="font-size:7px;color:var(--blue);margin-bottom:4px">▼ Input buffer: ${inItems.map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ')}</div>`;
-    html+=`<button class="full-btn" style="font-size:7px;border-color:var(--blue);color:var(--blue)" onclick="ejectBuf(${m.id})">↩ RETURN INPUTS TO INVENTORY</button>`;
+    html+=`<div style="font-size:5px;color:var(--blue);margin-bottom:4px">▼ Input buffer: ${inItems.map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ')}</div>`;
+    html+=`<button class="full-btn" style="font-size:5px;border-color:var(--blue);color:var(--blue)" onclick="ejectBuf(${m.id})">↩ RETURN INPUTS TO INVENTORY</button>`;
   }
   // Feed coal manually for generators/burners/furnaces
   if((m.type==='generator'||m.type==='burner'||m.type==='stone_furnace'||m.type==='blast_furnace')){
@@ -2574,12 +2664,12 @@ function renderMachPanel(){
     const isFurnace=(m.type==='stone_furnace'||m.type==='blast_furnace');
     html+=`<div style="margin-top:6px">
       ${irow('Coal in buffer',`<span style="color:${coalInBuf>0?'var(--green)':'var(--red)'}">${coalInBuf}</span>`)}
-      ${isFurnace?`<div style="font-size:6px;color:var(--text3);margin-bottom:4px">Coal is consumed as fuel per recipe. Can also be belt-fed.</div>`:''}
+      ${isFurnace?`<div style="font-size:4px;color:var(--text3);margin-bottom:4px">Coal is consumed as fuel per recipe. Can also be belt-fed.</div>`:''}
       <div style="display:flex;gap:4px;margin-top:4px">
         <button class="mini-btn ${coalInInv>=1?'amber':'dim'}" style="flex:1" onclick="feedCoal(${m.id},1)" ${coalInInv>=1?'':'disabled'}>+1 Coal</button>
         <button class="mini-btn ${coalInInv>=10?'amber':'dim'}" style="flex:1" onclick="feedCoal(${m.id},10)" ${coalInInv>=10?'':'disabled'}>+10 Coal</button>
       </div>
-      <div style="font-size:6px;color:var(--text3);margin-top:3px">Inventory: ${coalInInv} coal</div>
+      <div style="font-size:4px;color:var(--text3);margin-top:3px">Inventory: ${coalInInv} coal</div>
     </div>`;
   }
   html+=`</div>`;
@@ -2592,27 +2682,35 @@ function renderMachPanel(){
       if(rec){
         const inBufItems=Object.entries(m.inBuf).filter(([,v])=>v>0);
         html+=`<div style="border:2px solid var(--amber);background:rgba(245,166,35,.06);padding:9px;margin-bottom:8px">
-          <div style="font-size:8px;color:var(--amber);margin-bottom:6px">▶ ${rec.name}</div>
-          <div style="font-size:7px;color:var(--text3);margin-bottom:4px">Required inputs:</div>
+          <div style="font-size:6px;color:var(--amber);margin-bottom:6px">▶ ${rec.name}</div>
+          <div style="font-size:5px;color:var(--text3);margin-bottom:4px">Required inputs:</div>
           <div style="margin-bottom:4px">`;
         for(const[item,need]of Object.entries(rec.in)){
           const inBuf=m.inBuf[item]||0;
           const col=inBuf>=need?'var(--green)':'var(--amber)';
-          html+=`<div style="font-size:7px;margin-bottom:2px;color:${col}">${ITEMS[item]?.icon||''} ${ITEMS[item]?.name||item}: ${inBuf}/${need} in buffer</div>`;
+          html+=`<div style="font-size:5px;margin-bottom:2px;color:${col}">${ITEMS[item]?.icon||''} ${ITEMS[item]?.name||item}: ${inBuf}/${need} in buffer</div>`;
         }
         html+=`</div></div>`;
       }
     }
     html+=`<span class="sec-label">RECIPE</span>
     <div style="margin-bottom:8px">
-      <div onclick="setRecipe(${m.id},'')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${!m.recipe?'var(--amber)':'var(--border)'};background:${!m.recipe?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer;font-size:7px;color:${!m.recipe?'var(--amber)':'var(--text3)'}">— none —</div>`;
+      <div onclick="setRecipe(${m.id},'')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${!m.recipe?'var(--amber)':'var(--border)'};background:${!m.recipe?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer;font-size:5px;color:${!m.recipe?'var(--amber)':'var(--text3)'}">— none —</div>`;
     for(const rid of def.recipes){
       const r=RECIPES[rid]; if(!r)continue;
+      const recUnlocked=!r.unlock||G.research.done.includes(r.unlock);
+      if(!recUnlocked){
+        const reqName=TECHS[r.unlock]?.name||r.unlock;
+        html+=`<div style="padding:6px 8px;margin-bottom:3px;border:1px solid var(--border);background:var(--bg3);opacity:0.4;cursor:not-allowed">
+          <div style="font-size:6px;color:var(--text3)">🔒 ${r.name} — requires ${reqName}</div>
+        </div>`;
+        continue;
+      }
       const ins=Object.entries(r.in).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(' + ');
       const outs=Object.entries(r.out).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(' + ');
       const sel=m.recipe===rid;
       html+=`<div onclick="setRecipe(${m.id},'${rid}')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${sel?'var(--amber)':'var(--border)'};background:${sel?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer">
-        <div style="font-size:7px;color:${sel?'var(--amber)':'var(--text)'};margin-bottom:2px">${r.name}${sel?' ✓':''}</div>
+        <div style="font-size:6px;color:${sel?'var(--amber)':'var(--text)'};margin-bottom:2px">${r.name}${sel?' ✓':''}</div>
         <div style="font-size:6px;color:var(--blue)">${ins}</div>
         <div style="font-size:6px;color:var(--text3)">→ ${outs}</div>
       </div>`;
@@ -2643,15 +2741,15 @@ function renderMachPanel(){
         if(installed){
           const md=MODULE_DEFS[installed];
           html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding:4px;border:1px solid var(--tealDim);background:rgba(38,198,160,.05)">
-            <span style="font-size:7px;color:var(--teal)">${md?.icon||'?'} ${md?.name||installed} — ${md?.desc||''}</span>
-            <button class="mini-btn red" style="font-size:6px" onclick="removeModule(${m.id},${si})">✕</button>
+            <span style="font-size:5px;color:var(--teal)">${md?.icon||'?'} ${md?.name||installed} — ${md?.desc||''}</span>
+            <button class="mini-btn red" style="font-size:4px" onclick="removeModule(${m.id},${si})">✕</button>
           </div>`;
         } else {
-          html+=`<div style="font-size:7px;color:var(--text3);margin-bottom:4px;padding:4px;border:1px dashed var(--border)">Empty slot — install a module:</div>
+          html+=`<div style="font-size:5px;color:var(--text3);margin-bottom:4px;padding:4px;border:1px dashed var(--border)">Empty slot — install a module:</div>
           <div style="display:flex;gap:3px;margin-bottom:4px">`;
           for(const[modId,md]of Object.entries(MODULE_DEFS)){
             const have=G.inv[modId]||0;
-            html+=`<button class="mini-btn ${have>0?'teal':'dim'}" style="flex:1;font-size:6px" onclick="installModule(${m.id},${si},'${modId}')" ${have>0?'':'disabled'}>${md.icon} ${md.name}<br><span style="color:var(--text3)">${have} avail</span></button>`;
+            html+=`<button class="mini-btn ${have>0?'teal':'dim'}" style="flex:1;font-size:4px" onclick="installModule(${m.id},${si},'${modId}')" ${have>0?'':'disabled'}>${md.icon} ${md.name}<br><span style="color:var(--text3)">${have} avail</span></button>`;
           }
           html+=`</div>`;
         }
@@ -2678,12 +2776,12 @@ function renderMachPanel(){
         return `${v}× ${ITEMS[k]?.name||k} <span style="color:${col}">(${have})</span>`;
       }).join(', ');
       html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:7px;margin-top:6px">
-        <div style="font-size:7px;color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier} — ${TIER_BONUS[nextTier]}</div>
-        <div style="font-size:6px;color:var(--text3);margin-bottom:5px">${costStr}</div>
+        <div style="font-size:5px;color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier} — ${TIER_BONUS[nextTier]}</div>
+        <div style="font-size:4px;color:var(--text3);margin-bottom:5px">${costStr}</div>
         <button class="mini-btn ${canAfford?'teal':'dim'}" onclick="upgradeMachine(${m.id})" ${canAfford?'':'disabled'}>⬆ UPGRADE</button>
       </div>`;
     } else {
-      html+=`<div style="font-size:7px;color:var(--teal);padding:5px;border:1px solid var(--tealDim);margin-top:6px;text-align:center">T3 MAX TIER ✓</div>`;
+      html+=`<div style="font-size:5px;color:var(--teal);padding:5px;border:1px solid var(--tealDim);margin-top:6px;text-align:center">T3 MAX TIER ✓</div>`;
     }
   }
 
@@ -2824,7 +2922,7 @@ function renderBlueprintPanel(){
   const bps=G.blueprints||[];
   const bp=blueprintState;
 
-  let html=`<div style="font-size:8px;color:var(--text2);line-height:2;margin-bottom:10px;padding:8px;border:1px solid var(--border2);background:var(--bg3)">
+  let html=`<div style="font-size:6px;color:var(--text2);line-height:2;margin-bottom:10px;padding:8px;border:1px solid var(--border2);background:var(--bg3)">
     📐 Select Blueprint tool, then:<br>
     1. Tap first corner of your layout<br>
     2. Tap second corner to capture<br>
@@ -2832,16 +2930,16 @@ function renderBlueprintPanel(){
   </div>`;
 
   if(bp.mode==='selecting'){
-    html+=`<div style="font-size:8px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Selecting… tap second corner</div>
+    html+=`<div style="font-size:6px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Selecting… tap second corner</div>
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};renderBlueprintPanel()">CANCEL</button>`;
   } else if(bp.mode==='pasting'){
-    html+=`<div style="font-size:8px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Tap the map to place blueprint</div>
+    html+=`<div style="font-size:6px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Tap the map to place blueprint</div>
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};setTool('select');renderBlueprintPanel()">CANCEL PASTE</button>`;
   }
 
   html+=`<span class="sec-label">SAVED BLUEPRINTS (${bps.length}/8)</span>`;
   if(!bps.length){
-    html+=`<div style="font-size:8px;color:var(--text3);text-align:center;padding:12px;border:1px solid var(--border);line-height:2">No blueprints saved.<br><span style="font-size:7px">Use 📐 tool to capture a layout.</span></div>`;
+    html+=`<div style="font-size:6px;color:var(--text3);text-align:center;padding:12px;border:1px solid var(--border);line-height:2">No blueprints saved.<br><span style="font-size:5px">Use 📐 tool to capture a layout.</span></div>`;
   } else {
     for(let i=0;i<bps.length;i++){
       const b=bps[i];
@@ -2854,13 +2952,13 @@ function renderBlueprintPanel(){
       }).join('<br>')||'<span style="color:var(--text3)">Free</span>';
       html+=`<div style="border:1px solid var(--border2);background:var(--bg3);padding:9px;margin-bottom:6px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <span style="font-size:8px;color:var(--amber)">${b.name}</span>
-          <span style="font-size:7px;color:var(--text3)">${b.data.length} machine${b.data.length!==1?'s':''}</span>
+          <span style="font-size:6px;color:var(--amber)">${b.name}</span>
+          <span style="font-size:5px;color:var(--text3)">${b.data.length} machine${b.data.length!==1?'s':''}</span>
         </div>
-        <div style="font-size:7px;color:var(--text3);margin-bottom:7px;line-height:1.9">${costLines}</div>
+        <div style="font-size:5px;color:var(--text3);margin-bottom:7px;line-height:1.9">${costLines}</div>
         <div style="display:flex;gap:4px">
-          <button class="mini-btn ${canAfford?'teal':'dim'}" style="flex:1;font-size:7px" onclick="startPasteBlueprint(${i})" ${canAfford?'':'disabled'}>▶ PLACE</button>
-          <button class="mini-btn red" style="font-size:7px" onclick="deleteBlueprint(${i})">✕ DELETE</button>
+          <button class="mini-btn ${canAfford?'teal':'dim'}" style="flex:1;font-size:5px" onclick="startPasteBlueprint(${i})" ${canAfford?'':'disabled'}>▶ PLACE</button>
+          <button class="mini-btn red" style="font-size:5px" onclick="deleteBlueprint(${i})">✕ DELETE</button>
         </div>
       </div>`;
     }
@@ -2921,12 +3019,12 @@ function renderResPanel(){
   const el=document.getElementById('pResBody');
   let html=`<div class="card" style="margin-bottom:12px">
     <span class="sec-label">SCIENCE PACKS</span>
-    <div style="font-size:8px;color:var(--text2)">🗒️ ${fmt(G.inv.sci_red||0)} Field Notes &nbsp;&nbsp; 📋 ${fmt(G.inv.sci_green||0)} Circuit Diagrams</div>
+    <div style="font-size:6px;color:var(--text2)">🗒️ ${fmt(G.inv.sci_red||0)} Field Notes &nbsp;&nbsp; 📋 ${fmt(G.inv.sci_green||0)} Circuit Diagrams${G.research.done.includes('electronics')?` &nbsp;&nbsp; 📘 ${fmt(G.inv.sci_blue||0)} Adv. Schematics`:''}</div>
   </div>`;
 
   const eras=[...new Set(Object.values(TECHS).map(t=>t.era))];
   for(const era of eras){
-    html+=`<div style="font-size:7px;color:var(--text3);letter-spacing:2px;margin:10px 0 6px">── ${era} ──</div>`;
+    html+=`<div style="font-size:5px;color:var(--text3);letter-spacing:2px;margin:10px 0 6px">── ${era} ──</div>`;
     for(const[id,tech]of Object.entries(TECHS)){
       if(tech.era!==era)continue;
       const done=G.research.done.includes(id);
@@ -2935,12 +3033,12 @@ function renderResPanel(){
       const costStr=Object.entries(tech.cost).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(', ');
       html+=`<div class="tech-card ${done?'done':reqMet?'avail':'locked'}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:8px;color:${done?'var(--teal)':'var(--text)'}">${tech.icon} ${tech.name}</span>
+          <span style="font-size:6px;color:${done?'var(--teal)':'var(--text)'}">${tech.icon} ${tech.name}</span>
           ${done?'<span style="color:var(--teal);font-size:9px">✓</span>':''}
           ${!reqMet&&!done?'<span style="color:var(--text3);font-size:9px">🔒</span>':''}
         </div>
-        <div style="font-size:7px;color:var(--text3);margin-bottom:5px">${tech.desc}</div>
-        ${!done?`<div style="font-size:7px;color:var(--amber);margin-bottom:5px">Cost: ${costStr}</div>`:''}
+        <div style="font-size:5px;color:var(--text3);margin-bottom:5px">${tech.desc}</div>
+        ${!done?`<div style="font-size:5px;color:var(--amber);margin-bottom:5px">Cost: ${costStr}</div>`:''}
         ${!done&&reqMet?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="doResearch('${id}')" ${canAfford?'':'disabled'}>RESEARCH</button>`:''}
       </div>`;
     }
@@ -2965,7 +3063,7 @@ function renderRocketPanel(){
   const el=document.getElementById('pRocketBody');
   const unlocked=G.research.done.includes('rocket_tech');
   if(!unlocked){
-    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:8px;line-height:2.2">
+    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:6px;line-height:2.2">
       Research<br><span style="color:var(--amber)">Rocket Science</span><br>to unlock this panel.
     </div>`; return;
   }
@@ -2978,16 +3076,16 @@ function renderRocketPanel(){
     const pct=Math.min(100,Math.round(have/p.need*100));
     html+=`<div class="rocket-part ${done?'done':''}">
       <div style="flex:1">
-        <div style="font-size:8px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${ITEMS[p.id].icon} ${p.name}</div>
+        <div style="font-size:6px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${ITEMS[p.id].icon} ${p.name}</div>
         <div class="prog-wrap"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div>
       </div>
-      <span style="font-size:8px;color:${done?'var(--teal)':'var(--text3)'};margin-left:10px">${have}/${p.need}</span>
+      <span style="font-size:6px;color:${done?'var(--teal)':'var(--text3)'};margin-left:10px">${have}/${p.need}</span>
     </div>`;
   }
   if(allReady){
     html+=`<button class="full-btn launch" onclick="launchRocket()">🚀 LAUNCH ROCKET</button>`;
   } else {
-    html+=`<div style="font-size:7px;color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
+    html+=`<div style="font-size:5px;color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
       Build all components to initiate launch sequence.
     </div>`;
   }
@@ -3000,7 +3098,7 @@ function renderRocketPanel(){
     const rec=recId?RECIPES[recId]:null;
     if(!rec)continue;
     const ins=Object.entries(rec.in).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(', ');
-    html+=`<div style="font-size:7px;color:var(--text3);margin-bottom:5px;padding:5px;border:1px solid var(--border)">
+    html+=`<div style="font-size:5px;color:var(--text3);margin-bottom:5px;padding:5px;border:1px solid var(--border)">
       <span style="color:var(--text)">${ITEMS[p.id].icon} ${p.name}</span><br>
       <span style="color:var(--text3)">${ins}</span>
     </div>`;
@@ -3017,7 +3115,7 @@ function launchRocket(){
   G.perks.points=(G.perks.points||0)+3;
   saveGame(); sfx('launch');
   showModal('🚀 LAUNCH SEQUENCE',
-    `<div style="text-align:center;font-size:8px;color:var(--text2);line-height:2.5">
+    `<div style="text-align:center;font-size:6px;color:var(--text2);line-height:2.5">
       <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
       The rocket ignites.<br>Ironfield shrinks below you.<br><br>
       <span style="color:var(--amber);font-size:7px">ZONE 1 COMPLETE</span><br><br>
@@ -3044,13 +3142,13 @@ function renderPerksPanel(){
   ];
 
   let html=`<div class="card" style="margin-bottom:10px">
-    <div style="font-size:7px;color:var(--text3);margin-bottom:4px">AVAILABLE POINTS</div>
+    <div style="font-size:5px;color:var(--text3);margin-bottom:4px">AVAILABLE POINTS</div>
     <div style="font-size:10px;color:var(--amber)">${pts} point${pts!==1?'s':''}</div>
-    ${pts===0?'<div style="font-size:7px;color:var(--text3);margin-top:4px">Launch rockets to earn more.</div>':''}
+    ${pts===0?'<div style="font-size:5px;color:var(--text3);margin-top:4px">Launch rockets to earn more.</div>':''}
   </div>`;
 
   if(pts===0&&Object.keys(G.perks?.spent||{}).length===0){
-    html+=`<div style="color:var(--text3);font-size:8px;text-align:center;padding:20px;border:1px solid var(--border);line-height:2.2">
+    html+=`<div style="color:var(--text3);font-size:6px;text-align:center;padding:20px;border:1px solid var(--border);line-height:2.2">
       Complete Zone 1<br>by launching your rocket<br>to unlock perks.
     </div>`;
     el.innerHTML=html; return;
@@ -3058,7 +3156,7 @@ function renderPerksPanel(){
 
   const cats=[...new Set(PERK_DEFS.map(p=>p.cat))];
   for(const cat of cats){
-    html+=`<div style="font-size:7px;color:var(--text3);letter-spacing:2px;margin:8px 0 5px">── ${cat.toUpperCase()} ──</div>`;
+    html+=`<div style="font-size:5px;color:var(--text3);letter-spacing:2px;margin:8px 0 5px">── ${cat.toUpperCase()} ──</div>`;
     for(const p of PERK_DEFS.filter(d=>d.cat===cat)){
       const spent=G.perks?.spent||{};
       const owned=!!spent[p.id];
@@ -3066,16 +3164,16 @@ function renderPerksPanel(){
       const canBuy=!owned&&reqMet&&pts>=p.cost;
       html+=`<div style="border:1px solid ${owned?'var(--teal)':reqMet?'var(--border2)':'var(--border)'};background:var(--bg3);padding:8px;margin-bottom:5px;opacity:${!reqMet&&!owned?.4:1}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-size:8px;color:${owned?'var(--teal)':'var(--text)'}">${p.name}</span>
-          ${owned?'<span style="color:var(--teal)">✓</span>':'<span style="font-size:7px;color:var(--amber)">${p.cost}pt</span>'}
+          <span style="font-size:6px;color:${owned?'var(--teal)':'var(--text)'}">${p.name}</span>
+          ${owned?'<span style="color:var(--teal)">✓</span>':'<span style="font-size:5px;color:var(--amber)">${p.cost}pt</span>'}
         </div>
-        <div style="font-size:7px;color:var(--text3);margin-bottom:${canBuy?5:0}px">${p.desc}</div>
+        <div style="font-size:5px;color:var(--text3);margin-bottom:${canBuy?5:0}px">${p.desc}</div>
         ${canBuy?`<button class="mini-btn amber" onclick="buyPerk('${p.id}',${p.cost})">UNLOCK</button>`:''}
       </div>`;
     }
   }
 
-  html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;font-size:7px;color:var(--text3);line-height:2">
+  html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;font-size:5px;color:var(--text3);line-height:2">
     Perks carry into future zones.<br>
     More perks unlock after each zone launch.
   </div>`;
@@ -3096,6 +3194,8 @@ function renderStatsPanel(){
   const pwrPct=Math.round(pwrRatio*100);
   const pwrCol2=pwrFree<0?'var(--red)':pwrFree<G.power.in*.2?'var(--amber)':'var(--green)';
 
+  const allPaused=producers.length>0&&producers.every(m=>!m.active);
+  const allActive=producers.length>0&&producers.every(m=>m.active);
   let html=`<div class="card" style="margin-bottom:10px">
     <span class="sec-label">OVERVIEW</span>
     ${irow('Machines placed',`<span style="color:var(--amber)">${machines.length}</span>`)}
@@ -3103,6 +3203,10 @@ function renderStatsPanel(){
     ${paused.length?irow('Paused',`<span style="color:var(--text3)">${paused.length}</span>`):''}
     ${irow('Taps',`<span style="color:var(--text2)">${G.stats.taps}</span>`)}
     ${irow('Research',`<span style="color:var(--text2)">${G.research.done.length}/${Object.keys(TECHS).length}</span>`)}
+    <div style="display:flex;gap:5px;margin-top:8px">
+      <button class="mini-btn ${allPaused?'dim':'amber'}" style="flex:1" onclick="pauseAllMachines()" ${allPaused?'disabled':''}>⏸ PAUSE ALL</button>
+      <button class="mini-btn ${allActive?'dim':'teal'}" style="flex:1" onclick="resumeAllMachines()" ${allActive?'disabled':''}>▶ RESUME ALL</button>
+    </div>
   </div>
   <div class="card" style="margin-bottom:10px">
     <span class="sec-label">⚡ POWER</span>
@@ -3117,7 +3221,7 @@ function renderStatsPanel(){
     html+=`<div class="card" style="margin-bottom:10px"><span class="sec-label">MACHINE COUNT</span>`;
     for(const[type,count]of Object.entries(typeCounts)){
       const def=MDEFS[type];
-      html+=`<div style="display:flex;justify-content:space-between;font-size:7px;margin-bottom:4px">
+      html+=`<div style="display:flex;justify-content:space-between;font-size:5px;margin-bottom:4px">
         <span style="color:var(--text2)">${def?.icon||''} ${def?.name||type}</span>
         <span style="color:var(--amber)">${count}</span>
       </div>`;
@@ -3167,9 +3271,9 @@ function renderStatsPanel(){
   html+=`</span>`;
 
   if(!machines.length){
-    html+=`<div style="font-size:7px;color:var(--text3);padding:10px;border:1px solid var(--border);text-align:center;line-height:2.2">No machines placed yet.</div>`;
+    html+=`<div style="font-size:5px;color:var(--text3);padding:10px;border:1px solid var(--border);text-align:center;line-height:2.2">No machines placed yet.</div>`;
   } else if(!issues.length){
-    html+=`<div style="font-size:7px;color:var(--teal);padding:8px;border:1px solid var(--tealDim);background:rgba(38,198,160,.05);margin-bottom:8px;line-height:2">All active machines running.<br>Factory looks healthy!</div>`;
+    html+=`<div style="font-size:5px;color:var(--teal);padding:8px;border:1px solid var(--tealDim);background:rgba(38,198,160,.05);margin-bottom:8px;line-height:2">All active machines running.<br>Factory looks healthy!</div>`;
   } else {
     for(const{m,status}of issues){
       const def=MDEFS[m.type];
@@ -3179,7 +3283,7 @@ function renderStatsPanel(){
           <div style="color:var(--text);margin-bottom:2px">${def.icon} ${def.name} <span style="color:var(--text3)">#${m.id}</span></div>
           <div style="color:var(--text3);line-height:1.8">${s.tip}</div>
         </div>
-        <span style="color:${s.col};text-align:right;flex-shrink:0;margin-left:8px;font-size:6px">${s.label}</span>
+        <span style="color:${s.col};text-align:right;flex-shrink:0;margin-left:8px;font-size:4px">${s.label}</span>
       </div>`;
     }
   }
@@ -3191,7 +3295,7 @@ function renderStatsPanel(){
     html+=`<div style="margin-top:12px"><span class="sec-label">PRODUCTION RATES</span>`;
     const rateRow=(icon,label,sub,rate)=>{
       const col=rate===0?'var(--text3)':rate<2?'var(--amber)':'var(--green)';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:7px;padding:5px 0;border-bottom:1px solid var(--border)">
+      return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:5px;padding:5px 0;border-bottom:1px solid var(--border)">
         <div><span style="color:var(--text2)">${icon} ${label}</span><span style="color:var(--text3);display:block;margin-top:1px">${sub}</span></div>
         <span style="color:${col};flex-shrink:0;margin-left:8px">${rate}/min</span>
       </div>`;
@@ -3209,7 +3313,7 @@ function renderStatsPanel(){
   }
 
   if(paused.length){
-    html+=`<div style="margin-top:10px;font-size:7px;color:var(--text3);padding:6px;border:1px solid var(--border)">
+    html+=`<div style="margin-top:10px;font-size:5px;color:var(--text3);padding:6px;border:1px solid var(--border)">
       ⏸ ${paused.length} machine${paused.length>1?'s':''} paused
     </div>`;
   }
@@ -3217,6 +3321,18 @@ function renderStatsPanel(){
   el.innerHTML=html;
 }
 
+function pauseAllMachines(){
+  for(const m of Object.values(G.machines)){
+    if(m.type!=='belt'&&m.type!=='inserter'&&m.type!=='chest') m.active=false;
+  }
+  saveGame(); renderStatsPanel(); updateHUD(); toast('All machines paused','ok');
+}
+function resumeAllMachines(){
+  for(const m of Object.values(G.machines)){
+    if(m.type!=='belt'&&m.type!=='inserter'&&m.type!=='chest') m.active=true;
+  }
+  saveGame(); renderStatsPanel(); updateHUD(); toast('All machines resumed','ok');
+}
 function selectMachineById(id){
   const m=G.machines[id]; if(!m)return;
   const def=MDEFS[m.type];
@@ -3243,7 +3359,7 @@ const ACHIEVEMENTS=[
   {id:'first_machine',cat:'Production',  icon:'🏗️', name:'Builder',            desc:'Place your first machine'},
   {id:'first_belt',   cat:'Production',  icon:'➡️', name:'On the Belt',        desc:'Place your first belt'},
   {id:'first_insert', cat:'Production',  icon:'🦾', name:'Hands-Free',         desc:'Place your first inserter'},
-  {id:'first_circuit',cat:'Production',  icon:'💚', name:'Circuit Breaker',    desc:'Produce your first Circuit Board'},
+  {id:'first_circuit',cat:'Production',  icon:'📟', name:'Circuit Breaker',    desc:'Produce your first Circuit Board'},
   {id:'first_steel',  cat:'Production',  icon:'⬜', name:'Steel Worker',       desc:'Produce your first Steel Plate'},
   {id:'machines_10',  cat:'Production',  icon:'🏗️', name:'Factory Floor',      desc:'Have 10 machines placed'},
   {id:'machines_25',  cat:'Production',  icon:'🏗️', name:'Full Production',    desc:'Have 25 machines placed'},
@@ -3286,6 +3402,7 @@ function checkAchievements(){
     power_120:    ()=>G.power.out>=120,
     first_notes:  ()=>(G.inv.sci_red||0)>=1,
     first_diagrams:()=>(G.inv.sci_green||0)>=1,
+    first_schematics:()=>(G.inv.sci_blue||0)>=1,
     automation:   ()=>G.research.done.includes('automation'),
     all_research: ()=>Object.keys(TECHS).every(id=>G.research.done.includes(id)),
     first_steel_r:()=>(G.inv.steel_plate||0)>=1,
@@ -3306,7 +3423,7 @@ function checkAchievements(){
         const el=document.createElement('div');
         el.className='toast';
         el.style.cssText='border-color:#f5a623;color:#f5a623;background:#1a1400;min-width:160px;text-align:center';
-        el.innerHTML=`${ach.icon} ${ach.name}<br><span style="font-size:6px;color:#999">${ach.desc}</span>`;
+        el.innerHTML=`${ach.icon} ${ach.name}<br><span style="font-size:4px;color:#999">${ach.desc}</span>`;
         c.appendChild(el);
         setTimeout(()=>el.remove(),3500);
         sfx('research');
@@ -3324,7 +3441,7 @@ function renderAchievePanel(){
   const cats=[...new Set(ACHIEVEMENTS.map(a=>a.cat))];
 
   let html=`<div class="card" style="margin-bottom:10px">
-    <div style="font-size:7px;color:var(--text3);margin-bottom:4px">PROGRESS</div>
+    <div style="font-size:5px;color:var(--text3);margin-bottom:4px">PROGRESS</div>
     <div style="font-size:9px;color:var(--amber)">${count} / ${total}</div>
     <div class="prog-wrap" style="margin-top:5px"><div class="prog-fill amber" style="width:${Math.round(count/total*100)}%"></div></div>
   </div>`;
@@ -3332,14 +3449,14 @@ function renderAchievePanel(){
   for(const cat of cats){
     const catAchs=ACHIEVEMENTS.filter(a=>a.cat===cat);
     const catEarned=catAchs.filter(a=>earned.has(a.id)).length;
-    html+=`<div style="font-size:7px;color:var(--text3);letter-spacing:2px;margin:10px 0 5px">── ${cat.toUpperCase()} (${catEarned}/${catAchs.length}) ──</div>`;
+    html+=`<div style="font-size:5px;color:var(--text3);letter-spacing:2px;margin:10px 0 5px">── ${cat.toUpperCase()} (${catEarned}/${catAchs.length}) ──</div>`;
     for(const a of catAchs){
       const done=earned.has(a.id);
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border:1px solid ${done?'var(--teal)':'var(--border)'};background:var(--bg3);margin-bottom:3px;opacity:${done?1:.5}">
         <span style="font-size:14px;flex-shrink:0">${done?a.icon:'?'}</span>
         <div style="flex:1">
-          <div style="font-size:7px;color:${done?'var(--teal)':'var(--text3)'}">${done?a.name:'???'}</div>
-          ${done?`<div style="font-size:6px;color:var(--text3);margin-top:2px">${a.desc}</div>`:''}
+          <div style="font-size:5px;color:${done?'var(--teal)':'var(--text3)'}">${done?a.name:'???'}</div>
+          ${done?`<div style="font-size:4px;color:var(--text3);margin-top:2px">${a.desc}</div>`:''}
         </div>
         ${done?'<span style="color:var(--teal);font-size:9px">✓</span>':''}
       </div>`;
@@ -3348,19 +3465,67 @@ function renderAchievePanel(){
   el.innerHTML=html;
 }
 
+function renderRecipesPanel(){
+  const el=document.getElementById('pRecipesBody'); if(!el)return;
+  const done=new Set(G.research.done);
+  // Group recipes by machine
+  const machineGroups={};
+  for(const[rid,rec]of Object.entries(RECIPES)){
+    const mid=rec.machine;
+    if(!machineGroups[mid])machineGroups[mid]=[];
+    machineGroups[mid].push({id:rid,...rec});
+  }
+  // Also add hand crafts
+  machineGroups['hand']=HAND_CRAFTS.map(hc=>({id:hc.id,name:hc.name,machine:'hand',time:hc.clicks*0.5,in:hc.in,out:hc.out,unlock:hc.unlock}));
+
+  const machOrder=['hand','stone_furnace','blast_furnace','electric_smelter','assembler','lab'];
+  const machLabels={hand:'✋ Hand Craft',stone_furnace:'⚱️ Stone Furnace',blast_furnace:'🔥 Blast Furnace',electric_smelter:'🌩️ Electric Smelter',assembler:'🏗️ Assembler',lab:'🔬 Research Lab'};
+  let html='';
+  for(const mid of machOrder){
+    const recipes=machineGroups[mid]; if(!recipes||!recipes.length)continue;
+    const mdef=MDEFS[mid];
+    const machUnlocked=!mdef?.unlock||done.has(mdef.unlock);
+    html+=`<div style="font-size:6px;color:var(--amber);letter-spacing:2px;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${machLabels[mid]||mid}</div>`;
+    for(const r of recipes){
+      const recUnlocked=!r.unlock||done.has(r.unlock);
+      const visible=mid==='hand'?recUnlocked:machUnlocked&&recUnlocked;
+      const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${ITEMS[k]?.icon||''}${ITEMS[k]?.name||k}`).join(' + ');
+      const outs=Object.entries(r.out).map(([k,v])=>`${v}× ${ITEMS[k]?.icon||''}${ITEMS[k]?.name||k}`).join(' + ');
+      if(!visible){
+        html+=`<div style="padding:6px 8px;margin-bottom:3px;border:1px solid var(--border);background:var(--bg3);opacity:0.4">
+          <span style="font-size:6px;color:var(--text3)">🔒 Locked${r.unlock?` — requires ${TECHS[r.unlock]?.name||r.unlock}`:''}</span>
+        </div>`;
+      } else {
+        html+=`<div style="padding:7px 8px;margin-bottom:4px;border:1px solid var(--border2);background:var(--bg3)">
+          <div style="font-size:7px;color:var(--text);margin-bottom:4px">${r.name}</div>
+          <div style="font-size:6px;color:var(--blue);margin-bottom:2px">In: ${ins}</div>
+          <div style="font-size:6px;color:var(--amber)">→ ${outs}</div>
+          ${mid!=='hand'?`<div style="font-size:6px;color:var(--text3);margin-top:2px">⏱ ${r.time}s</div>`:''}
+        </div>`;
+      }
+    }
+  }
+  if(!html)html='<div style="font-size:6px;color:var(--text3);text-align:center;padding:12px">No recipes yet.</div>';
+  el.innerHTML=html;
+}
+
 // ═══════════════════════════════════════════════════
 //  TUTORIAL
 // ═══════════════════════════════════════════════════
 const TUTORIAL_STEPS=[
-  {id:1, text:'Welcome to Ironfield! Start by mining ore. Select ⛏️ Mine in the toolbar, then hold on a resource tile.', done:()=>G.stats.taps>=1},
-  {id:2, text:'Good! Now open the 🔨 Craft panel in the toolbar to process your ore into iron plates.', done:()=>(G.inv.iron_plate||0)>=1},
-  {id:3, text:'Nice work. Craft some Iron Gears too — you\'ll need them to build machines.', done:()=>(G.inv.iron_gear||0)>=1},
-  {id:4, text:'Now build a Burner Generator. Open 🔨 Craft → BUILD MACHINES. It needs Stone + Iron Plate.', done:()=>(G.crafted?.burner||0)>=1||Object.values(G.machines).some(m=>m.type==='burner')},
-  {id:5, text:'Place the Burner from the Extract toolbar. Then tap it with Select to feed it coal.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
-  {id:6, text:'Power is flowing! Now build and place a Miner on a resource deposit. It needs power to run.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes)},
-  {id:7, text:'Machines don\'t connect automatically — use 🦾 Inserters to move items between machines, and ➡️ Belts to transport them. Place an Inserter pointing from your Miner\'s output toward a belt or chest.', done:()=>Object.values(G.machines).some(m=>m.type==='inserter')},
-  {id:8, text:'Your miner is running! Open 🔬 Research and craft Field Notes to unlock automation.', done:()=>G.research.done.includes('automation')},
-  {id:9, text:'Automation unlocked! Build a Blast Furnace, Assembler, and Lab to start your production lines.', done:()=>G.research.done.includes('steel')||G.research.done.includes('electronics')},
+  {id:1,  text:'Welcome to 8-BIT INDUSTRY! Select ⛏️ Mine in the toolbar, then HOLD on a rock tile to mine ore.', done:()=>G.stats.taps>=1},
+  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — you\'ll need all three to get started.', done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5},
+  {id:3,  text:'Open 🔨 Craft in the toolbar. Smelt your Iron Ore into Iron Plates (costs 2 ore each).', done:()=>(G.inv.iron_plate||0)>=3},
+  {id:4,  text:'Great! Now craft some Iron Gears (costs 2 Iron Plates). You need these to build machines.', done:()=>(G.inv.iron_gear||0)>=2},
+  {id:5,  text:'Open 🔨 Craft → BUILD MACHINES. Build a Burner Generator (needs 5 Stone + 2 Iron Plate).', done:()=>(G.crafted?.burner||0)>=1||Object.values(G.machines).some(m=>m.type==='burner')},
+  {id:6,  text:'Place the Burner Generator from the Extract toolbar. Then tap it with Select ☝️ and feed it coal so it can generate power.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
+  {id:7,  text:'Power is on! Now build a Miner and place it on a COAL deposit. The miner needs power to run, and will auto-mine coal for you.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='coal')},
+  {id:8,  text:'Now use an 🦾 Inserter to move coal from your Miner to the Burner. Place the inserter between them, pointing TOWARD the Burner.', done:()=>{const b=Object.values(G.machines).find(m=>m.type==='burner');return b&&(b.inBuf.coal||0)>5&&Object.values(G.machines).some(m=>m.type==='inserter');}},
+  {id:9,  text:'Coal is flowing to your Burner automatically! Now place a Miner on an Iron Ore deposit to mine iron.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='iron_ore')},
+  {id:10, text:'Build a Stone Furnace (⚱️ in BUILD MACHINES) and place it near your iron miner. The furnace needs BOTH iron ore AND coal to smelt iron plates.', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace')},
+  {id:11, text:'Use Inserters to feed iron ore AND coal into the Furnace. Set its recipe to "Smelt Iron". Inserters + Belts are your conveyor system!', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace'&&m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
+  {id:12, text:'Your factory is running! Open 🔬 Research and hand-craft some Field Notes (needs Iron Gear + Copper Wire). Research Basic Automation.', done:()=>G.research.done.includes('automation')},
+  {id:13, text:'🎉 Automation unlocked! You can now build Blast Furnaces, Assemblers and Research Labs. Open 📊 Stats to see your factory overview. Good luck — your goal is to build a 🚀 ROCKET and see what else awaits in this universe!', done:()=>G.research.done.includes('logistics')||Object.keys(G.machines).length>=15},
 ];
 
 function tickTutorial(){
@@ -3383,7 +3548,7 @@ function tickTutorial(){
     if(t.step>=TUTORIAL_STEPS.length){
       t.step=-1;
       hideTutHint();
-      toast('Tutorial complete! You\'re on your own now.','ok');
+      toast('Tutorial complete — build that rocket! 🚀','ok');
       return;
     }
   }
@@ -3446,13 +3611,20 @@ function openMenu(){
   let audioHtml=`<div style="margin-top:10px"><span class="sec-label">AUDIO</span>
     <div style="display:flex;gap:8px;margin-top:6px">
       <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <span style="font-size:8px;color:var(--text2)">🔊 Sound FX</span>
+        <span style="font-size:6px;color:var(--text2)">🔊 Sound FX</span>
         <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="toggleSfxMenu()">${G.sfx?'ON':'OFF'}</button>
       </div>
       <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <span style="font-size:8px;color:var(--text2)">🎵 Music</span>
+        <span style="font-size:6px;color:var(--text2)">🎵 Music</span>
         <button class="mini-btn ${G.music?'teal':'dim'}" onclick="toggleMusic()">${G.music?'ON':'OFF'}</button>
       </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+      <span style="font-size:6px;color:var(--text2);flex-shrink:0">🔉 Vol</span>
+      <input id="musicVolSlider" type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}"
+        oninput="setMusicVol(this.value)"
+        style="flex:1;accent-color:var(--amber);cursor:pointer">
+      <span id="musicVolLabel" style="font-size:6px;color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
     </div>
   </div>`;
   let slotsHtml='<div style="margin-top:10px"><span class="sec-label">SAVE SLOTS</span>';
@@ -3465,22 +3637,22 @@ function openMenu(){
         const ts=d._savedAt?new Date(d._savedAt).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'?';
         const launched=d.stats?.launched?'🚀 ':'';
         const research=d.research?.done?.length||0;
-        slotInfo=`<span style="color:var(--text2)">${launched}T:${d.stats?.taps||0} R:${research}/${Object.keys(TECHS).length} &nbsp;<span style="color:var(--text3);font-size:6px">${ts}</span></span>`;
+        slotInfo=`<span style="color:var(--text2)">${launched}T:${d.stats?.taps||0} R:${research}/${Object.keys(TECHS).length} &nbsp;<span style="color:var(--text3);font-size:4px">${ts}</span></span>`;
       }catch(e){}
     }
     slotsHtml+=`
     <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-      <span style="font-size:8px;color:var(--amber);min-width:16px">S${s}</span>
-      <span style="font-size:7px;flex:1">${slotInfo}</span>
-      <button class="mini-btn teal" onclick="saveToSlot(${s})" style="font-size:6px">SAVE</button>
-      ${raw?`<button class="mini-btn amber" onclick="loadFromSlot(${s})" style="font-size:6px">LOAD</button>`:''}
-      ${raw?`<button class="mini-btn dim" onclick="deleteSlot(${s})" style="font-size:6px">✕</button>`:''}
+      <span style="font-size:6px;color:var(--amber);min-width:16px">S${s}</span>
+      <span style="font-size:5px;flex:1">${slotInfo}</span>
+      <button class="mini-btn teal" onclick="saveToSlot(${s})" style="font-size:4px">SAVE</button>
+      ${raw?`<button class="mini-btn amber" onclick="loadFromSlot(${s})" style="font-size:4px">LOAD</button>`:''}
+      ${raw?`<button class="mini-btn dim" onclick="deleteSlot(${s})" style="font-size:4px">✕</button>`:''}
     </div>`;
   }
   slotsHtml+='</div>';
 
   showModal('☰ MENU',
-    `<div style="font-size:8px;color:var(--text2);line-height:2.4">
+    `<div style="font-size:6px;color:var(--text2);line-height:2.4">
       Zone 1: Ironfield<br>
       Taps: ${G.stats.taps} &nbsp;·&nbsp; Machines placed: ${G.stats.placed}<br>
       Power: ${fmt(G.power.out)}kW out / ${fmt(G.power.in)}kW in<br>
@@ -3529,7 +3701,7 @@ function deleteSlot(s){
 function promptDevUnlock(){
   closeModal();
   showModal('🔒 DEV UNLOCK',
-    `<div style="font-size:8px;color:var(--text2);line-height:2;margin-bottom:10px">Enter the dev code:</div>
+    `<div style="font-size:6px;color:var(--text2);line-height:2;margin-bottom:10px">Enter the dev code:</div>
      <input id="devCodeInput" type="text" autocomplete="off" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:8px;padding:10px;letter-spacing:4px" placeholder="_ _ _ _" maxlength="12">`,
     `<button class="btn btn-sm" onclick="checkDevCode()">UNLOCK</button>
      <button class="btn btn-sm" onclick="closeModal()">CANCEL</button>`
@@ -3561,13 +3733,13 @@ const DEV_GIVE_AMOUNTS = {
   iron_plate:200, copper_plate:200, steel_plate:100,
   iron_gear:100, copper_wire:200, iron_rod:100,
   circuit:50, engine:20,
-  sci_red:50, sci_green:50,
+  sci_red:50, sci_green:50, sci_blue:30,
 };
 
 function renderDevPanel(){
   const el=document.getElementById('pDevBody'); if(!el)return;
   const tickSpeed=G.devTickSpeed||1;
-  let html=`<div style="padding:6px 8px;background:rgba(171,71,188,.1);border:1px solid var(--purple);margin-bottom:10px;font-size:7px;color:var(--purple)">
+  let html=`<div style="padding:6px 8px;background:rgba(171,71,188,.1);border:1px solid var(--purple);margin-bottom:10px;font-size:5px;color:var(--purple)">
     DEV MODE ACTIVE — not for normal play
   </div>`;
 
@@ -3581,11 +3753,11 @@ function renderDevPanel(){
   html+=`<span class="sec-label" style="color:var(--purple)">CRAFTING</span>
   <div style="margin-bottom:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-      <span style="font-size:8px;color:var(--text2)">Free crafting</span>
+      <span style="font-size:6px;color:var(--text2)">Free crafting</span>
       <button class="mini-btn ${G.devFreeCraft?'amber':'dim'}" onclick="toggleDevFreeCraft()">${G.devFreeCraft?'ON':'OFF'}</button>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <span style="font-size:8px;color:var(--text2)">Free building</span>
+      <span style="font-size:6px;color:var(--text2)">Free building</span>
       <button class="mini-btn ${G.devFreeBuild?'amber':'dim'}" onclick="toggleDevFreeBuild()">${G.devFreeBuild?'ON':'OFF'}</button>
     </div>
   </div>`;
@@ -3600,7 +3772,7 @@ function renderDevPanel(){
   html+=`<span class="sec-label" style="color:var(--purple)">GIVE RESOURCES</span>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px">`;
   for(const[item,amt]of Object.entries(DEV_GIVE_AMOUNTS)){
-    html+=`<button class="mini-btn" style="font-size:6px;text-align:left;padding:5px 6px;border-color:var(--border2)" onclick="devGive('${item}',${amt})">
+    html+=`<button class="mini-btn" style="font-size:4px;text-align:left;padding:5px 6px;border-color:var(--border2)" onclick="devGive('${item}',${amt})">
       +${amt} ${ITEMS[item]?.name||item}
     </button>`;
   }
@@ -3663,7 +3835,7 @@ function devCompleteRocket(){
 
 function devReset(){
   showModal('RESET SAVE?',
-    '<div style="font-size:8px;color:var(--red)">This will wipe everything and start a new game.</div>',
+    '<div style="font-size:6px;color:var(--red)">This will wipe everything and start a new game.</div>',
     `<button class="btn btn-sm btn-red" onclick="localStorage.removeItem('${SAVE_KEY}');location.reload()">RESET</button>
      <button class="btn btn-sm" onclick="closeModal()">CANCEL</button>`
   );
@@ -3705,11 +3877,11 @@ function buildTitleSlots(){
     html+=`<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px">
       <span style="font-size:7px;color:var(--amber);min-width:32px;font-family:var(--font)">${slot.label}</span>
       <div style="flex:1;min-width:0">
-        <div style="font-size:8px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.info}</div>
-        <div style="font-size:7px;color:var(--text3)">${slot.time}</div>
+        <div style="font-size:6px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.info}</div>
+        <div style="font-size:5px;color:var(--text3)">${slot.time}</div>
       </div>
-      <button class="btn btn-teal btn-sm" style="font-size:7px;padding:4px 8px" onclick="${slot.load}">LOAD</button>
-      <button class="btn btn-sm" style="font-size:7px;padding:4px 6px;color:var(--text3)" onclick="${slot.del}">✕</button>
+      <button class="btn btn-teal btn-sm" style="font-size:5px;padding:4px 8px" onclick="${slot.load}">LOAD</button>
+      <button class="btn btn-sm" style="font-size:5px;padding:4px 6px;color:var(--text3)" onclick="${slot.del}">✕</button>
     </div>`;
   }
   el.innerHTML=html;
@@ -3791,7 +3963,7 @@ function startGame(isNew){
   clampCam();
   if(isNew){
     setTimeout(()=>showModal('⛏️ IRONFIELD',
-      `<div style="font-size:8px;color:var(--text2);line-height:2.4">
+      `<div style="font-size:6px;color:var(--text2);line-height:2.4">
         You've crashed on Ironfield.<br>No machines. No power. Nothing.<br><br>
         Select <span style="color:var(--amber)">⛏️ Mine</span> to collect resources.<br>
         Tap <span style="color:var(--amber)">🔨 Craft</span> in the toolbar<br>to build your first machines.<br><br>
