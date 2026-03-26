@@ -134,6 +134,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 /* TOOLBAR */
 #toolbar{flex-shrink:0;height:70px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:stretch;overflow-x:auto;z-index:100;scrollbar-width:none;gap:1px}
 #toolbar::-webkit-scrollbar{display:none}
+/* Fade + arrow hint on right edge to signal horizontal scroll */
+#toolbarWrap{position:relative;flex-shrink:0}
+#toolbarWrap::after{content:'›';position:absolute;right:0;top:0;bottom:0;width:28px;display:flex;align-items:center;justify-content:center;background:linear-gradient(to right,transparent,var(--panel) 60%);color:var(--amber);font-size:18px;pointer-events:none;z-index:101;animation:blink 1.5s infinite}
+#toolbarWrap.scrolled::after{display:none}
 .tcat{display:flex;flex-direction:column;border-right:1px solid var(--border)}
 .tcat-lbl{color:var(--text3);font-size:4px;padding:3px 6px 1px;letter-spacing:1px}
 .titems{display:flex;align-items:center;padding:0 4px;gap:2px;flex:1}
@@ -273,7 +277,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.8.0 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.8.1 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -309,7 +313,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
     <span id="tutText" style="font-size:5px;color:var(--amber);line-height:1.8;flex:1"></span>
     <button onclick="skipTutorial()" style="font-family:var(--font);font-size:4px;padding:3px 7px;border:1px solid var(--amberDim);background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;margin-left:10px">SKIP</button>
   </div>
-  <div id="toolbar"></div>
+  <div id="toolbarWrap"><div id="toolbar"></div></div>
 </div>
 
 <!-- Multi-select action bar — fixed, outside canvas touch zone -->
@@ -419,7 +423,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.8.0';
+const VER      = '0.8.1';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -2404,6 +2408,11 @@ function buildToolbar(){
     }).join('');
     return `<div class="tcat"><div class="tcat-lbl">${cat.label}</div><div class="titems">${items}</div></div>`;
   }).join('');
+  // Hide scroll hint arrow once user has scrolled toolbar
+  el.addEventListener('scroll',()=>{
+    const wrap=document.getElementById('toolbarWrap');
+    if(wrap&&el.scrollLeft>10) wrap.classList.add('scrolled');
+  },{once:false,passive:true});
 }
 
 function setTool(id){
@@ -3792,7 +3801,7 @@ const TUTORIAL_STEPS=[
   {id:3,  text:'Open 🔨 Craft in the toolbar. Smelt your Iron Ore into Iron Plates (costs 2 ore each).', done:()=>(G.inv.iron_plate||0)>=3},
   {id:4,  text:'Great! Now craft some Iron Gears (costs 2 Iron Plates). You need these to build machines.', done:()=>(G.inv.iron_gear||0)>=2},
   {id:5,  text:'Open 🔨 Craft → BUILD MACHINES. Build a Burner Generator (needs 5 Stone + 2 Iron Plate).', done:()=>(G.crafted?.burner||0)>=1||Object.values(G.machines).some(m=>m.type==='burner')},
-  {id:6,  text:'Place the Burner Generator from the Extract toolbar. Then tap it with Select ☝️ and feed it coal so it can generate power.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
+  {id:6,  text:'Place the Burner Generator from the Extract toolbar. Swipe the toolbar → to find it, then tap to select and place. Then tap it with Select ☝️ and feed it coal so it can generate power.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
   {id:7,  text:'Power is on! Now build a Miner and place it on a COAL deposit. The miner needs power to run, and will auto-mine coal for you.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='coal')},
   {id:8,  text:'Now use an 🦾 Inserter to move coal from your Miner to the Burner. Place the inserter between them, pointing TOWARD the Burner.', done:()=>{const hasInserter=Object.values(G.machines).some(m=>m.type==='inserter');const b=Object.values(G.machines).find(m=>m.type==='burner');return hasInserter&&b&&((b.inBuf.coal||0)>=1||b.produced>0);} },
   {id:9,  text:'Coal is flowing to your Burner automatically! Now place a Miner on an Iron Ore deposit to mine iron.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='iron_ore')},
