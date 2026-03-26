@@ -277,7 +277,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.8.4 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.8.5 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -423,7 +423,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.8.4';
+const VER      = '0.8.5';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -2164,16 +2164,48 @@ function runBelts(){
     const m=G.machines[tile.mid]; if(!m)continue;
     if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
 
-    // Tunnel: teleport items to exit
-    if(m.type==='tunnel'&&m.tunnelId!==null){
-      const exit=G.machines[m.tunnelId];
-      if(exit&&tile.items.length>0){
-        const arrived=tile.items.filter(it=>it.prog>=1);
-        if(arrived.length){
-          tile.items=tile.items.filter(it=>it.prog<1);
-          const exTile=G.map[exit.y][exit.x];
-          for(const it of arrived){it.prog=0;exTile.items.push(it);}
+    // Tunnel: entrance teleports to exit; exit passes items forward like a belt
+    if(m.type==='tunnel'){
+      const[dvx,dvy]=D_VEC[m.dir];
+      if(m.tunnelId!==null){
+        const partner=G.machines[m.tunnelId];
+        if(partner){
+          // Entrance: partner is ahead of us in our direction
+          // Exit: partner is behind us
+          const isEntrance=(partner.x===m.x+dvx||(partner.x-m.x)*dvx>0)||
+                           (partner.y===m.y+dvy||(partner.y-m.y)*dvy>0);
+          // Simpler: entrance is whichever tile has the partner further in its facing direction
+          const distForward=(partner.x-m.x)*dvx+(partner.y-m.y)*dvy;
+          if(distForward>0){
+            // This is the ENTRANCE — teleport arrived items to partner
+            const arrived=tile.items.filter(it=>it.prog>=1);
+            if(arrived.length){
+              tile.items=tile.items.filter(it=>it.prog<1);
+              const exTile=G.map[partner.y][partner.x];
+              for(const it of arrived){it.prog=0;exTile.items.push(it);}
+            }
+            continue;
+          }
+          // This is the EXIT — fall through to normal belt-forward logic below
         }
+      }
+      // Unlinked tunnel or exit tile: pass items forward like a belt
+      const arrived=tile.items.filter(it=>it.prog>=1);
+      if(!arrived.length)continue;
+      tile.items=tile.items.filter(it=>it.prog<1);
+      const nx=tx+dvx,ny=ty+dvy;
+      if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
+        for(const it of arrived){it.prog=0.99;tile.items.push(it);}
+        continue;
+      }
+      const next=G.map[ny][nx];
+      for(const it of arrived){
+        if(next.mid!==null){
+          const nm=G.machines[next.mid];
+          if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
+            it.prog=0;next.items.push(it);
+          } else {it.prog=0.99;tile.items.push(it);}
+        } else {it.prog=0.99;tile.items.push(it);}
       }
       continue;
     }
