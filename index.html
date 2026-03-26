@@ -277,7 +277,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.8.1 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.8.3 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -423,7 +423,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.8.1';
+const VER      = '0.8.3';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -702,7 +702,7 @@ const MDEFS = {
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
   belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
-  splitter:       {name:'Splitter',         icon:'⑂',  size:[1,1], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits belt output left and right alternately'},
+  splitter:       {name:'Splitter',         icon:'⑂',  size:[1,2], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits one belt lane into two. 1×2 block — input left, two outputs right'},
   tunnel:         {name:'Belt Tunnel',      icon:'⏬', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
   inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines'},
   chest:          {name:'Chest',            icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                                   unlock:null,          recipes:[], desc:'Stores up to 200 items'},
@@ -1341,29 +1341,60 @@ function draw(){
     }
   }
 
-  // Splitters
+  // Splitters — 1×2, draws a Y-split lane sprite
   for(const[id,m]of Object.entries(G.machines)){
     if(m.type!=='splitter')continue;
+    const[mw,mh]=MDEFS.splitter.size; // [1,2]
     const px=m.x*ts-cx, py=m.y*ts-cy;
-    if(px+ts<0||py+ts<0||px>W||py>H)continue;
-    ctx.fillStyle='#141414'; ctx.fillRect(px,py,ts,ts);
-    ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=1.5; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
-    if(ts>14){
-      ctx.fillStyle=MACH_COL.splitter; ctx.font=`${Math.floor(ts*.38)}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('⑂',px+ts/2,py+ts/2);
-    }
-    // Draw Y-split arrows
-    if(ts>20){
+    const pw=mw*ts, ph=mh*ts;
+    if(px+pw<0||py+ph<0||px>W||py>H)continue;
+
+    // Background
+    ctx.fillStyle='#141414'; ctx.fillRect(px,py,pw,ph);
+    ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=1.5;
+    ctx.strokeRect(px+1,py+1,pw-2,ph-2);
+
+    if(ts>12){
       const[dvx,dvy]=D_VEC[m.dir];
-      ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=1; ctx.globalAlpha=.6;
-      // Forward arrow
-      ctx.beginPath(); ctx.moveTo(px+ts/2,py+ts/2); ctx.lineTo(px+ts/2+dvx*ts*.3,py+ts/2+dvy*ts*.3); ctx.stroke();
-      // Left branch
-      ctx.beginPath(); ctx.moveTo(px+ts/2,py+ts/2); ctx.lineTo(px+ts/2+dvy*ts*.25,py+ts/2-dvx*ts*.25); ctx.stroke();
-      // Right branch
-      ctx.beginPath(); ctx.moveTo(px+ts/2,py+ts/2); ctx.lineTo(px+ts/2-dvy*ts*.25,py+ts/2+dvx*ts*.25); ctx.stroke();
-      ctx.globalAlpha=1;
+      // Two cells: origin (m.x,m.y) and second (m.x, m.y+1) — fixed, always below
+      const c1x=px+ts/2, c1y=py+ts/2;           // centre of top cell
+      const c2x=px+ts/2, c2y=py+ts*1.5;         // centre of bottom cell
+      const midX=(c1x+c2x)/2, midY=(c1y+c2y)/2; // midpoint between cells
+      const lw=Math.max(1.5,ts*.07);
+
+      // Input: comes from behind, enters mid-point of input face
+      const inX=midX-dvx*ts*.4, inY=midY-dvy*ts*.4;
+      // Two outputs: one from each cell, exits front face
+      const oAX=c1x+dvx*ts*.4, oAY=c1y+dvy*ts*.4;
+      const oBX=c2x+dvx*ts*.4, oBY=c2y+dvy*ts*.4;
+
+      ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=lw;
+      // Input stem
+      ctx.beginPath(); ctx.moveTo(inX,inY); ctx.lineTo(midX,midY); ctx.stroke();
+      // Fork A
+      ctx.beginPath(); ctx.moveTo(midX,midY); ctx.lineTo(oAX,oAY); ctx.stroke();
+      // Fork B
+      ctx.beginPath(); ctx.moveTo(midX,midY); ctx.lineTo(oBX,oBY); ctx.stroke();
+
+      // Arrow heads
+      const hl=Math.max(3,ts*.1);
+      function arrowHead(ex,ey,sx,sy){
+        const ang=Math.atan2(ey-sy,ex-sx);
+        ctx.beginPath();
+        ctx.moveTo(ex,ey);
+        ctx.lineTo(ex-Math.cos(ang-0.4)*hl,ey-Math.sin(ang-0.4)*hl);
+        ctx.lineTo(ex-Math.cos(ang+0.4)*hl,ey-Math.sin(ang+0.4)*hl);
+        ctx.closePath(); ctx.fillStyle=MACH_COL.splitter; ctx.fill();
+      }
+      arrowHead(oAX,oAY,midX,midY);
+      arrowHead(oBX,oBY,midX,midY);
+      arrowHead(midX,midY,inX,inY);
+
+      if(ts<20){
+        ctx.fillStyle=MACH_COL.splitter; ctx.font=`${Math.floor(ts*.45)}px sans-serif`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('÷',midX,midY);
+      }
     }
   }
 
@@ -2152,28 +2183,28 @@ function runBelts(){
     tile.items=tile.items.filter(it=>it.prog<1);
     const[dvx,dvy]=D_VEC[m.dir];
 
-    // Splitter: alternate outputs
+    // Splitter: 1×2 body (always 1 wide, 2 tall)
+    // Only process from the origin tile to avoid double-routing
     if(m.type==='splitter'){
-      const fx=tx+dvx,fy=ty+dvy;                 // forward
-      const lx=tx+dvy, ly=ty-dvx;                // left (CCW 90°)
-      const rx=tx-dvy, ry=ty+dvx;                // right (CW 90°)
+      if(tx!==m.x||ty!==m.y)continue; // only origin tile routes
+      // Two fixed output tiles — directly in front of each row (dvx,dvy set above)
+      const outA={x:m.x+dvx, y:m.y+dvy};       // front of top cell
+      const outB={x:m.x+dvx, y:m.y+dvy+1};     // front of bottom cell
+
       for(const it of arrived){
-        m.splitSide=(m.splitSide||0);
-        // Alternate between left and right; fall back to forward
-        const side=m.splitSide%2;
-        m.splitSide++;
-        const sideA=side===0?{x:lx,y:ly}:{x:rx,y:ry};
-        const sideB=side===0?{x:rx,y:ry}:{x:lx,y:ly};
+        const side=(m.splitSide||0)%2;
+        m.splitSide=(m.splitSide||0)+1;
+        const first=side===0?outA:outB, second=side===0?outB:outA;
         let placed=false;
-        for(const dest of [sideA,sideB,{x:fx,y:fy}]){
+        for(const dest of [first,second]){
           if(dest.x<0||dest.y<0||dest.x>=MAP_W||dest.y>=MAP_H)continue;
           const nt=G.map[dest.y][dest.x]; if(nt.mid===null)continue;
           const nm=G.machines[nt.mid];
-          if(nm&&(nm.type==='belt'||nm.type==='splitter')&&nt.items.length<4){
-            it.prog=0;nt.items.push(it);placed=true;break;
+          if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&nt.items.length<4){
+            it.prog=0; nt.items.push(it); placed=true; break;
           }
         }
-        if(!placed){it.prog=0.99;tile.items.push(it);}
+        if(!placed){it.prog=0.99; tile.items.push(it);}
       }
       continue;
     }
