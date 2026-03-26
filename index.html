@@ -277,7 +277,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.8.3 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.8.4 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -423,7 +423,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.8.3';
+const VER      = '0.8.4';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -2315,6 +2315,14 @@ function runInserter(m){
   if(src.mid!==null){
     const sm=G.machines[src.mid];
     if(sm&&sm.type==='belt'){
+      const ready=src.items.filter(it=>it.prog>=0.9);
+      if(ready.length>0){
+        const it=ready[0];
+        src.items.splice(src.items.indexOf(it),1);
+        item=it.id;
+      }
+    } else if(sm&&sm.type==='tunnel'){
+      // Inserters can grab items off tunnel exit tiles (items sit here waiting)
       const ready=src.items.filter(it=>it.prog>=0.9);
       if(ready.length>0){
         const it=ready[0];
