@@ -277,7 +277,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.8.5 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.8.6 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -423,7 +423,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.8.5';
+const VER      = '0.8.6';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -1646,9 +1646,8 @@ function handleTap(tile,isLong){
     if(t.mid!==null){
       const m=G.machines[t.mid];
       if(m){
-        m.dir=(m.dir+1)%4;
+        rotateM(m.id);
         sfx('place');
-        toast(`${MDEFS[m.type]?.name} → ${D_ARR[m.dir]}`,'ok');
         if(openPanel==='machine'&&inspectId===m.id)renderMachPanel();
       }
     } else {
@@ -2170,43 +2169,39 @@ function runBelts(){
       if(m.tunnelId!==null){
         const partner=G.machines[m.tunnelId];
         if(partner){
-          // Entrance: partner is ahead of us in our direction
-          // Exit: partner is behind us
-          const isEntrance=(partner.x===m.x+dvx||(partner.x-m.x)*dvx>0)||
-                           (partner.y===m.y+dvy||(partner.y-m.y)*dvy>0);
-          // Simpler: entrance is whichever tile has the partner further in its facing direction
           const distForward=(partner.x-m.x)*dvx+(partner.y-m.y)*dvy;
           if(distForward>0){
-            // This is the ENTRANCE — teleport arrived items to partner
-            const arrived=tile.items.filter(it=>it.prog>=1);
-            if(arrived.length){
+            // ENTRANCE — teleport arrived items to exit tile
+            const arr=tile.items.filter(it=>it.prog>=1);
+            if(arr.length){
               tile.items=tile.items.filter(it=>it.prog<1);
               const exTile=G.map[partner.y][partner.x];
-              for(const it of arrived){it.prog=0;exTile.items.push(it);}
+              for(const it of arr){it.prog=0;exTile.items.push(it);}
             }
             continue;
           }
-          // This is the EXIT — fall through to normal belt-forward logic below
+          // EXIT — pass forward; back-pressure if blocked (so inserter can grab)
+          const arr=tile.items.filter(it=>it.prog>=1);
+          if(!arr.length)continue;
+          const nx=tx+dvx,ny=ty+dvy;
+          tile.items=tile.items.filter(it=>it.prog<1);
+          if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
+            for(const it of arr){it.prog=0.99;tile.items.push(it);}
+            continue;
+          }
+          const next=G.map[ny][nx];
+          for(const it of arr){
+            if(next.mid!==null){
+              const nm=G.machines[next.mid];
+              if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
+                it.prog=0;next.items.push(it);
+              } else {it.prog=0.99;tile.items.push(it);}
+            } else {it.prog=0.99;tile.items.push(it);}
+          }
+          continue;
         }
       }
-      // Unlinked tunnel or exit tile: pass items forward like a belt
-      const arrived=tile.items.filter(it=>it.prog>=1);
-      if(!arrived.length)continue;
-      tile.items=tile.items.filter(it=>it.prog<1);
-      const nx=tx+dvx,ny=ty+dvy;
-      if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
-        for(const it of arrived){it.prog=0.99;tile.items.push(it);}
-        continue;
-      }
-      const next=G.map[ny][nx];
-      for(const it of arrived){
-        if(next.mid!==null){
-          const nm=G.machines[next.mid];
-          if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
-            it.prog=0;next.items.push(it);
-          } else {it.prog=0.99;tile.items.push(it);}
-        } else {it.prog=0.99;tile.items.push(it);}
-      }
+      // UNLINKED — stall all items, never pass through
       continue;
     }
 
@@ -3085,7 +3080,38 @@ function renderMachPanel(){
 function irow(lbl,val){return `<div class="irow"><span class="lbl">${lbl}</span><span>${val}</span></div>`}
 function setRecipe(id,rid){const m=G.machines[id];if(!m)return;m.recipe=rid||null;m.prog=0;renderMachPanel();}
 function toggleM(id){const m=G.machines[id];if(!m)return;m.active=!m.active;renderMachPanel();}
-function rotateM(id){const m=G.machines[id];if(!m)return;m.dir=(m.dir+1)%4;renderMachPanel();toast(`Direction: ${D_ARR[m.dir]}`,'ok');}
+function rotateM(id){
+  const m=G.machines[id];if(!m)return;
+  // If tunnel, unlink partner first
+  if(m.type==='tunnel'&&m.tunnelId!==null){
+    const partner=G.machines[m.tunnelId];
+    if(partner)partner.tunnelId=null;
+    m.tunnelId=null;
+  }
+  m.dir=(m.dir+1)%4;
+  // If tunnel, try to re-link with a partner in new direction
+  if(m.type==='tunnel'){
+    const[dvx,dvy]=D_VEC[m.dir];
+    // Search both forward and backward
+    for(const sign of [1,-1]){
+      for(let dist=1;dist<=5;dist++){
+        const lx=m.x+dvx*sign*dist, ly=m.y+dvy*sign*dist;
+        if(lx<0||ly<0||lx>=MAP_W||ly>=MAP_H)break;
+        const ltile=G.map[ly][lx];if(ltile.mid===null)continue;
+        const lm=G.machines[ltile.mid];
+        if(lm&&lm.type==='tunnel'&&lm.tunnelId===null&&lm.dir===m.dir){
+          m.tunnelId=lm.id; lm.tunnelId=m.id;
+          toast(`Tunnel linked! (${dist} tiles)`,'ok');
+          break;
+        }
+      }
+      if(m.tunnelId!==null)break;
+    }
+  }
+  renderMachPanel();
+  saveGame();
+  toast(`Direction: ${D_ARR[m.dir]}`,'ok');
+}
 
 function upgradeMachine(id){
   const m=G.machines[id]; if(!m)return;
@@ -3634,10 +3660,7 @@ function multiselDemolish(){
 }
 function multiselRotate(){
   const ms=multiselState; if(!ms.ids.length)return;
-  for(const id of ms.ids){
-    const m=G.machines[id]; if(!m)continue;
-    m.dir=(m.dir+1)%4;
-  }
+  for(const id of ms.ids) rotateM(id);
   saveGame(); sfx('place');
   toast(`Rotated ${ms.ids.length} machine${ms.ids.length>1?'s':''}`, 'ok');
 }
