@@ -277,7 +277,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.8.6 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.9.4 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -321,8 +321,16 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
   <span style="font-size:7px;color:#42a5f5;flex:1" id="multiselCount">0 selected</span>
   <button onclick="multiselStartMove()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer" id="multiselMoveBtn">✥ MOVE</button>
   <button onclick="multiselRotate()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid #42a5f5;background:transparent;color:#42a5f5;cursor:pointer">↻ ROTATE</button>
+  <button onclick="multiselCopy()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--amber);background:transparent;color:var(--amber);cursor:pointer" id="multiselCopyBtn">📋 COPY</button>
   <button onclick="multiselDemolish()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer">💥 DEMOLISH</button>
   <button onclick="multiselClear()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✕ CLEAR</button>
+</div>
+
+<!-- Ghost paste confirm bar — shown during blueprint holding and multisel pasting -->
+<div id="ghostBar" class="hidden" style="position:fixed;bottom:70px;left:0;right:0;background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:7px 12px;display:flex;align-items:center;gap:8px;z-index:600;pointer-events:all">
+  <span style="font-size:6px;color:var(--amber);flex:1" id="ghostBarLabel">Hover to position, then confirm</span>
+  <button onclick="ghostConfirm()" style="font-family:var(--font);font-size:6px;padding:6px 14px;border:2px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer">✓ PLACE</button>
+  <button onclick="ghostCancel()" style="font-family:var(--font);font-size:6px;padding:6px 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✗ CANCEL</button>
 </div>
 
 <!-- ══ PANELS ══ -->
@@ -423,7 +431,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.8.6';
+const VER      = '0.9.4';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -750,7 +758,7 @@ const TOOLBAR_DEF = [
     {id:'blueprint', name:'Blueprint', icon:'📐', noMachine:true},
   ]},
   {label:'Extract',    items:[{id:'miner',name:'Miner',icon:'⛏️'},{id:'burner',name:'Burner',icon:'🪵'},{id:'generator',name:'Generator',icon:'⚡'}]},
-  {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'⚱️'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'⚡'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
+  {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'⚱️'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'🌩️'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
   {label:'Logistics',  items:[{id:'belt',name:'Belt',icon:'➡️'},{id:'splitter',name:'Splitter',icon:'⑂'},{id:'tunnel',name:'Tunnel',icon:'⏬'},{id:'inserter',name:'Inserter',icon:'🦾'},{id:'chest',name:'Chest',icon:'📦'}]},
 ];
 
@@ -1280,6 +1288,19 @@ function draw(){
         ctx.fillText('T'+(m.tier||1),px+7,py+7);
       }
     }
+    // Module icons — bottom-right corner, one per installed module
+    if(ts>16&&m.modules&&m.modules.length>0){
+      const MODULE_ICONS={speed_module:'🔵',prod_module:'🟢',eff_module:'🔴'};
+      const iconSz=Math.max(8,Math.floor(ts*.22));
+      ctx.font=`${iconSz}px serif`;
+      ctx.textAlign='right'; ctx.textBaseline='bottom';
+      ctx.globalAlpha=0.9;
+      for(let mi=0;mi<m.modules.length;mi++){
+        const icon=MODULE_ICONS[m.modules[mi]]||'🔷';
+        ctx.fillText(icon, px+pw-2, py+ph-2-mi*(iconSz+1));
+      }
+      ctx.globalAlpha=1;
+    }
     // Input / output port arrows (only at reasonable zoom)
     if(ts>28) drawPorts(ctx,m.type,px,py,pw,ph,ts,m.dir);
   }
@@ -1342,53 +1363,45 @@ function draw(){
   }
 
   // Splitters — 1×2, draws a Y-split lane sprite
+  function splitterArrow(ctx2,ex,ey,sx,sy,hl){
+    const ang=Math.atan2(ey-sy,ex-sx);
+    ctx2.beginPath();
+    ctx2.moveTo(ex,ey);
+    ctx2.lineTo(ex-Math.cos(ang-0.4)*hl,ey-Math.sin(ang-0.4)*hl);
+    ctx2.lineTo(ex-Math.cos(ang+0.4)*hl,ey-Math.sin(ang+0.4)*hl);
+    ctx2.closePath(); ctx2.fillStyle=MACH_COL.splitter; ctx2.fill();
+  }
   for(const[id,m]of Object.entries(G.machines)){
     if(m.type!=='splitter')continue;
-    const[mw,mh]=MDEFS.splitter.size; // [1,2]
+    const[mw,mh]=machSize(m); // [1,2]
     const px=m.x*ts-cx, py=m.y*ts-cy;
     const pw=mw*ts, ph=mh*ts;
     if(px+pw<0||py+ph<0||px>W||py>H)continue;
 
-    // Background
     ctx.fillStyle='#141414'; ctx.fillRect(px,py,pw,ph);
     ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=1.5;
     ctx.strokeRect(px+1,py+1,pw-2,ph-2);
 
     if(ts>12){
       const[dvx,dvy]=D_VEC[m.dir];
-      // Two cells: origin (m.x,m.y) and second (m.x, m.y+1) — fixed, always below
-      const c1x=px+ts/2, c1y=py+ts/2;           // centre of top cell
-      const c2x=px+ts/2, c2y=py+ts*1.5;         // centre of bottom cell
-      const midX=(c1x+c2x)/2, midY=(c1y+c2y)/2; // midpoint between cells
+      // Two cells: origin (m.x,m.y) and second (m.x, m.y+1) — always below
+      const c1x=px+ts/2, c1y=py+ts/2;
+      const c2x=px+ts/2, c2y=py+ts*1.5;
+      const midX=(c1x+c2x)/2, midY=(c1y+c2y)/2;
       const lw=Math.max(1.5,ts*.07);
-
-      // Input: comes from behind, enters mid-point of input face
-      const inX=midX-dvx*ts*.4, inY=midY-dvy*ts*.4;
-      // Two outputs: one from each cell, exits front face
-      const oAX=c1x+dvx*ts*.4, oAY=c1y+dvy*ts*.4;
-      const oBX=c2x+dvx*ts*.4, oBY=c2y+dvy*ts*.4;
+      const hl=Math.max(3,ts*.1);
+      const reach=ts*.4;
+      const inX=midX-dvx*reach, inY=midY-dvy*reach;
+      const oAX=c1x+dvx*reach, oAY=c1y+dvy*reach;
+      const oBX=c2x+dvx*reach, oBY=c2y+dvy*reach;
 
       ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=lw;
-      // Input stem
       ctx.beginPath(); ctx.moveTo(inX,inY); ctx.lineTo(midX,midY); ctx.stroke();
-      // Fork A
       ctx.beginPath(); ctx.moveTo(midX,midY); ctx.lineTo(oAX,oAY); ctx.stroke();
-      // Fork B
       ctx.beginPath(); ctx.moveTo(midX,midY); ctx.lineTo(oBX,oBY); ctx.stroke();
-
-      // Arrow heads
-      const hl=Math.max(3,ts*.1);
-      function arrowHead(ex,ey,sx,sy){
-        const ang=Math.atan2(ey-sy,ex-sx);
-        ctx.beginPath();
-        ctx.moveTo(ex,ey);
-        ctx.lineTo(ex-Math.cos(ang-0.4)*hl,ey-Math.sin(ang-0.4)*hl);
-        ctx.lineTo(ex-Math.cos(ang+0.4)*hl,ey-Math.sin(ang+0.4)*hl);
-        ctx.closePath(); ctx.fillStyle=MACH_COL.splitter; ctx.fill();
-      }
-      arrowHead(oAX,oAY,midX,midY);
-      arrowHead(oBX,oBY,midX,midY);
-      arrowHead(midX,midY,inX,inY);
+      splitterArrow(ctx,oAX,oAY,midX,midY,hl);
+      splitterArrow(ctx,oBX,oBY,midX,midY,hl);
+      splitterArrow(ctx,midX,midY,inX,inY,hl);
 
       if(ts<20){
         ctx.fillStyle=MACH_COL.splitter; ctx.font=`${Math.floor(ts*.45)}px sans-serif`;
@@ -1425,9 +1438,9 @@ function draw(){
   if(activeTool==='move'&&moveState.active&&hov.x>=0){
     const m=G.machines[moveState.machineId];
     if(m){
-      const def=MDEFS[m.type]; const[mw,mh]=def.size;
+      const def=MDEFS[m.type]; const[mw,mh]=machSize(m);
       const px=hov.x*ts-cx, py=hov.y*ts-cy;
-      const ok=canPlace(m.type,hov.x,hov.y);
+      const ok=canPlace(m.type,hov.x,hov.y,m.dir);
       ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.14)';
       ctx.fillRect(px,py,mw*ts,mh*ts);
       ctx.strokeStyle=ok?'#f5a623':'#e53935';
@@ -1441,7 +1454,7 @@ function draw(){
   } else if(activeTool!=='select'&&activeTool!=='demolish'&&activeTool!=='move'&&hov.x>=0){
     const def=MDEFS[activeTool];
     if(def){
-      const[mw,mh]=def.size;
+      const[mw,mh]=machSize(activeTool,placeDir);
       const px=hov.x*ts-cx, py=hov.y*ts-cy;
       const ok=canPlace(activeTool,hov.x,hov.y);
       ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.14)';
@@ -1459,7 +1472,7 @@ function draw(){
       const pw=(Math.abs(hov.x-ms.x1)+1)*ts, ph=(Math.abs(hov.y-ms.y1)+1)*ts;
       ctx.fillStyle='rgba(66,165,245,.1)'; ctx.fillRect(px1,py1,pw,ph);
       ctx.strokeStyle='#42a5f5'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.strokeRect(px1,py1,pw,ph); ctx.setLineDash([]);
-    } else if(ms.mode==='selected'||ms.mode==='moving'){
+    } else if(ms.mode==='selected'||ms.mode==='moving'||ms.mode==='pasting'){
       // Highlight selected machines
       for(const id of ms.ids){
         const m=G.machines[id]; if(!m)continue;
@@ -1473,7 +1486,7 @@ function draw(){
         const dx=hov.x-ms.anchorX, dy=hov.y-ms.anchorY;
         for(const id of ms.ids){
           const m=G.machines[id]; if(!m)continue;
-          const def=MDEFS[m.type]; const[mw,mh]=def.size;
+          const def=MDEFS[m.type]; const[mw,mh]=machSize(m);
           const px=(m.x+dx)*ts-cx, py=(m.y+dy)*ts-cy;
           ctx.fillStyle='rgba(38,198,160,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
           ctx.strokeStyle='#26c6a0'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
@@ -1484,9 +1497,26 @@ function draw(){
           }
         }
       }
+      // Ghost preview for paste destination
+      if(ms.mode==='pasting'&&ms.clipboard.length){
+        const gx=ms.pasteAnchor?ms.pasteAnchor.x:hov.x;
+        const gy=ms.pasteAnchor?ms.pasteAnchor.y:hov.y;
+        if(gx>=0&&gy>=0) for(const e of ms.clipboard){
+          const def=MDEFS[e.type]; if(!def)continue;
+          const[mw,mh]=machSize(e.type,e.dir);
+          const px=(gx+e.rx)*ts-cx, py=(gy+e.ry)*ts-cy;
+          const ok=canPlace(e.type,gx+e.rx,gy+e.ry);
+          ctx.fillStyle=ok?'rgba(245,166,35,.12)':'rgba(229,57,53,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
+          ctx.strokeStyle=ok?'#f5a623':'#e53935'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
+          if(ts>12){
+            ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.globalAlpha=.5; ctx.fillText(def.icon,px+mw*ts/2,py+mh*ts/2); ctx.globalAlpha=1;
+          }
+        }
+      }
     }
   }
-  // Blueprint selection / paste preview
   if(activeTool==='blueprint'){
     const bp=blueprintState;
     if(bp.mode==='selecting'){
@@ -1535,7 +1565,7 @@ let mineHold={active:false,tx:0,ty:0,startTime:0};
 let moveState={active:false,machineId:null,origX:0,origY:0};
 // Blueprint tool state
 let blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
-let multiselState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[]};
+let multiselState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[],clipboard:[]};
 
 function wrapRect(){return document.getElementById('wrap').getBoundingClientRect()}
 function scrToTile(sx,sy){const ts=TILE*G.cam.zoom;return{x:Math.floor((sx+G.cam.x)/ts),y:Math.floor((sy+G.cam.y)/ts)}}
@@ -1753,6 +1783,10 @@ function handleTap(tile,isLong){
       if(btn){btn.style.background='transparent';btn.textContent='✥ MOVE';}
       saveGame(); sfx('place');
       toast(`Moved ${ms.ids.length} machine${ms.ids.length>1?'s':''}`, 'ok');
+    } else if(ms.mode==='pasting'){
+      // Tap locks the paste anchor to this tile position
+      ms.pasteAnchor={x,y};
+      toast('Position set — hit ✓ PLACE to confirm','ok');
     }
     return;
   }
@@ -1789,8 +1823,8 @@ function handleTap(tile,isLong){
       );
       setTimeout(()=>{const i=document.getElementById('bpNameInput');if(i){i.focus();i.select();}},100);
     } else if(bp.mode==='holding'){
-      // Tap to place blueprint at this location — deducts materials
-      pasteBlueprintAt(bp.data, x, y);
+      // Tap just repositions the ghost — confirm button does the actual place
+      // (ghost already follows hov in draw(), so nothing needed here)
     }
     return;
   }
@@ -1824,9 +1858,18 @@ function closeResInfo(){
 // ═══════════════════════════════════════════════════
 //  PLACEMENT
 // ═══════════════════════════════════════════════════
-function canPlace(type,tx,ty){
-  if(!MDEFS[type])return false;
+// Returns effective [w,h] for a machine given its direction.
+// Splitter is 1×2 when vertical (D_DOWN/D_UP) and 2×1 when horizontal (D_RIGHT/D_LEFT).
+function machSize(typeOrM, dir){
+  const type = typeof typeOrM==='string' ? typeOrM : typeOrM.type;
   const[mw,mh]=MDEFS[type].size;
+  return [mw,mh];
+}
+
+function canPlace(type,tx,ty,dir){
+  if(!MDEFS[type])return false;
+  const d=(dir!==undefined)?dir:placeDir;
+  const[mw,mh]=machSize(type,d);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
     const nx=tx+dx,ny=ty+dy;
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
@@ -1897,7 +1940,7 @@ function tryPlace(type,tx,ty){
   }
   G.machines[m.id]=m;
 
-  const[mw,mh]=def.size;
+  const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
     G.map[ty+dy][tx+dx].mid=m.id;
 
@@ -1935,7 +1978,7 @@ function completePlacement(type,tx,ty){
     }
   }
   G.machines[m.id]=m;
-  const[mw,mh]=def.size;
+  const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++) G.map[ty+dy][tx+dx].mid=m.id;
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
@@ -1945,7 +1988,7 @@ function tryRemove(tx,ty){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
   const m=G.machines[mid]; if(!m)return;
   const def=MDEFS[m.type];
-  const[mw,mh]=def.size;
+  const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
     G.map[m.y+dy][m.x+dx].mid=null;
   // Full refund
@@ -2210,13 +2253,11 @@ function runBelts(){
     tile.items=tile.items.filter(it=>it.prog<1);
     const[dvx,dvy]=D_VEC[m.dir];
 
-    // Splitter: 1×2 body (always 1 wide, 2 tall)
-    // Only process from the origin tile to avoid double-routing
+    // Splitter: 1×2, second cell always at (m.x, m.y+1)
     if(m.type==='splitter'){
       if(tx!==m.x||ty!==m.y)continue; // only origin tile routes
-      // Two fixed output tiles — directly in front of each row (dvx,dvy set above)
-      const outA={x:m.x+dvx, y:m.y+dvy};       // front of top cell
-      const outB={x:m.x+dvx, y:m.y+dvy+1};     // front of bottom cell
+      const outA={x:m.x+dvx, y:m.y+dvy};
+      const outB={x:m.x+dvx, y:m.y+dvy+1};
 
       for(const it of arrived){
         const side=(m.splitSide||0)%2;
@@ -2290,13 +2331,13 @@ function runInserter(m){
       // Now actually deposit — if destination belt is full, retry next tick (hold item)
       if(dst.mid!==null){
         const dm=G.machines[dst.mid];
-        if(dm&&dm.type==='belt'){
+        if(dm&&(dm.type==='belt'||dm.type==='tunnel')){
           if(dst.items.length<4){
             dst.items.push({id:p.item,prog:0});
             m._pending.splice(i,1);
             m.lastTransferMs=performance.now(); // trigger swing animation on success
           }
-          // else: belt full — keep pending, arm holds still
+          // else: belt/tunnel full — keep pending, arm holds still
         } else if(dm&&dm.type==='chest'){
           const chestTotal=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
           if(chestTotal<200){
@@ -2332,10 +2373,10 @@ function runInserter(m){
   const dm=G.machines[dst.mid];
   if(!dm)return;
   // Can't deposit into the output face of a machine
-  if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&isOutputFacing(dm,dvx,dvy))return;
+  if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return;
   if(dm.type==='chest'&&isOutputFacing(dm,dvx,dvy))return;
-  // Belt full — wait
-  if(dm.type==='belt'&&dst.items.length>=4)return;
+  // Belt/tunnel full — wait
+  if((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4)return;
 
   // ── Grab one item from source ──
   let item=null;
@@ -2482,6 +2523,13 @@ function buildToolbar(){
 }
 
 function setTool(id){
+  // If switching away from multisel, clear selection (but preserve clipboard)
+  if(activeTool==='multisel'&&id!=='multisel'){
+    multiselState.mode='idle'; multiselState.ids=[];
+    multiselState.pasteAnchor=null;
+    document.getElementById('multiselBar')?.classList.add('hidden');
+    document.getElementById('ghostBar')?.classList.add('hidden');
+  }
   if(id==='craft'){togglePanel('craft');return;}
   if(id==='rotate'){
     activeTool='rotate'; closeResInfo(); buildToolbar();
@@ -3001,8 +3049,8 @@ function renderMachPanel(){
     html+=`</div>`;
   }
 
-  // Rotate
-  if(m.type==='belt'||m.type==='inserter'||m.type==='splitter'||m.type==='tunnel')
+  // Rotate (splitter rotation not yet supported)
+  if(m.type==='belt'||m.type==='inserter'||m.type==='tunnel')
     html+=`<button class="full-btn teal" onclick="rotateM(${m.id})">↻ ROTATE  ${D_ARR[m.dir]}</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
@@ -3088,6 +3136,8 @@ function rotateM(id){
     if(partner)partner.tunnelId=null;
     m.tunnelId=null;
   }
+  // Splitter rotation not supported yet — see roadmap
+  if(m.type==='splitter'){toast('Splitter rotation coming soon','wrn');return;}
   m.dir=(m.dir+1)%4;
   // If tunnel, try to re-link with a partner in new direction
   if(m.type==='tunnel'){
@@ -3191,12 +3241,14 @@ function startPasteBlueprint(idx){
   blueprintState={mode:'holding',x1:0,y1:0,x2:0,y2:0,data:[...b.data]};
   closePanel('blueprint');
   setTool('blueprint');
-  toast('Tap map to place blueprint','ok');
+  const lbl=document.getElementById('ghostBarLabel');
+  if(lbl) lbl.textContent=`${b.data.length} machine${b.data.length!==1?'s':''} — position then ✓ PLACE`;
+  document.getElementById('ghostBar')?.classList.remove('hidden');
 }
 function pasteBlueprintAt(data,x,y){
   const canPlace2=data.every(e=>{
     const def=MDEFS[e.type]; if(!def)return false;
-    const[mw,mh]=def.size;
+    const[mw,mh]=machSize(e.type,e.dir);
     for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
       const nx=x+e.rx+dx,ny=y+e.ry+dy;
       if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
@@ -3214,12 +3266,13 @@ function pasteBlueprintAt(data,x,y){
     m.recipe=e.recipe; m.tier=e.tier||1;
     if(e.type==='miner')m.mineRes=G.map[y+e.ry][x+e.rx].res||null;
     G.machines[m.id]=m;
-    const[mw,mh]=def.size;
+    const[mw,mh]=machSize(m);
     for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
       G.map[y+e.ry+dy][x+e.rx+dx].mid=m.id;
     G.stats.placed++;
   }
   blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
+  document.getElementById('ghostBar')?.classList.add('hidden');
   updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${data.length} machine${data.length!==1?'s':''}!`,'ok');
 }
@@ -3248,7 +3301,7 @@ function renderBlueprintPanel(){
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};renderBlueprintPanel()">CANCEL</button>`;
   } else if(bp.mode==='holding'){
     html+=`<div style="font-size:6px;color:var(--amber);padding:7px;border:1px solid var(--amberDim);margin-bottom:8px">Tap the map to place blueprint</div>
-    <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};setTool('select');renderBlueprintPanel()">CANCEL PASTE</button>`;
+    <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};document.getElementById('ghostBar')?.classList.add('hidden');setTool('select');renderBlueprintPanel()">CANCEL PASTE</button>`;
   }
 
   html+=`<span class="sec-label">SAVED BLUEPRINTS (${bps.length}/8)</span>`;
@@ -3602,36 +3655,6 @@ function renderStatsPanel(){
     }
   }
 
-  // Production rates
-  const ratable=producers.filter(m=>m.active&&m.recipe&&m.type!=='generator');
-  const miners=machines.filter(m=>m.type==='miner'&&m.active&&m.mineRes);
-  if(ratable.length||miners.length){
-    html+=`<div style="margin-top:12px"><span class="sec-label">PRODUCTION RATES</span>`;
-    const rateRow=(icon,label,sub,rate)=>{
-      const col=rate===0?'var(--text3)':rate<2?'var(--amber)':'var(--green)';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:5px;padding:5px 0;border-bottom:1px solid var(--border)">
-        <div><span style="color:var(--text2)">${icon} ${label}</span><span style="color:var(--text3);display:block;margin-top:1px">${sub}</span></div>
-        <span style="color:${col};flex-shrink:0;margin-left:8px">${rate}/min</span>
-      </div>`;
-    };
-    for(const m of miners){
-      html+=rateRow('⛏️','Miner',ITEMS[m.mineRes]?.name||m.mineRes,itemsPerMin(m));
-    }
-    for(const m of ratable){
-      const def=MDEFS[m.type];
-      const rec=RECIPES[m.recipe];
-      const outName=rec?Object.keys(rec.out).map(k=>ITEMS[k]?.name||k).join(', '):'?';
-      html+=rateRow(def.icon,def.name,outName,itemsPerMin(m));
-    }
-    html+=`</div>`;
-  }
-
-  if(paused.length){
-    html+=`<div style="margin-top:10px;font-size:5px;color:var(--text3);padding:6px;border:1px solid var(--border)">
-      ⏸ ${paused.length} machine${paused.length>1?'s':''} paused
-    </div>`;
-  }
-
   el.innerHTML=html;
 }
 
@@ -3665,8 +3688,90 @@ function multiselRotate(){
   toast(`Rotated ${ms.ids.length} machine${ms.ids.length>1?'s':''}`, 'ok');
 }
 function multiselClear(){
-  multiselState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[]};
+  multiselState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[],clipboard:multiselState.clipboard,pasteAnchor:null};
   document.getElementById('multiselBar')?.classList.add('hidden');
+  document.getElementById('ghostBar')?.classList.add('hidden');
+  setTool('select');
+}
+function multiselCopy(){
+  const ms=multiselState; if(!ms.ids.length)return;
+  const machines=ms.ids.map(id=>G.machines[id]).filter(Boolean);
+  const minX=Math.min(...machines.map(m=>m.x));
+  const minY=Math.min(...machines.map(m=>m.y));
+  ms.clipboard=machines.map(m=>({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1}));
+  sfx('craft');
+  // Auto-enter paste mode immediately
+  multiselStartPaste();
+}
+function multiselStartPaste(){
+  const ms=multiselState;
+  if(!ms.clipboard||!ms.clipboard.length){toast('Nothing copied yet','wrn');return;}
+  ms.mode='pasting';
+  ms.pasteAnchor=null;
+  const cnt=document.getElementById('multiselCount');
+  if(cnt) cnt.textContent='Position ghost then ✓ PLACE';
+  const lbl=document.getElementById('ghostBarLabel');
+  if(lbl) lbl.textContent=`${ms.clipboard.length} machine${ms.clipboard.length!==1?'s':''} — tap map to position, ✓ PLACE to stamp`;
+  document.getElementById('ghostBar')?.classList.remove('hidden');
+}
+function ghostConfirm(){
+  // Called by the ✓ PLACE button — commit the ghost at current hover position
+  if(hov.x<0&&!multiselState.pasteAnchor&&!blueprintState.hovX){toast('Position the ghost on the map first','wrn');return;}
+  const bp=blueprintState;
+  const ms=multiselState;
+  if(bp.mode==='holding'){
+    const x=hov.x, y=hov.y;
+    if(x<0||y<0){toast('Position the ghost on the map first','wrn');return;}
+    pasteBlueprintAt(bp.data, x, y);
+  } else if(ms.mode==='pasting'){
+    const anchor=ms.pasteAnchor||(hov.x>=0?{x:hov.x,y:hov.y}:null);
+    if(!anchor){toast('Tap the map to set position first','wrn');return;}
+    const x=anchor.x, y=anchor.y;
+    const data=ms.clipboard;
+    const canPlace2=data.every(e=>{
+      const def=MDEFS[e.type]; if(!def)return false;
+      const[mw,mh]=machSize(e.type,e.dir);
+      for(let dy2=0;dy2<mh;dy2++) for(let dx2=0;dx2<mw;dx2++){
+        const nx=x+e.rx+dx2, ny=y+e.ry+dy2;
+        if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
+        if(G.map[ny][nx].mid!==null)return false;
+      }
+      return true;
+    });
+    if(!canPlace2){toast('Cannot place here — tiles occupied','bad');sfx('error');return;}
+    if(!blueprintCanAfford(data)){
+      const missing=Object.entries(blueprintCost(data))
+        .filter(([k,v])=>(G.inv[k]||0)<v)
+        .map(([k,v])=>`${v-(G.inv[k]||0)}× ${ITEMS[k]?.name||k}`).join(', ');
+      toast(`Need: ${missing}`,'bad'); sfx('error'); return;
+    }
+    const costs=blueprintCost(data);
+    for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
+    for(const e of data){
+      const def=MDEFS[e.type]; if(!def||def.stub)continue;
+      const m=mkMachine(e.type,x+e.rx,y+e.ry,e.dir);
+      m.recipe=e.recipe; m.tier=e.tier||1;
+      if(e.type==='miner')m.mineRes=G.map[y+e.ry][x+e.rx].res||null;
+      G.machines[m.id]=m;
+      const[mw,mh]=machSize(m);
+      for(let dy2=0;dy2<mh;dy2++) for(let dx2=0;dx2<mw;dx2++)
+        G.map[y+e.ry+dy2][x+e.rx+dx2].mid=m.id;
+      G.stats.placed++;
+    }
+    ms.pasteAnchor=null; // clear anchor so ghost follows cursor again for next paste
+    updateHUD(); saveGame(); sfx('place');
+    toast(`Pasted ${data.length} machine${data.length!==1?'s':''}!`,'ok');
+    const lbl=document.getElementById('ghostBarLabel');
+    if(lbl) lbl.textContent=`${data.length} machine${data.length!==1?'s':''} — tap map to position, ✓ PLACE to stamp`;
+  }
+}
+function ghostCancel(){
+  blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
+  multiselState.mode='selected';
+  multiselState.pasteAnchor=null;
+  document.getElementById('ghostBar')?.classList.add('hidden');
+  const cnt=document.getElementById('multiselCount');
+  if(cnt&&multiselState.ids.length) cnt.textContent=multiselState.ids.length+' machine'+(multiselState.ids.length!==1?'s':'')+' selected';
   setTool('select');
 }
 function pauseAllMachines(){

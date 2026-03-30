@@ -5,7 +5,7 @@
 A factory automation game for mobile. Built as a single HTML file PWA.
 
 ## Play
-https://salvationbacon.github.io/8-Bit-Industry/
+https://[your-username].github.io/[your-repo-name]/
 
 ## Files
 | File | Purpose |
