@@ -308,7 +308,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v1.0.5 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v1.1.0 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
   </div>
 </div>
 
@@ -474,7 +474,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.0.5';
+const VER      = '1.1.0';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -703,6 +703,21 @@ const ITEMS = {
   r_computer:   {name:'Flight Computer',icon:'💾', cat:'rocket'},
   r_frame:      {name:'Struct. Frame',  icon:'🔩', cat:'rocket'},
   r_propellant: {name:'Coal Propellant',icon:'⛽', cat:'rocket'},
+  // Zone 2 — The Scar
+  crude_oil:    {name:'Crude Oil',      icon:'🛢️', cat:'raw'},
+  raw_fuel:     {name:'Raw Fuel',       icon:'🔶', cat:'processed'},
+  plastic:      {name:'Plastic',        icon:'🟫', cat:'processed'},
+  refined_fuel: {name:'Refined Fuel',   icon:'🔥', cat:'processed'},
+  polymer_sheet:{name:'Polymer Sheet',  icon:'🟪', cat:'processed'},
+  sci_scar:     {name:'Scar Notes',     icon:'📓', cat:'science'},
+  sci_smog:     {name:'Smog Data',      icon:'🌫️', cat:'science'},
+  sci_repair:   {name:'Repair Data',    icon:'🔧', cat:'science'},
+  r_hull:       {name:'Hull Patch',     icon:'🛡️', cat:'rocket2'},
+  r_engine_fix: {name:'Engine Fix',     icon:'⚙️', cat:'rocket2'},
+  r_nav:        {name:'Nav Computer',   icon:'🖥️', cat:'rocket2'},
+  r_tank:       {name:'Fuel Tank',      icon:'🗄️', cat:'rocket2'},
+  r_thruster:   {name:'Thruster',       icon:'🔩', cat:'rocket2'},
+  r_cell:       {name:'Power Cell',     icon:'🔋', cat:'rocket2'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -738,6 +753,22 @@ const RECIPES = {
   sci_r:      {name:'Field Notes',       machine:'lab', time:8,  in:{iron_gear:1,copper_wire:2},              out:{sci_red:1}},
   sci_g:      {name:'Circuit Diagrams',  machine:'lab', time:10, in:{circuit:1,iron_rod:2},                   out:{sci_green:1},  unlock:'logistics'},
   sci_b:      {name:'Adv. Schematics',   machine:'lab', time:15, in:{circuit:2,steel_plate:1,copper_wire:3},  out:{sci_blue:1},   unlock:'electronics'},
+  // Zone 2 — Oil chain
+  z2_crack:   {name:'Crack Oil',         machine:'cracker',  time:10, in:{crude_oil:3},                       out:{raw_fuel:2,plastic:1},  unlock:'oil_extraction'},
+  z2_refine:  {name:'Refine Fuel',       machine:'refinery', time:8,  in:{raw_fuel:2},                        out:{refined_fuel:1},        unlock:'oil_extraction'},
+  // Zone 2 — Plastic processing (assembler)
+  z2_polymer: {name:'Polymer Sheet',     machine:'assembler', time:6, in:{plastic:2,iron_plate:1},            out:{polymer_sheet:1},       unlock:'oil_extraction'},
+  // Zone 2 — Science packs
+  z2_sci_scar:{name:'Scar Notes',        machine:'lab', time:8,  in:{raw_fuel:1,iron_gear:1},                 out:{sci_scar:1}},
+  z2_sci_smog:{name:'Smog Data',         machine:'lab', time:10, in:{plastic:2,copper_wire:2},                out:{sci_smog:1},   unlock:'oil_extraction'},
+  z2_sci_rep: {name:'Repair Data',       machine:'lab', time:12, in:{refined_fuel:1,circuit:2},               out:{sci_repair:1}, unlock:'smog_control'},
+  // Zone 2 — Repair components
+  z2_hull:    {name:'Hull Patch',        machine:'assembler', time:20, in:{steel_plate:4,plastic:3},          out:{r_hull:1},      unlock:'repair_tech'},
+  z2_engine:  {name:'Engine Fix',        machine:'assembler', time:24, in:{refined_fuel:2,engine:1},          out:{r_engine_fix:1},unlock:'repair_tech'},
+  z2_nav:     {name:'Nav Computer',      machine:'assembler', time:20, in:{circuit:4,plastic:2},              out:{r_nav:1},       unlock:'repair_tech'},
+  z2_tank:    {name:'Fuel Tank',         machine:'assembler', time:24, in:{steel_plate:3,refined_fuel:3},     out:{r_tank:1},      unlock:'repair_tech'},
+  z2_thrust:  {name:'Thruster',          machine:'assembler', time:28, in:{engine:1,plastic:3},               out:{r_thruster:1},  unlock:'repair_tech'},
+  z2_cell:    {name:'Power Cell',        machine:'assembler', time:20, in:{circuit:3,refined_fuel:2},         out:{r_cell:1},      unlock:'repair_tech'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -748,8 +779,8 @@ const MDEFS = {
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter — needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter — 2× speed'},
   electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop'], desc:'No coal needed — runs on power. 3× speed. Makes propellant.'},
-  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame'], desc:'Crafts parts and components'},
-  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b'], desc:'Produces Field Notes and Circuit Diagrams'},
+  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell'], desc:'Crafts parts and components'},
+  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
   belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
@@ -757,6 +788,12 @@ const MDEFS = {
   tunnel:         {name:'Belt Tunnel',      icon:'⏬', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
   inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines'},
   chest:          {name:'Chest',            icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                                   unlock:null,          recipes:[], desc:'Stores up to 200 items'},
+  // Zone 2 machines
+  oil_pump:       {name:'Oil Pump',         icon:'🛢️', size:[2,2], power:8,   cost:{iron_plate:10,iron_gear:4,circuit:2},            unlock:'oil_extraction', recipes:[], desc:'Extracts crude oil from oil deposits. Generates smog.'},
+  cracker:        {name:'Cracker',          icon:'⚗️', size:[2,2], power:16,  cost:{iron_plate:12,iron_gear:6,circuit:4},            unlock:'oil_extraction', recipes:['z2_crack'], desc:'Cracks crude oil into raw fuel and plastic.'},
+  refinery:       {name:'Refinery',         icon:'🏭', size:[2,2], power:12,  cost:{iron_plate:14,iron_gear:6,circuit:4,steel_plate:4},unlock:'oil_extraction',recipes:['z2_refine'], desc:'Refines raw fuel into refined fuel.'},
+  combustion_gen: {name:'Combustion Gen.',  icon:'🔆', size:[2,2], power:-80, cost:{iron_plate:10,iron_gear:6,steel_plate:4},        unlock:'smog_control',   recipes:[], desc:'Burns refined fuel → 80kW power.'},
+  scrubber:       {name:'Scrubber',         icon:'🌿', size:[1,2], power:6,   cost:{iron_plate:8,iron_gear:4,circuit:2},             unlock:'smog_control',   recipes:[], desc:'Consumes refined fuel to remove smog. Stack for more effect.'},
 };
 
 // Hand-craft recipes — click to process raw materials into items
@@ -785,6 +822,7 @@ const HAND_CRAFTS = [
 const MACHINE_BUILDS = [
   'miner','stone_furnace','burner','generator','belt','splitter','tunnel','inserter','chest',
   'blast_furnace','electric_smelter','assembler','lab',
+  'oil_pump','cracker','refinery','combustion_gen','scrubber',
 ];
 // ═══════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════
@@ -810,6 +848,13 @@ const DRAWER_DEFS = {
       {id:'electric_smelter',name:'Elec. Smelt.',icon:'🌩️'},
       {id:'assembler',name:'Assembler',icon:'🏗️'},
       {id:'lab',name:'Lab',icon:'🔬'},
+    ]},
+    {label:'Oil', items:[
+      {id:'oil_pump',name:'Oil Pump',icon:'🛢️'},
+      {id:'cracker',name:'Cracker',icon:'⚗️'},
+      {id:'refinery',name:'Refinery',icon:'🏭'},
+      {id:'combustion_gen',name:'Comb. Gen.',icon:'🔆'},
+      {id:'scrubber',name:'Scrubber',icon:'🌿'},
     ]},
   ],
   tools: [
@@ -856,6 +901,25 @@ const TECHS = {
     cost:{sci_red:125,sci_green:125,sci_blue:50}, req:['steel','electronics'],
     desc:'Unlocks all rocket component recipes',
   },
+  // Zone 2 — The Scar
+  oil_extraction: {
+    name:'Oil Extraction', icon:'🛢️', era:'The Scar — Era 1',
+    cost:{sci_scar:10}, req:[],
+    desc:'Unlocks Oil Pump, Cracker, Refinery and oil production chains',
+    zone:2,
+  },
+  smog_control: {
+    name:'Smog Control', icon:'🌿', era:'The Scar — Era 2',
+    cost:{sci_scar:30,sci_smog:20}, req:['oil_extraction'],
+    desc:'Unlocks Scrubber and Combustion Generator. Required for Repair Data science pack.',
+    zone:2,
+  },
+  repair_tech: {
+    name:'Rocket Repair', icon:'🔧', era:'The Scar — Era 3',
+    cost:{sci_scar:50,sci_smog:50,sci_repair:20}, req:['oil_extraction','smog_control'],
+    desc:'Unlocks all 6 rocket repair component recipes',
+    zone:2,
+  },
 };
 
 // ═══════════════════════════════════════════════════
@@ -866,6 +930,14 @@ const ROCKET_PARTS = [
   {id:'r_computer',   name:'Flight Computer', need:1, unlock:'rocket_tech'},
   {id:'r_frame',      name:'Struct. Frame',   need:1, unlock:'rocket_tech'},
   {id:'r_propellant', name:'Coal Propellant', need:2, unlock:'rocket_tech'},
+];
+const ROCKET_PARTS_Z2 = [
+  {id:'r_hull',       name:'Hull Patch',    need:4, unlock:'repair_tech'},
+  {id:'r_engine_fix', name:'Engine Fix',    need:1, unlock:'repair_tech'},
+  {id:'r_nav',        name:'Nav Computer',  need:1, unlock:'repair_tech'},
+  {id:'r_tank',       name:'Fuel Tank',     need:2, unlock:'repair_tech'},
+  {id:'r_thruster',   name:'Thruster',      need:2, unlock:'repair_tech'},
+  {id:'r_cell',       name:'Power Cell',    need:1, unlock:'repair_tech'},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -926,23 +998,73 @@ function buildMap() {
   return map;
 }
 
-// ═══════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════
+function buildMapZ2(){
+  const map=[];
+  for(let y=0;y<MAP_H;y++){
+    map[y]=[];
+    for(let x=0;x<MAP_W;x++)
+      map[y][x]={type:T_FLOOR,res:null,mid:null,items:[]};
+  }
+  const rng=(seed=>{let s=seed;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;}})(Date.now()^0xbeefcafe);
+  const ri=(lo,hi)=>lo+Math.floor(rng()*(hi-lo+1));
+  const safe=(x,y,w,h)=>{
+    for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){
+      const tx=x+dx,ty=y+dy;
+      if(tx<2||ty<2||tx+1>=MAP_W||ty+1>=MAP_H)return false;
+      if(map[ty][tx].type===T_RESOURCE)return false;
+    }
+    return true;
+  };
+  const place=(res,w,h)=>{
+    for(let attempt=0;attempt<200;attempt++){
+      const x=ri(10,MAP_W-w-10),y=ri(10,MAP_H-h-10);
+      if(safe(x,y,w,h)){
+        for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)
+          map[y+dy][x+dx]={type:T_RESOURCE,res,mid:null,items:[]};
+        return true;
+      }
+    }
+    return false;
+  };
+  // Zone 2 deposits — oil heavy, some iron/coal/stone for bootstrapping
+  const guaranteed=[
+    {res:'oil',        w:ri(6,8), h:ri(5,6)},
+    {res:'oil',        w:ri(5,7), h:ri(4,5)},
+    {res:'oil',        w:ri(5,6), h:ri(4,5)},
+    {res:'oil',        w:ri(4,5), h:ri(3,4)},
+    {res:'iron_ore',   w:ri(5,7), h:ri(4,5)},
+    {res:'iron_ore',   w:ri(4,6), h:ri(3,5)},
+    {res:'iron_ore',   w:ri(4,5), h:ri(3,4)},
+    {res:'copper_ore', w:ri(4,6), h:ri(3,5)},
+    {res:'copper_ore', w:ri(4,5), h:ri(3,4)},
+    {res:'coal',       w:ri(4,6), h:ri(3,5)},
+    {res:'coal',       w:ri(4,5), h:ri(3,4)},
+    {res:'stone',      w:ri(4,5), h:ri(3,4)},
+    {res:'stone',      w:ri(3,4), h:ri(3,3)},
+  ];
+  for(const d of guaranteed) place(d.res,d.w,d.h);
+  return map;
+}
 let G = null;
 
 function defaultState(){
   return {
     ver:VER, tick:0,
+    zone:1,
     sfx:true,
     music:true,
     musicVol:0.7,
+    smog:0,
     inv:{
       iron_ore:0,copper_ore:0,coal:0,stone:0,
       iron_plate:0,copper_plate:0,steel_plate:0,stone_brick:0,
       iron_gear:0,copper_wire:0,iron_rod:0,circuit:0,engine:0,
       sci_red:0,sci_green:0,sci_blue:0,
       r_chassis:0,r_computer:0,r_frame:0,r_propellant:0,
+      // Zone 2
+      crude_oil:0,raw_fuel:0,plastic:0,refined_fuel:0,polymer_sheet:0,
+      sci_scar:0,sci_smog:0,sci_repair:0,
+      r_hull:0,r_engine_fix:0,r_nav:0,r_tank:0,r_thruster:0,r_cell:0,
     },
     // Crafted-but-not-yet-placed machine pool
     crafted:{},
@@ -987,8 +1109,8 @@ function mkMachine(type,x,y,dir){
 let canvas, ctx, rafId;
 let lastTickMs=0; // real timestamp of last gameTick — used for sub-tick interpolation
 
-const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e'};
-const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',chest:'#7d5a3c'};
+const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e',oil:'#1a0f00'};
+const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',chest:'#7d5a3c',oil_pump:'#5a4a2a',cracker:'#8b5e3c',refinery:'#6b4226',combustion_gen:'#e67e22',scrubber:'#2e7d52'};
 
 function initCanvas(){
   canvas=document.getElementById('canvas');
@@ -1106,7 +1228,23 @@ function draw(){
     if(tile.type===T_RESOURCE){
       ctx.fillStyle=RES_COL[tile.res]||'#333';
       ctx.globalAlpha=.6; ctx.fillRect(px+1,py+1,ts-2,ts-2); ctx.globalAlpha=1;
-      if(ts>16){
+      // Oil deposit — draw dark bubbling texture
+      if(tile.res==='oil'&&ts>10){
+        ctx.fillStyle='#0d0800';
+        ctx.globalAlpha=.85; ctx.fillRect(px+1,py+1,ts-2,ts-2); ctx.globalAlpha=1;
+        if(ts>16){
+          // Draw oil slick shimmer dots
+          const dotR=Math.max(1,ts*.06);
+          const positions=[[.3,.3],[.65,.45],[.45,.7],[.75,.25],[.2,.65]];
+          for(const[rx,ry]of positions){
+            ctx.beginPath(); ctx.arc(px+rx*ts,py+ry*ts,dotR,0,Math.PI*2);
+            ctx.fillStyle='#3a2a00'; ctx.globalAlpha=.8; ctx.fill(); ctx.globalAlpha=1;
+          }
+          ctx.font=`${Math.floor(ts*.38)}px serif`;
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText('🛢️',px+ts/2,py+ts/2);
+        }
+      } else if(ts>16){
         ctx.font=`${Math.floor(ts*.43)}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.fillText(ITEMS[tile.res]?.icon||'?',px+ts/2,py+ts/2);
@@ -1428,7 +1566,7 @@ function draw(){
   }
   for(const[id,m]of Object.entries(G.machines)){
     if(m.type!=='splitter')continue;
-    const[mw,mh]=machSize(m); // [1,2]
+    const[mw,mh]=machSize(m);
     const px=m.x*ts-cx, py=m.y*ts-cy;
     const pw=mw*ts, ph=mh*ts;
     if(px+pw<0||py+ph<0||px>W||py>H)continue;
@@ -1439,9 +1577,11 @@ function draw(){
 
     if(ts>12){
       const[dvx,dvy]=D_VEC[m.dir];
-      // Two cells: origin (m.x,m.y) and second (m.x, m.y+1) — always below
-      const c1x=px+ts/2, c1y=py+ts/2;
-      const c2x=px+ts/2, c2y=py+ts*1.5;
+      // Secondary cell offset — perpendicular to flow direction
+      const PERP=[[0,1],[1,0],[0,1],[1,0]];
+      const[perpx,perpy]=PERP[m.dir];
+      const c1x=px+ts/2,            c1y=py+ts/2;
+      const c2x=px+perpx*ts+ts/2,   c2y=py+perpy*ts+ts/2;
       const midX=(c1x+c2x)/2, midY=(c1y+c2y)/2;
       const lw=Math.max(1.5,ts*.07);
       const hl=Math.max(3,ts*.1);
@@ -1627,6 +1767,25 @@ function draw(){
     if(age>1){ripples.splice(i,1);continue;}
     ctx.beginPath(); ctx.arc(r.px,r.py,Math.max(0,age*30),0,Math.PI*2);
     ctx.strokeStyle=`rgba(245,166,35,${(1-age)*.8})`; ctx.lineWidth=1.5; ctx.stroke();
+  }
+
+  // Smog overlay — Zone 2 only, scales with G.smog 0-100
+  if(G&&G.zone===2&&(G.smog||0)>0){
+    const smogAlpha=Math.min(0.55,(G.smog/100)*0.55);
+    ctx.fillStyle=`rgba(40,30,0,${smogAlpha})`;
+    ctx.fillRect(0,0,W,H);
+    // Smog particles for visual texture at high levels
+    if(G.smog>30&&ts>8){
+      const seed=Math.floor(now/800);
+      const rng2=(s=>()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;})(seed);
+      const count=Math.floor(G.smog/10);
+      ctx.fillStyle='rgba(80,60,0,0.12)';
+      for(let i=0;i<count;i++){
+        const bx=rng2()*W, by=rng2()*H;
+        const br=4+rng2()*12;
+        ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill();
+      }
+    }
   }
 }
 
@@ -1943,10 +2102,17 @@ function openResInfo(resId, tx, ty){
   document.getElementById('resInfoDesc').textContent=item.desc||'';
   document.getElementById('resInfoStock').textContent=`In inventory: ${fmt(stock)}`;
   document.getElementById('resInfoUses').innerHTML=(item.uses||[]).map(u=>`• ${u}`).join('<br>');
-  // Activate mineTap for this tile if coords provided
-  if(tx!==undefined&&ty!==undefined){
-    mineTap={active:true,resId,tx,ty,taps:0};
-    updateMineBtnLabel();
+  const mineBtn=document.getElementById('mineBtn');
+  // Oil can't be hand-mined — requires oil pump
+  if(resId==='oil'){
+    mineTap={active:false,resId,tx,ty,taps:0};
+    if(mineBtn){mineBtn.textContent='🛢️ NEEDS OIL PUMP';mineBtn.style.opacity='0.4';mineBtn.onclick=null;}
+  } else {
+    if(tx!==undefined&&ty!==undefined){
+      mineTap={active:true,resId,tx,ty,taps:0};
+      updateMineBtnLabel();
+    }
+    if(mineBtn){mineBtn.style.opacity='';mineBtn.onclick=()=>doMineTap();}
   }
   document.getElementById('resInfo').classList.remove('hidden');
 }
@@ -1990,10 +2156,13 @@ function closeResInfo(){
 //  PLACEMENT
 // ═══════════════════════════════════════════════════
 // Returns effective [w,h] for a machine given its direction.
-// Splitter is 1×2 when vertical (D_DOWN/D_UP) and 2×1 when horizontal (D_RIGHT/D_LEFT).
+// Splitter base size is [1,2]. For D_DOWN/D_UP the flow is vertical so
+// the two cells stack horizontally → swap to [2,1].
 function machSize(typeOrM, dir){
   const type = typeof typeOrM==='string' ? typeOrM : typeOrM.type;
+  const d = dir !== undefined ? dir : (typeof typeOrM==='object' ? (typeOrM.dir||0) : 0);
   const[mw,mh]=MDEFS[type].size;
+  if(type==='splitter'&&(d===D_DOWN||d===D_UP)) return [mh,mw]; // swap → [2,1]
   return [mw,mh];
 }
 
@@ -2006,7 +2175,8 @@ function canPlace(type,tx,ty,dir){
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
     if(G.map[ny][nx].mid!==null)return false;
     if(type==='miner'&&G.map[ny][nx].type!==T_RESOURCE)return false;
-    if(type!=='miner'&&type!=='belt'&&type!=='inserter'&&type!=='chest'&&type!=='splitter'&&type!=='tunnel'&&G.map[ny][nx].type===T_RESOURCE)return false;
+    if(type==='oil_pump'&&G.map[ny][nx].res!=='oil')return false;
+    if(type!=='miner'&&type!=='oil_pump'&&type!=='belt'&&type!=='inserter'&&type!=='chest'&&type!=='splitter'&&type!=='tunnel'&&G.map[ny][nx].type===T_RESOURCE)return false;
   }
   return true;
 }
@@ -2053,6 +2223,7 @@ function tryPlace(type,tx,ty){
 
   const m=mkMachine(type,tx,ty,placeDir);
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
+  if(type==='oil_pump')m.mineRes='oil';
   // Link tunnel to nearest unpaired tunnel in same direction within 5 tiles
   if(type==='tunnel'){
     const[dvx,dvy]=D_VEC[placeDir];
@@ -2098,6 +2269,7 @@ function completePlacement(type,tx,ty){
   }
   const m=mkMachine(type,tx,ty,placeDir);
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
+  if(type==='oil_pump')m.mineRes='oil';
   if(type==='tunnel'){
     const[dvx,dvy]=D_VEC[placeDir];
     for(let dist=1;dist<=5;dist++){
@@ -2157,28 +2329,32 @@ function gameTick(){
   G.power.out=0; G.power.in=0;
 
   // Pre-pass: accumulate total power demand across ALL consumer machines
-  // This must happen before any machine logic runs, so powerRatio() always
-  // sees the full picture — not a partial tally.
   const pm0=perkMult();
   for(const m of Object.values(G.machines)){
     if(!m.active)continue;
     const def=MDEFS[m.type]; if(!def||def.power<=0)continue;
-    // power-immune machines don't draw from grid
     if(m.type==='stone_furnace'||m.type==='blast_furnace')continue;
     const mods=m.modules||[];
     const modEff=mods.some(x=>x==='eff_module')?0.7:1;
     G.power.in+=def.power*pm0.power*modEff;
   }
 
-  // Pass 1: generators and burners — establish power supply
+  // Pass 1: generators — establish power supply
   for(const m of Object.values(G.machines)){
-    if(m.type==='generator'||m.type==='burner')runMachine(m);
+    if(m.type==='generator'||m.type==='burner'||m.type==='combustion_gen')runMachine(m);
   }
   // Pass 2: all other machines — powerRatio() now correct
   for(const m of Object.values(G.machines)){
-    if(m.type!=='generator'&&m.type!=='burner')runMachine(m);
+    if(m.type!=='generator'&&m.type!=='burner'&&m.type!=='combustion_gen')runMachine(m);
   }
   runBelts();
+
+  // Smog tick — natural decay + clamp
+  if(G.zone===2){
+    if(G.smog===undefined)G.smog=0;
+    G.smog=Math.max(0,Math.min(100,G.smog-0.1));
+  }
+
   if(G.tick%4===0){updateHUD();refreshOpenPanel();buildToolbar();checkAchievements();tickTutorial();}
   if(G.tick%120===0)saveGame();
 }
@@ -2233,19 +2409,15 @@ function runMachine(m){
   // NOTE: G.power.in is pre-calculated in gameTick pre-pass — do NOT add here
 
   if(m.type==='generator'){
-    // Burns 1 coal from inBuf every 4s — only burns when consumers are drawing power
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
-      // Only consume coal if there are powered machines that need it (G.power.in from last tick)
-      // Also guard: don't burn if there are NO machines that need power (prevents idle drain)
       const hasPowerConsumers=Object.values(G.machines).some(mm=>mm.active&&MDEFS[mm.type]?.power>0);
       if(G.tick%16===0&&hasPowerConsumers) m.inBuf.coal--;
     }
     return;
   }
   if(m.type==='burner'){
-    // Burns 1 coal every 2s — only burns when consumers are drawing power
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
@@ -2254,14 +2426,54 @@ function runMachine(m){
     }
     return;
   }
+  if(m.type==='combustion_gen'){
+    // Burns 1 refined_fuel every 8s — only when consumers exist
+    const hasFuel=(m.inBuf.refined_fuel||0)>0;
+    if(hasFuel){
+      G.power.out+=Math.abs(def.power);
+      const hasPowerConsumers=Object.values(G.machines).some(mm=>mm.active&&MDEFS[mm.type]?.power>0&&mm.type!=='combustion_gen'&&mm.type!=='burner'&&mm.type!=='generator');
+      if(G.tick%32===0&&hasPowerConsumers) m.inBuf.refined_fuel--;
+    }
+    return;
+  }
+  if(m.type==='oil_pump'){
+    // Auto-mines oil from deposit below — like miner but produces smog
+    if(!m.mineRes||m.mineRes!=='oil')return;
+    const ratio=powerRatio(); if(ratio===0)return;
+    m.prog++;
+    const rate=Math.max(2,Math.floor(8/ratio));
+    if(m.prog>=rate){
+      const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
+      if(bufTotal>=50)return;
+      m.prog=0;
+      m.outBuf.crude_oil=(m.outBuf.crude_oil||0)+1;
+      m.produced++;
+      recordOutput(m,1);
+      // Generate smog
+      if(G.zone===2){G.smog=Math.min(100,(G.smog||0)+0.5);}
+    }
+    return;
+  }
+  if(m.type==='scrubber'){
+    // Burns refined_fuel to remove smog — every 4 ticks
+    if(G.zone!==2||!G.tick%4===0)return;
+    const hasFuel=(m.inBuf.refined_fuel||0)>0;
+    if(hasFuel&&(G.smog||0)>0){
+      G.smog=Math.max(0,(G.smog||0)-3);
+      if(G.tick%16===0) m.inBuf.refined_fuel--;
+    }
+    return;
+  }
   if(m.type==='miner'){
     if(!m.mineRes)return;
     const ratio=powerRatio();
-    if(ratio===0)return; // hard cutoff — no power
+    if(ratio===0)return;
     m.prog++;
     const pm=perkMult();
     const tierMult=m.tier===3?2:m.tier===2?1.5:1;
-    const rate=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed)));
+    // Smog reduces efficiency in Zone 2
+    const smogMult=G.zone===2?Math.max(0.1,(100-(G.smog||0))/100):1;
+    const rate=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smogMult)));
     if(m.prog>=rate){
       const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
       if(bufTotal>=50)return;
@@ -2277,15 +2489,15 @@ function runMachine(m){
 
   if(!m.recipe)return;
   const rec=RECIPES[m.recipe]; if(!rec)return;
-  // If recipe requires research not yet done, skip
   if(rec.unlock&&!G.research.done.includes(rec.unlock)){m.recipe=null;m.prog=0;return;}
   const pm=perkMult();
-  // stone_furnace and blast_furnace are power-immune (coal is an ingredient, not power)
   const powerImmune=(m.type==='stone_furnace'||m.type==='blast_furnace');
   const ratio=powerImmune?1:powerRatio();
-  if(ratio===0)return; // hard cutoff — no power
+  if(ratio===0)return;
   const tierMult=m.tier===3?2:m.tier===2?1.5:1;
-  const speedMult=ratio*pm.speed*tierMult*modSpeed;
+  // Smog reduces efficiency in Zone 2 for all powered machines
+  const smogEff=G.zone===2?Math.max(0.1,(100-(G.smog||0))/100):1;
+  const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff;
 
   if(m.prog===0){
     if(canFill(m,rec)){consumeInputs(m,rec);m.prog=1;}
@@ -2389,8 +2601,11 @@ function runBelts(){
     // Splitter: 1×2, second cell always at (m.x, m.y+1)
     if(m.type==='splitter'){
       if(tx!==m.x||ty!==m.y)continue; // only origin tile routes
-      const outA={x:m.x+dvx, y:m.y+dvy};
-      const outB={x:m.x+dvx, y:m.y+dvy+1};
+      // Secondary cell is perpendicular to flow direction
+      const PERP=[[0,1],[1,0],[0,1],[1,0]]; // perpendicular offset per dir
+      const[px,py]=PERP[m.dir];
+      const outA={x:m.x+dvx,      y:m.y+dvy};
+      const outB={x:m.x+dvx+px,   y:m.y+dvy+py};
 
       for(const it of arrived){
         const side=(m.splitSide||0)%2;
@@ -2584,11 +2799,16 @@ const HUD_ITEMS=['iron_ore','iron_plate','copper_plate','iron_gear','circuit','s
 
 function updateHUD(){
   const el=document.getElementById('hudRes');
-  // Power only — inventory is in the inventory panel
   const free=G.power.out-G.power.in;
   const hasConsumers=G.power.in>0;
   const pwrLabel=hasConsumers?(free>=0?`+${fmt(free)}kW`:`${fmt(free)}kW`):`${fmt(G.power.out)}kW`;
-  el.innerHTML=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
+  let html=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
+  if(G.zone===2){
+    const smog=Math.round(G.smog||0);
+    const smogCol=smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)';
+    html+=`<div class="hres" style="margin-left:4px"><span class="hres-icon">🌫️</span><span class="hres-val" style="color:${smogCol}">${smog}%</span></div>`;
+  }
+  el.innerHTML=html;
 }
 
 function pwrCol(){
@@ -3227,8 +3447,8 @@ function renderMachPanel(){
     html+=`</div>`;
   }
 
-  // Rotate (splitter rotation not yet supported)
-  if(m.type==='belt'||m.type==='inserter'||m.type==='tunnel')
+  // Rotate button — belt, inserter, tunnel, and now splitter
+  if(m.type==='belt'||m.type==='inserter'||m.type==='tunnel'||m.type==='splitter')
     html+=`<button class="full-btn teal" onclick="rotateM(${m.id})">↻ ROTATE  ${D_ARR[m.dir]}</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
@@ -3314,8 +3534,27 @@ function rotateM(id){
     if(partner)partner.tunnelId=null;
     m.tunnelId=null;
   }
-  // Splitter rotation not supported yet — see roadmap
-  if(m.type==='splitter'){toast('Splitter rotation coming soon','wrn');return;}
+  // Splitter rotation — clear old secondary tile, rotate, register new secondary tile
+  if(m.type==='splitter'){
+    const PERP=[[0,1],[1,0],[0,1],[1,0]];
+    const[opx,opy]=PERP[m.dir];
+    // Clear old secondary tile
+    G.map[m.y+opy][m.x+opx].mid=null;
+    // Rotate
+    m.dir=(m.dir+1)%4;
+    const[npx,npy]=PERP[m.dir];
+    // Check new secondary tile is free (and in bounds)
+    const nx2=m.x+npx, ny2=m.y+npy;
+    if(nx2<0||ny2<0||nx2>=MAP_W||ny2>=MAP_H||G.map[ny2][nx2].mid!==null){
+      // Can't rotate — revert
+      m.dir=(m.dir+3)%4;
+      G.map[m.y+opy][m.x+opx].mid=m.id;
+      toast('No room to rotate splitter','wrn'); sfx('error'); return;
+    }
+    G.map[ny2][nx2].mid=m.id;
+    renderMachPanel(); saveGame();
+    toast(`Splitter: ${D_ARR[m.dir]}`,'ok'); sfx('place'); return;
+  }
   m.dir=(m.dir+1)%4;
   // If tunnel, try to re-link with a partner in new direction
   if(m.type==='tunnel'){
@@ -3562,16 +3801,27 @@ function chestTakeOne(itemId,id){
 // ── Research ───────────────────────────────────────
 function renderResPanel(){
   const el=document.getElementById('pResBody');
+  const z2=G.zone===2;
+  let sciHtml=`🗒️ ${fmt(G.inv.sci_red||0)} Field Notes &nbsp;&nbsp; 📋 ${fmt(G.inv.sci_green||0)} Circuit Diagrams`;
+  if(G.research.done.includes('electronics'))sciHtml+=` &nbsp;&nbsp; 📘 ${fmt(G.inv.sci_blue||0)} Adv. Schematics`;
+  if(z2){
+    sciHtml+=`<br>📓 ${fmt(G.inv.sci_scar||0)} Scar Notes &nbsp;&nbsp; 🌫️ ${fmt(G.inv.sci_smog||0)} Smog Data`;
+    if(G.research.done.includes('smog_control'))sciHtml+=` &nbsp;&nbsp; 🔧 ${fmt(G.inv.sci_repair||0)} Repair Data`;
+  }
   let html=`<div class="card" style="margin-bottom:12px">
     <span class="sec-label">SCIENCE PACKS</span>
-    <div style="font-size:6px;color:var(--text2)">🗒️ ${fmt(G.inv.sci_red||0)} Field Notes &nbsp;&nbsp; 📋 ${fmt(G.inv.sci_green||0)} Circuit Diagrams${G.research.done.includes('electronics')?` &nbsp;&nbsp; 📘 ${fmt(G.inv.sci_blue||0)} Adv. Schematics`:''}</div>
+    <div style="font-size:6px;color:var(--text2);line-height:2">${sciHtml}</div>
   </div>`;
 
   const eras=[...new Set(Object.values(TECHS).map(t=>t.era))];
   for(const era of eras){
+    // Filter: hide Zone 2 techs in Zone 1, hide Zone 1 techs in Zone 2 (already done)
+    const techsInEra=Object.entries(TECHS).filter(([,t])=>t.era===era);
+    const anyVisible=techsInEra.some(([,t])=>!t.zone||(z2&&t.zone===2)||(!z2&&!t.zone));
+    if(!anyVisible)continue;
     html+=`<div style="font-size:5px;color:var(--text3);letter-spacing:2px;margin:10px 0 6px">── ${era} ──</div>`;
-    for(const[id,tech]of Object.entries(TECHS)){
-      if(tech.era!==era)continue;
+    for(const[id,tech]of techsInEra){
+      if(tech.zone&&tech.zone===2&&!z2)continue; // hide Z2 techs in Z1
       const done=G.research.done.includes(id);
       const reqMet=tech.req.every(r=>G.research.done.includes(r));
       const canAfford=reqMet&&!done&&Object.entries(tech.cost).every(([k,v])=>(G.inv[k]||0)>=v);
@@ -3606,6 +3856,55 @@ function doResearch(id){
 // ── Rocket ─────────────────────────────────────────
 function renderRocketPanel(){
   const el=document.getElementById('pRocketBody');
+  if(G.zone===2){
+    const unlocked=G.research.done.includes('repair_tech');
+    if(!unlocked){
+      el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:6px;line-height:2.2">
+        Research<br><span style="color:var(--amber)">Rocket Repair</span><br>to unlock repair recipes.
+      </div>`; return;
+    }
+    const parts=ROCKET_PARTS_Z2;
+    let allReady=true;
+    let html='<span class="sec-label">REPAIR COMPONENTS</span>';
+    for(const p of parts){
+      const have=G.inv[p.id]||0;
+      const done=have>=p.need;
+      if(!done)allReady=false;
+      const pct=Math.min(100,Math.round(have/p.need*100));
+      html+=`<div class="rocket-part ${done?'done':''}">
+        <div style="flex:1">
+          <div style="font-size:6px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${ITEMS[p.id]?.icon||'?'} ${p.name}</div>
+          <div class="prog-wrap"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div>
+        </div>
+        <span style="font-size:6px;color:${done?'var(--teal)':'var(--text3)'};margin-left:10px">${have}/${p.need}</span>
+      </div>`;
+    }
+    // Refined fuel requirement
+    const haveFuel=G.inv.refined_fuel||0;
+    const fuelDone=haveFuel>=20;
+    if(!fuelDone)allReady=false;
+    html+=`<div class="rocket-part ${fuelDone?'done':''}">
+      <div style="flex:1">
+        <div style="font-size:6px;color:${fuelDone?'var(--teal)':'var(--text)'};margin-bottom:4px">🔥 Refined Fuel (launch)</div>
+        <div class="prog-wrap"><div class="prog-fill ${fuelDone?'green':'amber'}" style="width:${Math.min(100,Math.round(haveFuel/20*100))}%"></div></div>
+      </div>
+      <span style="font-size:6px;color:${fuelDone?'var(--teal)':'var(--text3)'};margin-left:10px">${haveFuel}/20</span>
+    </div>`;
+    if(allReady){
+      html+=`<button class="full-btn launch" onclick="launchRocket()">🚀 REPAIR &amp; RELAUNCH</button>`;
+    } else {
+      html+=`<div style="font-size:5px;color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
+        Build all components to repair and relaunch.
+      </div>`;
+    }
+    html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">
+      <div style="font-size:5px;color:var(--text3);margin-bottom:4px">🌫️ SMOG: ${Math.round(G.smog||0)}% — efficiency: ${Math.round((100-(G.smog||0)))}%</div>
+      <div class="prog-wrap"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
+    </div>`;
+    el.innerHTML=html;
+    return;
+  }
+  // Zone 1
   const unlocked=G.research.done.includes('rocket_tech');
   if(!unlocked){
     el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:6px;line-height:2.2">
@@ -3634,7 +3933,6 @@ function renderRocketPanel(){
       Build all components to initiate launch sequence.
     </div>`;
   }
-
   // Recipe reference
   html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
     <span class="sec-label">RECIPE REFERENCE</span>`;
@@ -3653,22 +3951,77 @@ function renderRocketPanel(){
 }
 
 function launchRocket(){
+  if(G.zone===2){launchRocketZ2();return;}
   for(const p of ROCKET_PARTS)
     if((G.inv[p.id]||0)<p.need){toast('Not enough components!','bad');sfx('error');return;}
   for(const p of ROCKET_PARTS)G.inv[p.id]-=p.need;
   G.stats.launched=true;
-  G.perks.points=(G.perks.points||0)+3;
   saveGame(); sfx('launch');
   showModal('🚀 LAUNCH SEQUENCE',
     `<div style="text-align:center;font-size:6px;color:var(--text2);line-height:2.5">
       <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
       The rocket ignites.<br>Ironfield shrinks below you.<br><br>
       <span style="color:var(--amber);font-size:7px">ZONE 1 COMPLETE</span><br><br>
-      You earned <span style="color:var(--amber)">3 perk points</span>.<br>
-      Spend them before the next zone.
+      <span style="color:var(--text3);font-size:5px">But something's wrong with the trajectory...</span>
     </div>`,
-    `<button class="btn btn-teal btn-sm" onclick="closeModal();togglePanel('perks')">VIEW PERKS</button>
-     <button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`
+    `<button class="btn btn-teal btn-sm" onclick="closeModal();transitionToZone2()">CONTINUE →</button>`
+  );
+}
+
+function launchRocketZ2(){
+  const parts=ROCKET_PARTS_Z2;
+  for(const p of parts)
+    if((G.inv[p.id]||0)<p.need){toast('Not enough components!','bad');sfx('error');return;}
+  // Also need refined fuel ×20
+  if((G.inv.refined_fuel||0)<20){toast('Need 20× Refined Fuel to launch','bad');sfx('error');return;}
+  for(const p of parts)G.inv[p.id]-=p.need;
+  G.inv.refined_fuel-=20;
+  G.stats.launched=true;
+  saveGame(); sfx('launch');
+  showModal('🚀 LAUNCH SEQUENCE',
+    `<div style="text-align:center;font-size:6px;color:var(--text2);line-height:2.5">
+      <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
+      The rocket screams upward.<br>The Scar fades to a scar of light.<br><br>
+      <span style="color:var(--amber);font-size:7px">ZONE 2 COMPLETE</span><br><br>
+      <span style="color:var(--text3);font-size:5px">Zone 3 coming soon...</span>
+    </div>`,
+    `<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`
+  );
+}
+
+function transitionToZone2(){
+  // Preserve research and audio settings, wipe everything else
+  const researchDone=[...G.research.done];
+  const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
+  const devMode=G.devMode;
+  G=defaultState();
+  G.zone=2;
+  G.smog=0;
+  G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
+  G.devMode=devMode;
+  G.research.done=researchDone;
+  G.map=buildMapZ2();
+  saveGame();
+  // Rebuild UI for Zone 2
+  initCanvas(); buildToolbar(); updateHUD();
+  const ts=TILE*G.cam.zoom;
+  G.cam.x=26*ts-canvas.width/2+ts*3;
+  G.cam.y=24*ts-canvas.height/2+ts*2;
+  clampCam();
+  // Update zone tab
+  document.querySelectorAll('.zone-tab').forEach((t,i)=>{
+    t.classList.toggle('active',i===1);
+    t.classList.toggle('locked',i>1);
+  });
+  showModal('💥 CRASH LANDING',
+    `<div style="text-align:center;font-size:6px;color:var(--text2);line-height:2.5">
+      <div style="font-size:28px;margin-bottom:10px">💥</div>
+      Something went wrong.<br>You've crashed on <span style="color:var(--red)">The Scar</span>.<br><br>
+      The rocket is wrecked. Your tools are gone.<br>But your knowledge survived.<br><br>
+      <span style="color:var(--amber)">The ground smells of oil.</span><br>
+      <span style="color:var(--text3);font-size:5px">Find the oil deposits. Build the chain. Fix the rocket.</span>
+    </div>`,
+    `<button class="btn btn-teal btn-sm" onclick="closeModal()">SURVIVE</button>`
   );
 }
 
@@ -4416,6 +4769,9 @@ const DEV_GIVE_AMOUNTS = {
   iron_gear:100, copper_wire:200, iron_rod:100,
   circuit:50, engine:20,
   sci_red:50, sci_green:50, sci_blue:30,
+  // Zone 2
+  crude_oil:200, raw_fuel:100, plastic:100, refined_fuel:50,
+  sci_scar:50, sci_smog:50, sci_repair:30,
 };
 
 function renderDevPanel(){
@@ -4464,6 +4820,7 @@ function renderDevPanel(){
   // Complete rocket
   html+=`<span class="sec-label" style="color:var(--purple);margin-top:10px">SHORTCUTS</span>
   <button class="full-btn" style="border-color:var(--purple);color:var(--purple)" onclick="devCompleteRocket()">GIVE ROCKET COMPONENTS</button>
+  <button class="full-btn" style="border-color:var(--purple);color:var(--purple)" onclick="devCompleteZ2()">GIVE Z2 REPAIR COMPONENTS</button>
   <button class="full-btn" style="border-color:var(--red);color:var(--red);margin-top:4px" onclick="devReset()">RESET SAVE (new game)</button>`;
 
   el.innerHTML=html;
@@ -4513,6 +4870,16 @@ function devCompleteRocket(){
   for(const p of ROCKET_PARTS) G.inv[p.id]=(G.inv[p.id]||0)+p.need;
   buildToolbar(); updateHUD();
   toast('Rocket components given','ok');
+}
+
+function devCompleteZ2(){
+  if(G.zone!==2){toast('Switch to Zone 2 first','wrn');return;}
+  for(const id of ['oil_extraction','smog_control','repair_tech'])
+    if(!G.research.done.includes(id))G.research.done.push(id);
+  for(const p of ROCKET_PARTS_Z2) G.inv[p.id]=(G.inv[p.id]||0)+p.need;
+  G.inv.refined_fuel=(G.inv.refined_fuel||0)+20;
+  buildToolbar(); updateHUD();
+  toast('Z2 repair components given','ok');
 }
 
 function devReset(){
@@ -4600,9 +4967,8 @@ function continueGame(){
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
     if(!G.blueprints)G.blueprints=[];
-    // Always reset power on load — first gameTick() recalculates correctly.
-    // Stale saved values would let machines run through powerRatio() checks
-    // until the next tick, which could be 250ms after load.
+    if(!G.zone)G.zone=1;
+    if(G.smog===undefined)G.smog=0;
     G.power={out:0,in:0};
     startGame(false);
   }catch(e){newGame();}
@@ -4620,14 +4986,14 @@ function startGame(isNew){
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
   initCanvas(); setupInput(); switchTab('build'); updateSelectBtn(); updateBuildHUD();
-  // Run one synchronous power pass before the tick loop starts so power state
-  // is correct immediately — prevents any single-frame window of stale values.
   G.power.out=0; G.power.in=0;
   const _pm=perkMult();
   for(const m of Object.values(G.machines)){
     if(!m.active)continue;
     if(m.type==='generator'||m.type==='burner'){
       if((m.inBuf.coal||0)>0) G.power.out+=Math.abs(MDEFS[m.type].power);
+    } else if(m.type==='combustion_gen'){
+      if((m.inBuf.refined_fuel||0)>0) G.power.out+=Math.abs(MDEFS[m.type].power);
     } else if(m.type!=='stone_furnace'&&m.type!=='blast_furnace'){
       const def=MDEFS[m.type];
       if(def&&def.power>0){
@@ -4636,6 +5002,13 @@ function startGame(isNew){
       }
     }
   }
+  // Set zone tabs
+  const zoneTabs=document.querySelectorAll('.zone-tab');
+  const zoneIdx=(G.zone||1)-1;
+  zoneTabs.forEach((t,i)=>{
+    t.classList.toggle('active',i===zoneIdx);
+    t.classList.toggle('locked',i>zoneIdx);
+  });
   updateHUD();
   startTick(); startRender();
   if(G.music!==false) musicStart();
