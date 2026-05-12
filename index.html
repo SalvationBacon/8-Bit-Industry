@@ -35,7 +35,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:8px;user-select:none;-webkit-tap-highlight-color:transparent}
 
-/* ── MOBILE SCALE — 2× all UI text and panel sizes on small screens ── */
+/* ── MOBILE PORTRAIT — scale up UI on small screens ── */
 @media(max-width:600px){
   html,body{font-size:10px}
   #hud{height:56px}
@@ -75,6 +75,113 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   .mb{font-size:9px;zoom:1.4}
   #multiselBar{font-size:9px!important}
   #multiselBar button{font-size:9px!important;padding:7px 12px!important}
+}
+
+/* ── MOBILE LANDSCAPE — right-side vertical toolbar ── */
+@media(orientation:landscape) and (max-height:500px){
+
+  /* HUD: compress height, tighten spacing */
+  #hud{height:36px;padding:0 3px;gap:3px}
+  .hud-logo{font-size:5px;padding-right:4px}
+  #hudZones{gap:1px;padding-right:4px}
+  .zone-tab{font-size:4px;padding:2px 4px}
+  #hudRes{gap:2px;padding:0 2px}
+  .hres-icon{font-size:11px}
+  .hres-val{font-size:7px;min-width:24px}
+  .hbtn{width:30px;font-size:14px;padding:3px 0}
+  .hud-btns{gap:2px}
+
+  /* Canvas area: leave right gap for vertical toolbar */
+  #wrap{margin-right:68px}
+
+  /* tutHint: stays in flow but nudge text smaller */
+  #tutHint{padding:4px 8px;flex-shrink:0;margin-right:68px}
+  #tutHint span{font-size:6px!important}
+
+  /* Toolbar: fixed vertical strip on right */
+  #toolbarWrap{
+    position:fixed;
+    right:0;top:36px;bottom:0;
+    width:68px;
+    z-index:100;
+    overflow:hidden;
+    background:var(--panel);
+    border-left:1px solid var(--border);
+    border-top:none;
+  }
+  #toolbarWrap::after{
+    /* replace horizontal scroll arrow with vertical one */
+    content:'↓';
+    position:absolute;bottom:0;left:0;right:0;height:24px;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(to bottom,transparent,var(--panel) 60%);
+    color:var(--amber);font-size:14px;pointer-events:none;z-index:101;
+    animation:blink 1.5s infinite;
+  }
+  #toolbarWrap.scrolled::after{display:none}
+  #toolbar{
+    width:100%;height:100%;
+    flex-direction:column;
+    overflow-x:hidden;overflow-y:auto;
+    scrollbar-width:none;gap:0;
+    /* override horizontal styles */
+    display:flex;align-items:stretch;
+  }
+  #toolbar::-webkit-scrollbar{display:none}
+
+  /* Category rows go vertical */
+  .tcat{
+    flex-direction:column;
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .tcat-lbl{
+    font-size:4px;padding:4px 6px 1px;
+    letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .titems{
+    flex-direction:column;
+    padding:2px 4px;gap:1px;align-items:stretch;
+  }
+  .titem{
+    flex-direction:row;
+    min-width:unset;width:100%;
+    padding:5px 5px;
+    gap:4px;justify-content:flex-start;
+    align-items:center;
+  }
+  .ticon{font-size:16px;line-height:1;flex-shrink:0}
+  .tname{font-size:4px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Panels: full height minus HUD, stop before right toolbar strip */
+  .spanel{
+    top:36px;bottom:0;
+    right:68px;
+    width:min(300px,calc(100vw - 68px));
+  }
+
+  /* Toasts: keep clear of toolbar */
+  #toasts{bottom:10px;right:78px;left:auto;transform:none}
+
+  /* Resource info popup: pin bottom-left, clear of toolbar */
+  #resInfo{
+    left:8px;right:78px;
+    transform:none;
+    bottom:8px;
+  }
+  #resInfo:not(.hidden){transform:none}
+
+  /* Ghost bar: clear of toolbar */
+  #ghostBar{right:68px;bottom:0}
+
+  /* Multisel bar: full width minus toolbar */
+  #multiselBar{right:68px}
+
+  /* Tool tooltip stays top-left, no change needed */
+
+  /* Modal: narrower to fit */
+  .modal{width:min(360px,calc(100vw - 80px))}
 }
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)}
 .screen{position:fixed;inset:0}
@@ -277,7 +384,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.9.4 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v0.9.6 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -431,7 +538,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.9.4';
+const VER      = '0.9.6';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -2515,10 +2622,10 @@ function buildToolbar(){
     }).join('');
     return `<div class="tcat"><div class="tcat-lbl">${cat.label}</div><div class="titems">${items}</div></div>`;
   }).join('');
-  // Hide scroll hint arrow once user has scrolled toolbar
+  // Hide scroll hint arrow once user has scrolled toolbar (horizontal portrait or vertical landscape)
   el.addEventListener('scroll',()=>{
     const wrap=document.getElementById('toolbarWrap');
-    if(wrap&&el.scrollLeft>10) wrap.classList.add('scrolled');
+    if(wrap&&(el.scrollLeft>10||el.scrollTop>10)) wrap.classList.add('scrolled');
   },{once:false,passive:true});
 }
 
