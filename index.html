@@ -35,18 +35,13 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:8px;user-select:none;-webkit-tap-highlight-color:transparent}
 
-/* ── MOBILE PORTRAIT — scale up UI on small screens ── */
+/* ── MOBILE SCALE — larger UI text and panel sizes on small screens ── */
 @media(max-width:600px){
   html,body{font-size:10px}
-  #hud{height:56px}
+  #hud{height:52px}
   .hbtn{width:42px;font-size:18px}
   .hres-val{font-size:10px}
-  #toolbar{height:82px}
-  .titem{min-width:58px;padding:5px 8px}
-  .ticon{font-size:24px}
-  .tname{font-size:6px}
-  .tcat-lbl{font-size:6px}
-  .spanel{width:min(340px,96vw);top:52px;bottom:82px}
+  .spanel{width:min(340px,96vw)}
   .ph{padding:13px 14px}
   .ph-title{font-size:11px}
   .ph-x{font-size:16px}
@@ -76,113 +71,33 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   #multiselBar{font-size:9px!important}
   #multiselBar button{font-size:9px!important;padding:7px 12px!important}
 }
-
-/* ── MOBILE LANDSCAPE — right-side vertical toolbar ── */
+/* ── MOBILE LANDSCAPE — compress HUD + tab bar, maximise canvas ── */
 @media(orientation:landscape) and (max-height:500px){
-
-  /* HUD: compress height, tighten spacing */
-  #hud{height:36px;padding:0 3px;gap:3px}
+  #hud{height:34px;padding:0 3px;gap:2px}
   .hud-logo{font-size:5px;padding-right:4px}
   #hudZones{gap:1px;padding-right:4px}
   .zone-tab{font-size:4px;padding:2px 4px}
   #hudRes{gap:2px;padding:0 2px}
   .hres-icon{font-size:11px}
-  .hres-val{font-size:7px;min-width:24px}
-  .hbtn{width:30px;font-size:14px;padding:3px 0}
+  .hres-val{font-size:7px;min-width:22px}
+  .hbtn{width:28px;font-size:13px;padding:2px 0}
   .hud-btns{gap:2px}
-
-  /* Canvas area: leave right gap for vertical toolbar */
-  #wrap{margin-right:68px}
-
-  /* tutHint: stays in flow but nudge text smaller */
-  #tutHint{padding:4px 8px;flex-shrink:0;margin-right:68px}
-  #tutHint span{font-size:6px!important}
-
-  /* Toolbar: fixed vertical strip on right */
-  #toolbarWrap{
-    position:fixed;
-    right:0;top:36px;bottom:0;
-    width:68px;
-    z-index:100;
-    overflow:hidden;
-    background:var(--panel);
-    border-left:1px solid var(--border);
-    border-top:none;
-  }
-  #toolbarWrap::after{
-    /* replace horizontal scroll arrow with vertical one */
-    content:'↓';
-    position:absolute;bottom:0;left:0;right:0;height:24px;
-    display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(to bottom,transparent,var(--panel) 60%);
-    color:var(--amber);font-size:14px;pointer-events:none;z-index:101;
-    animation:blink 1.5s infinite;
-  }
-  #toolbarWrap.scrolled::after{display:none}
-  #toolbar{
-    width:100%;height:100%;
-    flex-direction:column;
-    overflow-x:hidden;overflow-y:auto;
-    scrollbar-width:none;gap:0;
-    /* override horizontal styles */
-    display:flex;align-items:stretch;
-  }
-  #toolbar::-webkit-scrollbar{display:none}
-
-  /* Category rows go vertical */
-  .tcat{
-    flex-direction:column;
-    border-right:none;
-    border-bottom:1px solid var(--border);
-    flex-shrink:0;
-  }
-  .tcat-lbl{
-    font-size:4px;padding:4px 6px 1px;
-    letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .titems{
-    flex-direction:column;
-    padding:2px 4px;gap:1px;align-items:stretch;
-  }
-  .titem{
-    flex-direction:row;
-    min-width:unset;width:100%;
-    padding:5px 5px;
-    gap:4px;justify-content:flex-start;
-    align-items:center;
-  }
-  .ticon{font-size:16px;line-height:1;flex-shrink:0}
-  .tname{font-size:4px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-  /* Panels: full height minus HUD, stop before right toolbar strip */
-  .spanel{
-    top:36px;bottom:0;
-    right:68px;
-    width:min(300px,calc(100vw - 68px));
-  }
-
-  /* Toasts: keep clear of toolbar */
-  #toasts{bottom:10px;right:78px;left:auto;transform:none}
-
-  /* Resource info popup: pin bottom-left, clear of toolbar */
-  #resInfo{
-    left:8px;right:78px;
-    transform:none;
-    bottom:8px;
-  }
-  #resInfo:not(.hidden){transform:none}
-
-  /* Ghost bar: clear of toolbar */
-  #ghostBar{right:68px;bottom:0}
-
-  /* Multisel bar: full width minus toolbar */
-  #multiselBar{right:68px}
-
-  /* Tool tooltip stays top-left, no change needed */
-
-  /* Modal: narrower to fit */
-  .modal{width:min(360px,calc(100vw - 80px))}
+  #tabBar{height:42px}
+  .tab-btn{font-size:3px;padding:3px 2px;gap:2px}
+  .tab-btn .tab-icon{font-size:16px}
+  #tabDrawer.open{max-height:100px}
+  .ditem{min-width:44px;padding:3px 6px}
+  .ditem .di{font-size:16px}
+  .ditem .dn{font-size:3px}
+  .dcat-btn{font-size:3px;padding:3px 8px}
+  .spanel{top:34px;bottom:42px}
+  #toasts{bottom:52px}
+  #resInfo{bottom:52px}
+  #ghostBar{bottom:42px}
+  #multiselBar button{font-size:6px!important;padding:4px 8px!important}
+  .modal{width:min(380px,90vw);max-height:88vh}
 }
+
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)}
 .screen{position:fixed;inset:0}
 .hidden{display:none!important}
@@ -224,12 +139,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .zone-tab.active{border-color:var(--amber);color:var(--amber);cursor:default}
 .zone-tab.locked{opacity:.35}
 #hudRes{display:flex;gap:4px;align-items:center;padding:0 4px;flex-shrink:0}
-@media(max-width:420px){#hudZones{display:none}.hud-logo{display:none}#hudRes{gap:3px;padding:0 2px}}
+@media(max-width:420px){#hudZones{display:none}.hud-logo{display:none}}
 .hres{display:flex;align-items:center;gap:3px;white-space:nowrap}
 .hres-icon{font-size:14px;line-height:1}
 .hres-val{color:var(--amber);font-size:8px;min-width:32px}
-.hud-btns{display:flex;gap:3px;flex:1;overflow-x:auto;scrollbar-width:none;min-width:0}
-.hud-btns::-webkit-scrollbar{display:none}
+/* Slim HUD icon buttons */
 .hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:15px;padding:5px 0;cursor:pointer;transition:all .1s;border-radius:3px;flex-shrink:0;width:36px;text-align:center}
 .hbtn:hover{border-color:var(--amber);color:var(--amber)}
 .hbtn.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.08)}
@@ -238,32 +152,42 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #wrap{flex:1;position:relative;overflow:hidden;background:#090909;cursor:crosshair}
 #canvas{position:absolute;top:0;left:0;image-rendering:pixelated;cursor:crosshair}
 
-/* TOOLBAR */
-#toolbar{flex-shrink:0;height:70px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:stretch;overflow-x:auto;z-index:100;scrollbar-width:none;gap:1px}
-#toolbar::-webkit-scrollbar{display:none}
-/* Fade + arrow hint on right edge to signal horizontal scroll */
-#toolbarWrap{position:relative;flex-shrink:0}
-#toolbarWrap::after{content:'›';position:absolute;right:0;top:0;bottom:0;width:28px;display:flex;align-items:center;justify-content:center;background:linear-gradient(to right,transparent,var(--panel) 60%);color:var(--amber);font-size:18px;pointer-events:none;z-index:101;animation:blink 1.5s infinite}
-#toolbarWrap.scrolled::after{display:none}
-.tcat{display:flex;flex-direction:column;border-right:1px solid var(--border)}
-.tcat-lbl{color:var(--text3);font-size:4px;padding:3px 6px 1px;letter-spacing:1px}
-.titems{display:flex;align-items:center;padding:0 4px;gap:2px;flex:1}
-.titem{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 7px;cursor:pointer;border:1px solid transparent;min-width:50px;font-family:var(--font);background:transparent;transition:all .1s}
-.titem:hover{border-color:var(--border2);background:var(--bg3)}
-.titem.sel{border-color:var(--amber);background:rgba(245,166,35,.08)}
-.titem.sel .tname{color:var(--amber)}
-.titem.locked{opacity:.3;cursor:not-allowed}
-.titem.locked:hover{border-color:transparent;background:transparent}
-.titem.unaffordable{opacity:.4;filter:grayscale(0.7)}
-.titem.unaffordable:hover{border-color:var(--border);background:transparent}
-.titem.stub{opacity:.5;cursor:default}
-.titem.stub:hover{border-color:var(--border2);background:var(--bg3)}
-.ticon{font-size:20px;line-height:1}
-.tname{color:var(--text3);font-size:4px;text-align:center;white-space:nowrap}
+/* ── TAB BAR (replaces old toolbar) ── */
+#tabBar{flex-shrink:0;height:58px;background:var(--panel);border-top:2px solid var(--border2);display:flex;z-index:100}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--font);font-size:4px;color:var(--text3);border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
+.tab-btn .tab-icon{font-size:20px;line-height:1}
+.tab-btn:hover{color:var(--text2);background:var(--bg3)}
+.tab-btn.active{color:var(--amber);border-top-color:var(--amber);background:rgba(245,166,35,.06)}
+.tab-btn.active .tab-icon{filter:none}
+@media(max-width:600px){#tabBar{height:70px}.tab-btn{font-size:5px}.tab-btn .tab-icon{font-size:24px}}
 
-/* SIDE PANEL */
-.spanel{position:fixed;top:44px;right:0;bottom:70px;width:min(300px,88vw);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
+/* ── DRAWER (slides up above tab bar when a tab is active) ── */
+#tabDrawer{flex-shrink:0;background:var(--panel);border-top:1px solid var(--border2);overflow:hidden;max-height:0;transition:max-height .18s ease;z-index:99}
+#tabDrawer.open{max-height:140px}
+@media(max-width:600px){#tabDrawer.open{max-height:160px}}
+/* Category sub-tabs inside drawer */
+#drawerCats{display:flex;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+#drawerCats::-webkit-scrollbar{display:none}
+.dcat-btn{font-family:var(--font);font-size:4px;padding:5px 10px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text3);cursor:pointer;white-space:nowrap;flex-shrink:0;letter-spacing:.5px}
+.dcat-btn.active{color:var(--amber);border-bottom-color:var(--amber)}
+@media(max-width:600px){.dcat-btn{font-size:5px;padding:6px 12px}}
+/* Items row inside drawer */
+#drawerItems{display:flex;gap:4px;padding:5px 8px;overflow-x:auto;scrollbar-width:none;align-items:center}
+#drawerItems::-webkit-scrollbar{display:none}
+.ditem{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 8px;cursor:pointer;border:1px solid var(--border);min-width:52px;font-family:var(--font);background:transparent;flex-shrink:0;transition:all .1s}
+.ditem:hover{border-color:var(--border2);background:var(--bg3)}
+.ditem.sel{border-color:var(--amber);background:rgba(245,166,35,.08)}
+.ditem.locked{opacity:.3;cursor:not-allowed}
+.ditem.unaffordable{opacity:.4;filter:grayscale(.7)}
+.ditem .di{font-size:20px;line-height:1}
+.ditem .dn{font-size:4px;color:var(--text3);white-space:nowrap}
+.ditem.sel .dn{color:var(--amber)}
+@media(max-width:600px){.ditem{min-width:60px;padding:5px 10px}.ditem .di{font-size:24px}.ditem .dn{font-size:5px}}
+
+/* ── SIDE PANEL (Inventory, Machine, Rocket etc — infrequent reference panels) ── */
+.spanel{position:fixed;top:48px;right:0;bottom:68px;width:min(300px,88vw);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
 .spanel.open{transform:translateX(0)}
+@media(max-width:600px){.spanel{top:52px;bottom:80px;width:min(340px,96vw)}}
 .ph{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:2px solid var(--border2);flex-shrink:0;background:#0f0f0f}
 .ph-title{color:var(--amber);font-size:8px}
 .ph-x{background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;padding:2px 6px}
@@ -274,7 +198,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .pbody::-webkit-scrollbar-thumb{background:var(--border2)}
 
 /* TOASTS */
-#toasts{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column-reverse;gap:5px;align-items:center;pointer-events:none}
+#toasts{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column-reverse;gap:5px;align-items:center;pointer-events:none}
 .toast{background:var(--panel);border:1px solid var(--border2);padding:7px 14px;font-size:6px;white-space:nowrap;animation:tin .15s ease-out,tout .25s ease-in 1.75s forwards}
 .toast.ok{border-color:var(--teal);color:var(--teal)}
 .toast.bad{border-color:var(--red);color:var(--red)}
@@ -357,7 +281,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 .tt-recipe .tt-rtime{color:var(--text3)}
 #resInfo{
   position:fixed;left:50%;transform:translateX(-50%) translateY(20px);
-  bottom:80px;width:min(280px,88vw);z-index:300;
+  bottom:68px;width:min(280px,88vw);z-index:300;
   opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;
 }
 #resInfo:not(.hidden){opacity:1;transform:translateX(-50%) translateY(0);pointer-events:all;}
@@ -384,7 +308,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v0.9.6 — ZONE 1: IRONFIELD</p>
+    <p class="v-num">v1.0.5 — ZONE 1: IRONFIELD</p>
   </div>
 </div>
 
@@ -400,27 +324,39 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div class="zone-tab locked" title="Complete all zones to unlock">Z5</div>
     </div>
     <div id="hudRes"></div>
-    <div class="hud-btns">
-      <button class="hbtn" id="btnInv"      onclick="togglePanel('inv')">📦</button>
-      <button class="hbtn" id="btnResearch" onclick="togglePanel('research')">🔬</button>
-      <button class="hbtn" id="btnRocket"   onclick="togglePanel('rocket')">🚀</button>
-      <button class="hbtn" id="btnPerks"    onclick="togglePanel('perks')">⭐</button>
-      <button class="hbtn" id="btnStats"   onclick="togglePanel('stats')">📊</button>
-      <button class="hbtn" id="btnRecipes" onclick="togglePanel('recipes')" title="Recipe Book">📖</button>
-      <button class="hbtn" id="btnAchieve" onclick="togglePanel('achieve')">🏆</button>
-      <button class="hbtn" id="btnBlueprint" onclick="togglePanel('blueprint')">📐</button>
-      <button class="hbtn" id="btnDev" onclick="togglePanel('dev')" style="display:none;border-color:var(--purple);color:var(--purple)">🛠</button>
-      <button class="hbtn"                  onclick="openMenu()">☰</button>
+    <div style="display:flex;gap:3px;flex-shrink:0;margin-left:auto">
+      <button class="hbtn" id="btnInv"      onclick="togglePanel('inv')" title="Inventory">📦</button>
+      <button class="hbtn" id="btnRocket"   onclick="togglePanel('rocket')" title="Rocket">🚀</button>
+      <button class="hbtn" id="btnStats"    onclick="togglePanel('stats')" title="Statistics">📊</button>
+      <button class="hbtn" id="btnAchieve"  onclick="togglePanel('achieve')" title="Achievements">🏆</button>
+      <button class="hbtn" id="btnDev" onclick="togglePanel('dev')" style="display:none;border-color:var(--purple);color:var(--purple)" title="Dev">🛠</button>
+      <button class="hbtn"                  onclick="openMenu()" title="Menu">☰</button>
     </div>
   </div>
   <div id="wrap"><canvas id="canvas"></canvas>
     <div id="toolTip" class="hidden"></div>
+    <!-- Build mode floating controls — shown bottom-left of canvas while a machine is selected -->
+    <div id="buildHUD" class="hidden" style="position:absolute;bottom:10px;left:10px;display:flex;gap:6px;align-items:center;z-index:150;pointer-events:all">
+      <button id="buildRotateBtn" onclick="cycleDir()" style="font-family:var(--font);font-size:11px;padding:7px 10px;border:1px solid var(--amber);background:rgba(13,13,13,.92);color:var(--amber);cursor:pointer;border-radius:3px;display:none">↻ →</button>
+      <button onclick="cancelBuild()" style="font-family:var(--font);font-size:7px;padding:7px 12px;border:1px solid var(--border2);background:rgba(13,13,13,.92);color:var(--text2);cursor:pointer;border-radius:3px">✕ CANCEL</button>
+    </div>
   </div>
   <div id="tutHint" class="hidden" style="background:rgba(245,166,35,.12);border-top:1px solid var(--amber);padding:7px 12px;display:flex;align-items:center;justify-content:space-between;z-index:150;flex-shrink:0">
     <span id="tutText" style="font-size:5px;color:var(--amber);line-height:1.8;flex:1"></span>
     <button onclick="skipTutorial()" style="font-family:var(--font);font-size:4px;padding:3px 7px;border:1px solid var(--amberDim);background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;margin-left:10px">SKIP</button>
   </div>
-  <div id="toolbarWrap"><div id="toolbar"></div></div>
+  <!-- Tab drawer — slides up above tab bar -->
+  <div id="tabDrawer">
+    <div id="drawerCats"></div>
+    <div id="drawerItems"></div>
+  </div>
+  <!-- Tab bar — always visible, replaces old toolbar -->
+  <div id="tabBar">
+    <button class="tab-btn" id="tab-build"    onclick="switchTab('build')"><span class="tab-icon">🏗️</span>BUILD</button>
+    <button class="tab-btn" id="tab-craft"    onclick="switchTab('craft')"><span class="tab-icon">🔨</span>CRAFT</button>
+    <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon">🔬</span>RESEARCH</button>
+    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon">🛠️</span>TOOLS</button>
+  </div>
 </div>
 
 <!-- Multi-select action bar — fixed, outside canvas touch zone -->
@@ -434,7 +370,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 </div>
 
 <!-- Ghost paste confirm bar — shown during blueprint holding and multisel pasting -->
-<div id="ghostBar" class="hidden" style="position:fixed;bottom:70px;left:0;right:0;background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:7px 12px;display:flex;align-items:center;gap:8px;z-index:600;pointer-events:all">
+<div id="ghostBar" class="hidden" style="position:fixed;bottom:58px;left:0;right:0;background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:7px 12px;display:flex;align-items:center;gap:8px;z-index:600;pointer-events:all">
   <span style="font-size:6px;color:var(--amber);flex:1" id="ghostBarLabel">Hover to position, then confirm</span>
   <button onclick="ghostConfirm()" style="font-family:var(--font);font-size:6px;padding:6px 14px;border:2px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer">✓ PLACE</button>
   <button onclick="ghostCancel()" style="font-family:var(--font);font-size:6px;padding:6px 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✗ CANCEL</button>
@@ -514,7 +450,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
     <div style="font-size:5px;color:var(--text3);letter-spacing:1px;margin-bottom:5px">USED FOR</div>
     <div id="resInfoUses" style="font-size:5px;color:var(--text3);line-height:2.2"></div>
     <div style="margin-top:10px;display:flex;gap:6px">
-      <button class="mini-btn amber" onclick="setTool('mine');closeResInfo()">⛏️ MINE THIS</button>
+      <button class="mini-btn amber" id="mineBtn" onclick="doMineTap()">⛏️ MINE (0/4)</button>
       <button class="mini-btn teal"  onclick="closeResInfo()">CLOSE</button>
     </div>
   </div>
@@ -538,7 +474,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '0.9.6';
+const VER      = '1.0.5';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -851,23 +787,45 @@ const MACHINE_BUILDS = [
   'blast_furnace','electric_smelter','assembler','lab',
 ];
 // ═══════════════════════════════════════════════════
-const TOOLBAR_DEF = [
-  {label:'Craft', items:[
-    {id:'craft', name:'Craft', icon:'🔨', noMachine:true},
-  ]},
-  {label:'Tools', items:[
-    {id:'select',    name:'Select',    icon:'👆', noMachine:true},
-    {id:'multisel',  name:'Multi-Sel', icon:'⬚',  noMachine:true},
-    {id:'mine',      name:'Mine',      icon:'⛏️', noMachine:true},
-    {id:'demolish',  name:'Demolish',  icon:'💥', noMachine:true},
-    {id:'rotate',    name:'Rotate',    icon:'↻',  noMachine:true},
-    {id:'move',      name:'Move',      icon:'✥',  noMachine:true},
-    {id:'blueprint', name:'Blueprint', icon:'📐', noMachine:true},
-  ]},
-  {label:'Extract',    items:[{id:'miner',name:'Miner',icon:'⛏️'},{id:'burner',name:'Burner',icon:'🪵'},{id:'generator',name:'Generator',icon:'⚡'}]},
-  {label:'Processing', items:[{id:'stone_furnace',name:'Furnace',icon:'⚱️'},{id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},{id:'electric_smelter',name:'Elec. Smelt.',icon:'🌩️'},{id:'assembler',name:'Assembler',icon:'🏗️'},{id:'lab',name:'Lab',icon:'🔬'}]},
-  {label:'Logistics',  items:[{id:'belt',name:'Belt',icon:'➡️'},{id:'splitter',name:'Splitter',icon:'⑂'},{id:'tunnel',name:'Tunnel',icon:'⏬'},{id:'inserter',name:'Inserter',icon:'🦾'},{id:'chest',name:'Chest',icon:'📦'}]},
-];
+// ═══════════════════════════════════════════════════
+//  TAB / DRAWER DEFINITIONS
+// ═══════════════════════════════════════════════════
+const DRAWER_DEFS = {
+  build: [
+    {label:'Logistics', items:[
+      {id:'belt',name:'Belt',icon:'➡️'},
+      {id:'splitter',name:'Splitter',icon:'⑂'},
+      {id:'tunnel',name:'Tunnel',icon:'⏬'},
+      {id:'inserter',name:'Inserter',icon:'🦾'},
+      {id:'chest',name:'Chest',icon:'📦'},
+    ]},
+    {label:'Extract', items:[
+      {id:'miner',name:'Miner',icon:'⛏️'},
+      {id:'burner',name:'Burner',icon:'🪵'},
+      {id:'generator',name:'Generator',icon:'⚡'},
+    ]},
+    {label:'Processing', items:[
+      {id:'stone_furnace',name:'Furnace',icon:'⚱️'},
+      {id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},
+      {id:'electric_smelter',name:'Elec. Smelt.',icon:'🌩️'},
+      {id:'assembler',name:'Assembler',icon:'🏗️'},
+      {id:'lab',name:'Lab',icon:'🔬'},
+    ]},
+  ],
+  tools: [
+    {label:'Tools', items:[
+      {id:'select',name:'Select',icon:'👆',noMachine:true},
+      {id:'multisel',name:'Multi-Sel',icon:'⬚',noMachine:true},
+      {id:'demolish',name:'Demolish',icon:'💥',noMachine:true},
+      {id:'rotate',name:'Rotate',icon:'↻',noMachine:true},
+      {id:'move',name:'Move',icon:'✥',noMachine:true},
+      {id:'blueprint',name:'Blueprint',icon:'📐',noMachine:true},
+    ]},
+  ],
+};
+
+let activeTab = null;      // 'build'|'craft'|'research'|'tools'|null
+let activeDrawerCat = {};  // {tabId: categoryIndex}
 
 // ═══════════════════════════════════════════════════
 //  TECH TREE
@@ -1155,28 +1113,19 @@ function draw(){
       }
     }
 
-    // Mine hover
-    if(activeTool==='mine'&&tile.type===T_RESOURCE&&hov.x===tx&&hov.y===ty){
-      ctx.fillStyle='rgba(245,166,35,.3)'; ctx.fillRect(px,py,ts,ts);
+    // MineTap active tile highlight — show tap progress as pips
+    if(mineTap.active&&mineTap.tx===tx&&mineTap.ty===ty&&ts>8){
+      ctx.fillStyle='rgba(245,166,35,.18)'; ctx.fillRect(px,py,ts,ts);
       ctx.strokeStyle='#f5a623'; ctx.lineWidth=2; ctx.strokeRect(px,py,ts,ts);
-    }
-    // Mine hold progress ring
-    if(mineHold.active&&mineHold.tx===tx&&mineHold.ty===ty&&ts>8){
-      const elapsed=now-mineHold.startTime;
-      const prog=Math.min(1,elapsed/MINE_HOLD_MS);
-      const cx2=px+ts/2, cy2=py+ts/2;
-      const rad=Math.max(4,ts*.38);
-      const lw=Math.max(2,ts*.08);
-      // Background track
-      ctx.beginPath(); ctx.arc(cx2,cy2,rad,0,Math.PI*2);
-      ctx.strokeStyle='rgba(245,166,35,.18)'; ctx.lineWidth=lw; ctx.stroke();
-      // Progress arc
-      if(prog>0){
-        ctx.beginPath(); ctx.arc(cx2,cy2,rad,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
-        ctx.strokeStyle=`rgba(245,166,35,${.7+.3*prog})`; ctx.lineWidth=lw; ctx.stroke();
+      // Draw pip dots (4 total, fill taps completed)
+      const pipR=Math.max(3,ts*.07); const pipGap=pipR*2.8;
+      const totalW=(MINE_TAPS-1)*pipGap; const pipY=py+ts-pipR*2.2;
+      for(let i=0;i<MINE_TAPS;i++){
+        const pipX=px+ts/2-totalW/2+i*pipGap;
+        ctx.beginPath(); ctx.arc(pipX,pipY,pipR,0,Math.PI*2);
+        ctx.fillStyle=i<mineTap.taps?'#f5a623':'rgba(245,166,35,.25)';
+        ctx.fill();
       }
-      // Pulse the tile highlight as it fills
-      ctx.fillStyle=`rgba(245,166,35,${prog*.25})`; ctx.fillRect(px,py,ts,ts);
     }
     // Demolish hover
     if(activeTool==='demolish'&&tile.mid!==null&&hov.x===tx&&hov.y===ty){
@@ -1250,12 +1199,6 @@ function draw(){
         }
       }
     }
-  }
-
-  // Mine hold completion — restart immediately so holding continues mining
-  if(mineHold.active&&(now-mineHold.startTime)>=MINE_HOLD_MS){
-    tapCollect(mineHold.tx,mineHold.ty);
-    mineHold.startTime=now; // restart — keeps mining while held
   }
 
   // Multi-tile machines
@@ -1427,38 +1370,43 @@ function draw(){
     ctx.fillStyle='#666';
     ctx.beginPath(); ctx.arc(bcx,bcy,brad,0,Math.PI*2); ctx.fill();
 
-    // Arm — smooth semicircle sweep using real time
-    const swingDurMs=4*TICK_MS;
-    const msSince=now-(m.lastTransferMs||0);
-    const swingT=msSince<swingDurMs?(1-msSince/swingDurMs):0;
+    // Arm — state machine driven, real ms timestamps
     const[dvx,dvy]=D_VEC[m.dir];
     const destAngle=Math.atan2(dvy,dvx);
     const srcAngle=destAngle+Math.PI;
-    const isHolding=m._pending&&m._pending.length>0;
-    let armAngle;
-    if(isHolding&&swingT<=0.05){
-      // Holding item, waiting — park arm at destination side
-      armAngle=destAngle;
+    const arm=m._arm||(m._arm={state:'idle',stateStart:now,item:null});
+    const elapsed=now-arm.stateStart;
+    function insEase(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
+    let curAngle,isMoving,isWaiting;
+    if(arm.state==='idle'){
+      curAngle=srcAngle; isMoving=false; isWaiting=false;
+    } else if(arm.state==='grabbing'){
+      const p=insEase(Math.min(1,elapsed/INS_GRAB_MS));
+      curAngle=srcAngle+(destAngle-srcAngle)*p; isMoving=true; isWaiting=false;
+    } else if(arm.state==='depositing'){
+      curAngle=destAngle; isMoving=false; isWaiting=false;
+    } else if(arm.state==='waiting'){
+      curAngle=destAngle; isMoving=false; isWaiting=true;
     } else {
-      const sweep=Math.sin(swingT*Math.PI);
-      armAngle=srcAngle - sweep*Math.PI;
+      const p=insEase(Math.min(1,elapsed/INS_RETURN_MS));
+      curAngle=destAngle+(srcAngle-destAngle)*p; isMoving=true; isWaiting=false;
     }
     const armLen=Math.max(4,ts*.40);
-    const ax=bcx+Math.cos(armAngle)*armLen;
-    const ay=bcy+Math.sin(armAngle)*armLen;
-    const isMoving=swingT>0.05;
-    ctx.strokeStyle=isMoving?'#f5a623':isHolding?'#f5a623':'#777';
+    const ax=bcx+Math.cos(curAngle)*armLen;
+    const ay=bcy+Math.sin(curAngle)*armLen;
+    const hasItem=!!arm.item;
+    ctx.strokeStyle=isWaiting?'#e53935':hasItem||isMoving?'#f5a623':'#777';
     ctx.lineWidth=Math.max(1.5,ts*.07);
     ctx.beginPath(); ctx.moveTo(bcx,bcy); ctx.lineTo(ax,ay); ctx.stroke();
     const clawR=Math.max(2,ts*.10);
-    ctx.fillStyle=isMoving||isHolding?'#f5a623':'#999';
+    ctx.fillStyle=isWaiting?'#e53935':hasItem||isMoving?'#f5a623':'#999';
     ctx.beginPath(); ctx.arc(ax,ay,clawR,0,Math.PI*2); ctx.fill();
 
     // Show carried item on arm tip
-    if(m._pending&&m._pending.length>0&&ts>18){
+    if(hasItem&&ts>18){
       ctx.font=`${Math.floor(ts*.22)}px serif`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(ITEMS[m._pending[0].item]?.icon||'·',ax,ay);
+      ctx.fillText(ITEMS[arm.item]?.icon||'·',ax,ay);
     }
 
     // Direction label at high zoom
@@ -1568,6 +1516,32 @@ function draw(){
       ctx.fillRect(px,py,mw*ts,mh*ts);
       ctx.strokeStyle=ok?'#f5a623':'#e53935';
       ctx.lineWidth=2; ctx.strokeRect(px,py,mw*ts,mh*ts);
+      // Output port indicators on ghost
+      if(ts>20) drawPorts(ctx,activeTool,px,py,mw*ts,mh*ts,ts,placeDir);
+      // Direction arrow for directional machines
+      const dirMachines=['belt','inserter','tunnel','splitter'];
+      if(dirMachines.includes(activeTool)&&ts>12){
+        const cx2=px+mw*ts/2, cy2=py+mh*ts/2;
+        const arrowLen=Math.min(ts*.32,14);
+        const[dvx,dvy]=D_VEC[placeDir];
+        ctx.save();
+        ctx.strokeStyle=ok?'rgba(245,166,35,.9)':'rgba(229,57,53,.9)';
+        ctx.fillStyle=ok?'rgba(245,166,35,.9)':'rgba(229,57,53,.9)';
+        ctx.lineWidth=Math.max(1.5,ts*.04);
+        ctx.beginPath();
+        ctx.moveTo(cx2-dvx*arrowLen*.6, cy2-dvy*arrowLen*.6);
+        ctx.lineTo(cx2+dvx*arrowLen*.4, cy2+dvy*arrowLen*.4);
+        ctx.stroke();
+        // Arrowhead
+        const hx=cx2+dvx*arrowLen*.4, hy=cy2+dvy*arrowLen*.4;
+        const perp=arrowLen*.28;
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(hx-dvx*perp*1.1+dvy*perp, hy-dvy*perp*1.1-dvx*perp);
+        ctx.lineTo(hx-dvx*perp*1.1-dvy*perp, hy-dvy*perp*1.1+dvx*perp);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
     }
   }
 
@@ -1663,12 +1637,14 @@ const ripples=[];
 // ═══════════════════════════════════════════════════
 let activeTool='select';
 let placeDir=D_RIGHT;
+const LOGISTICS_TOOLS=new Set(['belt','inserter','tunnel','splitter','chest']);
 let hov={x:-1,y:-1};
 let drag={on:false,sx:0,sy:0,cx:0,cy:0,moved:false};
-let pinch={on:false,d:0};
+let pinch={on:false,d:0,mx:0,my:0,vel:0,lastT:0};
 let touchT=0;
-const MINE_HOLD_MS=2000;
-let mineHold={active:false,tx:0,ty:0,startTime:0};
+// mineTap: 4 taps = 1 ore. Active while resInfo mine popup is open.
+let mineTap={active:false,resId:null,tx:0,ty:0,taps:0};
+const MINE_TAPS=4; // taps per ore
 let moveState={active:false,machineId:null,origX:0,origY:0};
 // Blueprint tool state
 let blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
@@ -1707,11 +1683,6 @@ function setupInput(){
 function onDown(cx,cy){
   drag={on:true,sx:cx,sy:cy,cx:G.cam.x,cy:G.cam.y,moved:false};
   closeResInfo();
-  if(activeTool==='mine'){
-    const r=wrapRect(); const tile=scrToTile(cx-r.left,cy-r.top);
-    if(tile.x>=0&&tile.y>=0&&tile.x<MAP_W&&tile.y<MAP_H&&G.map[tile.y][tile.x].type===T_RESOURCE)
-      mineHold={active:true,tx:tile.x,ty:tile.y,startTime:performance.now()};
-  }
 }
 function onMov(cx,cy){
   const r=wrapRect(); hov=scrToTile(cx-r.left,cy-r.top);
@@ -1722,7 +1693,6 @@ function onMov(cx,cy){
 }
 function onUp(cx,cy){
   if(!drag.on)return; drag.on=false;
-  mineHold.active=false;
   if(!drag.moved){const r=wrapRect();handleTap(scrToTile(cx-r.left,cy-r.top),false);}
 }
 
@@ -1733,13 +1703,8 @@ function onTouchStart(e){
     const t=e.touches[0];
     drag={on:true,sx:t.clientX,sy:t.clientY,cx:G.cam.x,cy:G.cam.y,moved:false};
     pinch.on=false;
-    if(activeTool==='mine'){
-      const r=wrapRect(); const tile=scrToTile(t.clientX-r.left,t.clientY-r.top);
-      if(tile.x>=0&&tile.y>=0&&tile.x<MAP_W&&tile.y<MAP_H&&G.map[tile.y][tile.x].type===T_RESOURCE)
-        mineHold={active:true,tx:tile.x,ty:tile.y,startTime:performance.now()};
-    }
   }
-  else if(e.touches.length===2){drag.on=false;mineHold.active=false;pinch={on:true,d:tdist(e.touches)};}
+  else if(e.touches.length===2){drag.on=false;pinch={on:true,d:tdist(e.touches)};}
 }
 function onTouchMove(e){
   if(e.touches.length===1&&drag.on){
@@ -1751,11 +1716,26 @@ function onTouchMove(e){
     const nd=tdist(e.touches); const r=wrapRect();
     const mx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left;
     const my=(e.touches[0].clientY+e.touches[1].clientY)/2-r.top;
-    zoomAt(mx,my,nd/pinch.d); pinch.d=nd; drag.moved=true;
+    const now2=performance.now();
+    const dt=now2-pinch.lastT; const ratio=nd/pinch.d;
+    pinch.vel=dt>0?(ratio-1)/dt*1000:0; // zoom rate per second
+    pinch.mx=mx; pinch.my=my; pinch.lastT=now2;
+    zoomAt(mx,my,ratio); pinch.d=nd; drag.moved=true;
   }
 }
 function onTouchEnd(e){
-  mineHold.active=false;
+  // Pinch momentum — ease out zoom velocity
+  if(pinch.on&&Math.abs(pinch.vel)>0.08){
+    let vel=pinch.vel;
+    const mx=pinch.mx, my=pinch.my;
+    const decay=()=>{
+      if(Math.abs(vel)<0.004)return;
+      zoomAt(mx,my,1+vel*0.016);
+      vel*=0.82;
+      requestAnimationFrame(decay);
+    };
+    requestAnimationFrame(decay);
+  }
   if(e.changedTouches.length===1&&!drag.moved){
     const t=e.changedTouches[0]; const r=wrapRect();
     handleTap(scrToTile(t.clientX-r.left,t.clientY-r.top),Date.now()-touchT>400);
@@ -1775,10 +1755,7 @@ function handleTap(tile,isLong){
     if(t.mid!==null)tryRemove(x,y);
     return;
   }
-  if(activeTool==='mine'){
-    // Mining is hold-to-collect — handled by mineHold in draw()
-    return;
-  }
+  // No activeTool==='mine' — mining is now triggered via resInfo popup button
   if(activeTool==='rotate'){
     if(t.mid!==null){
       const m=G.machines[t.mid];
@@ -1935,9 +1912,20 @@ function handleTap(tile,isLong){
     }
     return;
   }
+  // Tapping a bare resource tile with any non-building tool opens mine popup
+  const noMachineTools=['select','demolish','rotate','move','multisel','blueprint'];
+  if(t.type===T_RESOURCE&&t.mid===null&&noMachineTools.includes(activeTool)){
+    openResInfo(t.res,x,y); return;
+  }
+  // Tapping an occupied tile while in build mode opens the machine panel instead of trying to place
+  const def=MDEFS[activeTool];
+  if(t.mid!==null&&def&&!noMachineTools.includes(activeTool)){
+    openMachinePanel(G.machines[t.mid]); return;
+  }
   tryPlace(activeTool,x,y);
 }
 
+// tapCollect kept as legacy stub (no longer called directly)
 function tapCollect(x,y){
   const tile=G.map[y][x]; if(!tile.res)return;
   G.inv[tile.res]=(G.inv[tile.res]||0)+1;
@@ -1947,7 +1935,7 @@ function tapCollect(x,y){
   toast(`+1 ${ITEMS[tile.res].name}`,'ok');
 }
 
-function openResInfo(resId){
+function openResInfo(resId, tx, ty){
   const item=ITEMS[resId]; if(!item)return;
   const stock=G.inv[resId]||0;
   document.getElementById('resInfoIcon').textContent=item.icon;
@@ -1955,10 +1943,46 @@ function openResInfo(resId){
   document.getElementById('resInfoDesc').textContent=item.desc||'';
   document.getElementById('resInfoStock').textContent=`In inventory: ${fmt(stock)}`;
   document.getElementById('resInfoUses').innerHTML=(item.uses||[]).map(u=>`• ${u}`).join('<br>');
+  // Activate mineTap for this tile if coords provided
+  if(tx!==undefined&&ty!==undefined){
+    mineTap={active:true,resId,tx,ty,taps:0};
+    updateMineBtnLabel();
+  }
   document.getElementById('resInfo').classList.remove('hidden');
 }
 
+function updateMineBtnLabel(){
+  const btn=document.getElementById('mineBtn');
+  if(btn) btn.textContent=`⛏️ MINE (${mineTap.taps}/${MINE_TAPS})`;
+}
+
+function doMineTap(){
+  if(!mineTap.active) return;
+  const tile=G.map[mineTap.ty]?.[mineTap.tx];
+  if(!tile||tile.type!==T_RESOURCE){closeResInfo();return;}
+  mineTap.taps++;
+  sfx('tap'); G.stats.taps++;
+  const ts=TILE*G.cam.zoom;
+  ripples.push({px:mineTap.tx*ts-G.cam.x+ts/2,py:mineTap.ty*ts-G.cam.y+ts/2,t:performance.now()});
+  if(mineTap.taps>=MINE_TAPS){
+    // Award 1 ore
+    const yieldMult=perkMult().yield;
+    const gained=Math.max(1,Math.round(yieldMult));
+    G.inv[mineTap.resId]=(G.inv[mineTap.resId]||0)+gained;
+    mineTap.taps=0;
+    updateHUD();
+    toast(`+${gained} ${ITEMS[mineTap.resId].name}`,'ok');
+    checkAchievements();
+    // Update stock display
+    const stock=G.inv[mineTap.resId]||0;
+    const stockEl=document.getElementById('resInfoStock');
+    if(stockEl) stockEl.textContent=`In inventory: ${fmt(stock)}`;
+  }
+  updateMineBtnLabel();
+}
+
 function closeResInfo(){
+  mineTap.active=false;
   document.getElementById('resInfo').classList.add('hidden');
 }
 
@@ -1989,11 +2013,11 @@ function canPlace(type,tx,ty,dir){
 
 function tryPlace(type,tx,ty){
   const def=MDEFS[type]; if(!def)return;
-  if(def.stub){toast(`[FUTURE] ${def.name} — not yet active`,'wrn');return;}
+  if(def.stub){toast(`[FUTURE] ${def.name} — not yet active`,'wrn');hudSelect();return;}
   if(def.unlock&&!G.research.done.includes(def.unlock)){
-    toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); return;
+    toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); hudSelect(); return;
   }
-  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad'); sfx('error'); return;}
+  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad'); sfx('error'); hudSelect(); return;}
 
   // Power warning — confirm if this machine will exceed available power
   if(def.power>0&&!G.devFreeBuild){
@@ -2022,7 +2046,7 @@ function tryPlace(type,tx,ty){
     G.crafted[type]--;
   } else {
     for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn'); sfx('error'); return;}
+      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn'); sfx('error'); flashDrawerItem(); hudSelect(); return;}
     }
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
@@ -2054,12 +2078,13 @@ function tryPlace(type,tx,ty){
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
+  if(!LOGISTICS_TOOLS.has(type)) hudSelect();
 }
 
 function completePlacement(type,tx,ty){
   // Called after player confirms power warning — skip power check and place
   const def=MDEFS[type]; if(!def)return;
-  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad');sfx('error');return;}
+  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad');sfx('error');hudSelect();return;}
   const crafted=(G.crafted[type]||0)>0;
   if(G.devFreeBuild){
     // free
@@ -2067,7 +2092,7 @@ function completePlacement(type,tx,ty){
     G.crafted[type]--;
   } else {
     for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');return;}
+      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');flashDrawerItem();hudSelect();return;}
     }
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
@@ -2090,6 +2115,7 @@ function completePlacement(type,tx,ty){
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
+  if(!LOGISTICS_TOOLS.has(type)) hudSelect();
 }
 function tryRemove(tx,ty){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
@@ -2417,109 +2443,90 @@ function runBelts(){
   }
 }
 
+// Inserter arm state machine constants (real ms)
+const INS_GRAB_MS   = 800;
+const INS_DEPOSIT_MS= 80;
+const INS_RETURN_MS = 800;
+
 function runInserter(m){
-  // Fix 3: inserters need power to operate
   if(powerRatio()===0)return;
 
   const[dvx,dvy]=D_VEC[m.dir];
-  const sx=m.x-dvx, sy=m.y-dvy; // source tile (behind inserter)
-  const dx=m.x+dvx, dy=m.y+dvy; // destination tile (in front)
+  const sx=m.x-dvx, sy=m.y-dvy;
+  const dx=m.x+dvx, dy=m.y+dvy;
   if(sx<0||sy<0||sx>=MAP_W||sy>=MAP_H)return;
   if(dx<0||dy<0||dx>=MAP_W||dy>=MAP_H)return;
 
   const src=G.map[sy][sx];
   const dst=G.map[dy][dx];
+  const now=performance.now();
 
-  // Flush any pending deposits whose delay has elapsed (arm reached dest)
-  if(!m._pending)m._pending=[];
-  for(let i=m._pending.length-1;i>=0;i--){
-    const p=m._pending[i];
-    if(G.tick>=p.at){
-      // Now actually deposit — if destination belt is full, retry next tick (hold item)
-      if(dst.mid!==null){
-        const dm=G.machines[dst.mid];
-        if(dm&&(dm.type==='belt'||dm.type==='tunnel')){
-          if(dst.items.length<4){
-            dst.items.push({id:p.item,prog:0});
-            m._pending.splice(i,1);
-            m.lastTransferMs=performance.now(); // trigger swing animation on success
-          }
-          // else: belt/tunnel full — keep pending, arm holds still
-        } else if(dm&&dm.type==='chest'){
-          const chestTotal=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
-          if(chestTotal<200){
-            dm.chestInv[p.item]=(dm.chestInv[p.item]||0)+1;
-            m._pending.splice(i,1);
-            m.lastTransferMs=performance.now();
-          }
-          // else: chest full — keep pending, arm holds still
-        } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
-          if((dm.inBuf[p.item]||0)<50){
-            dm.inBuf[p.item]=(dm.inBuf[p.item]||0)+1;
-            m._pending.splice(i,1);
-            m.lastTransferMs=performance.now();
-          }
-          // else: this item's slot is full — keep pending, arm holds still
-        } else {
-          returnItem(src,p.item);
-          m._pending.splice(i,1);
+  if(!m._arm) m._arm={state:'idle',stateStart:now,item:null};
+  const arm=m._arm;
+
+  if(arm.state==='idle'){
+    if(dst.mid===null)return;
+    const dm=G.machines[dst.mid]; if(!dm)return;
+    if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return;
+    if(dm.type==='chest'&&isOutputFacing(dm,dvx,dvy))return;
+    if((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4)return;
+
+    let item=null;
+    if(src.mid!==null){
+      const sm=G.machines[src.mid];
+      if(sm&&(sm.type==='belt'||sm.type==='tunnel')){
+        const ready=src.items.filter(it=>it.prog>=0.9);
+        if(ready.length>0){const it=ready[0];src.items.splice(src.items.indexOf(it),1);item=it.id;}
+      } else if(sm&&sm.type==='chest'){
+        for(const[k,v]of Object.entries(sm.chestInv)){if(v>0){item=k;sm.chestInv[k]--;break;}}
+      } else if(sm&&sm.type!=='belt'&&sm.type!=='inserter'){
+        if(isOutputFacing(sm,-dvx,-dvy)){
+          for(const[k,v]of Object.entries(sm.outBuf)){if(v>0){item=k;sm.outBuf[k]--;break;}}
         }
+      }
+    }
+    if(!item)return;
+    arm.state='grabbing'; arm.stateStart=now; arm.item=item;
+    m.lastTransfer=G.tick;
+
+  } else if(arm.state==='grabbing'){
+    if(now-arm.stateStart>=INS_GRAB_MS){arm.state='depositing';arm.stateStart=now;}
+
+  } else if(arm.state==='depositing'){
+    if(now-arm.stateStart<INS_DEPOSIT_MS)return;
+    if(dst.mid!==null){
+      const dm=G.machines[dst.mid];
+      if(dm&&(dm.type==='belt'||dm.type==='tunnel')){
+        if(dst.items.length<4){dst.items.push({id:arm.item,prog:0});arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        else{arm.state='waiting';arm.stateStart=now;}
+      } else if(dm&&dm.type==='chest'){
+        const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
+        if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        else{arm.state='waiting';arm.stateStart=now;}
+      } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
+        if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        else{arm.state='waiting';arm.stateStart=now;}
       } else {
-        returnItem(src,p.item);
-        m._pending.splice(i,1);
+        returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
       }
+    } else {
+      returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
     }
-  }
 
-  // Only grab a new item if arm is at rest (no pending)
-  if(m._pending.length>0)return;
-
-  // ── Destination check FIRST — before touching source ──
-  // If destination can't accept right now, don't grab anything
-  if(dst.mid===null)return; // empty floor — nothing to deposit into
-  const dm=G.machines[dst.mid];
-  if(!dm)return;
-  // Can't deposit into the output face of a machine
-  if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return;
-  if(dm.type==='chest'&&isOutputFacing(dm,dvx,dvy))return;
-  // Belt/tunnel full — wait
-  if((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4)return;
-
-  // ── Grab one item from source ──
-  let item=null;
-  if(src.mid!==null){
-    const sm=G.machines[src.mid];
-    if(sm&&sm.type==='belt'){
-      const ready=src.items.filter(it=>it.prog>=0.9);
-      if(ready.length>0){
-        const it=ready[0];
-        src.items.splice(src.items.indexOf(it),1);
-        item=it.id;
-      }
-    } else if(sm&&sm.type==='tunnel'){
-      // Inserters can grab items off tunnel exit tiles (items sit here waiting)
-      const ready=src.items.filter(it=>it.prog>=0.9);
-      if(ready.length>0){
-        const it=ready[0];
-        src.items.splice(src.items.indexOf(it),1);
-        item=it.id;
-      }
-    } else if(sm&&sm.type==='chest'){
-      for(const[k,v]of Object.entries(sm.chestInv)){if(v>0){item=k;sm.chestInv[k]--;break;}}
-    } else if(sm&&sm.type!=='belt'&&sm.type!=='inserter'){
-      if(isOutputFacing(sm,-dvx,-dvy)){
-        for(const[k,v]of Object.entries(sm.outBuf)){if(v>0){item=k;sm.outBuf[k]--;break;}}
-      }
+  } else if(arm.state==='waiting'){
+    if(dst.mid!==null){
+      const dm=G.machines[dst.mid]; let deposited=false;
+      if(dm&&(dm.type==='belt'||dm.type==='tunnel')&&dst.items.length<4){dst.items.push({id:arm.item,prog:0});deposited=true;m.lastTransferMs=now;}
+      else if(dm&&dm.type==='chest'){const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
+    } else {
+      returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
     }
-  }
-  if(!item)return;
 
-  // Queue deposit — arm reaches dest after half swing duration
-  const swingDur=10;
-  const depositAt=G.tick+Math.floor(swingDur/2);
-  m._pending.push({item,at:depositAt});
-  m.lastTransfer=G.tick;
-  // Note: lastTransferMs is set only when deposit actually succeeds, so arm only swings then
+  } else if(arm.state==='returning'){
+    if(now-arm.stateStart>=INS_RETURN_MS){arm.state='idle';arm.stateStart=now;}
+  }
 }
 
 
@@ -2598,35 +2605,149 @@ function fmt(n){
 }
 
 // ═══════════════════════════════════════════════════
-//  TOOLBAR
+//  TAB BAR + DRAWER
 // ═══════════════════════════════════════════════════
-function buildToolbar(){
-  const el=document.getElementById('toolbar');
-  el.innerHTML=TOOLBAR_DEF.map(cat=>{
-    const items=cat.items.map(item=>{
-      const def=MDEFS[item.id];
-      const locked=def?.unlock&&!G.research.done.includes(def.unlock)&&!def.stub;
-      const unaffordable=!locked&&def&&Object.keys(def.cost).length>0&&
-        !Object.entries(def.cost).every(([k,v])=>(G.inv[k]||0)+(G.crafted?.[item.id]||0)>=v);
-      const sel=activeTool===item.id?'sel':'';
-      const lk=locked?'locked':'';
-      const stub=def?.stub?'stub':'';
-      const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
-      const tt=def?.stub?`[FUTURE] ${def.desc}`:item.name+(locked?` [Requires: ${TECHS[def.unlock]?.name}]`:unaffordable?` [Need materials to build]`:'');
-      const icon=item.icon;
-      const name=item.name;
-      return `<div class="titem ${sel} ${lk} ${stub} ${ua}" onclick="setTool('${item.id}')" title="${tt}">
-        <span class="ticon">${icon}</span>
-        <span class="tname">${name}</span>
-      </div>`;
-    }).join('');
-    return `<div class="tcat"><div class="tcat-lbl">${cat.label}</div><div class="titems">${items}</div></div>`;
+
+// Stub — kept for callers that reference it (research unlock, tick refresh)
+function buildToolbar(){ buildDrawer(); }
+
+function hudSelect(){
+  // Snap back to select tool — leave drawer open so player can place again
+  if(activeTab==='craft') closePanel('craft');
+  if(activeTab==='research') closePanel('research');
+  setTool('select');
+  updateSelectBtn();
+  updateBuildHUD();
+}
+
+function flashDrawerItem(){
+  const sel=document.querySelector('#drawerItems .ditem.sel');
+  if(!sel)return;
+  sel.style.transition='border-color .05s,background .05s';
+  sel.style.borderColor='var(--red)';
+  sel.style.background='rgba(229,57,53,.18)';
+  setTimeout(()=>{
+    sel.style.borderColor='var(--amber)';
+    sel.style.background='rgba(245,166,35,.08)';
+    setTimeout(()=>{sel.style.transition='';},150);
+  },300);
+}
+
+function updateSelectBtn(){
+  const btn=document.getElementById('btnSelect');
+  if(!btn) return;
+  const active=activeTool==='select';
+  btn.style.borderColor=active?'var(--amber)':'var(--border)';
+  btn.style.color=active?'var(--amber)':'var(--text2)';
+  btn.style.background=active?'rgba(245,166,35,.08)':'var(--bg3)';
+}
+
+function switchTab(tab){
+  const drawer=document.getElementById('tabDrawer');
+  if(activeTab===tab){
+    // Toggle off — close drawer, clear active tab
+    activeTab=null;
+    drawer.classList.remove('open');
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    // If closing craft/research panel, close it
+    if(tab==='craft') closePanel('craft');
+    if(tab==='research') closePanel('research');
+    return;
+  }
+  // Close any open craft/research panel when switching tabs
+  if(activeTab==='craft') closePanel('craft');
+  if(activeTab==='research') closePanel('research');
+  activeTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  if(tab==='craft'){
+    drawer.classList.remove('open');
+    togglePanel('craft');
+  } else if(tab==='research'){
+    drawer.classList.remove('open');
+    togglePanel('research');
+  } else {
+    // build or tools — show drawer
+    closePanel('craft'); closePanel('research');
+    drawer.classList.add('open');
+    buildDrawer();
+  }
+}
+
+function buildDrawer(){
+  const tab=activeTab;
+  if(tab!=='build'&&tab!=='tools') return;
+  const cats=DRAWER_DEFS[tab]||[];
+  const catIdx=activeDrawerCat[tab]||0;
+  const safeCatIdx=Math.min(catIdx,cats.length-1);
+
+  // Render category sub-tabs
+  const catsEl=document.getElementById('drawerCats');
+  if(catsEl){
+    catsEl.innerHTML=cats.map((c,i)=>`<button class="dcat-btn${i===safeCatIdx?' active':''}" onclick="setDrawerCat(${i})">${c.label}</button>`).join('');
+    // One-time hint: pulse the second category tab to show it's tappable
+    if(!localStorage.getItem('ebi_drawerHintSeen')&&cats.length>1){
+      const hint=document.createElement('span');
+      hint.id='drawerHintArrow';
+      hint.textContent='←';
+      hint.style.cssText='font-size:9px;color:var(--amber);padding:0 4px;animation:blink 1s infinite;flex-shrink:0;align-self:center;pointer-events:none';
+      catsEl.appendChild(hint);
+    }
+  }
+
+  // Render items for selected category
+  const itemsEl=document.getElementById('drawerItems');
+  if(!itemsEl) return;
+  const cat=cats[safeCatIdx];
+  if(!cat){itemsEl.innerHTML='';return;}
+  itemsEl.innerHTML=cat.items.map(item=>{
+    const def=MDEFS[item.id];
+    const locked=def?.unlock&&!G.research.done.includes(def.unlock)&&!def.stub;
+    const unaffordable=!locked&&def&&Object.keys(def.cost).length>0&&
+      !Object.entries(def.cost).every(([k,v])=>(G.inv[k]||0)>=v);
+    const sel=activeTool===item.id?'sel':'';
+    const lk=locked?'locked':'';
+    const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
+    return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
+      <span class="di">${item.icon}</span>
+      <span class="dn">${item.name}</span>
+    </div>`;
   }).join('');
-  // Hide scroll hint arrow once user has scrolled toolbar (horizontal portrait or vertical landscape)
-  el.addEventListener('scroll',()=>{
-    const wrap=document.getElementById('toolbarWrap');
-    if(wrap&&(el.scrollLeft>10||el.scrollTop>10)) wrap.classList.add('scrolled');
-  },{once:false,passive:true});
+}
+
+function cycleDir(){
+  placeDir=(placeDir+1)%4;
+  buildDrawer();
+  updateBuildHUD();
+}
+
+function cancelBuild(){
+  hudSelect();
+  updateBuildHUD();
+}
+
+function updateBuildHUD(){
+  const hud=document.getElementById('buildHUD');
+  const rotBtn=document.getElementById('buildRotateBtn');
+  if(!hud||!rotBtn) return;
+  const def=MDEFS[activeTool];
+  const inBuild=def&&activeTool!=='select';
+  if(inBuild){
+    hud.classList.remove('hidden');
+    // Show rotate for all machines — output port rotates with placeDir
+    const dirLabels=['→','↓','←','↑'];
+    rotBtn.textContent='↻ '+dirLabels[placeDir];
+    rotBtn.style.display='';
+  } else {
+    hud.classList.add('hidden');
+  }
+}
+
+function setDrawerCat(idx){
+  if(!activeTab) return;
+  activeDrawerCat[activeTab]=idx;
+  localStorage.setItem('ebi_drawerHintSeen','1');
+  buildDrawer();
 }
 
 function setTool(id){
@@ -2637,20 +2758,18 @@ function setTool(id){
     document.getElementById('multiselBar')?.classList.add('hidden');
     document.getElementById('ghostBar')?.classList.add('hidden');
   }
-  if(id==='craft'){togglePanel('craft');return;}
   if(id==='rotate'){
-    activeTool='rotate'; closeResInfo(); buildToolbar();
+    activeTool='rotate'; closeResInfo(); buildDrawer(); updateSelectBtn(); updateBuildHUD();
     return;
   }
   if(id==='move'){
     activeTool='move'; moveState={active:false,machineId:null,origX:0,origY:0};
-    closeResInfo(); buildToolbar(); return;
+    closeResInfo(); buildDrawer(); updateSelectBtn(); updateBuildHUD(); return;
   }
   if(id==='blueprint'){
     activeTool='blueprint';
-    // Don't reset if we're mid-paste — startPasteBlueprint already set the state
     if(blueprintState.mode!=='holding') blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
-    closeResInfo(); buildToolbar(); return;
+    closeResInfo(); buildDrawer(); updateSelectBtn(); updateBuildHUD(); return;
   }
   // Switching away from move tool — restore any held machine
   if(activeTool==='move'&&moveState.active){
@@ -2668,7 +2787,7 @@ function setTool(id){
   if(def?.unlock&&!G.research.done.includes(def.unlock)){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); return;
   }
-  activeTool=id; closeResInfo(); buildToolbar(); updateToolTip();
+  activeTool=id; closeResInfo(); buildDrawer(); updateToolTip(); updateSelectBtn(); updateBuildHUD();
 }
 
 function updateToolTip(){
@@ -2676,7 +2795,7 @@ function updateToolTip(){
   const id=activeTool;
 
   // No tooltip for select / mine / demolish / rotate / move
-  if(id==='select'||id==='mine'||id==='demolish'||id==='rotate'||id==='move'||id==='blueprint'){el.classList.add('hidden');return;}
+  if(id==='select'||id==='demolish'||id==='rotate'||id==='move'||id==='blueprint'){el.classList.add('hidden');return;}
 
   const def=MDEFS[id];
   if(!def){el.classList.add('hidden');return;}
@@ -2762,6 +2881,13 @@ function closePanel(id){
   document.getElementById('p'+cap(pid))?.classList.remove('open');
   document.getElementById('btn'+cap(pid))?.classList.remove('on');
   if(openPanel===pid)openPanel=null;
+  // Sync tab bar — if the tab that opened this panel is still active, deactivate it
+  if(pid==='craft'||pid==='research'){
+    if(activeTab===pid){
+      activeTab=null;
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    }
+  }
 }
 
 function refreshOpenPanel(){
@@ -2796,17 +2922,7 @@ function renderInvPanel(){
       html+=`<div class="inv-item"><span class="ii">${i.icon}</span><span class="iv">${fmt(i.n)}</span><span class="in">${i.name}</span></div>`;
     html+='</div></div>';
   }
-  if(!html)html=`<div style="color:var(--text3);font-size:6px;text-align:center;padding:20px;line-height:2.2">Collect resources<br>using the ⛏️ Mine tool.</div>`;
-
-  // Crafted-but-not-placed pool
-  const craftedItems=Object.entries(G.crafted||{}).filter(([,v])=>v>0);
-  if(craftedItems.length){
-    html+=`<div style="margin-bottom:10px;padding:8px;border:1px solid var(--amberDim);background:var(--bg3)">
-      <span class="sec-label" style="color:var(--amber)">READY TO PLACE</span>`;
-    for(const[id,n]of craftedItems)
-      html+=`<div style="font-size:6px;color:var(--amber);margin-bottom:3px">${MDEFS[id]?.icon} ${MDEFS[id]?.name} ×${n}</div>`;
-    html+='</div>';
-  }
+  if(!html)html=`<div style="color:var(--text3);font-size:6px;text-align:center;padding:20px;line-height:2.2">Tap any ore deposit<br>on the map to mine.</div>`;
 
   document.getElementById('pInvBody').innerHTML=html;
 }
@@ -2881,52 +2997,7 @@ function renderCraftPanel(){
       </div>
     </div>`;
   }
-
-  // Machine build section
-  html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
-    <span class="sec-label" style="color:var(--teal)">BUILD MACHINES</span>
-    <div style="font-size:5px;color:var(--text3);margin-bottom:8px;line-height:1.8">Spend materials to build machines.<br>Then place them from the toolbar.</div>`;
-  for(const mid of MACHINE_BUILDS){
-    const def=MDEFS[mid];
-    const canAfford=Object.entries(def.cost).every(([k,v])=>(G.inv[k]||0)>=v);
-    const costStr=Object.entries(def.cost).map(([k,v])=>{
-      const have=G.inv[k]||0;
-      const col=have>=v?'var(--green)':'var(--red)';
-      return `${v}× ${ITEMS[k]?.name||k} <span style="color:${col}">(${have})</span>`;
-    }).join(', ');
-    const queued=G.crafted?.[mid]||0;
-    const isLocked=!!(def.unlock&&!G.research.done.includes(def.unlock));
-    const canBuild=!isLocked&&canAfford;
-    const borderCol=canBuild?'var(--border2)':isLocked?'var(--border)':'var(--border)';
-    const opacity=canBuild?1:isLocked?.2:.45;
-    const filterVal=isLocked?'grayscale(1)':canAfford?'none':'grayscale(0.5)';
-    html+=`<div style="border:1px solid ${borderCol};background:var(--bg3);padding:7px;margin-bottom:4px;opacity:${opacity};filter:${filterVal}">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:6px;color:${canBuild?'var(--text)':'var(--text3)'};margin-bottom:2px">${def.icon} ${def.name}${queued>0?` <span style="color:var(--amber)">[${queued} ready]</span>`:''}${isLocked?` <span style="color:var(--text3)">🔒</span>`:''}</div>
-          <div style="font-size:5px;color:var(--text3)">${isLocked?`Requires: ${TECHS[def.unlock]?.name||def.unlock}`:costStr}</div>
-        </div>
-        <button class="mini-btn ${canBuild?'teal':'dim'}" onclick="buildMachine('${mid}')" ${canBuild?'':'disabled'}>BUILD</button>
-      </div>
-    </div>`;
-  }
-  html+='</div>';
   el.innerHTML=html;
-}
-
-function buildMachine(mid){
-  const def=MDEFS[mid]; if(!def)return;
-  if(!G.devFreeBuild){
-    for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');return;}
-    }
-    for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
-  }
-  if(!G.crafted)G.crafted={};
-  G.crafted[mid]=(G.crafted[mid]||0)+1;
-  sfx('craft');
-  toast(`${def.name} built — select from toolbar to place`,'ok');
-  updateHUD(); renderCraftPanel();
 }
 
 function startCraft(id){
@@ -4096,22 +4167,22 @@ function renderRecipesPanel(){
 //  TUTORIAL
 // ═══════════════════════════════════════════════════
 const TUTORIAL_STEPS=[
-  {id:1,  text:'Welcome to 8-BIT INDUSTRY! Select ⛏️ Mine in the toolbar, then HOLD on a rock tile to mine ore.', done:()=>G.stats.taps>=1},
-  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — you\'ll need all three to get started.', done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5,
+  {id:1,  text:'Welcome to 8-BIT INDUSTRY! Tap any rock tile on the map to open it, then tap ⛏️ MINE to collect ore — 4 taps = 1 ore.', done:()=>G.stats.taps>=1},
+  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — tap each deposit and keep hitting MINE.', done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5,
     render:()=>{
       const needs=[{res:'iron_ore',icon:'🪨',name:'Iron Ore',need:10},{res:'coal',icon:'⬛',name:'Coal',need:5},{res:'stone',icon:'🔲',name:'Stone',need:5}];
       const tally=needs.map(n=>{const have=Math.min(n.need,G.inv[n.res]||0);const done=have>=n.need;return `${n.icon} ${n.name}: <span style="color:${done?'var(--teal)':'var(--amber)'}">${have}/${n.need}</span>${done?' ✓':''}`;}).join(' &nbsp;·&nbsp; ');
-      return `Good! Mine a mix of ores to get started. &nbsp;&nbsp; ${tally}`;
+      return `Tap ore tiles and hit ⛏️ MINE to collect. &nbsp;&nbsp; ${tally}`;
     }
   },
   {id:3,  text:'Open 🔨 Craft in the toolbar. Smelt your Iron Ore into Iron Plates (costs 2 ore each).', done:()=>(G.inv.iron_plate||0)>=3},
   {id:4,  text:'Great! Now craft some Iron Gears (costs 2 Iron Plates). You need these to build machines.', done:()=>(G.inv.iron_gear||0)>=2},
-  {id:5,  text:'Open 🔨 Craft → BUILD MACHINES. Build a Burner Generator (needs 5 Stone + 2 Iron Plate).', done:()=>(G.crafted?.burner||0)>=1||Object.values(G.machines).some(m=>m.type==='burner')},
-  {id:6,  text:'Place the Burner Generator from the Extract toolbar. Swipe the toolbar → to find it, then tap to select and place. Then tap it with Select ☝️ and feed it coal so it can generate power.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
+  {id:5,  text:'Open the BUILD tab → Extract → select Burner Generator. Tap the map to place it (costs 5 Stone + 2 Iron Plate).', done:()=>Object.values(G.machines).some(m=>m.type==='burner')},
+  {id:6,  text:'Place the Burner Generator — tap BUILD tab → Extract → Burner, then tap the map to place it. Then tap it with the Select tool and feed it coal.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
   {id:7,  text:'Power is on! Now build a Miner and place it on a COAL deposit. The miner needs power to run, and will auto-mine coal for you.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='coal')},
   {id:8,  text:'Now use an 🦾 Inserter to move coal from your Miner to the Burner. Place the inserter between them, pointing TOWARD the Burner.', done:()=>{const hasInserter=Object.values(G.machines).some(m=>m.type==='inserter');const b=Object.values(G.machines).find(m=>m.type==='burner');return hasInserter&&b&&((b.inBuf.coal||0)>=1||b.produced>0);} },
   {id:9,  text:'Coal is flowing to your Burner automatically! Now place a Miner on an Iron Ore deposit to mine iron.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='iron_ore')},
-  {id:10, text:'Build a Stone Furnace (⚱️ in BUILD MACHINES) and place it near your iron miner. The furnace needs BOTH iron ore AND coal to smelt iron plates.', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace')},
+  {id:10, text:'Open BUILD tab → Processing → select Stone Furnace ⚱️ and place it near your iron miner. The furnace needs iron ore AND coal to smelt plates.', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace')},
   {id:11, text:'Use Inserters to feed iron ore AND coal into the Furnace. Set its recipe to "Smelt Iron". Inserters + Belts are your conveyor system!', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace'&&m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
   {id:12, text:'Your factory is running! Open 🔬 Research and hand-craft some Field Notes (needs Iron Gear + Copper Wire). Research Basic Automation.', done:()=>G.research.done.includes('automation')},
   {id:13, text:'🎉 Automation unlocked! You can now build Blast Furnaces, Assemblers and Research Labs. Your goal: build a 🚀 ROCKET and launch!', done:()=>G.research.done.includes('logistics')||Object.keys(G.machines).length>=15,
@@ -4265,6 +4336,11 @@ function openMenu(){
       Research: ${G.research.done.length} / ${Object.keys(TECHS).length}<br>
       Perk points: ${G.perks?.points||0}<br>
       Launched: ${G.stats.launched?'✓ Yes':'Not yet'}
+    </div>
+    <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><span class="sec-label" style="width:100%;margin-bottom:4px">QUICK ACCESS</span>
+      <button class="mini-btn amber" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
+      <button class="mini-btn amber" onclick="closeModal();togglePanel('recipes')">📖 RECIPES</button>
+      <button class="mini-btn amber" onclick="closeModal();togglePanel('blueprint')">📐 BLUEPRINTS</button>
     </div>${audioHtml}${slotsHtml}`,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">RESUME</button>
      ${devBtn}
@@ -4543,7 +4619,7 @@ function newGame(){
 function startGame(isNew){
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
-  initCanvas(); setupInput(); buildToolbar();
+  initCanvas(); setupInput(); switchTab('build'); updateSelectBtn(); updateBuildHUD();
   // Run one synchronous power pass before the tick loop starts so power state
   // is correct immediately — prevents any single-frame window of stale values.
   G.power.out=0; G.power.in=0;
@@ -4572,7 +4648,7 @@ function startGame(isNew){
       `<div style="font-size:6px;color:var(--text2);line-height:2.4">
         You've crashed on Ironfield.<br>No machines. No power. Nothing.<br><br>
         Select <span style="color:var(--amber)">⛏️ Mine</span> to collect resources.<br>
-        Tap <span style="color:var(--amber)">🔨 Craft</span> in the toolbar<br>to build your first machines.<br><br>
+        Tap <span style="color:var(--amber)">🏗️ Build</span> tab<br>to place your first machines.<br><br>
         Build a rocket to escape this rock.
       </div>`,
       `<button class="btn btn-teal btn-sm" onclick="closeModal()">LET'S GO</button>`
