@@ -190,10 +190,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 @media(max-width:600px){.spanel{top:52px;bottom:80px;width:min(340px,96vw)}}
 .ph{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:2px solid var(--border2);flex-shrink:0;background:#0f0f0f}
 .ph-title{color:var(--amber);font-size:8px}
-.ph-x{background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;padding:2px 6px}
-.ph-x:hover{color:var(--red)}
-.pbody{flex:1;overflow-y:auto;padding:14px;font-size:6px;line-height:1.9}
-@media(max-width:600px){.pbody{font-size:9px;line-height:2;zoom:1.5}}
 .pbody::-webkit-scrollbar{width:3px}
 .pbody::-webkit-scrollbar-thumb{background:var(--border2)}
 
@@ -255,7 +251,29 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 select.game-sel{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:5px;padding:7px;margin-bottom:8px;cursor:pointer}
 select.game-sel:focus{outline:none;border-color:var(--amber)}
 
-/* Tool tooltip */
+/* Multisel bar buttons — mobile-friendly tap targets */
+.msel-btn{font-family:var(--font);font-size:6px;padding:10px 12px;border:1px solid var(--border2);background:transparent;cursor:pointer;white-space:nowrap;min-height:40px}
+.msel-btn.teal{border-color:var(--teal);color:var(--teal)}
+.msel-btn.blue{border-color:#42a5f5;color:#42a5f5}
+.msel-btn.amber{border-color:var(--amber);color:var(--amber)}
+.msel-btn.red{border-color:var(--red);color:var(--red)}
+.msel-btn.dim{border-color:var(--border2);color:var(--text2)}
+@media(max-width:600px){.msel-btn{font-size:7px;padding:11px 14px}}
+
+/* Build HUD — bottom canvas controls */
+#buildHUD{position:absolute;bottom:10px;left:0;right:0;display:flex;gap:8px;align-items:center;justify-content:center;z-index:150;pointer-events:none;padding:0 12px}
+#buildHUD button{pointer-events:all;font-family:var(--font);border-radius:4px;min-height:48px;min-width:80px;font-size:8px;padding:12px 18px;cursor:pointer}
+#buildRotateBtn{border:2px solid var(--amber);background:rgba(13,13,13,.95);color:var(--amber)}
+#buildCancelBtn{border:1px solid var(--border2);background:rgba(13,13,13,.95);color:var(--text2)}
+@media(max-width:600px){#buildHUD button{font-size:9px;min-height:54px;padding:14px 22px}}
+
+/* Panel close button — bigger hit area */
+.ph-x{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:8px 12px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.ph-x:hover{color:var(--red)}
+
+/* pbody zoom — clip overflow so content doesn't bleed */
+.pbody{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px;font-size:6px;line-height:1.9}
+@media(max-width:600px){.pbody{font-size:9px;line-height:2;zoom:1.5;max-width:100%}}
 #toolTip{
   position:absolute; top:8px; left:8px;
   width:min(220px,55vw);
@@ -280,15 +298,33 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 .tt-recipe .tt-rout{color:var(--amber)}
 .tt-recipe .tt-rtime{color:var(--text3)}
 #resInfo{
-  position:fixed;left:50%;transform:translateX(-50%) translateY(20px);
-  bottom:68px;width:min(280px,88vw);z-index:300;
+  position:fixed;left:0;right:0;bottom:58px;
+  z-index:300;transform:translateY(20px);
   opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;
 }
-#resInfo:not(.hidden){opacity:1;transform:translateX(-50%) translateY(0);pointer-events:all;}
+#resInfo:not(.hidden){opacity:1;transform:translateY(0);pointer-events:all;}
 #resInfoInner{
-  background:var(--panel);border:1px solid var(--border2);
-  padding:12px;box-shadow:0 -4px 20px rgba(0,0,0,.5);
+  background:var(--panel);border-top:1px solid var(--border2);
+  box-shadow:0 -4px 24px rgba(0,0,0,.6);
+  padding:10px 14px 12px;
 }
+#mineTapBtn{
+  width:100%;margin-top:8px;
+  padding:18px 12px;
+  background:rgba(245,166,35,.08);
+  border:2px solid var(--amber);
+  color:var(--amber);
+  font-family:var(--font);font-size:8px;
+  cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  transition:background .1s;
+  -webkit-tap-highlight-color:transparent;
+}
+#mineTapBtn:active{background:rgba(245,166,35,.22);}
+#mineTapBtn.disabled{border-color:var(--border2);color:var(--text3);background:transparent;pointer-events:none;}
+#minePips{display:flex;gap:8px;justify-content:center;}
+.mine-pip{width:12px;height:12px;border-radius:50%;background:rgba(245,166,35,.2);border:1px solid var(--amberDim);transition:background .1s,border-color .1s;}
+.mine-pip.filled{background:var(--amber);border-color:var(--amber);}
 </style>
 </head>
 <body>
@@ -308,7 +344,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v1.1.0 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
+    <p class="v-num">v1.1.3 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
   </div>
 </div>
 
@@ -325,20 +361,16 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
     </div>
     <div id="hudRes"></div>
     <div style="display:flex;gap:3px;flex-shrink:0;margin-left:auto">
-      <button class="hbtn" id="btnInv"      onclick="togglePanel('inv')" title="Inventory">📦</button>
-      <button class="hbtn" id="btnRocket"   onclick="togglePanel('rocket')" title="Rocket">🚀</button>
-      <button class="hbtn" id="btnStats"    onclick="togglePanel('stats')" title="Statistics">📊</button>
-      <button class="hbtn" id="btnAchieve"  onclick="togglePanel('achieve')" title="Achievements">🏆</button>
-      <button class="hbtn" id="btnDev" onclick="togglePanel('dev')" style="display:none;border-color:var(--purple);color:var(--purple)" title="Dev">🛠</button>
-      <button class="hbtn"                  onclick="openMenu()" title="Menu">☰</button>
+      <button class="hbtn" id="btnRocket" onclick="openBigMenu('rocket')" title="Rocket" style="display:none">🚀</button>
+      <button class="hbtn" onclick="openBigMenu()" title="Menu">☰</button>
     </div>
   </div>
   <div id="wrap"><canvas id="canvas"></canvas>
     <div id="toolTip" class="hidden"></div>
     <!-- Build mode floating controls — shown bottom-left of canvas while a machine is selected -->
-    <div id="buildHUD" class="hidden" style="position:absolute;bottom:10px;left:10px;display:flex;gap:6px;align-items:center;z-index:150;pointer-events:all">
-      <button id="buildRotateBtn" onclick="cycleDir()" style="font-family:var(--font);font-size:11px;padding:7px 10px;border:1px solid var(--amber);background:rgba(13,13,13,.92);color:var(--amber);cursor:pointer;border-radius:3px;display:none">↻ →</button>
-      <button onclick="cancelBuild()" style="font-family:var(--font);font-size:7px;padding:7px 12px;border:1px solid var(--border2);background:rgba(13,13,13,.92);color:var(--text2);cursor:pointer;border-radius:3px">✕ CANCEL</button>
+    <div id="buildHUD" class="hidden">
+      <button id="buildRotateBtn" onclick="cycleDir()" style="display:none">↻ →</button>
+      <button id="buildCancelBtn" onclick="cancelBuild()">✕ CANCEL</button>
     </div>
   </div>
   <div id="tutHint" class="hidden" style="background:rgba(245,166,35,.12);border-top:1px solid var(--amber);padding:7px 12px;display:flex;align-items:center;justify-content:space-between;z-index:150;flex-shrink:0">
@@ -352,28 +384,30 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
   </div>
   <!-- Tab bar — always visible, replaces old toolbar -->
   <div id="tabBar">
+    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon">🛠️</span>TOOLS</button>
     <button class="tab-btn" id="tab-build"    onclick="switchTab('build')"><span class="tab-icon">🏗️</span>BUILD</button>
     <button class="tab-btn" id="tab-craft"    onclick="switchTab('craft')"><span class="tab-icon">🔨</span>CRAFT</button>
     <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon">🔬</span>RESEARCH</button>
-    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon">🛠️</span>TOOLS</button>
   </div>
 </div>
 
 <!-- Multi-select action bar — fixed, outside canvas touch zone -->
-<div id="multiselBar" class="hidden" style="position:fixed;top:0;left:0;right:0;background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 12px;display:flex;align-items:center;gap:8px;z-index:600;pointer-events:all">
-  <span style="font-size:7px;color:#42a5f5;flex:1" id="multiselCount">0 selected</span>
-  <button onclick="multiselStartMove()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer" id="multiselMoveBtn">✥ MOVE</button>
-  <button onclick="multiselRotate()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid #42a5f5;background:transparent;color:#42a5f5;cursor:pointer">↻ ROTATE</button>
-  <button onclick="multiselCopy()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--amber);background:transparent;color:var(--amber);cursor:pointer" id="multiselCopyBtn">📋 COPY</button>
-  <button onclick="multiselDemolish()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer">💥 DEMOLISH</button>
-  <button onclick="multiselClear()" style="font-family:var(--font);font-size:6px;padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✕ CLEAR</button>
+<div id="multiselBar" class="hidden" style="position:fixed;top:0;left:0;right:0;background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600;pointer-events:all">
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <span style="font-size:7px;color:#42a5f5;flex:1;min-width:60px" id="multiselCount">0 selected</span>
+    <button onclick="multiselStartMove()"  class="msel-btn teal"  id="multiselMoveBtn">✥ MOVE</button>
+    <button onclick="multiselRotate()"     class="msel-btn blue"             >↻ ROTATE</button>
+    <button onclick="multiselCopy()"       class="msel-btn amber" id="multiselCopyBtn">📋 COPY</button>
+    <button onclick="multiselDemolish()"   class="msel-btn red"              >💥 DEMO</button>
+    <button onclick="multiselClear()"      class="msel-btn dim"              >✕ CLEAR</button>
+  </div>
 </div>
 
 <!-- Ghost paste confirm bar — shown during blueprint holding and multisel pasting -->
-<div id="ghostBar" class="hidden" style="position:fixed;bottom:58px;left:0;right:0;background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:7px 12px;display:flex;align-items:center;gap:8px;z-index:600;pointer-events:all">
-  <span style="font-size:6px;color:var(--amber);flex:1" id="ghostBarLabel">Hover to position, then confirm</span>
-  <button onclick="ghostConfirm()" style="font-family:var(--font);font-size:6px;padding:6px 14px;border:2px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer">✓ PLACE</button>
-  <button onclick="ghostCancel()" style="font-family:var(--font);font-size:6px;padding:6px 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✗ CANCEL</button>
+<div id="ghostBar" class="hidden" style="position:fixed;bottom:58px;left:0;right:0;background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:8px 12px;display:flex;align-items:center;gap:8px;z-index:600;pointer-events:all">
+  <span style="font-size:6px;color:var(--amber);flex:1" id="ghostBarLabel">Tap map to position, then confirm</span>
+  <button onclick="ghostConfirm()" style="font-family:var(--font);font-size:7px;padding:12px 20px;border:2px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer;min-width:80px">✓ PLACE</button>
+  <button onclick="ghostCancel()"  style="font-family:var(--font);font-size:7px;padding:12px 16px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer">✗ CANCEL</button>
 </div>
 
 <!-- ══ PANELS ══ -->
@@ -438,21 +472,20 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 <div id="toasts"></div>
 <div id="resInfo" class="hidden">
   <div id="resInfoInner">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span id="resInfoIcon" style="font-size:22px;line-height:1"></span>
-        <span id="resInfoName" style="font-size:8px;color:var(--amber)"></span>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="resInfoIcon" style="font-size:24px;line-height:1"></span>
+        <div>
+          <div id="resInfoName" style="font-size:8px;color:var(--amber);margin-bottom:2px"></div>
+          <div id="resInfoStock" style="font-size:6px;color:var(--teal)"></div>
+        </div>
       </div>
-      <button class="ph-x" onclick="closeResInfo()">✕</button>
+      <button class="ph-x" onclick="closeResInfo()" style="flex-shrink:0">✕</button>
     </div>
-    <div id="resInfoDesc" style="font-size:6px;color:var(--text2);line-height:2;margin-bottom:8px"></div>
-    <div id="resInfoStock" style="font-size:6px;color:var(--teal);margin-bottom:8px"></div>
-    <div style="font-size:5px;color:var(--text3);letter-spacing:1px;margin-bottom:5px">USED FOR</div>
-    <div id="resInfoUses" style="font-size:5px;color:var(--text3);line-height:2.2"></div>
-    <div style="margin-top:10px;display:flex;gap:6px">
-      <button class="mini-btn amber" id="mineBtn" onclick="doMineTap()">⛏️ MINE (0/4)</button>
-      <button class="mini-btn teal"  onclick="closeResInfo()">CLOSE</button>
-    </div>
+    <button id="mineTapBtn" onclick="doMineTap()">
+      <span id="mineTapLabel">⛏️ TAP TO MINE</span>
+      <div id="minePips"></div>
+    </button>
   </div>
 </div>
 <div id="mOverlay" class="hidden">
@@ -474,7 +507,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.1.0';
+const VER      = '1.1.3';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -787,6 +820,7 @@ const MDEFS = {
   splitter:       {name:'Splitter',         icon:'⑂',  size:[1,2], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits one belt lane into two. 1×2 block — input left, two outputs right'},
   tunnel:         {name:'Belt Tunnel',      icon:'⏬', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
   inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines'},
+  long_inserter:  {name:'Long Inserter',    icon:'🦿', size:[1,1], power:2,   cost:{iron_plate:4, iron_gear:2, circuit:1},            unlock:'logistics',   recipes:[], desc:'2-tile reach inserter. Transfers items over longer distances'},
   chest:          {name:'Chest',            icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                                   unlock:null,          recipes:[], desc:'Stores up to 200 items'},
   // Zone 2 machines
   oil_pump:       {name:'Oil Pump',         icon:'🛢️', size:[2,2], power:8,   cost:{iron_plate:10,iron_gear:4,circuit:2},            unlock:'oil_extraction', recipes:[], desc:'Extracts crude oil from oil deposits. Generates smog.'},
@@ -820,7 +854,7 @@ const HAND_CRAFTS = [
 
 // Machines you build by hand — consume materials, go into placement queue
 const MACHINE_BUILDS = [
-  'miner','stone_furnace','burner','generator','belt','splitter','tunnel','inserter','chest',
+  'miner','stone_furnace','burner','generator','belt','splitter','tunnel','inserter','long_inserter','chest',
   'blast_furnace','electric_smelter','assembler','lab',
   'oil_pump','cracker','refinery','combustion_gen','scrubber',
 ];
@@ -835,6 +869,7 @@ const DRAWER_DEFS = {
       {id:'splitter',name:'Splitter',icon:'⑂'},
       {id:'tunnel',name:'Tunnel',icon:'⏬'},
       {id:'inserter',name:'Inserter',icon:'🦾'},
+      {id:'long_inserter',name:'Long Ins.',icon:'🦿'},
       {id:'chest',name:'Chest',icon:'📦'},
     ]},
     {label:'Extract', items:[
@@ -1078,6 +1113,7 @@ function defaultState(){
     craftState:{recipeId:null, clicks:0},
     achievements:[],
     tutorial:{step:0},
+    tutorialZ2:undefined,
     devMode: false,
     // Perk stubs — populated on zone complete
     perks:{points:0,spent:{}},
@@ -1110,7 +1146,7 @@ let canvas, ctx, rafId;
 let lastTickMs=0; // real timestamp of last gameTick — used for sub-tick interpolation
 
 const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e',oil:'#1a0f00'};
-const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',chest:'#7d5a3c',oil_pump:'#5a4a2a',cracker:'#8b5e3c',refinery:'#6b4226',combustion_gen:'#e67e22',scrubber:'#2e7d52'};
+const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',long_inserter:'#26c6a0',chest:'#7d5a3c',oil_pump:'#5a4a2a',cracker:'#8b5e3c',refinery:'#6b4226',combustion_gen:'#e67e22',scrubber:'#2e7d52'};
 
 function initCanvas(){
   canvas=document.getElementById('canvas');
@@ -1342,7 +1378,7 @@ function draw(){
   // Multi-tile machines
   const drawn=new Set();
   for(const[id,m]of Object.entries(G.machines)){
-    if(m.type==='belt'||m.type==='inserter'||m.type==='splitter'||m.type==='tunnel')continue;
+    if(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='splitter'||m.type==='tunnel')continue;
     if(drawn.has(+id))continue; drawn.add(+id);
     const def=MDEFS[m.type];
     const[mw,mh]=def.size;
@@ -1493,22 +1529,25 @@ function draw(){
     if(ts>28) drawPorts(ctx,m.type,px,py,pw,ph,ts,m.dir);
   }
 
-  // Inserters — drawn as animated arm
+  // Inserters + Long Inserters — drawn as animated arm
   for(const[id,m]of Object.entries(G.machines)){
-    if(m.type!=='inserter')continue;
+    if(m.type!=='inserter'&&m.type!=='long_inserter')continue;
     const px=m.x*ts-cx, py=m.y*ts-cy;
     if(px+ts<0||py+ts<0||px>W||py>H)continue;
+    const isLong=m.type==='long_inserter';
+    const baseCol=isLong?'#26c6a0':'#666';
+    const borderCol=isLong?'#1a7a5a':'#444';
 
     // Base tile
     ctx.fillStyle='#141414'; ctx.fillRect(px,py,ts,ts);
-    ctx.strokeStyle='#444'; ctx.lineWidth=1; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
+    ctx.strokeStyle=borderCol; ctx.lineWidth=1; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
 
     // Base circle
     const bcx=px+ts/2, bcy=py+ts/2, brad=Math.max(2,ts*.12);
-    ctx.fillStyle='#666';
+    ctx.fillStyle=baseCol;
     ctx.beginPath(); ctx.arc(bcx,bcy,brad,0,Math.PI*2); ctx.fill();
 
-    // Arm — state machine driven, real ms timestamps
+    // Arm — state machine driven
     const[dvx,dvy]=D_VEC[m.dir];
     const destAngle=Math.atan2(dvy,dvx);
     const srcAngle=destAngle+Math.PI;
@@ -1529,27 +1568,27 @@ function draw(){
       const p=insEase(Math.min(1,elapsed/INS_RETURN_MS));
       curAngle=destAngle+(srcAngle-destAngle)*p; isMoving=true; isWaiting=false;
     }
-    const armLen=Math.max(4,ts*.40);
+    // Long inserter has longer arm
+    const armLen=Math.max(4,isLong?ts*.82:ts*.40);
     const ax=bcx+Math.cos(curAngle)*armLen;
     const ay=bcy+Math.sin(curAngle)*armLen;
     const hasItem=!!arm.item;
-    ctx.strokeStyle=isWaiting?'#e53935':hasItem||isMoving?'#f5a623':'#777';
+    const armColor=isWaiting?'#e53935':hasItem||isMoving?(isLong?'#26c6a0':'#f5a623'):(isLong?'#1a7a5a':'#777');
+    ctx.strokeStyle=armColor;
     ctx.lineWidth=Math.max(1.5,ts*.07);
     ctx.beginPath(); ctx.moveTo(bcx,bcy); ctx.lineTo(ax,ay); ctx.stroke();
     const clawR=Math.max(2,ts*.10);
-    ctx.fillStyle=isWaiting?'#e53935':hasItem||isMoving?'#f5a623':'#999';
+    ctx.fillStyle=isWaiting?'#e53935':hasItem||isMoving?(isLong?'#26c6a0':'#f5a623'):(isLong?'#26c6a0':'#999');
     ctx.beginPath(); ctx.arc(ax,ay,clawR,0,Math.PI*2); ctx.fill();
 
-    // Show carried item on arm tip
     if(hasItem&&ts>18){
       ctx.font=`${Math.floor(ts*.22)}px serif`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(ITEMS[arm.item]?.icon||'·',ax,ay);
     }
-
-    // Direction label at high zoom
     if(ts>32){
-      ctx.fillStyle='rgba(136,136,136,.5)'; ctx.font=`${Math.floor(ts*.22)}px serif`;
+      ctx.fillStyle=isLong?'rgba(38,198,160,.5)':'rgba(136,136,136,.5)';
+      ctx.font=`${Math.floor(ts*.22)}px serif`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(D_ARR[m.dir],px+ts/2,py+ts*.82);
     }
@@ -2099,27 +2138,34 @@ function openResInfo(resId, tx, ty){
   const stock=G.inv[resId]||0;
   document.getElementById('resInfoIcon').textContent=item.icon;
   document.getElementById('resInfoName').textContent=item.name;
-  document.getElementById('resInfoDesc').textContent=item.desc||'';
   document.getElementById('resInfoStock').textContent=`In inventory: ${fmt(stock)}`;
-  document.getElementById('resInfoUses').innerHTML=(item.uses||[]).map(u=>`• ${u}`).join('<br>');
-  const mineBtn=document.getElementById('mineBtn');
-  // Oil can't be hand-mined — requires oil pump
+  const btn=document.getElementById('mineTapBtn');
   if(resId==='oil'){
     mineTap={active:false,resId,tx,ty,taps:0};
-    if(mineBtn){mineBtn.textContent='🛢️ NEEDS OIL PUMP';mineBtn.style.opacity='0.4';mineBtn.onclick=null;}
+    btn.classList.add('disabled');
+    document.getElementById('mineTapLabel').textContent='🛢️ NEEDS OIL PUMP';
+    document.getElementById('minePips').innerHTML='';
   } else {
     if(tx!==undefined&&ty!==undefined){
       mineTap={active:true,resId,tx,ty,taps:0};
-      updateMineBtnLabel();
     }
-    if(mineBtn){mineBtn.style.opacity='';mineBtn.onclick=()=>doMineTap();}
+    btn.classList.remove('disabled');
+    updateMineBtnLabel();
   }
   document.getElementById('resInfo').classList.remove('hidden');
 }
 
 function updateMineBtnLabel(){
-  const btn=document.getElementById('mineBtn');
-  if(btn) btn.textContent=`⛏️ MINE (${mineTap.taps}/${MINE_TAPS})`;
+  document.getElementById('mineTapLabel').textContent='⛏️ TAP TO MINE';
+  // Render pip dots
+  const pips=document.getElementById('minePips');
+  if(!pips)return;
+  pips.innerHTML='';
+  for(let i=0;i<MINE_TAPS;i++){
+    const d=document.createElement('div');
+    d.className='mine-pip'+(i<mineTap.taps?' filled':'');
+    pips.appendChild(d);
+  }
 }
 
 function doMineTap(){
@@ -2131,7 +2177,6 @@ function doMineTap(){
   const ts=TILE*G.cam.zoom;
   ripples.push({px:mineTap.tx*ts-G.cam.x+ts/2,py:mineTap.ty*ts-G.cam.y+ts/2,t:performance.now()});
   if(mineTap.taps>=MINE_TAPS){
-    // Award 1 ore
     const yieldMult=perkMult().yield;
     const gained=Math.max(1,Math.round(yieldMult));
     G.inv[mineTap.resId]=(G.inv[mineTap.resId]||0)+gained;
@@ -2139,10 +2184,7 @@ function doMineTap(){
     updateHUD();
     toast(`+${gained} ${ITEMS[mineTap.resId].name}`,'ok');
     checkAchievements();
-    // Update stock display
-    const stock=G.inv[mineTap.resId]||0;
-    const stockEl=document.getElementById('resInfoStock');
-    if(stockEl) stockEl.textContent=`In inventory: ${fmt(stock)}`;
+    document.getElementById('resInfoStock').textContent=`In inventory: ${fmt(G.inv[mineTap.resId]||0)}`;
   }
   updateMineBtnLabel();
 }
@@ -2355,7 +2397,7 @@ function gameTick(){
     G.smog=Math.max(0,Math.min(100,G.smog-0.1));
   }
 
-  if(G.tick%4===0){updateHUD();refreshOpenPanel();buildToolbar();checkAchievements();tickTutorial();}
+  if(G.tick%4===0){updateHUD();refreshOpenPanel();buildToolbar();checkAchievements();tickTutorial();tickTutorialZ2();}
   if(G.tick%120===0)saveGame();
 }
 
@@ -2485,7 +2527,7 @@ function runMachine(m){
     }
     return;
   }
-  if(m.type==='chest'||m.type==='belt'||m.type==='splitter'||m.type==='tunnel'||m.type==='inserter'||m.type==='burner')return;
+  if(m.type==='chest'||m.type==='belt'||m.type==='splitter'||m.type==='tunnel'||m.type==='inserter'||m.type==='long_inserter'||m.type==='burner')return;
 
   if(!m.recipe)return;
   const rec=RECIPES[m.recipe]; if(!rec)return;
@@ -2654,7 +2696,7 @@ function runBelts(){
   // Inserters every 4 ticks
   if(G.tick%4!==0)return;
   for(const m of Object.values(G.machines)){
-    if(m.type==='inserter')runInserter(m);
+    if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
   }
 }
 
@@ -2667,8 +2709,9 @@ function runInserter(m){
   if(powerRatio()===0)return;
 
   const[dvx,dvy]=D_VEC[m.dir];
-  const sx=m.x-dvx, sy=m.y-dvy;
-  const dx=m.x+dvx, dy=m.y+dvy;
+  const reach=m.type==='long_inserter'?2:1;
+  const sx=m.x-dvx*reach, sy=m.y-dvy*reach;
+  const dx=m.x+dvx*reach, dy=m.y+dvy*reach;
   if(sx<0||sy<0||sx>=MAP_W||sy>=MAP_H)return;
   if(dx<0||dy<0||dx>=MAP_W||dy>=MAP_H)return;
 
@@ -2897,7 +2940,11 @@ function switchTab(tab){
 function buildDrawer(){
   const tab=activeTab;
   if(tab!=='build'&&tab!=='tools') return;
-  const cats=DRAWER_DEFS[tab]||[];
+  // Filter Oil category — only show if oil_extraction researched
+  let cats=(DRAWER_DEFS[tab]||[]).filter(c=>{
+    if(c.label==='Oil') return G.research.done.includes('oil_extraction');
+    return true;
+  });
   const catIdx=activeDrawerCat[tab]||0;
   const safeCatIdx=Math.min(catIdx,cats.length-1);
 
@@ -3448,7 +3495,7 @@ function renderMachPanel(){
   }
 
   // Rotate button — belt, inserter, tunnel, and now splitter
-  if(m.type==='belt'||m.type==='inserter'||m.type==='tunnel'||m.type==='splitter')
+  if(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='tunnel'||m.type==='splitter')
     html+=`<button class="full-btn teal" onclick="rotateM(${m.id})">↻ ROTATE  ${D_ARR[m.dir]}</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
@@ -3849,7 +3896,7 @@ function doResearch(id){
   }
   for(const[k,v]of Object.entries(tech.cost))G.inv[k]-=v;
   G.research.done.push(id);
-  buildToolbar(); renderResPanel(); updateHUD(); saveGame(); sfx('research');
+  buildToolbar(); renderResPanel(); updateHUD(); updateRocketBtn(); saveGame(); sfx('research');
   toast(`✓ ${tech.name} researched!`,'ok');
 }
 
@@ -3999,6 +4046,8 @@ function transitionToZone2(){
   G.smog=0;
   G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
   G.devMode=devMode;
+  G.tutorial={step:-1}; // skip Zone 1 tutorial
+  G.tutorialZ2=0;       // start Zone 2 mini-tutorial
   G.research.done=researchDone;
   G.map=buildMapZ2();
   saveGame();
@@ -4601,8 +4650,31 @@ function hideTutHint(){
 }
 function skipTutorial(){
   if(G.tutorial)G.tutorial.step=-1;
+  if(G.tutorialZ2!==undefined&&G.tutorialZ2>=0)G.tutorialZ2=-1;
   hideTutHint();
   toast('Tutorial skipped','ok');
+}
+
+// Zone 2 mini-tutorial — 3 steps
+const Z2_TUTORIAL=[
+  {text:'Welcome to The Scar. Find an 🛢️ oil deposit on the map — dark tiles with a barrel icon.',
+   done:()=>Object.values(G.machines).some(m=>m.type==='oil_pump')},
+  {text:'Research 🛢️ Oil Extraction first — tap RESEARCH tab, spend Scar Notes.',
+   done:()=>G.research.done.includes('oil_extraction')},
+  {text:'⚠️ Oil pumps generate smog! Watch the 🌫️ meter in the HUD. Build 🌿 Scrubbers to clean the air.',
+   done:()=>Object.values(G.machines).some(m=>m.type==='scrubber')},
+];
+
+function tickTutorialZ2(){
+  if(G.zone!==2)return;
+  if(G.tutorialZ2===undefined||G.tutorialZ2<0)return;
+  const step=Z2_TUTORIAL[G.tutorialZ2];
+  if(!step){G.tutorialZ2=-1;hideTutHint();return;}
+  showTutHint(step.text);
+  if(step.done()){
+    G.tutorialZ2++;
+    if(G.tutorialZ2>=Z2_TUTORIAL.length){G.tutorialZ2=-1;hideTutHint();toast('The Scar briefing complete','ok');}
+  }
 }
 
 function buyPerk(id,cost){
@@ -4632,46 +4704,129 @@ function showModal(title,body,foot){
 }
 function closeModal(){document.getElementById('mOverlay').classList.add('hidden')}
 
-function openMenu(){
-  const devBtn=G.devMode
-    ?`<button class="btn btn-sm" style="border-color:var(--purple);color:var(--purple)" onclick="closeModal();togglePanel('dev')">🛠 DEV</button>`
-    :`<button class="btn btn-sm" style="border-color:var(--border);color:var(--text3)" onclick="promptDevUnlock()">🔒 DEV</button>`;
+function updateRocketBtn(){
+  const btn=document.getElementById('btnRocket');
+  if(!btn)return;
+  const show=(G.zone===1&&G.research.done.includes('rocket_tech'))||(G.zone===2&&G.research.done.includes('repair_tech'));
+  btn.style.display=show?'':'none';
+}
 
-  // Audio settings
-  let audioHtml=`<div style="margin-top:10px"><span class="sec-label">AUDIO</span>
-    <div style="display:flex;gap:8px;margin-top:6px">
+function openBigMenu(section){
+  // Build inline menu with all named sections
+  const devMode=G.devMode;
+  const z2=G.zone===2;
+
+  // Inventory
+  const invCats={raw:[],processed:[],parts:[],science:[],rocket:[],rocket2:[]};
+  for(const[id,item]of Object.entries(ITEMS)){
+    const amt=G.inv[id]||0;
+    if(amt<=0&&!['iron_ore','copper_ore','coal','stone'].includes(id))continue;
+    const cat=item.cat||'raw';
+    if(!invCats[cat])invCats[cat]=[];
+    invCats[cat].push({id,item,amt});
+  }
+  const catLabels={raw:'Raw Materials',processed:'Processed',parts:'Parts & Components',science:'Science',rocket:'Rocket (Zone 1)',rocket2:'Repair (Zone 2)'};
+  let invHtml='';
+  for(const[cat,items]of Object.entries(invCats)){
+    if(!items.length)continue;
+    if(cat==='rocket'&&z2)continue;
+    if(cat==='rocket2'&&!z2)continue;
+    invHtml+=`<div style="font-size:4px;color:var(--text3);letter-spacing:2px;margin:8px 0 4px">${catLabels[cat]||cat}</div>`;
+    invHtml+=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">`;
+    for(const{id,item,amt}of items){
+      invHtml+=`<div style="display:flex;align-items:center;gap:3px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);min-width:60px">
+        <span style="font-size:12px">${item.icon}</span>
+        <span style="font-size:5px;color:var(--text2)">${fmt(amt)}</span>
+      </div>`;
+    }
+    invHtml+=`</div>`;
+  }
+
+  // Rocket panel summary
+  const rocketUnlocked=(G.zone===1&&G.research.done.includes('rocket_tech'))||(G.zone===2&&G.research.done.includes('repair_tech'));
+  const parts=z2?ROCKET_PARTS_Z2:ROCKET_PARTS;
+  let rocketHtml='';
+  if(rocketUnlocked){
+    let allReady=true;
+    for(const p of parts){
+      const have=G.inv[p.id]||0; const done=have>=p.need;
+      if(!done)allReady=false;
+      const pct=Math.min(100,Math.round(have/p.need*100));
+      rocketHtml+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-size:9px;min-width:16px">${ITEMS[p.id]?.icon||'?'}</span>
+        <div style="flex:1"><div class="prog-wrap" style="margin:0"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div></div>
+        <span style="font-size:5px;color:${done?'var(--teal)':'var(--text3)'};min-width:32px;text-align:right">${have}/${p.need}</span>
+      </div>`;
+    }
+    if(z2){
+      const haveFuel=G.inv.refined_fuel||0; const fuelDone=haveFuel>=20;
+      if(!fuelDone)allReady=false;
+      rocketHtml+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-size:9px;min-width:16px">🔥</span>
+        <div style="flex:1"><div class="prog-wrap" style="margin:0"><div class="prog-fill ${fuelDone?'green':'amber'}" style="width:${Math.min(100,Math.round(haveFuel/20*100))}%"></div></div></div>
+        <span style="font-size:5px;color:${fuelDone?'var(--teal)':'var(--text3)'};min-width:32px;text-align:right">${haveFuel}/20</span>
+      </div>`;
+    }
+    if(allReady) rocketHtml+=`<button class="full-btn launch" style="margin-top:6px" onclick="closeModal();launchRocket()">🚀 ${z2?'REPAIR & RELAUNCH':'LAUNCH ROCKET'}</button>`;
+  } else {
+    rocketHtml=`<div style="color:var(--text3);font-size:5px">Research ${z2?'Rocket Repair':'Rocket Science'} to unlock.</div>`;
+  }
+
+  // Stats
+  const free=G.power.out-G.power.in;
+  let statsHtml=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:6px">
+      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <div style="color:var(--text3);font-size:4px;margin-bottom:3px">ZONE</div>
+        <div style="color:var(--amber)">${z2?'2 — The Scar':'1 — Ironfield'}</div>
+      </div>
+      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <div style="color:var(--text3);font-size:4px;margin-bottom:3px">POWER</div>
+        <div style="color:${free<0?'var(--red)':free<G.power.in*.2?'var(--amber)':'var(--green)'}">${fmt(G.power.out)}kW / ${fmt(G.power.in)}kW</div>
+      </div>
+      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <div style="color:var(--text3);font-size:4px;margin-bottom:3px">MACHINES</div>
+        <div style="color:var(--text)">${G.stats.placed}</div>
+      </div>
+      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <div style="color:var(--text3);font-size:4px;margin-bottom:3px">RESEARCH</div>
+        <div style="color:var(--text)">${G.research.done.length}/${Object.keys(TECHS).length}</div>
+      </div>
+      ${z2?`<div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border);grid-column:span 2">
+        <div style="color:var(--text3);font-size:4px;margin-bottom:3px">SMOG</div>
+        <div class="prog-wrap" style="margin:4px 0"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
+        <div style="color:${(G.smog||0)>70?'var(--red)':(G.smog||0)>40?'var(--amber)':'var(--teal)'};">${Math.round(G.smog||0)}% — efficiency ${Math.round(100-(G.smog||0))}%</div>
+      </div>`:''}
+    </div>`;
+
+  // Achievements
+  let achieveHtml=`<div style="font-size:5px;color:var(--text2)">${G.achievements.length} unlocked</div>`;
+
+  // Settings / audio
+  let settingsHtml=`
+    <div style="display:flex;gap:8px;margin-bottom:6px">
       <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <span style="font-size:6px;color:var(--text2)">🔊 Sound FX</span>
-        <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="toggleSfxMenu()">${G.sfx?'ON':'OFF'}</button>
+        <span style="font-size:6px;color:var(--text2)">🔊 SFX</span>
+        <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="G.sfx=!G.sfx;saveGame();openBigMenu()">${G.sfx?'ON':'OFF'}</button>
       </div>
       <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
         <span style="font-size:6px;color:var(--text2)">🎵 Music</span>
         <button class="mini-btn ${G.music?'teal':'dim'}" onclick="toggleMusic()">${G.music?'ON':'OFF'}</button>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
       <span style="font-size:6px;color:var(--text2);flex-shrink:0">🔉 Vol</span>
-      <input id="musicVolSlider" type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}"
-        oninput="setMusicVol(this.value)"
-        style="flex:1;accent-color:var(--amber);cursor:pointer">
-      <span id="musicVolLabel" style="font-size:6px;color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
-    </div>
-  </div>`;
-  let slotsHtml='<div style="margin-top:10px"><span class="sec-label">SAVE SLOTS</span>';
+      <input type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}" oninput="setMusicVol(this.value)" style="flex:1;accent-color:var(--amber)">
+      <span style="font-size:6px;color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
+    </div>`;
+
+  // Save slots
+  let slotsHtml='';
   for(let s=1;s<=3;s++){
     const raw=localStorage.getItem(`ebi_save_slot${s}`);
     let slotInfo='<span style="color:var(--text3)">Empty</span>';
-    if(raw){
-      try{
-        const d=JSON.parse(raw);
-        const ts=d._savedAt?new Date(d._savedAt).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'?';
-        const launched=d.stats?.launched?'🚀 ':'';
-        const research=d.research?.done?.length||0;
-        slotInfo=`<span style="color:var(--text2)">${launched}T:${d.stats?.taps||0} R:${research}/${Object.keys(TECHS).length} &nbsp;<span style="color:var(--text3);font-size:4px">${ts}</span></span>`;
-      }catch(e){}
-    }
-    slotsHtml+=`
-    <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+    if(raw){try{const d=JSON.parse(raw);const ts2=d._savedAt?new Date(d._savedAt).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'?';slotInfo=`<span style="color:var(--text2)">Z${d.zone||1} · T:${d.stats?.taps||0} · <span style="font-size:4px;color:var(--text3)">${ts2}</span></span>`;}catch(e){}}
+    slotsHtml+=`<div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
       <span style="font-size:6px;color:var(--amber);min-width:16px">S${s}</span>
       <span style="font-size:5px;flex:1">${slotInfo}</span>
       <button class="mini-btn teal" onclick="saveToSlot(${s})" style="font-size:4px">SAVE</button>
@@ -4679,24 +4834,39 @@ function openMenu(){
       ${raw?`<button class="mini-btn dim" onclick="deleteSlot(${s})" style="font-size:4px">✕</button>`:''}
     </div>`;
   }
-  slotsHtml+='</div>';
 
-  showModal('☰ MENU',
-    `<div style="font-size:6px;color:var(--text2);line-height:2.4">
-      Zone 1: Ironfield<br>
-      Taps: ${G.stats.taps} &nbsp;·&nbsp; Machines placed: ${G.stats.placed}<br>
-      Power: ${fmt(G.power.out)}kW out / ${fmt(G.power.in)}kW in<br>
-      Research: ${G.research.done.length} / ${Object.keys(TECHS).length}<br>
-      Perk points: ${G.perks?.points||0}<br>
-      Launched: ${G.stats.launched?'✓ Yes':'Not yet'}
-    </div>
-    <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><span class="sec-label" style="width:100%;margin-bottom:4px">QUICK ACCESS</span>
-      <button class="mini-btn amber" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
-      <button class="mini-btn amber" onclick="closeModal();togglePanel('recipes')">📖 RECIPES</button>
-      <button class="mini-btn amber" onclick="closeModal();togglePanel('blueprint')">📐 BLUEPRINTS</button>
-    </div>${audioHtml}${slotsHtml}`,
+  // Dev section
+  let devHtml='';
+  if(devMode){
+    devHtml=`<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">
+      <button class="mini-btn" style="border-color:var(--purple);color:var(--purple)" onclick="closeModal();togglePanel('dev')">🛠 OPEN DEV PANEL</button>
+    </div>`;
+  }
+
+  // Build sections with collapsible headers
+  function sec(id,label,content,open){
+    const isOpen=section===id||(!section&&open);
+    return `<div style="border:1px solid var(--border);margin-bottom:6px">
+      <div onclick="openBigMenu('${id}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg3);cursor:pointer;user-select:none">
+        <span style="font-size:6px;color:var(--amber);letter-spacing:1px">${label}</span>
+        <span style="font-size:8px;color:var(--text3)">${isOpen?'▲':'▼'}</span>
+      </div>
+      ${isOpen?`<div style="padding:10px">${content}</div>`:''}
+    </div>`;
+  }
+
+  const body=`
+    ${sec('inventory','📦 INVENTORY',invHtml,true)}
+    ${sec('rocket','🚀 ROCKET',rocketHtml,false)}
+    ${sec('stats','📊 STATISTICS',statsHtml,false)}
+    ${sec('achievements','🏆 ACHIEVEMENTS',achieveHtml,false)}
+    ${sec('settings','⚙️ SETTINGS & AUDIO',settingsHtml,false)}
+    ${sec('saves','💾 SAVE SLOTS',slotsHtml,false)}
+    ${devMode?sec('dev','🛠 DEV',devHtml,false):''}
+  `;
+
+  showModal('☰ MENU', body,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">RESUME</button>
-     ${devBtn}
      <button class="btn btn-sm btn-red" onclick="quitToTitle()">QUIT</button>`
   );
 }
@@ -4706,7 +4876,7 @@ function saveToSlot(s){
     G._savedAt=Date.now();
     localStorage.setItem(`ebi_save_slot${s}`,JSON.stringify(G));
     toast(`Saved to slot ${s}`,'ok'); sfx('craft');
-    openMenu(); // refresh to show updated slot info
+    openBigMenu('saves');
   }catch(e){toast('Save failed','bad');}
 }
 
@@ -5009,8 +5179,7 @@ function startGame(isNew){
     t.classList.toggle('active',i===zoneIdx);
     t.classList.toggle('locked',i>zoneIdx);
   });
-  updateHUD();
-  startTick(); startRender();
+  updateHUD(); updateRocketBtn();
   if(G.music!==false) musicStart();
   const ts=TILE*G.cam.zoom;
   G.cam.x=26*ts-canvas.width/2+ts*3;
