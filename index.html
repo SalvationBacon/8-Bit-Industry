@@ -344,7 +344,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v1.1.3 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
+    <p class="v-num">v1.1.4 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
   </div>
 </div>
 
@@ -507,7 +507,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.1.3';
+const VER      = '1.1.4';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -4569,26 +4569,27 @@ function renderRecipesPanel(){
 //  TUTORIAL
 // ═══════════════════════════════════════════════════
 const TUTORIAL_STEPS=[
-  {id:1,  text:'Welcome to 8-BIT INDUSTRY! Tap any rock tile on the map to open it, then tap ⛏️ MINE to collect ore — 4 taps = 1 ore.', done:()=>G.stats.taps>=1},
-  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — tap each deposit and keep hitting MINE.', done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5,
+  {id:1,  text:'Welcome! Tap the 🛠️ TOOLS tab, then tap ⛏️ Mine. Now tap any ore tile on the map to open it, then tap the big MINE button — 4 taps = 1 ore.', done:()=>G.stats.taps>=1},
+  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — tap each deposit and keep hitting MINE.',
+    done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5,
     render:()=>{
       const needs=[{res:'iron_ore',icon:'🪨',name:'Iron Ore',need:10},{res:'coal',icon:'⬛',name:'Coal',need:5},{res:'stone',icon:'🔲',name:'Stone',need:5}];
       const tally=needs.map(n=>{const have=Math.min(n.need,G.inv[n.res]||0);const done=have>=n.need;return `${n.icon} ${n.name}: <span style="color:${done?'var(--teal)':'var(--amber)'}">${have}/${n.need}</span>${done?' ✓':''}`;}).join(' &nbsp;·&nbsp; ');
-      return `Tap ore tiles and hit ⛏️ MINE to collect. &nbsp;&nbsp; ${tally}`;
+      return `Tap ore tiles and hit ⛏️ MINE. &nbsp;&nbsp; ${tally}`;
     }
   },
-  {id:3,  text:'Open 🔨 Craft in the toolbar. Smelt your Iron Ore into Iron Plates (costs 2 ore each).', done:()=>(G.inv.iron_plate||0)>=3},
-  {id:4,  text:'Great! Now craft some Iron Gears (costs 2 Iron Plates). You need these to build machines.', done:()=>(G.inv.iron_gear||0)>=2},
-  {id:5,  text:'Open the BUILD tab → Extract → select Burner Generator. Tap the map to place it (costs 5 Stone + 2 Iron Plate).', done:()=>Object.values(G.machines).some(m=>m.type==='burner')},
-  {id:6,  text:'Place the Burner Generator — tap BUILD tab → Extract → Burner, then tap the map to place it. Then tap it with the Select tool and feed it coal.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
-  {id:7,  text:'Power is on! Now build a Miner and place it on a COAL deposit. The miner needs power to run, and will auto-mine coal for you.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='coal')},
-  {id:8,  text:'Now use an 🦾 Inserter to move coal from your Miner to the Burner. Place the inserter between them, pointing TOWARD the Burner.', done:()=>{const hasInserter=Object.values(G.machines).some(m=>m.type==='inserter');const b=Object.values(G.machines).find(m=>m.type==='burner');return hasInserter&&b&&((b.inBuf.coal||0)>=1||b.produced>0);} },
-  {id:9,  text:'Coal is flowing to your Burner automatically! Now place a Miner on an Iron Ore deposit to mine iron.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='iron_ore')},
-  {id:10, text:'Open BUILD tab → Processing → select Stone Furnace ⚱️ and place it near your iron miner. The furnace needs iron ore AND coal to smelt plates.', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace')},
-  {id:11, text:'Use Inserters to feed iron ore AND coal into the Furnace. Set its recipe to "Smelt Iron". Inserters + Belts are your conveyor system!', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace'&&m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
-  {id:12, text:'Your factory is running! Open 🔬 Research and hand-craft some Field Notes (needs Iron Gear + Copper Wire). Research Basic Automation.', done:()=>G.research.done.includes('automation')},
-  {id:13, text:'🎉 Automation unlocked! You can now build Blast Furnaces, Assemblers and Research Labs. Your goal: build a 🚀 ROCKET and launch!', done:()=>G.research.done.includes('logistics')||Object.keys(G.machines).length>=15,
-    render:()=>`🎉 Automation unlocked! Build Blast Furnaces, Assemblers &amp; Labs. Your goal: build a 🚀 Rocket! &nbsp;<button onclick="completeTutorial()" style="font-family:var(--font);font-size:6px;padding:4px 10px;border:1px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer">THE FACTORY MUST GROW ▶</button>`
+  {id:3,  text:'Open 🔨 CRAFT tab to hand-smelt Iron Plates (costs 2 Iron Ore each). Tap the hammer to craft.', done:()=>(G.inv.iron_plate||0)>=3},
+  {id:4,  text:'Great! Now craft some Iron Gears in CRAFT tab (costs 2 Iron Plates). You need these to build machines.', done:()=>(G.inv.iron_gear||0)>=2},
+  {id:5,  text:'Open 🏗️ BUILD tab → Extract → tap Burner Generator → tap the map to place it (costs 5 Stone + 2 Iron Plate).', done:()=>Object.values(G.machines).some(m=>m.type==='burner')},
+  {id:6,  text:'Tap the Burner with the Select tool (🛠️ TOOLS → Select) then feed it coal from your inventory.', done:()=>Object.values(G.machines).some(m=>m.type==='burner'&&(m.inBuf.coal||0)>0)},
+  {id:7,  text:'Power is on! BUILD → Extract → Miner. Place it on a COAL deposit — it will auto-mine coal.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='coal')},
+  {id:8,  text:'Now use an 🦾 Inserter (BUILD → Logistics) to move coal from your Miner to the Burner, pointing TOWARD the Burner.', done:()=>{const hasInserter=Object.values(G.machines).some(m=>m.type==='inserter');const b=Object.values(G.machines).find(m=>m.type==='burner');return hasInserter&&b&&((b.inBuf.coal||0)>=1||b.produced>0);}},
+  {id:9,  text:'Coal is flowing automatically! Now place a Miner on an Iron Ore deposit.', done:()=>Object.values(G.machines).some(m=>m.type==='miner'&&m.mineRes==='iron_ore')},
+  {id:10, text:'BUILD → Processing → Stone Furnace ⚱️. Place it near your iron miner. It needs iron ore AND coal to smelt plates.', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace')},
+  {id:11, text:'Use Inserters to feed iron ore AND coal into the Furnace. Tap the Furnace to set its recipe to "Smelt Iron".', done:()=>Object.values(G.machines).some(m=>m.type==='stone_furnace'&&m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
+  {id:12, text:'Factory running! Open 🔬 RESEARCH tab and spend Field Notes to research Basic Automation.', done:()=>G.research.done.includes('automation')},
+  {id:13, text:'🎉 Automation unlocked! Build Blast Furnaces, Assemblers & Labs. Your goal: build a 🚀 Rocket and launch!', done:()=>G.research.done.includes('logistics')||Object.keys(G.machines).length>=15,
+    render:()=>`🎉 Automation unlocked! Build Blast Furnaces, Assemblers &amp; Labs. Goal: 🚀 Rocket! &nbsp;<button onclick="completeTutorial()" style="font-family:var(--font);font-size:6px;padding:4px 10px;border:1px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer">THE FACTORY MUST GROW ▶</button>`
   },
 ];
 
@@ -5155,7 +5156,8 @@ function newGame(){
 function startGame(isNew){
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
-  initCanvas(); setupInput(); switchTab('build'); updateSelectBtn(); updateBuildHUD();
+  document.getElementById('wrap').getBoundingClientRect(); // force layout before canvas sizing
+  initCanvas(); setupInput(); switchTab('tools'); updateSelectBtn(); updateBuildHUD();
   G.power.out=0; G.power.in=0;
   const _pm=perkMult();
   for(const m of Object.values(G.machines)){
@@ -5172,7 +5174,6 @@ function startGame(isNew){
       }
     }
   }
-  // Set zone tabs
   const zoneTabs=document.querySelectorAll('.zone-tab');
   const zoneIdx=(G.zone||1)-1;
   zoneTabs.forEach((t,i)=>{
@@ -5180,20 +5181,35 @@ function startGame(isNew){
     t.classList.toggle('locked',i>zoneIdx);
   });
   updateHUD(); updateRocketBtn();
+  startTick(); startRender();
   if(G.music!==false) musicStart();
-  const ts=TILE*G.cam.zoom;
-  G.cam.x=26*ts-canvas.width/2+ts*3;
-  G.cam.y=24*ts-canvas.height/2+ts*2;
-  clampCam();
+  // Defer cam to next frame so canvas has final dimensions
+  requestAnimationFrame(()=>{
+    sizeCanvas();
+    const ts=TILE*(G.cam.zoom||1);
+    G.cam.x=Math.max(0,26*ts-canvas.width/2+ts*3);
+    G.cam.y=Math.max(0,24*ts-canvas.height/2+ts*2);
+    clampCam();
+  });
   if(isNew){
-    setTimeout(()=>showModal('⛏️ IRONFIELD',
-      `<div style="font-size:6px;color:var(--text2);line-height:2.4">
-        You've crashed on Ironfield.<br>No machines. No power. Nothing.<br><br>
-        Select <span style="color:var(--amber)">⛏️ Mine</span> to collect resources.<br>
-        Tap <span style="color:var(--amber)">🏗️ Build</span> tab<br>to place your first machines.<br><br>
-        Build a rocket to escape this rock.
-      </div>`,
-      `<button class="btn btn-teal btn-sm" onclick="closeModal()">LET'S GO</button>`
+    if(G.zone===1){G.tutorial={step:0};G.tutorialZ2=undefined;}
+    setTimeout(()=>showModal(G.zone===2?'💥 THE SCAR':'⛏️ IRONFIELD',
+      G.zone===2
+        ?`<div style="font-size:6px;color:var(--text2);line-height:2.4">
+            You've crashed on <span style="color:var(--red)">The Scar</span>.<br>
+            The rocket is wrecked. Your tools are gone.<br>
+            But your knowledge survived.<br><br>
+            <span style="color:var(--amber)">The ground smells of oil.</span><br>
+            Find oil deposits. Build the chain. Fix the rocket.
+          </div>`
+        :`<div style="font-size:6px;color:var(--text2);line-height:2.4">
+            Welcome to <span style="color:var(--amber)">Ironfield</span>.<br>
+            No machines. No power. Nothing.<br><br>
+            Tap <span style="color:var(--amber)">🛠️ TOOLS</span> then<br>
+            ⛏️ Mine to collect resources.<br><br>
+            Build a rocket to escape.
+          </div>`,
+      `<button class="btn btn-teal btn-sm" onclick="closeModal()">${G.zone===2?'SURVIVE':'LET\'S GO'}</button>`
     ),700);
   }
 }
