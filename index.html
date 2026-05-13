@@ -264,6 +264,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 #buildHUD{position:absolute;bottom:10px;left:0;right:0;display:flex;gap:8px;align-items:center;justify-content:center;z-index:150;pointer-events:none;padding:0 12px}
 #buildHUD button{pointer-events:all;font-family:var(--font);border-radius:4px;min-height:48px;min-width:80px;font-size:8px;padding:12px 18px;cursor:pointer}
 #buildRotateBtn{border:2px solid var(--amber);background:rgba(13,13,13,.95);color:var(--amber)}
+#buildConfirmBtn{border:2px solid var(--teal);background:rgba(13,13,13,.95);color:var(--teal)}
 #buildCancelBtn{border:1px solid var(--border2);background:rgba(13,13,13,.95);color:var(--text2)}
 @media(max-width:600px){#buildHUD button{font-size:9px;min-height:54px;padding:14px 22px}}
 
@@ -344,7 +345,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v1.1.4 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
+    <p class="v-num">v1.1.6 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
   </div>
 </div>
 
@@ -370,6 +371,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
     <!-- Build mode floating controls — shown bottom-left of canvas while a machine is selected -->
     <div id="buildHUD" class="hidden">
       <button id="buildRotateBtn" onclick="cycleDir()" style="display:none">↻ →</button>
+      <button id="buildConfirmBtn" onclick="confirmPlace()" style="display:none;border-color:var(--teal);color:var(--teal)">✓ PLACE</button>
       <button id="buildCancelBtn" onclick="cancelBuild()">✕ CANCEL</button>
     </div>
   </div>
@@ -507,7 +509,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.1.4';
+const VER      = '1.1.6';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -1108,7 +1110,7 @@ function defaultState(){
     power:{out:0,in:0},
     research:{done:[]},
     cam:{x:0,y:0,zoom:1},
-    stats:{placed:0,taps:0,launched:false},
+    stats:{placed:0,taps:0,mined:0,launched:false},
     blueprints:[],
     craftState:{recipeId:null, clicks:0},
     achievements:[],
@@ -2036,7 +2038,7 @@ function handleTap(tile,isLong){
       const movingSet=new Set(ms.ids);
       const canMove=ms.ids.every(id=>{
         const m=G.machines[id]; if(!m)return true;
-        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        const[mw,mh]=machSize(m);
         for(let ty2=0;ty2<mh;ty2++) for(let tx2=0;tx2<mw;tx2++){
           const nx=m.x+dx+tx2, ny=m.y+dy+ty2;
           if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
@@ -2046,17 +2048,19 @@ function handleTap(tile,isLong){
         return true;
       });
       if(!canMove){toast('Cannot place here — tiles occupied','bad');sfx('error');return;}
+      // Clear old tiles first
       for(const id of ms.ids){
         const m=G.machines[id]; if(!m)continue;
-        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        const[mw,mh]=machSize(m);
         for(let ty2=0;ty2<mh;ty2++) for(let tx2=0;tx2<mw;tx2++)
           G.map[m.y+ty2][m.x+tx2].mid=null;
       }
+      // Place at new position
       for(const id of ms.ids){
         const m=G.machines[id]; if(!m)continue;
         m.x+=dx; m.y+=dy;
-        if(m.type==='miner')m.mineRes=G.map[m.y][m.x].res||null;
-        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        if(m.type==='miner'||m.type==='oil_pump') m.mineRes=G.map[m.y][m.x].res||null;
+        const[mw,mh]=machSize(m);
         for(let ty2=0;ty2<mh;ty2++) for(let tx2=0;tx2<mw;tx2++)
           G.map[m.y+ty2][m.x+tx2].mid=m.id;
       }
@@ -2120,7 +2124,10 @@ function handleTap(tile,isLong){
   if(t.mid!==null&&def&&!noMachineTools.includes(activeTool)){
     openMachinePanel(G.machines[t.mid]); return;
   }
-  tryPlace(activeTool,x,y);
+  // In build mode — tapping empty canvas just repositions the ghost (draw() follows hov)
+  // Placement requires the ✓ PLACE button in buildHUD
+  if(def&&!noMachineTools.includes(activeTool)) return;
+  // No other action for unrecognised tool/tile combo
 }
 
 // tapCollect kept as legacy stub (no longer called directly)
@@ -2180,6 +2187,7 @@ function doMineTap(){
     const yieldMult=perkMult().yield;
     const gained=Math.max(1,Math.round(yieldMult));
     G.inv[mineTap.resId]=(G.inv[mineTap.resId]||0)+gained;
+    G.stats.mined=(G.stats.mined||0)+gained;
     mineTap.taps=0;
     updateHUD();
     toast(`+${gained} ${ITEMS[mineTap.resId].name}`,'ok');
@@ -2427,8 +2435,11 @@ function recordOutput(m, count){
   if(!m._times) m._times=[];
   const now=Date.now();
   m._times.push({t:now,n:count});
-  // Prune entries older than 1 minute
   m._times=m._times.filter(e=>now-e.t<RATE_WINDOW_MS);
+  // Track total mined for achievements (miners and oil pumps only)
+  if(m.type==='miner'||m.type==='oil_pump'){
+    if(G&&G.stats) G.stats.mined=(G.stats.mined||0)+count;
+  }
 }
 function itemsPerMin(m){
   if(!m._times||!m._times.length)return 0;
@@ -2993,20 +3004,28 @@ function cancelBuild(){
   updateBuildHUD();
 }
 
+function confirmPlace(){
+  if(hov.x<0||hov.y<0)return;
+  if(!canPlace(activeTool,hov.x,hov.y)){toast('Cannot place here','bad');sfx('error');return;}
+  tryPlace(activeTool,hov.x,hov.y);
+}
+
 function updateBuildHUD(){
   const hud=document.getElementById('buildHUD');
   const rotBtn=document.getElementById('buildRotateBtn');
+  const confirmBtn=document.getElementById('buildConfirmBtn');
   if(!hud||!rotBtn) return;
   const def=MDEFS[activeTool];
   const inBuild=def&&activeTool!=='select';
   if(inBuild){
     hud.classList.remove('hidden');
-    // Show rotate for all machines — output port rotates with placeDir
     const dirLabels=['→','↓','←','↑'];
     rotBtn.textContent='↻ '+dirLabels[placeDir];
     rotBtn.style.display='';
+    if(confirmBtn) confirmBtn.style.display='';
   } else {
     hud.classList.add('hidden');
+    if(confirmBtn) confirmBtn.style.display='none';
   }
 }
 
@@ -3494,9 +3513,14 @@ function renderMachPanel(){
     html+=`</div>`;
   }
 
-  // Rotate button — belt, inserter, tunnel, and now splitter
-  if(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='tunnel'||m.type==='splitter')
-    html+=`<button class="full-btn teal" onclick="rotateM(${m.id})">↻ ROTATE  ${D_ARR[m.dir]}</button>`;
+  // Action buttons — move, rotate, demolish
+  const canRotate=(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='tunnel'||m.type==='splitter');
+  const rotBtn2=canRotate?`<button class="full-btn teal" style="flex:1" onclick="rotateM(${m.id})">&#x21BB; ${D_ARR[m.dir]}</button>`:'';
+  html+=`<div style="display:flex;gap:4px;margin-bottom:5px">
+    <button class="full-btn teal" style="flex:1" onclick="moveSingleMachine(${m.id})">&#x2715; MOVE</button>
+    ${rotBtn2}
+  </div>
+  <button class="full-btn red" onclick="tryRemove(${m.x},${m.y});togglePanel('machine')" style="margin-bottom:5px">&#x1F4A5; DEMOLISH</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
   const UPGRADEABLE=['miner','blast_furnace','electric_smelter','assembler','lab'];
@@ -4238,9 +4262,21 @@ function renderStatsPanel(){
   el.innerHTML=html;
 }
 
+function moveSingleMachine(id){
+  const m=G.machines[id]; if(!m)return;
+  const ms=multiselState;
+  ms.ids=[id];
+  ms.mode='selected';
+  ms.x1=m.x; ms.y1=m.y; ms.x2=m.x; ms.y2=m.y;
+  togglePanel('machine');
+  setTool('multisel');
+  multiselStartMove();
+  document.getElementById('multiselBar')?.classList.remove('hidden');
+  updateMultiselBar();
+}
+
 function multiselStartMove(){
   const ms=multiselState; if(!ms.ids.length)return;
-  // Use centre of bounding box as anchor
   const machines=ms.ids.map(id=>G.machines[id]).filter(Boolean);
   const minX=Math.min(...machines.map(m=>m.x));
   const minY=Math.min(...machines.map(m=>m.y));
@@ -4430,9 +4466,9 @@ function checkAchievements(){
   const totalOre=(G.inv.iron_ore||0)+(G.inv.copper_ore||0)+(G.inv.coal||0)+(G.inv.stone||0)+G.stats.taps;
 
   const checks={
-    first_ore:    ()=>G.stats.taps>=1,
-    ore_100:      ()=>G.stats.taps>=100,
-    ore_1000:     ()=>G.stats.taps>=1000,
+    first_ore:    ()=>(G.stats.mined||0)>=1,
+    ore_100:      ()=>(G.stats.mined||0)>=100,
+    ore_1000:     ()=>(G.stats.mined||0)>=1000,
     first_miner:  ()=>machines.some(m=>m.type==='miner'),
     miners_5:     ()=>machines.filter(m=>m.type==='miner'&&m.active).length>=5,
     first_machine:()=>G.stats.placed>=1,
@@ -4569,13 +4605,13 @@ function renderRecipesPanel(){
 //  TUTORIAL
 // ═══════════════════════════════════════════════════
 const TUTORIAL_STEPS=[
-  {id:1,  text:'Welcome! Tap the 🛠️ TOOLS tab, then tap ⛏️ Mine. Now tap any ore tile on the map to open it, then tap the big MINE button — 4 taps = 1 ore.', done:()=>G.stats.taps>=1},
-  {id:2,  text:'Good! Mine a mix of Iron Ore, Coal and Stone — tap each deposit and keep hitting MINE.',
+  {id:1,  text:'Welcome! Tap any ore tile on the map — a popup will appear at the bottom. Tap the big ⛏️ TAP TO MINE button. 4 taps = 1 ore!', done:()=>G.stats.taps>=1},
+  {id:2,  text:'Good! Keep tapping ore tiles and hitting MINE. Collect Iron Ore, Coal and Stone.',
     done:()=>(G.inv.iron_ore||0)>=10&&(G.inv.coal||0)>=5&&(G.inv.stone||0)>=5,
     render:()=>{
       const needs=[{res:'iron_ore',icon:'🪨',name:'Iron Ore',need:10},{res:'coal',icon:'⬛',name:'Coal',need:5},{res:'stone',icon:'🔲',name:'Stone',need:5}];
       const tally=needs.map(n=>{const have=Math.min(n.need,G.inv[n.res]||0);const done=have>=n.need;return `${n.icon} ${n.name}: <span style="color:${done?'var(--teal)':'var(--amber)'}">${have}/${n.need}</span>${done?' ✓':''}`;}).join(' &nbsp;·&nbsp; ');
-      return `Tap ore tiles and hit ⛏️ MINE. &nbsp;&nbsp; ${tally}`;
+      return `Tap ore tiles → hit ⛏️ TAP TO MINE. &nbsp;&nbsp; ${tally}`;
     }
   },
   {id:3,  text:'Open 🔨 CRAFT tab to hand-smelt Iron Plates (costs 2 Iron Ore each). Tap the hammer to craft.', done:()=>(G.inv.iron_plate||0)>=3},
