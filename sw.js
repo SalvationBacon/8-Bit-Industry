@@ -1,10 +1,11 @@
-const CACHE = 'ebi-v126';
+const CACHE = 'ebi-v127';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './icon-maskable-512.png',
   './apple-touch-icon.png',
   'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap',
 ];

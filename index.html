@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#0d0d0d">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <title>8-BIT INDUSTRY</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
@@ -67,6 +68,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .logo-rest{display:block;font-size:clamp(9px,3vw,13px);color:var(--text);letter-spacing:10px;margin-top:8px;text-shadow:2px 2px 0 #000}
 @keyframes flicker{0%,91%,95%,100%{opacity:1}92%,94%{opacity:.65}}
 .logo-icon{font-size:36px;display:block;margin-bottom:14px;animation:bob 2.2s ease-in-out infinite}
+.logo-icon .uico{width:56px;height:56px}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.4)}50%{box-shadow:0 0 0 6px rgba(245,166,35,0)}}
@@ -110,7 +112,14 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 /* ── TAB BAR (replaces old toolbar) ── */
 #tabBar{flex-shrink:0;height:calc(var(--tab-h) + var(--sab));padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar);background:var(--panel);border-top:2px solid var(--border2);display:flex;z-index:100}
 .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:var(--f5);color:#c8c8c8;border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
-.tab-btn .tab-icon{font-size:22px;line-height:1}
+.tab-btn .tab-icon{font-size:22px;line-height:1;height:26px;display:flex;align-items:center}
+.uico{image-rendering:pixelated;display:inline-block;vertical-align:middle}
+.tab-icon .uico{width:26px;height:26px}
+.mt-ic .uico{width:32px;height:32px}
+.hres-icon .uico{width:16px;height:16px}
+.btn .uico,.ditem .di .uico{width:24px;height:24px}
+.btn .uico{width:16px;height:16px;margin:-4px 4px 0 0}
+#titleMute .uico{width:24px;height:24px}
 .tab-btn:hover{color:var(--text2);background:var(--bg3)}
 .tab-btn.active{color:var(--amber);border-top-color:var(--amber);background:rgba(245,166,35,.06)}
 .tab-btn.active .tab-icon{filter:none}
@@ -140,7 +149,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .spanel{position:fixed;top:calc(var(--hud-h) + var(--sat));right:0;bottom:calc(var(--tab-h) + var(--sab));width:min(400px,100vw);padding-right:var(--sar);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
 .spanel.open{transform:translateX(0)}
 .ph{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:2px solid var(--border2);flex-shrink:0;background:#0f0f0f}
-.ph-title{color:var(--amber);font-size:var(--f8)}
+.ph-title{color:var(--amber);font-size:var(--f8);display:flex;align-items:center;gap:8px}
+.ph-title .uico,#mTitle .uico{width:20px;height:20px}
 .pbody::-webkit-scrollbar{width:3px}
 .pbody::-webkit-scrollbar-thumb{background:var(--border2)}
 
@@ -155,7 +165,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #mOverlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:500;display:flex;align-items:center;justify-content:center}
 .modal{background:var(--panel);border:2px solid var(--border2);width:min(440px,94vw);max-height:calc(100dvh - var(--sat) - var(--sab) - 24px);display:flex;flex-direction:column}
 .mh{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-bottom:1px solid var(--border)}
-.mh-title{color:var(--amber);font-size:var(--f8)}
+.mh-title{color:var(--amber);font-size:var(--f8);display:flex;align-items:center;gap:8px}
 .mb{padding:14px;overflow-y:auto;flex:1;line-height:1.8}
 .mf{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 
@@ -387,7 +397,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   <div class="title-glow"></div>
   <div id="titleCaption"></div>
   <div class="title-card">
-    <span class="logo-icon">🏭</span>
+    <span class="logo-icon" data-ui="factory"></span>
     <div class="logo">
       <span class="logo-8">8-BIT</span>
       <span class="logo-rest">INDUSTRY</span>
@@ -396,13 +406,13 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:320px;margin:0 auto">
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
-      <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none">✨ STARDUST</button>
+      <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none"><span data-ui="stardust"></span>STARDUST</button>
       <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none">📲 INSTALL</button>
-        <button class="btn btn-sm" onclick="openBackup()" style="flex:1">🛟 BACKUP</button>
+        <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none"><span data-ui="install"></span>INSTALL</button>
+        <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.7.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -439,11 +449,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   </div>
   <!-- Tab bar, always visible, replaces old toolbar -->
   <div id="tabBar">
-    <button class="tab-btn" id="tab-build"    onclick="switchTab('build')"><span class="tab-icon">🏗️</span>BUILD</button>
-    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon">✏️</span>EDIT</button>
-    <button class="tab-btn" id="tab-craft"    onclick="switchTab('craft')"><span class="tab-icon">🔨</span>CRAFT</button>
-    <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon">🔬</span>RESEARCH<span class="tab-badge" id="badge-research"></span></button>
-    <button class="tab-btn" id="tab-goal"     onclick="switchTab('goal')"><span class="tab-icon">🚀</span>GOAL<span class="tab-badge" id="badge-goal"></span></button>
+    <button class="tab-btn" id="tab-build"    onclick="switchTab('build')"><span class="tab-icon" data-ui="build"></span>BUILD</button>
+    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon" data-ui="edit"></span>EDIT</button>
+    <button class="tab-btn" id="tab-craft"    onclick="switchTab('craft')"><span class="tab-icon" data-ui="craft"></span>CRAFT</button>
+    <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon" data-ui="research"></span>RESEARCH<span class="tab-badge" id="badge-research"></span></button>
+    <button class="tab-btn" id="tab-goal"     onclick="switchTab('goal')"><span class="tab-icon" data-ui="goal"></span>GOAL<span class="tab-badge" id="badge-goal"></span></button>
   </div>
 </div>
 
@@ -468,60 +478,60 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 
 <!-- ══ PANELS ══ -->
 <div id="pCraft" class="spanel">
-  <div class="ph"><span class="ph-title">🔨 HAND CRAFT</span><button class="ph-x" onclick="togglePanel('craft')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="craft"></span>HAND CRAFT</span><button class="ph-x" onclick="togglePanel('craft')">✕</button></div>
   <div class="pbody" id="pCraftBody"></div>
 </div>
 
 <div id="pInv" class="spanel">
-  <div class="ph"><span class="ph-title">📦 INVENTORY</span><button class="ph-x" onclick="togglePanel('inv')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="inventory"></span>INVENTORY</span><button class="ph-x" onclick="togglePanel('inv')">✕</button></div>
   <div class="pbody" id="pInvBody"></div>
 </div>
 
 <div id="pResearch" class="spanel">
-  <div class="ph"><span class="ph-title">🔬 RESEARCH</span><button class="ph-x" onclick="togglePanel('research')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="research"></span>RESEARCH</span><button class="ph-x" onclick="togglePanel('research')">✕</button></div>
   <div class="pbody" id="pResBody"></div>
 </div>
 
 <div id="pRocket" class="spanel">
-  <div class="ph"><span class="ph-title" id="pRocketTitle">🚀 GOAL</span><button class="ph-x" onclick="togglePanel('rocket')">✕</button></div>
+  <div class="ph"><span class="ph-title" id="pRocketTitle"><span data-ui="goal"></span>GOAL</span><button class="ph-x" onclick="togglePanel('rocket')">✕</button></div>
   <div class="pbody" id="pRocketBody"></div>
 </div>
 
 <div id="pMachine" class="spanel">
-  <div class="ph"><span class="ph-title" id="pMachTitle">⚙️ MACHINE</span><button class="ph-x" onclick="togglePanel('machine')">✕</button></div>
+  <div class="ph"><span class="ph-title" id="pMachTitle"><span data-ui="settings"></span>MACHINE</span><button class="ph-x" onclick="togglePanel('machine')">✕</button></div>
   <div class="pbody" id="pMachBody"></div>
 </div>
 
 <div id="pDev" class="spanel" style="border-color:var(--purple)">
   <div class="ph" style="border-color:var(--purple)">
-    <span class="ph-title" style="color:var(--purple)">🛠 DEV MODE</span>
+    <span class="ph-title" style="color:var(--purple)"><span data-ui="dev"></span>DEV MODE</span>
     <button class="ph-x" onclick="togglePanel('dev')">✕</button>
   </div>
   <div class="pbody" id="pDevBody"></div>
 </div>
 
 <div id="pPerks" class="spanel">
-  <div class="ph"><span class="ph-title">⭐ PERKS</span><button class="ph-x" onclick="togglePanel('perks')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="perks"></span>PERKS</span><button class="ph-x" onclick="togglePanel('perks')">✕</button></div>
   <div class="pbody" id="pPerksBody"></div>
 </div>
 
 <div id="pStats" class="spanel">
-  <div class="ph"><span class="ph-title">📊 STATISTICS</span><button class="ph-x" onclick="togglePanel('stats')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="stats"></span>STATISTICS</span><button class="ph-x" onclick="togglePanel('stats')">✕</button></div>
   <div class="pbody" id="pStatsBody"></div>
 </div>
 
 <div id="pAchieve" class="spanel">
-  <div class="ph"><span class="ph-title">🏆 ACHIEVEMENTS</span><button class="ph-x" onclick="togglePanel('achieve')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="achievements"></span>ACHIEVEMENTS</span><button class="ph-x" onclick="togglePanel('achieve')">✕</button></div>
   <div class="pbody" id="pAchieveBody"></div>
 </div>
 
 <div id="pRecipes" class="spanel">
-  <div class="ph"><span class="ph-title">📖 RECIPE BOOK</span><button class="ph-x" onclick="togglePanel('recipes')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="recipes"></span>RECIPE BOOK</span><button class="ph-x" onclick="togglePanel('recipes')">✕</button></div>
   <div class="pbody" id="pRecipesBody"></div>
 </div>
 
 <div id="pBlueprint" class="spanel">
-  <div class="ph"><span class="ph-title">📐 BLUEPRINTS</span><button class="ph-x" onclick="togglePanel('blueprint')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="blueprints"></span>BLUEPRINTS</span><button class="ph-x" onclick="togglePanel('blueprint')">✕</button></div>
   <div class="pbody" id="pBlueprintBody"></div>
 </div>
 
@@ -565,7 +575,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.7.0';
+const VER      = '1.8.0';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -774,7 +784,7 @@ function toggleTitleMusic(){
   if(PREFS.music)musicStart(); else musicStop();
   updateTitleMute();
 }
-function updateTitleMute(){const b=document.getElementById('titleMute');if(b)b.textContent=PREFS.music===false?'🔇':'🔊';}
+function updateTitleMute(){const b=document.getElementById('titleMute');if(b)b.innerHTML=uiIcon(PREFS.music===false?'mute':'sound');}
 function toggleSfxMenu(){
   G.sfx=!G.sfx; saveGame();
   openSettings();
@@ -2155,6 +2165,82 @@ Object.assign(MACHINE_ART,{
   pipe(a,f){const{R,P}=a;R(0,0,16,16,'#121212');R(0,5,16,6,'#2e2e2e');R(5,0,6,16,'#2e2e2e');R(0,7,16,2,'#2a7a9a');R(7,0,2,16,'#2a7a9a');
     for(let k=0;k<4;k++){P((k*4+f)%16,7,'#bdf0ff');P(7,(k*4+f)%16,'#bdf0ff');}},
 });
+
+// Point-in-polygon test for star and burst shapes
+function uiInPoly(px,py,pts){let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const[xi,yi]=pts[i],[xj,yj]=pts[j];if((yi>py)!==(yj>py)&&px<(xj-xi)*(py-yi)/(yj-yi)+xi)c=!c;}return c;}
+// ── UI icons: tabs, tools, menu tiles, HUD gauges (pixel art, 16×16) ──
+const UI_ART={
+  // bottom tabs
+  build({R,P,L}){R(2,14,9,2,'#4a4a4a');R(4,3,2,11,'#f5a623');for(let y=4;y<14;y+=2)P(4+(y>>1)%2,y,'#8a5c10');
+    R(3,2,12,2,'#f5a623');R(1,2,2,3,'#7a7a7a');for(let x=6;x<14;x+=2)P(x,3,'#8a5c10');
+    L(12,4,12,8,'#cfcfcf');R(11,9,3,1,'#9a9a9a');P(11,10,'#9a9a9a');P(13,10,'#9a9a9a');R(10,11,5,2,'#c0392b');},
+  edit({P,L,R}){for(let k=0;k<3;k++)L(3+k,11+k-1,11+k,3+k-1,['#ffd27a','#f5a623','#a86c08'][k]);
+    L(11,2,13,4,'#ff8fa3');L(12,2,14,4,'#ff8fa3');P(13,2,'#cfcfcf');P(12,3,'#cfcfcf');
+    P(2,13,'#3a3a3a');P(3,13,'#e8d5b0');P(2,12,'#e8d5b0');P(3,12,'#e8d5b0');},
+  craft({R,L,P}){for(let k=0;k<2;k++)L(3+k,14,10+k,7,k?'#6b4226':'#9a6a3a');
+    R(7,2,8,5,'#9aa4b0');R(7,2,8,1,'#d0dae6');R(7,6,8,1,'#5a626e');R(5,3,2,3,'#7a828e');P(14,3,'#d0dae6');},
+  research({R,P,C}){R(6,1,4,1,'#cfcfcf');R(7,2,2,5,'#9ad8ff');P(6,2,'#7aa8c8');P(9,2,'#7aa8c8');
+    for(let y=7;y<14;y++){const w=(y-6);R(8-w,y,w*2,1,y>9?'#26c6a0':'#9ad8ff');P(8-w,y,'#7aa8c8');P(7+w,y,'#7aa8c8');}
+    R(1,14,14,1,'#7aa8c8');P(6,11,'#c8fff0');P(9,12,'#c8fff0');P(8,9,'#c8fff0');},
+  goal({R,P}){R(6,3,4,9,'#e8e8e8');R(7,1,2,2,'#e53935');P(6,3,'#e53935');P(9,3,'#e53935');R(10,3,1,9,'#a0a0a0');
+    R(7,5,2,2,'#26c6a0');R(4,9,2,4,'#c0392b');R(10,9,2,4,'#c0392b');R(7,12,2,1,'#7a7a7a');
+    R(7,13,2,2,'#f5a623');P(6,14,'#ffd27a');P(9,14,'#ffd27a');P(7,15,'#e53935');P(8,15,'#ffd27a');},
+  // EDIT tools
+  select({R,P}){const rows=[1,2,3,4,5,6,7,8,9,6,6,3,2];
+    rows.forEach((w,y)=>{for(let x=0;x<w;x++)P(4+x,2+y,x===0||x===w-1||y===rows.length-1?'#8a8a8a':'#f0f0f0');});
+    R(8,14,2,2,'#f0f0f0');R(7,13,2,2,'#f0f0f0');},
+  multisel({R,P}){for(let i=1;i<15;i+=3){R(i,1,2,1,'#26c6a0');R(i,14,2,1,'#26c6a0');R(1,i,1,2,'#26c6a0');R(14,i,1,2,'#26c6a0');}
+    R(5,5,3,3,'#42a5f5');R(9,8,3,3,'#42a5f5');R(5,9,2,2,'#7a7a7a');},
+  demolish({P,C}){const pts=[];for(let i=0;i<16;i++){const r=i%2?3.6:7.6,t=i*Math.PI/8+.2;pts.push([7.5+Math.cos(t)*r,7.5+Math.sin(t)*r]);}
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(uiInPoly(x+.5,y+.5,pts))P(x,y,'#e53935');
+    C(8,8,3,'#f5a623');C(8,8,1,'#fff3b0');},
+  rotate({P,R}){for(let y=0;y<16;y++)for(let x=0;x<16;x++){const dx=x-7.5,dy=y-7.5,d=Math.hypot(dx,dy);if(d>=4.6&&d<=6.6&&!(dx<0&&dy<0))P(x,y,d>5.6?'#f5a623':'#ffd27a');}
+    R(0,6,5,1,'#ffd27a');R(1,5,3,1,'#ffd27a');P(2,4,'#ffd27a');},
+  move({R,P}){R(7,2,2,12,'#cfcfcf');R(2,7,12,2,'#cfcfcf');
+    for(const[x,y,dx,dy]of[[8,0,0,1],[8,15,0,-1],[0,8,1,0],[15,8,-1,0]]){for(let k=0;k<3;k++){if(dx===0){R(x-1-k,y+dy*k,2+k*2,1,'#f5a623');}else{R(x+dx*k,y-1-k,1,2+k*2,'#f5a623');}}}},
+  blueprint({R,P}){R(1,2,14,12,'#1e5aa8');R(1,2,14,1,'#4a8ae0');for(let x=3;x<15;x+=3)R(x,3,1,11,'#3a7ad0');for(let y=5;y<14;y+=3)R(1,y,14,1,'#3a7ad0');
+    R(4,6,5,4,'#e8f0ff');R(5,7,3,2,'#1e5aa8');R(10,9,3,3,'#e8f0ff');},
+  // ☰ menu tiles
+  inventory({R,P}){R(1,4,14,11,'#8a5a2c');R(1,4,14,2,'#b07a40');R(1,9,14,1,'#5a3a1a');R(7,4,2,11,'#5a3a1a');R(6,8,4,3,'#d0b070');P(7,9,'#5a3a1a');P(8,9,'#5a3a1a');R(1,14,14,1,'#3a2410');},
+  perks({P}){const pts=[];for(let i=0;i<10;i++){const r=i%2?3.3:7.6,t=-Math.PI/2+i*Math.PI/5;pts.push([7.5+Math.cos(t)*r,8.4+Math.sin(t)*r]);}
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(uiInPoly(x+.5,y+.5,pts))P(x,y,y<7||Math.abs(x-7.5)<1.5?'#ffd27a':'#f5a623');},
+  achievements({R,P}){R(4,1,8,7,'#f5c400');R(4,1,8,1,'#fff3b0');R(5,8,6,1,'#d4a000');R(7,9,2,3,'#d4a000');R(4,12,8,3,'#8a5a2c');R(5,13,6,1,'#f5c400');
+    R(1,2,3,1,'#d4a000');R(1,2,1,3,'#d4a000');R(2,5,2,1,'#d4a000');R(12,2,3,1,'#d4a000');R(14,2,1,3,'#d4a000');R(12,5,2,1,'#d4a000');P(6,3,'#fff3b0');},
+  stats({R}){R(1,14,14,1,'#7a7a7a');R(2,9,3,5,'#26c6a0');R(6,5,3,9,'#f5a623');R(10,2,3,12,'#42a5f5');R(2,9,3,1,'#8af0d0');R(6,5,3,1,'#ffd27a');R(10,2,3,1,'#9ad8ff');},
+  recipes({R,P}){R(1,3,6,11,'#e8e0c8');R(9,3,6,11,'#e8e0c8');R(7,3,2,12,'#8a5a2c');R(1,14,14,1,'#8a5a2c');
+    for(let y=5;y<13;y+=2){R(2,y,4,1,'#9a9080');R(10,y,4,1,'#9a9080');}P(3,5,'#e53935');P(11,7,'#26c6a0');},
+  blueprints(a){UI_ART.blueprint(a);},
+  stardust({P,R}){const sp=(cx,cy,r,c)=>{for(let k=-r;k<=r;k++){P(cx+k,cy,c);P(cx,cy+k,c);}P(cx,cy,'#ffffff');};
+    sp(6,6,4,'#c8a0ff');sp(12,11,3,'#ab47bc');sp(3,13,1,'#e8d8ff');sp(13,3,1,'#e8d8ff');P(5,5,'#e8d8ff');P(7,7,'#e8d8ff');},
+  settings({C,P,R}){for(let i=0;i<8;i++){const t=i*Math.PI/4;R(Math.round(8+Math.cos(t)*6)-1,Math.round(8+Math.sin(t)*6)-1,2,2,'#9aa4b0');}
+    C(8,8,5,'#9aa4b0');C(8,8,2,'#2a2a2a');P(6,5,'#d0dae6');P(5,6,'#d0dae6');},
+  saves({R,P}){R(1,1,14,14,'#2a5aa8');R(1,1,14,1,'#4a8ae0');R(4,1,8,5,'#cfcfcf');R(9,2,2,3,'#2a2a2a');R(3,8,10,7,'#e8e8e8');for(let y=10;y<14;y+=2)R(4,y,8,1,'#9a9a9a');P(14,1,'#0d0d0d');},
+  backup({P}){for(let y=0;y<16;y++)for(let x=0;x<16;x++){const dx=x-7.5,dy=y-7.5,d=dx*dx+dy*dy;if(d<10||d>54)continue;
+    const q=Math.floor((Math.atan2(dy,dx)+Math.PI/4+2*Math.PI)/(Math.PI/2))%2;P(x,y,q?'#e53935':'#f0f0f0');}},
+  dev({R,P,L}){R(3,3,10,10,'#5a2a7a');R(3,3,10,1,'#8a4ab0');for(let i=4;i<13;i+=2){P(i,1,'#cfcfcf');P(i,2,'#cfcfcf');P(i,13,'#cfcfcf');P(i,14,'#cfcfcf');P(1,i,'#cfcfcf');P(2,i,'#cfcfcf');P(13,i,'#cfcfcf');P(14,i,'#cfcfcf');}
+    R(5,6,2,4,'#e8d8ff');R(9,6,2,4,'#e8d8ff');R(6,10,4,1,'#e8d8ff');},
+  devlock({R,O}){O(8,6,4,'#9aa4b0');O(8,6,3,'#9aa4b0');R(3,7,10,8,'#f5a623');R(3,7,10,1,'#ffd27a');R(7,9,2,3,'#3a2a10');R(3,14,10,1,'#a86c08');},
+  install({R,P}){R(4,1,8,14,'#3a3a3a');R(5,2,6,10,'#26c6a0');R(7,13,2,1,'#7a7a7a');R(7,4,2,4,'#0d3a30');R(5,7,6,1,'#0d3a30');R(6,8,4,1,'#0d3a30');P(7,9,'#0d3a30');P(8,9,'#0d3a30');},
+  // HUD gauges
+  power({P}){const px=[[9,0],[8,1],[9,1],[7,2],[8,2],[6,3],[7,3],[5,4],[6,4],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5],[11,5],[8,6],[9,6],[10,6],[7,7],[8,7],[9,7],[6,8],[7,8],[8,8],[5,9],[6,9],[7,9],[5,10],[6,10],[4,11],[5,11],[4,12],[3,13]];
+    for(const[x,y]of px)P(x+1,y+1,'#ffd600');for(const[x,y]of px.slice(0,8))P(x+1,y+1,'#fff3b0');},
+  smog({C,R}){C(5,9,3,'#8a8070');C(10,8,4,'#9a9080');C(8,6,3,'#aaa090');R(2,10,12,3,'#8a8070');C(11,5,1,'#5a5040');C(3,5,1,'#5a5040');},
+  pressure({P}){for(let y=1;y<15;y++){const w=y<6?Math.ceil(y*0.7):y<12?5:5-(y-11)*1.4;for(let x=-w;x<=w;x++)P(8+Math.round(x),y,x<-w+2&&y>6?'#9ad8ff':'#2a9ac8');}P(6,9,'#e8f8ff');P(6,10,'#e8f8ff');},
+  sun({C,P,R}){C(8,8,4,'#ffd600');R(6,6,2,2,'#fff3b0');for(let i=0;i<8;i++){const t=i*Math.PI/4;P(Math.round(8+Math.cos(t)*6.5),Math.round(8+Math.sin(t)*6.5),'#f5a623');P(Math.round(8+Math.cos(t)*7.4),Math.round(8+Math.sin(t)*7.4),'#f5a623');}},
+  moon({P}){for(let y=0;y<16;y++)for(let x=0;x<16;x++){const a=(x-7.5)**2+(y-7.5)**2<=40,b=(x-10.5)**2+(y-5)**2<=26;if(a&&!b)P(x,y,x<5?'#9aa4b8':'#cfd8e8');}},
+  sprout({R,P}){R(7,7,2,8,'#3f9a3f');for(let k=0;k<4;k++){R(3+k,5+k%2,1,2,'#6ad86a');R(12-k,3+k%2,1,2,'#6ad86a');}R(3,5,4,2,'#6ad86a');R(9,3,4,2,'#8ae07a');R(4,14,8,1,'#6b4226');},
+  wilt({R,P}){R(7,6,2,9,'#6a5a2a');R(3,8,4,2,'#8a6a2a');R(9,5,4,2,'#9a7a3a');P(2,10,'#8a6a2a');P(13,7,'#9a7a3a');R(4,14,8,1,'#6b4226');},
+  heat({R,C,P}){R(7,1,3,10,'#e8e8e8');R(8,3,1,8,'#e53935');C(8,12,3,'#e53935');R(7,1,3,1,'#9a9a9a');P(7,11,'#ff8a8a');for(let y=3;y<10;y+=2)P(10,y,'#9a9a9a');},
+  // title
+  factory({R,P,C}){C(4,2,1,'#5e5e5e');C(11,3,1,'#4e4e4e');R(3,3,2,6,'#4a4a4a');R(3,5,2,1,'#e53935');R(10,4,2,5,'#4a4a4a');R(10,6,2,1,'#e53935');
+    for(let k=0;k<3;k++)for(let i=0;i<5;i++){const h=Math.floor(i*.6);R(1+k*5+i,8-h,1,h+1,i===4?'#ffd27a':'#f5a623');}
+    R(1,9,14,6,'#2a2a2a');R(1,9,14,1,'#a86c08');for(const x of[3,7])R(x,11,2,2,'#26c6a0');R(11,11,3,4,'#151515');P(13,13,'#f5a623');R(0,15,16,1,'#5a5a5a');},
+  sound({R,P}){R(2,6,3,4,'#cfcfcf');for(let k=0;k<4;k++)R(5+k,5-k,1,6+k*2,'#cfcfcf');
+    for(const[x,h]of[[11,4],[13,7]])for(let y=8-h/2;y<8+h/2;y++)P(x,Math.round(y),'#26c6a0');},
+  mute({R,P}){R(2,6,3,4,'#7a7a7a');for(let k=0;k<4;k++)R(5+k,5-k,1,6+k*2,'#7a7a7a');for(let k=0;k<5;k++){P(10+k,6+k,'#e53935');P(14-k,6+k,'#e53935');}},
+};
+function uiSpr(name){const f=UI_ART[name];return f?mkSpr(`ui:${name}`,16,16,a=>f(a)):null;}
+function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cls}" src="${sprURL('ui:'+name,s)}" alt="">`:'';}
 
 // ═══════════════════════════════════════════════════
 //  DISPLAY PREFS (per device, not per save)
@@ -4825,7 +4911,7 @@ function updateHUD(){
   const free=G.power.out-G.power.in;
   const hasConsumers=G.power.in>0;
   const pwrLabel=hasConsumers?(free>=0?`+${fmtKW(free)}`:`-${fmtKW(-free)}`):fmtKW(G.power.out);
-  let html=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
+  let html=`<div class="hres"><span class="hres-icon">${uiIcon('power')}</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   html+=hudHazardsHtml();
   setHtml(el,html);
   updateInvStrip();
@@ -4834,31 +4920,31 @@ function updateHUD(){
 // Zone hazard gauges shown next to power in the HUD
 function hudHazardsHtml(){
   let html='';
-  const gauge=(icon,val,col)=>`<div class="hres" style="margin-left:4px"><span class="hres-icon">${icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
+  const gauge=(icon,val,col)=>`<div class="hres" style="margin-left:4px"><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
   if(zoneHas('smog')){
     const smog=Math.round(G.smog||0);
-    html+=gauge('🌫️',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)');
+    html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)');
   }
   if(zoneHas('pressure')){
     const n=worstNet();
-    if(n){const pr=Math.round(pressureOf(n));html+=gauge('💧',`${pr}%`,n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)');}
+    if(n){const pr=Math.round(pressureOf(n));html+=gauge('pressure',`${pr}%`,n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)');}
   }
   if(zoneHas('decay')){
     const living=Object.values(G.machines).filter(m=>MDEFS[m.type]?.living);
     const sick=living.filter(m=>m.withered||(m.vit||0)<25).length;
-    if(living.length)html+=gauge(sick?'🥀':'🌱',sick?`${sick}`:`${living.length}`,sick?'var(--red)':'var(--green)');
+    if(living.length)html+=gauge(sick?'wilt':'sprout',sick?`${sick}`:`${living.length}`,sick?'var(--red)':'var(--green)');
   }
   if(zoneHas('heat')){
     const reactors=Object.values(G.machines).filter(m=>m.type==='reactor');
     if(reactors.length){
       const hot=Math.round(Math.max(...reactors.map(m=>m.heat||0)));
       const scram=reactors.some(m=>m.scram>0);
-      html+=gauge('🌡️',scram?'SCRAM':`${hot}%`,scram||hot>80?'var(--red)':hot>50?'var(--amber)':'var(--teal)');
+      html+=gauge('heat',scram?'SCRAM':`${hot}%`,scram||hot>80?'var(--red)':hot>50?'var(--amber)':'var(--teal)');
     }
   }
   if(zoneHas('glow')){
     const secs=glowSecsLeft();
-    html+=gauge(glowBright()?'☀️':'🌑',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)');
+    html+=gauge(glowBright()?'sun':'moon',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)');
   }
   return html;
 }
@@ -4987,7 +5073,7 @@ function buildDrawerItems(cats,safeCatIdx){
     const sub=!def?'':locked?`<span class="dc lock">🔒 ${TECHS[def.unlock]?.name||''}</span>`
       :`<span class="dc">${costChips(def.cost,item.id)}</span>`;
     return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
-      <span class="di">${iconHtml(item.id,item.icon)}</span>
+      <span class="di">${UI_ART[item.id]&&!MDEFS[item.id]?uiIcon(item.id):iconHtml(item.id,item.icon)}</span>
       <span class="dn">${item.name}</span>${sub}
     </div>`;
   }).join('');
@@ -6975,8 +7061,13 @@ function trimToasts(){
   const c=document.getElementById('toasts');
   while(c&&c.children.length>3)c.firstElementChild.remove();
 }
+const TITLE_UI={'🛟':'backup','🚀':'goal','🔒':'devlock','📲':'install','📥':'saves','📤':'saves','💾':'saves','💥':'demolish','✨':'stardust','⚡':'power','⚙️':'settings'};
 function showModal(title,body,foot){
-  document.getElementById('mTitle').textContent=title;
+  // A leading emoji in a modal title becomes its pixel icon
+  const lead=Object.keys(TITLE_UI).find(e=>title.startsWith(e+' '));
+  const mt=document.getElementById('mTitle');
+  if(lead){mt.innerHTML=uiIcon(TITLE_UI[lead])+' ';mt.appendChild(document.createTextNode(title.slice(lead.length+1)));}
+  else mt.textContent=title;
   document.getElementById('mBody').innerHTML=body;
   document.getElementById('mFoot').innerHTML=foot||'';
   document.getElementById('mOverlay').classList.remove('hidden');
@@ -7028,7 +7119,7 @@ function openBigMenu(section){
       <div style="color:var(--text3);font-size:var(--f5);margin-top:4px">⚡ ${fmtKW(G.power.out)} · ${Object.keys(G.machines).length} machines · ${G.research.done.length}/${Object.keys(TECHS).length} research</div>
     </div>
     <div class="menu-grid">${tiles.map(([id,ic,label,badge])=>`<button class="menu-tile" onclick="openBigMenu('${id}')">
-      <span class="mt-ic">${ic}</span><span class="mt-lb">${label}</span>${badge!==''?`<span class="mt-badge">${badge}</span>`:''}</button>`).join('')}</div>`;
+      <span class="mt-ic">${uiIcon(id==='achievements'?'achievements':id)||ic}</span><span class="mt-lb">${label}</span>${badge!==''?`<span class="mt-badge">${badge}</span>`:''}</button>`).join('')}</div>`;
   showModal('☰ MENU', body,
     `<button class="btn btn-sm btn-red" onclick="quitToTitle()">QUIT</button>
      <button class="btn btn-teal btn-sm" onclick="closeModal()">RESUME</button>`);
@@ -7593,6 +7684,7 @@ function startGame(isNew){
 window.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
+  document.querySelectorAll('[data-ui]').forEach(e=>{e.innerHTML=uiIcon(e.dataset.ui);});
   buildTitleSlots(); startTitleScene(); updateInstallBtn(); updateTitleMute();
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
