@@ -420,7 +420,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.8.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.7 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -582,7 +582,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.8.6';
+const VER      = '1.8.7';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1049,12 +1049,17 @@ const HAND_CRAFTS = [
   // Unlocked by electronics research
   {id:'speed_module', name:'Speed Module', icon:'🔵', in:{circuit:3,iron_gear:2},              out:{speed_module:1}, clicks:40, unlock:'electronics',  desc:'Hand-build a speed module'},
   {id:'prod_module',  name:'Prod. Module', icon:'🟢', in:{circuit:4,copper_wire:4},            out:{prod_module:1},  clicks:40, unlock:'electronics',  desc:'Hand-build a production module'},
-  {id:'sci_scar',     name:'Scar Notes',   icon:'📓', in:{iron_gear:1,coal:2},                  out:{sci_scar:1},     clicks:12, unlock:null,           desc:'Study the ruins, research notes for The Scar'},
-  {id:'sci_deep',     name:'Deep Notes',   icon:'📔', in:{quartz:1,copper_wire:2},              out:{sci_deep:1},     clicks:12, unlock:null,           desc:'Sketch the glowing caves. Research notes for The Deep'},
-  {id:'sci_bloom',    name:'Bloom Notes',  icon:'📒', in:{biomass:2,copper_wire:1},             out:{sci_bloom:1},    clicks:12, unlock:null,           desc:'Catalogue the living jungle. Research notes for The Bloom'},
-  {id:'nutrient',     name:'Nutrient Paste',icon:'🥣', in:{biomass:3},                         out:{nutrient:1},     clicks:6,  unlock:null,           desc:'Mash biomass into paste for living machines'},
+  {id:'sci_scar',     name:'Scar Notes',   icon:'📓', in:{iron_gear:1,coal:2},                  out:{sci_scar:1},     clicks:12, unlock:null, zone:2,           desc:'Study the ruins, research notes for The Scar'},
+  {id:'sci_deep',     name:'Deep Notes',   icon:'📔', in:{quartz:1,copper_wire:2},              out:{sci_deep:1},     clicks:12, unlock:null, zone:3,           desc:'Sketch the glowing caves. Research notes for The Deep'},
+  {id:'sci_bloom',    name:'Bloom Notes',  icon:'📒', in:{biomass:2,copper_wire:1},             out:{sci_bloom:1},    clicks:12, unlock:null, zone:4,           desc:'Catalogue the living jungle. Research notes for The Bloom'},
+  {id:'nutrient',     name:'Nutrient Paste',icon:'🥣', in:{biomass:3},                         out:{nutrient:1},     clicks:6,  unlock:null, zone:4,           desc:'Mash biomass into paste for living machines'},
   {id:'eff_module',   name:'Eff. Module',  icon:'🔴', in:{circuit:3,iron_rod:3},               out:{eff_module:1},   clicks:40, unlock:'electronics',  desc:'Hand-build an efficiency module'},
 ];
+
+// Zone-only recipes: a hand craft with zone:n, or a machine recipe named zN_… Each is available in
+// its own zone and in Zone 5, which brings every chain together (Void Theory needs all the notes).
+function recipeZone(id){const h=HAND_CRAFTS.find(c=>c.id===id);if(h)return h.zone||0;const m=/^z(\d)_/.exec(id);return m?+m[1]:0;}
+function zoneRecipeOk(id){const z=recipeZone(id);return !z||z===G.zone||G.zone===5;}
 
 // Machines you build by hand, consume materials, go into placement queue
 const MACHINE_BUILDS = [
@@ -4220,7 +4225,7 @@ function runMachine(m){
 
   if(!m.recipe)return;
   const rec=RECIPES[m.recipe]; if(!rec)return;
-  if(rec.unlock&&!G.research.done.includes(rec.unlock)){m.recipe=null;m.prog=0;return;}
+  if((rec.unlock&&!G.research.done.includes(rec.unlock))||!zoneRecipeOk(m.recipe)){m.recipe=null;m.prog=0;return;}
   const pm=perkMult();
   const powerImmune=(m.type==='stone_furnace'||m.type==='blast_furnace');
   const ratio=powerImmune?1:powerRatio();
@@ -5238,7 +5243,7 @@ function updateToolTip(){
     recipesHtml=`<div class="tt-recipes">
       <div class="tt-rlabel">RECIPES</div>`;
     // Compact: the first 3 unlocked recipes, the rest summarised
-    const avail=def.recipes.filter(rid=>RECIPES[rid]&&(!RECIPES[rid].unlock||G.research.done.includes(RECIPES[rid].unlock)));
+    const avail=def.recipes.filter(rid=>RECIPES[rid]&&zoneRecipeOk(rid)&&(!RECIPES[rid].unlock||G.research.done.includes(RECIPES[rid].unlock)));
     for(const rid of avail.slice(0,3)){
       const r=RECIPES[rid]; if(!r)continue;
       const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(' + ');
@@ -5456,7 +5461,7 @@ function renderCraftPanel(){
 
   // Recipe list, active recipe floats to top, then unlocked, then locked
   html+=`<span class="sec-label">RECIPES</span>`;
-  const sortedCrafts=[...HAND_CRAFTS].sort((a,b)=>{
+  const sortedCrafts=HAND_CRAFTS.filter(r=>zoneRecipeOk(r.id)).sort((a,b)=>{
     if(a.id===cs.recipeId) return -1;
     if(b.id===cs.recipeId) return 1;
     return 0;
@@ -5497,7 +5502,7 @@ function renderCraftPanel(){
 }
 
 function startCraft(id){
-  const r=HAND_CRAFTS.find(h=>h.id===id); if(!r)return;
+  const r=HAND_CRAFTS.find(h=>h.id===id); if(!r||!zoneRecipeOk(id))return;
   // Just check affordability for visual feedback, don't deduct yet
   if(!G.devFreeCraft){
     const canAfford=Object.entries(r.in).every(([k,v])=>(G.inv[k]||0)>=v);
@@ -5705,7 +5710,7 @@ function renderMachPanel(){
     <div style="margin-bottom:8px">
       <div onclick="setRecipe(${m.id},'')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${!m.recipe?'var(--amber)':'var(--border)'};background:${!m.recipe?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer;font-size:var(--f5);color:${!m.recipe?'var(--amber)':'var(--text3)'}">- none -</div>`;
     for(const rid of def.recipes){
-      const r=RECIPES[rid]; if(!r)continue;
+      const r=RECIPES[rid]; if(!r||!zoneRecipeOk(rid))continue;
       const recUnlocked=!r.unlock||G.research.done.includes(r.unlock);
       if(!recUnlocked){
         const reqName=TECHS[r.unlock]?.name||r.unlock;
@@ -5846,7 +5851,7 @@ function fluidPanelRows(m,def,rec){
 }
 
 function irow(lbl,val){return `<div class="irow"><span class="lbl">${lbl}</span><span>${val}</span></div>`}
-function setRecipe(id,rid){const m=G.machines[id];if(!m)return;m.recipe=rid||null;m.prog=0;renderMachPanel();}
+function setRecipe(id,rid){const m=G.machines[id];if(!m)return;if(rid&&!zoneRecipeOk(rid))return;m.recipe=rid||null;m.prog=0;renderMachPanel();}
 function toggleM(id){const m=G.machines[id];if(!m)return;m.active=!m.active;renderMachPanel();}
 function rotateM(id){
   const m=G.machines[id];if(!m)return;
@@ -6896,10 +6901,10 @@ function renderRecipesPanel(){
   for(const[rid,rec]of Object.entries(RECIPES)){
     const mid=rec.machine;
     if(!machineGroups[mid])machineGroups[mid]=[];
-    machineGroups[mid].push({id:rid,...rec});
+    if(zoneRecipeOk(rid))machineGroups[mid].push({id:rid,...rec});
   }
   // Also add hand crafts
-  machineGroups['hand']=HAND_CRAFTS.map(hc=>({id:hc.id,name:hc.name,machine:'hand',time:hc.clicks*0.5,in:hc.in,out:hc.out,unlock:hc.unlock}));
+  machineGroups['hand']=HAND_CRAFTS.filter(hc=>zoneRecipeOk(hc.id)).map(hc=>({id:hc.id,name:hc.name,machine:'hand',time:hc.clicks*0.5,in:hc.in,out:hc.out,unlock:hc.unlock}));
 
   const machOrder=['hand','stone_furnace','blast_furnace','electric_smelter','assembler','lab'];
   const machLabels={hand:'✋ Hand Craft',stone_furnace:'⚱️ Stone Furnace',blast_furnace:'🔥 Blast Furnace',electric_smelter:'🌩️ Electric Smelter',assembler:'🏗️ Assembler',lab:'🔬 Research Lab'};

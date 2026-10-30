@@ -190,6 +190,10 @@ const r=await p.evaluate(async()=>{
   reset(); const em=put('chest',40,40); switchTab('tools'); setTool('move'); handleTap({x:40,y:40}); switchTab('tools');
   ok('edit_close_selects',activeTool==='select'&&G.map[40][40].mid===em.id&&em.x===40,{tool:activeTool,at:G.map[40][40].mid});
   switchTab('tools'); setTool('demolish'); switchTab('craft'); ok('edit_leave_selects',activeTool==='select',activeTool); switchTab('craft');
+  // ── zone notes only in their zone (and Zone 5)
+  { const z0=G.zone; const at=z=>{G.zone=z;return ['sci_scar','sci_deep','sci_bloom','nutrient','z2_sci_scar','z3_sci_deep','z4_sci_bloom','z5_sci_void','sci_red','fn_iron'].filter(zoneRecipeOk).join(',');};
+    const r={1:at(1),2:at(2),4:at(4),5:at(5)}; G.zone=z0;
+    ok('zone_notes_gated',r[1]==='sci_red,fn_iron'&&r[2]==='sci_scar,z2_sci_scar,sci_red,fn_iron'&&r[4]==='sci_bloom,nutrient,z4_sci_bloom,sci_red,fn_iron'&&r[5].split(',').length===10,r); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
