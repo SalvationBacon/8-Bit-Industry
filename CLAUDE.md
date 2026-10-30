@@ -9,7 +9,7 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.4.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Current build:** v1.4.1, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
 **Working file:** `index.html`, ~7,000 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
@@ -26,7 +26,7 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v120` |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v121` |
 | `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
@@ -139,7 +139,9 @@ Helpers: `zoneDef()`, `zoneHas(h)`, `nextZone()`, `rocketUnlocked()`, `rocketReq
 All textures are procedural (`PIXEL SPRITES` section): `mkSpr(key,w,h,fn)` draws into a tiny offscreen canvas once and caches it. The pixel API is `P` pixel, `R` rect, `C` filled circle, `O` ring and `L` line. Draws are scaled with `imageSmoothingEnabled=false`.
 - `groundSpr(zone,v)` per-zone floor (`GROUND` palettes); `resSpr(res,v,frame)` deposits (`ORE_ART`, pools animate)
 - `machineSpr(type,frame,on)`: `MACHINE_ART[type](api,frame,on)` at 16px per tile (Singularity 80px). There are 4 frames while `machineWorking(m)`. `chassis()`, `gearArt()` and `fire()` are shared helpers
-- `beltSpr(frame)` tread, rotated by direction; `itemSpr(id)`: `ITEM_ART[id]=[shape,c1,c2,c3]` + `ITEM_SHAPES`; `stageSpr()` life-stage badges
+- `beltSpr(frame)` tread, rotated by direction; `stageSpr()` life-stage badges
+- `itemSpr(id,frame)`: `ITEM_ART[id]=[shape,c1,c2,c3,extra]` + `ITEM_SHAPES` (69 shapes). **Every item has its own silhouette**; science books share a shape but each has its own cover emblem (`BOOK_EMBLEMS`, `extra` = index). `ITEM_GLOW` items get a 4-frame glint on the canvas
+- **Every machine animates while working**, including tanks, accumulators, heat sinks, chests and valves (`machineWorking()` defines when). Logistics machines (belt, inserters, splitter, tunnel, pipe) have art for icons and ghosts; the map draws them by hand
 - **Every icon goes through `iconHtml(id,fallback)` (DOM) or `drawItem()` (canvas).** A new item needs an `ITEM_ART` entry; a new machine needs a `MACHINE_ART` function
 - Pixel art is the only style (the user removed the emoji toggle). Emoji remain only where no sprite exists: tools, techs, HUD gauges, menu tiles
 

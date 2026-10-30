@@ -373,7 +373,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
       <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none">✨ STARDUST</button>
     </div>
-    <p class="v-num">v1.4.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.4.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -533,7 +533,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.4.0';
+const VER      = '1.4.1';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1687,7 +1687,7 @@ function gearArt(a,cx,cy,r,col,f){
 function fire(a,x,y,w,f,lit){
   const {P}=a;
   for(let i=0;i<w;i++){
-    const h=lit?2+((i*7+f*3)%3):1;
+    const h=lit?2+((i*7+f*5+i*f)%3):1; // flicker: each frame reshuffles flame heights
     for(let j=0;j<h;j++)P(x+i,y-j,lit?(j===0?'#ff6a00':j===1?'#ffb000':'#fff08a'):'#4a1a08');
   }
 }
@@ -1696,7 +1696,8 @@ const MACHINE_ART={
     for(let i=0;i<12;i+=2){R(2+i,2,1,2,'#f5c400');R(3+i,2,1,2,'#151515');}
     const cols=['#8a96a8','#c8d0dc','#5a6474'];
     for(let y=0;y<8;y++){const hw=Math.max(0,4-(y>>1));for(let x=-hw;x<=hw;x++)P(8+x,6+y,cols[(x+y+(on?f:0)+8)%3]);}
-    P(8,14,'#e0e8f0');P(13,5,on?'#4caf50':'#3a3a3a');},
+    P(8,14,'#e0e8f0');P(13,5,on?(f%2?'#4caf50':'#9cff9c'):'#3a3a3a');
+    if(on){P(4+f,13-(f%2),'#8a7a6a');P(11-f,12+(f%2),'#8a7a6a');}},
   stone_furnace(a,f,on){const{R,P}=a;R(0,0,16,16,'#121212');
     for(let y=1;y<15;y+=3)for(let x=1-(y%2)*2;x<15;x+=4)R(x,y,3,2,['#6e6e66','#7c7c72','#62625a'][(x+y)%3]);
     R(5,8,6,7,'#0a0a0a');R(6,7,4,1,'#0a0a0a');fire(a,5,14,6,f,on);},
@@ -1711,9 +1712,11 @@ const MACHINE_ART={
     for(let y=8;y<24;y+=3){R(5,y,6,1,'#c87a3a');R(21,y,6,1,'#c87a3a');}
     R(10,20,12,8,'#1a1420');R(11,21,10,6,on?'#ff7a20':'#3a2010');
     if(on){let x=10,y=8+(f%2)*2;for(let i=0;i<6;i++){const nx=x+2,ny=y+(i%2?2:-2);L(x,y,nx,ny,'#d8b8ff');x=nx;y=ny;}}},
-  assembler(a,f,on){const{R,P}=a;chassis(a,32,32,'#2c3a52');
-    R(5,5,22,16,'#0f1622');gearArt(a,12,13,6,'#8aa0c0',on?f:0);gearArt(a,21,11,4,'#c8a050',on?3-f:0);
-    R(5,23,22,5,'#1a2436');for(let i=0;i<5;i++)P(7+i*4,25,i===(on?f:0)?'#42a5f5':'#2a3a50');},
+  assembler(a,f,on){const{R,P,L}=a;chassis(a,32,32,'#2c3a52');
+    R(5,5,22,16,'#0f1622');const g=on?f*2:0;gearArt(a,12,13,6,'#8aa0c0',g);gearArt(a,21,11,4,'#c8a050',-g);
+    // robotic arm sweeping across the bed
+    const ax=on?[8,13,18,13][f]:8;L(4,18,ax,22,'#9aa4b0');R(ax-1,22,3,2,'#f5a623');
+    R(5,24,22,4,'#1a2436');for(let i=0;i<5;i++)P(7+i*4,25,on&&i===f+1?'#42a5f5':'#2a3a50');},
   lab(a,f,on){const{R,P}=a;chassis(a,32,32,'#1f3f3a');
     R(4,4,24,18,'#0c1a18');
     const flask=(x,col,o)=>{R(x+2,6,2,5,'#9ad8cc');for(let y=0;y<8;y++){const hw=1+(y>>1);R(x+3-hw,11+y,hw*2,1,y>2?col:'#9ad8cc');}
@@ -1727,18 +1730,22 @@ const MACHINE_ART={
     O(16,14,10,'#6a6a50');a.C(16,14,9,'#1a1a14');
     for(let t=0;t<4;t++){const ang=t*Math.PI/2+(on?f:0)*Math.PI/8;L(16,14,16+Math.cos(ang)*8,14+Math.sin(ang)*8,'#c8c8a0');}
     a.C(16,14,2,'#ffd600');},
-  chest(a){const{R,P}=a;R(0,0,16,16,'#1a1008');R(1,2,14,13,'#7a5233');
-    for(let y=4;y<15;y+=4)R(1,y,14,1,'#5a3a22');R(1,2,14,2,'#8e6440');R(1,8,14,2,'#3a3a3a');R(7,7,2,4,'#c8a050');},
+  chest(a,f,on){const{R,P}=a;R(0,0,16,16,'#1a1008');R(1,2,14,13,'#7a5233');
+    for(let y=4;y<15;y+=4)R(1,y,14,1,'#5a3a22');R(1,2,14,2,'#8e6440');R(1,8,14,2,'#3a3a3a');R(7,7,2,4,'#c8a050');
+    if(on){P(2+f*3,3,'#fff0b0');P(7,8,f%2?'#ffffff':'#ffe08a');}},
   oil_pump(a,f,on){const{R,P,L}=a;R(0,0,32,32,'#141210');R(2,28,28,3,'#2a2620');
     L(10,28,16,10,'#5a5244');L(22,28,16,10,'#5a5244');
     const tilt=on?[-3,-1,1,3][f]:0;L(4,10-tilt,28,10+tilt,'#f5c400');L(4,11-tilt,28,11+tilt,'#c8a000');
     R(2,7-tilt,4,7,'#2a2a2a');L(4,14-tilt,4,27,'#888');R(15,9,3,3,'#888');R(25,10+tilt,4,6,'#3a3a3a');},
   cracker(a,f,on){const{R,P}=a;R(0,0,32,32,'#121212');
     for(const x of[5,18]){R(x,3,9,26,'#8a5a32');R(x+1,3,2,26,'#b0784a');for(let y=6;y<28;y+=5)R(x,y,9,1,'#5a3a20');}
-    R(14,12,4,2,'#666');fire(a,7,30,5,f,on);fire(a,20,30,5,f+2,on);},
+    R(14,12,4,2,'#666');fire(a,7,30,5,f,on);fire(a,20,30,5,f+2,on);
+    if(on)for(const x of[8,21])for(let k=0;k<2;k++)P(x+k*2,24-((f*5+k*9)%20),'#ffd08a');},
   refinery(a,f,on){const{R,P,C}=a;R(0,0,32,32,'#121212');R(2,18,28,12,'#4a3a2a');
-    C(9,14,6,'#7a6a5a');C(9,13,5,'#8e7e6c');C(22,16,5,'#7a6a5a');R(26,2,3,16,'#555');
-    if(on){P(27,1,'#ffb000');P(27,0,'#ff6a00');P(26+(f%2),0,'#fff08a');}for(let x=4;x<28;x+=6)R(x,22,3,5,'#2a2018');},
+    C(9,14,6,'#7a6a5a');C(9,13,5,'#8e7e6c');C(22,16,5,'#7a6a5a');R(26,4,3,14,'#555');
+    if(on){P(27,3,'#ffb000');P(27,2,'#ff6a00');P(26+(f%2),2,'#fff08a');
+      for(let k=0;k<2;k++){const y=1-((f+k*2)%4);if(y>=0)P(25+k*3,y,'#6a6a6a');}}
+    for(let x=4;x<28;x+=6)R(x,22,3,5,on&&(x/6|0)%4===f?'#ffb04a':'#2a2018');},
   combustion_gen(a,f,on){const{R,P}=a;chassis(a,32,32,'#4a2e18');
     for(let i=0;i<3;i++){const up=on?((f+i)%2)*3:0;R(6+i*8,6+up,5,10,'#9a9a9a');R(6+i*8,5+up,5,2,'#c8c8c8');}
     R(4,20,24,8,'#2a1a10');R(26,2,4,6,'#3a3a3a');if(on){P(27,1,'#ff6a00');P(28,0,'#ffb000');}},
@@ -1750,13 +1757,17 @@ const MACHINE_ART={
   _pump(a,f,on,base,lite){const{R,P}=a;chassis(a,32,32,base);
     const up=on?[0,2,4,2][f]:0;R(13,3+up,6,14,'#9aa4b0');R(11,2+up,10,3,'#c8d0dc');
     R(6,18,20,10,shade(base,-.4));a.C(16,23,3,lite);P(16,21,'#ffffff');},
-  fluid_tank(a){const{R,P}=a;R(0,0,32,32,'#101010');R(4,2,24,28,'#7a828c');R(5,2,3,28,'#a8b0ba');R(24,2,3,28,'#5a626c');
-    for(const y of[6,16,26])R(4,y,24,1,'#4a525c');R(14,5,4,22,'#1a1e22');},
-  relief_valve(a,f,on){const{R,P,O}=a;R(0,0,16,16,'#121212');R(0,6,16,4,'#5a626c');R(6,0,4,16,'#5a626c');
-    O(8,8,5,'#e53935');P(8,3,'#e53935');P(8,13,'#e53935');P(3,8,'#e53935');P(13,8,'#e53935');a.C(8,8,1,'#ff8a80');},
+  fluid_tank(a,f,on){const{R,P}=a;R(0,0,32,32,'#101010');R(4,2,24,28,'#7a828c');R(5,2,3,28,'#a8b0ba');R(24,2,3,28,'#5a626c');
+    for(const y of[6,16,26])R(4,y,24,1,'#4a525c');R(14,5,4,22,'#1a1e22');
+    if(on){R(14,13,4,14,'#2a9ac8');for(let x=0;x<4;x++)P(14+x,12+((x+f)%2),'#7fdbff');P(15+(f%2),25-f*3,'#c8f4ff');}},
+  relief_valve(a,f,on){const{R,P,O,L}=a;R(0,0,16,16,'#121212');R(0,6,16,4,'#5a626c');R(6,0,4,16,'#5a626c');
+    O(8,8,5,'#e53935');const ang=(on?f:0)*Math.PI/8;for(let k=0;k<4;k++){const t=ang+k*Math.PI/2;L(8,8,8+Math.round(Math.cos(t)*4),8+Math.round(Math.sin(t)*4),'#ff8a80');}
+    a.C(8,8,1,'#ffcdd2');if(on){P(12+(f%2),2-(f>>1),'#e8f4ff');P(13,3,'#c8d8e8');}},
   evaporator(a,f,on){const{R,P}=a;chassis(a,32,32,'#3a3a40');
-    for(const y of[6,16]){R(4,y,24,7,'#1a1a22');R(5,y+1,22,5,'#0e4a66');for(let x=6;x<26;x+=3)P(x,y+2,'#e8f4ff');}
-    if(on)for(let i=0;i<3;i++)P(8+i*8+(f%2),4-((f+i)%3),'#c8d8e8');R(4,25,24,3,'#2a2a30');},
+    for(const y of[7,17]){R(4,y,24,7,'#1a1a22');R(5,y+1,22,5,'#0e4a66');for(let x=6;x<26;x+=3)P(x,y+2,'#e8f4ff');
+      if(on)P(8+((f*5+y)%18),y+3,'#7fdbff');}
+    if(on)for(let i=0;i<4;i++){const y=6-((f+i)%4)*2;P(7+i*6,y,'#c8d8e8');P(8+i*6,y-1,'#a8b8c8');}
+    R(4,26,24,3,'#2a2a30');},
   separator(a,f,on){const{R,P,C,L}=a;chassis(a,32,32,'#4a3220');
     C(16,15,10,'#2a1a10');C(16,15,8,'#c87a3a');C(16,15,3,'#2a1a10');
     for(let t=0;t<4;t++){const ang=t*Math.PI/2+(on?f:0)*Math.PI/8;L(16+Math.cos(ang)*4,15+Math.sin(ang)*4,16+Math.cos(ang)*8,15+Math.sin(ang)*8,'#ffb04a');}},
@@ -1767,7 +1778,7 @@ const MACHINE_ART={
     for(let y=0;y<3;y++)for(let x=0;x<3;x++){const bx=2+x*10,by=2+y*10;R(bx,by,8,8,on?'#2a8a9a':'#122a30');
       R(bx+1,by+1,3,1,on?'#b8fff0':'#1e3a40');if(on&&(x+y+f)%4===0)P(bx+5,by+5,'#ffffff');}},
   accumulator(a,f,on){const{R,P}=a;R(0,0,16,16,'#101010');R(3,2,10,13,'#3a3a2a');R(6,1,4,2,'#888');
-    for(let i=0;i<3;i++)R(5,11-i*3,6,2,'#2a2a1a');},
+    for(let i=0;i<3;i++)R(5,11-i*3,6,2,on&&i<=f%3?'#ffd600':'#2a2a1a');if(on&&f===3)P(8,0,'#fff59d');},
   algae_vat(a,f,on){const{R,P}=a;chassis(a,32,32,'#1a3a3a');R(5,4,22,22,'#9ad8d0');R(6,5,20,20,'#1a6a4a');
     for(let k=0;k<5;k++){const x=8+k*4;for(let y=0;y<10;y++)P(x+((y+f+k)%4>1?1:0),22-y,'#4ac86a');}
     if(on)P(10+f*3,8+(f%2)*3,'#c8ffe0');R(5,27,22,2,'#2a4a4a');},
@@ -1780,15 +1791,20 @@ const MACHINE_ART={
   hyper_synth(a,f,on){const{R,P}=a;chassis(a,32,32,'#2a2410');R(8,3,16,26,'#0c0a04');
     for(let y=0;y<24;y++){const ph=(y+(on?f*2:0))*.5,x1=16+Math.round(Math.sin(ph)*5),x2=16-Math.round(Math.sin(ph)*5);
       P(x1,4+y,'#ffd54a');P(x2,4+y,'#ff9a2a');if(y%3===0)for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++)P(x,4+y,'#7a5a1a');}},
-  reactor(a,f,on){const{R,P,C}=a;R(0,0,48,48,'#121212');R(2,2,44,44,'#5a5a56');R(3,3,42,1,'#7a7a74');
+  reactor(a,f,on){const{R,P,C,O}=a;R(0,0,48,48,'#121212');R(2,2,44,44,'#5a5a56');R(3,3,42,1,'#7a7a74');
     C(24,24,17,'#3a3a38');C(24,24,15,'#6a6a64');C(24,24,9,'#1a1a1a');
-    for(let t=0;t<3;t++){const ang=t*2.094-1.57;for(let r=3;r<9;r++)for(let s=-3;s<=3;s++){const aa=ang+s*.12;P(24+Math.round(Math.cos(aa)*r),24+Math.round(Math.sin(aa)*r),'#f5c400');}}
-    C(24,24,2,on?(f%2?'#e0ff8a':'#c6ff00'):'#3a4a1a');for(const[x,y]of[[5,5],[42,5],[5,42],[42,42]])R(x-1,y-1,3,3,'#3a3a38');},
-  heat_sink(a){const{R}=a;R(0,0,16,16,'#101418');for(let x=2;x<14;x+=3){R(x,2,2,12,'#a8d8f0');R(x,2,1,12,'#e8f8ff');}R(1,13,14,2,'#5a7a8a');},
+    const rot=(on?f:0)*Math.PI/6;
+    for(let t=0;t<3;t++){const ang=t*2.094-1.57+rot;for(let r=3;r<9;r++)for(let s2=-3;s2<=3;s2++){const aa=ang+s2*.12;P(24+Math.round(Math.cos(aa)*r),24+Math.round(Math.sin(aa)*r),'#f5c400');}}
+    C(24,24,2,on?(f%2?'#e0ff8a':'#c6ff00'):'#3a4a1a');if(on)O(24,24,10+(f%2),'#9aff3a');
+    for(const[x,y]of[[5,5],[42,5],[5,42],[42,42]]){R(x-1,y-1,3,3,'#3a3a38');if(on)P(x,y,f%2?'#4caf50':'#1a3a1a');}},
+  heat_sink(a,f,on){const{R,P}=a;R(0,0,16,16,'#101418');
+    for(let x=2;x<14;x+=3){R(x,4,2,10,on?'#d8a8a0':'#a8d8f0');R(x,4,1,10,on?'#ffe0d8':'#e8f8ff');}R(1,13,14,2,'#5a7a8a');
+    if(on)for(let k=0;k<4;k++)P(3+k*3,3-((f+k)%4),k%2?'#ff8a50':'#ffb08a');else for(let k=0;k<3;k++)P(4+k*4,2,'#e8f8ff');},
   singularity(a,f,on){const{R,P,C,O}=a;R(0,0,80,80,'#0a0812');
     for(let y=2;y<78;y+=6)for(let x=2;x<78;x+=6)if(hash2(x,y,5)>.4)R(x,y,4,4,'#161226');
-    for(const[x,y]of[[6,6],[66,6],[6,66],[66,66]]){R(x,y,8,8,'#2a2040');R(x+2,y+2,4,4,'#ab47bc');P(x+3,y+3,'#e8c8ff');}
-    C(40,40,22,'#05040a');O(40,40,23,'#4a2a6a');O(40,40,25,'#2a1a3a');},
+    [[6,6],[66,6],[66,66],[6,66]].forEach(([x,y],k)=>{R(x,y,8,8,'#2a2040');R(x+2,y+2,4,4,k===f?'#e8c8ff':'#ab47bc');P(x+3,y+3,'#e8c8ff');});
+    C(40,40,22,'#05040a');O(40,40,23,'#4a2a6a');O(40,40,25,'#2a1a3a');
+    for(let k=0;k<6;k++){const t=k*1.047+f*.26,r=8+k*2;P(40+Math.round(Math.cos(t)*r),40+Math.round(Math.sin(t)*r),'#b388ff');}},
 };
 // Which machines show animated frames, and when they count as working
 function machineWorking(m){
@@ -1800,6 +1816,11 @@ function machineWorking(m){
   if(m.type==='lumen_panel')return glowBright();
   if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
   if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
+  if(m.type==='fluid_tank')return (m.fluid?.amt||0)>0.5;
+  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT;
+  if(m.type==='accumulator')return (m.charge||0)>1;
+  if(m.type==='chest')return Object.values(m.chestInv).some(v=>v>0);
+  if(m.type==='heat_sink')return machineNeighbors(m).some(n=>n.type==='reactor'&&machineWorking(n));
   if(def.living&&m.withered)return false;
   return m.prog>0;
 }
@@ -1821,48 +1842,112 @@ function beltSpr(fr){
 
 // ── Items: shape templates + colours ──
 const ITEM_ART={
-  iron_ore:['ore','#5a6474','#a8b4c4','#2b3038'], copper_ore:['ore','#9a5430','#e8a060','#4a2614'],
-  coal:['ore','#26262a','#6a6a74','#0a0a0b'], stone:['ore','#7a7a70','#b0b0a2','#3a3a34'],
-  iron_plate:['plate','#8a96a8','#d0dae6','#4a5260'], copper_plate:['plate','#c87a3a','#ffc080','#6a3a18'],
-  steel_plate:['plate','#a8b0bc','#f0f4f8','#5a626c'], stone_brick:['brick','#8a8a7c','#b8b8a8','#4a4a40'],
+  // raw
+  iron_ore:['ore','#5a6474','#a8b4c4','#2b3038'], copper_ore:['nugget','#b0602e','#f0a868','#5a2a12'],
+  coal:['lumps','#26262a','#8a8a96','#0a0a0b'], stone:['cobble','#7a7a70','#b0b0a2','#3a3a34'],
+  rare_earth:['geode','#5a2e20','#ff9a4a','#2a140c'], quartz:['shard','#b0c0f0','#ffffff','#5a6aa8'],
+  radiant_dust:['sparkle','#e8d040','#fff8b0','#7a6a10'], biomass:['leaf','#3f9a3f','#8ae07a','#1a4a1a'],
+  spores:['shroom','#9a4ab0','#e090f0','#4a1a5a'], luminite:['oreglow','#2a3a40','#6affd0','#101a1e'],
+  // fluids
+  brine:['drop','#2a9ac8','#c8f4ff','#0e3a5a'], enzymes:['bubbles','#9ad21a','#eaffb0','#3e520a'],
+  // smelted / processed
+  iron_plate:['plate','#8a96a8','#d0dae6','#4a5260'], copper_plate:['tile','#c87a3a','#ffc080','#6a3a18'],
+  steel_plate:['beam','#a8b0bc','#f0f4f8','#5a626c'], stone_brick:['brick','#8a8a7c','#b8b8a8','#4a4a40'],
+  crude_oil:['barrel','#2a2018','#7a5a3a','#0e0a06'], raw_fuel:['jerry','#c86a1a','#ffb04a','#5a2a08'],
+  plastic:['sheet','#d8d0c0','#ffffff','#8a8478'], refined_fuel:['can','#e53935','#ffd08a','#5a1414'],
+  polymer_sheet:['roll','#9a5ac8','#e0b8ff','#4a2a6a'], silicon:['wafer','#3a4a8a','#9ab0ff','#1a2246'],
+  lithium_salt:['cubes','#e8eef4','#ffffff','#8a9aa8'], lithium:['slug','#c8d0da','#ffffff','#6a727c'],
+  re_oxide:['dust','#e0702a','#ffb07a','#6a2a0a'], nutrient:['bowl','#8a6a3a','#c8e07a','#3a2a14'],
+  algae:['strands','#2a8a5a','#7ae0a8','#0e3a24'], bio_oil:['jar','#c8901a','#ffd06a','#5a3a08'],
+  mycelium:['web','#d8c8b0','#ffffff','#7a6a5a'], lum_crystal:['gem','#4affc8','#e0fff8','#1a7a6a'],
+  // parts
   iron_gear:['gear','#8a96a8','#d0dae6','#3a424c'], copper_wire:['coil','#d88a3a','#ffc080','#7a4018'],
   iron_rod:['rod','#8a96a8','#e0e8f0','#3a424c'], circuit:['chip','#2e7a3a','#e8c050','#123a18'],
   engine:['engine','#6a7280','#a8b0bc','#2a2e34'],
-  speed_module:['module','#42a5f5','#bde0ff','#1a3a5a'], prod_module:['module','#4caf50','#c8f0c8','#1a4a1a'],
-  eff_module:['module','#e53935','#ffc8c8','#5a1a1a'],
-  sci_red:['book','#c83a32','#ff8a80','#5a1a14'], sci_green:['book','#3a9a4a','#a0f0a8','#14401a'],
-  sci_blue:['book','#3a6ac8','#a8c8ff','#14285a'], sci_scar:['book','#8a6a3a','#e0c08a','#3a2a14'],
-  sci_smog:['book','#7a7a6a','#d0d0b8','#3a3a30'], sci_repair:['book','#c8781a','#ffd08a','#5a3008'],
-  sci_deep:['book','#2a7a9a','#9ae0ff','#0e3040'], sci_pressure:['book','#5a5ac8','#c0c0ff','#1e1e5a'],
-  sci_lattice:['book','#2a9a6a','#9affd0','#0e4030'], sci_bloom:['book','#5aa03a','#c8ff9a','#1e4012'],
-  sci_growth:['book','#c85a9a','#ffb0e0','#5a1a40'], sci_synth:['book','#d0901a','#ffe08a','#5a3a08'],
-  sci_void:['book','#6a3aa8','#e0c0ff','#24104a'],
-  r_chassis:['frame','#8a96a8','#d0dae6','#3a424c'], r_computer:['chip','#3a4a6a','#7fdbff','#141e30'],
-  r_frame:['frame','#a8b0bc','#f0f4f8','#4a525c'], r_propellant:['can','#3a3a3a','#ff8a20','#151515'],
-  crude_oil:['barrel','#2a2018','#7a5a3a','#0e0a06'], raw_fuel:['can','#c86a1a','#ffb04a','#5a2a08'],
-  plastic:['sheet','#d8d0c0','#ffffff','#8a8478'], refined_fuel:['can','#e53935','#ffd08a','#5a1414'],
-  polymer_sheet:['sheet','#9a5ac8','#e0b8ff','#4a2a6a'],
-  r_hull:['shield','#8a96a8','#d0dae6','#3a424c'], r_engine_fix:['engine','#c8781a','#ffd08a','#4a2a08'],
-  r_nav:['chip','#2a2a4a','#a8c8ff','#101020'], r_tank:['can','#8a96a8','#d0dae6','#3a424c'],
-  r_thruster:['cone','#6a7280','#ff8a20','#2a2e34'], r_cell:['battery','#3a8a4a','#c8ffb0','#143a18'],
-  brine:['drop','#2a9ac8','#c8f4ff','#0e3a5a'], quartz:['gem','#b0c0f0','#ffffff','#5a6aa8'],
-  rare_earth:['ore','#7a3a26','#e07a40','#381c12'], radiant_dust:['dust','#e8d040','#fff8b0','#7a6a10'],
-  silicon:['gem','#4a6ac8','#c0d0ff','#1a2a5a'], lithium_salt:['dust','#e8eef4','#ffffff','#8a9aa8'],
-  lithium:['gem','#d0d8e0','#ffffff','#7a828c'], re_oxide:['dust','#e0702a','#ffb07a','#6a2a0a'],
+  speed_module:['module','#42a5f5','#ffffff','#1a3a5a','arrow'], prod_module:['module','#4caf50','#ffffff','#1a4a1a','plus'],
+  eff_module:['module','#e53935','#ffffff','#5a1a1a','drop'],
   magnet:['magnet','#e53935','#d0dae6','#5a1414'], battery:['battery','#4a4a3a','#ffd600','#1a1a10'],
-  lattice_core:['gem','#2ac8a0','#c0fff0','#0e5a48'], fuel_rod:['tube','#3aa04a','#c8ffb0','#143a18'],
-  r_phull:['shield','#5a6a8a','#c0d0f0','#1e2a3a'], r_battbank:['battery','#3a3a5a','#7fdbff','#14142a'],
-  r_guidance:['gem','#9a4ac8','#f0c8ff','#3a145a'], r_drill:['cone','#8a96a8','#f5c400','#3a424c'],
-  enzymes:['drop','#9ad21a','#eaffb0','#3e520a'], biomass:['leaf','#3f9a3f','#8ae07a','#1a4a1a'],
-  spores:['shroom','#9a4ab0','#e090f0','#4a1a5a'], luminite:['gem','#2aa08e','#b8fff0','#145a50'],
-  nutrient:['bowl','#8a6a3a','#c8e07a','#3a2a14'], algae:['leaf','#2a8a5a','#7ae0a8','#0e3a24'],
-  bio_oil:['barrel','#c8901a','#ffd06a','#5a3a08'], mycelium:['coil','#d8c8b0','#ffffff','#7a6a5a'],
-  lum_crystal:['gem','#4affc8','#e0fff8','#1a7a6a'], bio_composite:['brick','#7a8a4a','#c0d08a','#3a4020'],
-  lum_rod:['tube','#2ac8a0','#e0fff8','#0e5a48'], hyperfuel:['can','#ffd54a','#fff8c0','#7a5a0a'],
-  r_biohull:['shield','#c8a87a','#fff0d8','#5a4a2a'], r_bionav:['orb','#c85a9a','#ffd0f0','#4a1a3a'],
-  r_core:['orb','#c6ff00','#ffffff','#3a4a0a'],
-  grav_lens:['orb','#7fdbff','#ffffff','#1a4a6a'], stellar_casing:['brick','#a8b8d8','#ffffff','#3a4a6a'],
-  void_engine:['engine','#6a3aa8','#e0c0ff','#24104a'], quantum_mind:['orb','#ab47bc','#ffffff','#3a145a'],
+  lattice_core:['core','#2ac8a0','#c0fff0','#0e5a48'], bio_composite:['weave','#7a8a4a','#c0d08a','#3a4020'],
+  lum_rod:['tube','#2ac8a0','#e0fff8','#0e5a48'],
+  // science: one book shape, each with its own cover emblem
+  sci_red:['book','#c83a32','#ff8a80','#5a1a14',0], sci_green:['book','#3a9a4a','#a0f0a8','#14401a',1],
+  sci_blue:['book','#3a6ac8','#a8c8ff','#14285a',2], sci_scar:['book','#8a6a3a','#e0c08a','#3a2a14',3],
+  sci_smog:['book','#7a7a6a','#d0d0b8','#3a3a30',4], sci_repair:['book','#c8781a','#ffd08a','#5a3008',5],
+  sci_deep:['book','#2a7a9a','#9ae0ff','#0e3040',6], sci_pressure:['book','#5a5ac8','#c0c0ff','#1e1e5a',7],
+  sci_lattice:['book','#2a9a6a','#9affd0','#0e4030',8], sci_bloom:['book','#5aa03a','#c8ff9a','#1e4012',9],
+  sci_growth:['book','#c85a9a','#ffb0e0','#5a1a40',10], sci_synth:['book','#d0901a','#ffe08a','#5a3a08',11],
+  sci_void:['book','#6a3aa8','#e0c0ff','#24104a',12],
+  // rocket parts, one silhouette each
+  r_chassis:['rocketbody','#a8b0bc','#f0f4f8','#4a525c'], r_computer:['monitor','#1a2a3a','#7fdbff','#0a1018'],
+  r_frame:['truss','#8a96a8','#d0dae6','#3a424c'], r_propellant:['canister','#3a3a3a','#ff8a20','#151515'],
+  r_hull:['patch','#8a96a8','#d0dae6','#3a424c'], r_engine_fix:['wrenchengine','#c8781a','#d0dae6','#4a2a08'],
+  r_nav:['radar','#a8b0bc','#7fdbff','#3a424c'], r_tank:['tank','#8a96a8','#d0dae6','#3a424c'],
+  r_thruster:['nozzle','#6a7280','#ff8a20','#2a2e34'], r_cell:['cell','#3a8a4a','#c8ffb0','#143a18'],
+  fuel_rod:['bundle','#3aa04a','#c8ffb0','#143a18'], r_phull:['porthole','#5a6a8a','#bfe8ff','#1e2a3a'],
+  r_battbank:['pack','#3a3a5a','#7fdbff','#14142a'], r_guidance:['prism','#9a4ac8','#f0c8ff','#3a145a'],
+  r_drill:['drillbit','#8a96a8','#f5c400','#3a424c'], hyperfuel:['vial','#ffd54a','#fff8c0','#7a5a0a'],
+  r_biohull:['shell','#c8a87a','#fff0d8','#5a4a2a'], r_bionav:['brain','#d86aa0','#ffd0f0','#6a1a40'],
+  r_core:['atom','#c6ff00','#ffffff','#3a4a0a'], grav_lens:['lens','#7fdbff','#ffffff','#1a4a6a'],
+  stellar_casing:['cube','#a8b8d8','#ffffff','#3a4a6a'], void_engine:['infinity','#9a5ae0','#e0c0ff','#24104a'],
+  quantum_mind:['eye','#ab47bc','#ffffff','#3a145a'],
+};
+// Items that shimmer on belts (4 frames of a travelling glint)
+const ITEM_GLOW=new Set(['radiant_dust','luminite','lum_crystal','lattice_core','lum_rod','fuel_rod','hyperfuel',
+  'r_guidance','r_core','grav_lens','void_engine','quantum_mind','enzymes']);
+const BOOK_EMBLEMS=[ // 4×4 cover marks, '#' = lit
+  ['.##.','####','####','.##.'],['#..#','.##.','.##.','#..#'],['.#..','####','..#.','.#..'],['#.#.','.#.#','#.#.','.#.#'],
+  ['.##.','####','....','.##.'],['#...','.#..','..##','..##'],['..#.','.###','.###','..#.'],['####','#..#','#.##','####'],
+  ['#.#.','####','#.#.','####'],['..#.','.##.','##..','#...'],['.##.','#..#','.#.#','..#.'],['#..#','.##.','#..#','.##.'],
+  ['.##.','#..#','#..#','.##.'],
+];
+const ITEM_SHAPES_2={
+  lumps({C,P},c,h,d){C(4,7,2,c);C(8,8,2,c);C(6,4,2,c);P(3,6,h);P(7,7,h);P(5,3,h);P(6,3,h);P(5,9,d);P(9,10,d);},
+  cobble({R},c,h,d){R(1,7,5,3,c);R(6,7,5,3,shade(c,.12));R(3,4,6,3,shade(c,-.05));R(1,7,5,1,h);R(6,7,5,1,h);R(3,4,6,1,h);R(1,10,10,1,d);R(6,7,1,3,d);},
+  geode({C,P},c,h,d){C(6,6,5,d);C(6,6,4,c);C(6,6,2,h);P(5,5,'#ffffff');P(7,7,shade(h,.4));P(2,4,shade(c,.3));},
+  nugget({C,P},c,h,d){C(6,7,3,c);C(4,5,2,c);P(3,4,h);P(4,4,h);P(5,5,h);P(8,9,'#3d9a72');P(5,9,'#3d9a72');P(7,10,d);P(9,8,d);},
+  shard({R,P},c,h,d){
+    for(const[x,top]of[[2,5],[5,2],[8,6]]){for(let y=top;y<11;y++){P(x,y,c);P(x+1,y,y===top?c:d);}P(x,top-1,h);P(x,top,h);}
+    R(1,11,10,1,d);},
+  sparkle({P,L},c,h,d){L(6,1,6,11,c);L(1,6,11,6,c);L(3,3,9,9,h);L(9,3,3,9,h);P(6,6,'#ffffff');P(5,6,h);P(7,6,h);P(1,1,c);P(10,10,c);},
+  oreglow({C,P},c,h,d){C(6,7,4,c);P(3,5,d);P(9,9,d);for(const[x,y]of[[4,4],[7,6],[5,8]]){P(x,y,h);P(x,y-1,shade(h,.4));}},
+  bubbles({C,O,P},c,h,d){C(6,8,3,c);O(3,4,1,h);O(8,3,2,h);P(10,7,h);P(5,7,h);P(6,10,d);},
+  tile({R,P},c,h,d){R(2,2,8,8,c);R(2,2,8,1,h);R(2,2,1,8,h);R(2,9,8,1,d);R(9,2,1,8,d);P(5,5,d);P(6,5,d);P(5,6,d);P(6,6,d);},
+  beam({R},c,h,d){R(1,2,10,2,c);R(5,4,2,4,c);R(1,8,10,2,c);R(1,2,10,1,h);R(5,4,1,4,h);R(1,9,10,1,d);},
+  jerry({R,P,L},c,h,d){R(2,3,8,8,c);R(3,1,4,2,d);P(4,2,c);P(5,2,c);R(8,1,2,2,h);L(3,4,8,9,shade(c,-.25));L(8,4,3,9,shade(c,-.25));R(2,10,8,1,d);},
+  roll({R,C,P},c,h,d){R(4,4,7,5,c);R(4,4,7,1,h);R(4,8,7,1,d);C(3,6,2,h);P(3,6,d);P(4,6,d);},
+  wafer({C,P},c,h,d){C(6,6,5,c);for(let y=2;y<11;y+=2)for(let x=2;x<11;x+=2)P(x,y,d);P(4,3,h);P(3,4,h);P(5,2,h);},
+  cubes({R},c,h,d){for(const[x,y]of[[1,6],[6,7],[4,2]]){R(x,y,4,4,c);R(x,y,4,1,h);R(x+3,y,1,4,d);}},
+  slug({R,P},c,h,d){for(const x of[2,7]){R(x,2,3,9,c);R(x,2,1,9,h);R(x+2,2,1,9,d);R(x,1,3,1,shade(c,.2));R(x,10,3,1,d);}P(5,6,'#8a929c');},
+  ingot({R},c,h,d){R(3,4,6,1,h);R(2,5,8,1,c);R(2,6,8,2,c);R(1,8,10,2,shade(c,-.1));R(1,9,10,1,d);},
+  strands({P},c,h,d){for(let k=0;k<3;k++)for(let y=1;y<11;y++){const x=2+k*3+(Math.floor((y+k*2)/3)%2);P(x,y,k===1?h:c);}for(let x=1;x<11;x++)P(x,11,d);},
+  jar({R,P},c,h,d){R(3,1,6,2,d);R(2,3,8,8,c);R(3,10,6,1,d);R(4,5,4,3,h);P(3,4,'#ffffff');},
+  web({L,P},c,h,d){for(const[x,y]of[[1,2],[10,1],[11,7],[7,11],[1,9],[5,1]])L(6,6,x,y,c);P(6,6,h);P(3,4,h);P(9,4,h);P(8,9,h);P(3,8,d);},
+  core({R,P},c,h,d){R(1,1,10,1,d);R(1,10,10,1,d);R(1,1,1,10,d);R(10,1,1,10,d);for(let i=0;i<4;i++){R(5-i,2+i,2+2*i,1,c);R(5-i,9-i,2+2*i,1,c);}P(5,4,h);P(4,5,h);},
+  weave({R},c,h,d){R(1,2,10,8,d);for(let y=0;y<4;y++)for(let x=0;x<5;x++)R(1+x*2,2+y*2,2,2,(x+y)%2?c:h);},
+  rocketbody({R,P},c,h,d){P(5,0,h);R(5,1,2,1,c);R(4,2,4,7,c);R(4,2,1,7,h);P(5,4,'#7fdbff');P(6,4,'#7fdbff');R(2,7,2,3,d);R(8,7,2,3,d);R(5,9,2,2,'#ff8a20');},
+  monitor({R,P},c,h,d){R(1,1,10,8,'#5a626c');R(2,2,8,6,c);R(3,3,4,1,h);R(3,5,6,1,h);R(3,7,3,1,h);R(5,9,2,1,'#5a626c');R(3,10,6,1,'#5a626c');},
+  truss({R,L},c,h,d){R(1,1,10,1,c);R(1,10,10,1,c);R(1,1,1,10,c);R(10,1,1,10,c);R(6,1,1,10,d);L(1,1,6,10,h);L(6,1,10,10,h);},
+  canister({R,P},c,h,d){R(4,0,4,2,'#8a8a8a');R(3,2,6,9,c);R(3,5,6,2,h);R(3,2,1,9,shade(c,.3));R(3,10,6,1,d);P(6,1,'#e53935');},
+  patch({R,P,L},c,h,d){R(1,2,10,8,c);R(1,2,10,1,h);R(1,9,10,1,d);for(const[x,y]of[[2,3],[9,3],[2,8],[9,8]])P(x,y,d);L(4,4,7,7,d);L(7,4,5,6,d);},
+  wrenchengine({R,L,P},c,h,d){R(1,5,7,6,c);R(2,3,2,2,c);R(5,3,2,2,c);R(1,10,7,1,d);L(6,7,11,2,h);P(10,1,h);P(11,3,h);P(5,8,h);},
+  radar({O,L,R,P},c,h,d){O(5,5,4,c);L(2,2,8,8,c);P(5,5,h);L(5,5,9,1,h);R(5,8,2,3,d);R(3,11,6,1,d);},
+  tank({R,P},c,h,d){R(2,3,8,6,c);R(1,4,1,4,d);R(10,4,1,4,d);R(2,3,8,1,h);R(2,8,8,1,d);R(5,5,2,2,'#1a1e22');P(5,5,'#7fdbff');},
+  nozzle({R,P},c,h,d){R(5,0,2,3,d);for(let y=0;y<6;y++)R(5-Math.floor(y/2),3+y,2+2*Math.floor(y/2),1,y<5?c:h);P(4,10,'#ffb000');P(6,11,'#ff6a00');P(7,10,'#ffb000');},
+  cell({C,R,P},c,h,d){C(6,6,4,c);C(6,5,3,shade(c,.15));R(5,4,3,1,h);R(6,3,1,3,h);P(3,8,d);P(9,8,d);},
+  bundle({R,P},c,h,d){for(const x of[2,5,8]){R(x,1,2,10,'#2a2e34');R(x,2,1,8,c);P(x,1,h);}R(1,6,10,1,'#8a8a8a');},
+  porthole({R,O,C,P},c,h,d){R(1,1,10,10,c);R(1,1,10,1,shade(c,.25));O(6,6,4,'#c8c8c8');C(6,6,2,h);P(5,5,'#ffffff');for(const[x,y]of[[2,2],[9,2],[2,9],[9,9]])P(x,y,d);},
+  pack({R},c,h,d){for(const x of[1,5,9]){R(x,2,3,9,c);R(x+1,1,1,1,'#c8c8c8');R(x,5,3,1,h);R(x,10,3,1,d);}},
+  prism({P,L},c,h,d){for(let y=0;y<9;y++){const hw=Math.floor(y/1.6);for(let x=-hw;x<=hw;x++)P(6+x,2+y,x<0?h:c);}L(0,6,4,6,'#ffffff');L(8,6,11,4,'#ff8a80');L(8,7,11,7,'#ffd600');L(8,8,11,10,'#7fdbff');},
+  drillbit({P,R},c,h,d){R(3,0,6,2,'#5a626c');for(let y=0;y<9;y++){const hw=Math.max(0,4-Math.floor(y/2));for(let x=-hw;x<=hw;x++)P(6+x,2+y,(x+y)%3===0?h:c);}P(6,11,d);},
+  vial({R,P},c,h,d){R(4,0,4,2,'#8a6a3a');R(3,2,6,9,'#c8e0e8');R(4,4,4,6,c);P(5,6,'#ffffff');P(6,5,h);P(6,7,h);P(5,6,h);P(7,6,h);R(3,10,6,1,d);},
+  shell({O,P},c,h,d){O(6,6,5,c);O(6,6,3,shade(c,-.2));O(7,6,1,h);P(6,6,h);P(2,4,h);P(11,7,d);},
+  brain({C,P},c,h,d){C(4,6,3,c);C(8,6,3,c);for(const[x,y]of[[3,5],[4,7],[8,4],[9,7],[6,6],[2,7],[10,5]])P(x,y,d);P(3,4,h);P(7,4,h);},
+  atom({P,C},c,h,d){for(let t=0;t<48;t++){const a=t/48*Math.PI*2;[0,1.05,2.1].forEach((r,k)=>{const x=Math.cos(a)*5,y=Math.sin(a)*2;P(6+Math.round(x*Math.cos(r)-y*Math.sin(r)),6+Math.round(x*Math.sin(r)+y*Math.cos(r)),['#7fdbff','#f48fb1',shade(c,.2)][k]);});}C(6,6,1,c);P(6,6,h);},
+  lens({O,C,P},c,h,d){O(6,6,5,d);O(6,6,4,c);C(6,6,3,shade(c,-.5));P(4,4,h);P(5,3,h);P(3,5,h);P(6,6,c);},
+  cube({R,P},c,h,d){for(let y=0;y<3;y++)R(4-y,2+y,4+2*y,1,h);for(let y=0;y<3;y++)R(1+y,2+y,1,1,h);
+    for(let y=0;y<6;y++){R(1,5+y,5,1,c);R(6,5+y,5,1,d);}R(1,10,10,1,shade(d,-.3));},
+  infinity({P,C},c,h,d){for(let t=0;t<80;t++){const a=t/80*Math.PI*2,x=6+Math.round(5*Math.cos(a)),y=6+Math.round(3*Math.sin(a)*Math.cos(a));P(x,y,c);P(x,y+1,d);}C(6,6,1,h);P(3,5,h);P(9,5,h);},
+  eye({P,C,R},c,h,d){for(let x=1;x<11;x++){const hh=Math.round(Math.sin((x-1)/9*Math.PI)*3);P(x,6-hh,d);P(x,6+hh,d);}R(2,5,8,3,'#e8e0f0');C(6,6,2,c);P(6,6,'#000');P(5,5,h);},
 };
 const ITEM_SHAPES={
   ore({C,P},c,h,d){C(6,7,4,c);C(4,5,2,c);C(8,5,2,c);P(4,4,h);P(5,4,h);P(7,5,h);P(8,9,d);P(9,8,d);P(5,10,d);},
@@ -1872,9 +1957,13 @@ const ITEM_SHAPES={
   coil({O,P},c,h,d){O(6,6,4,c);O(6,6,3,d);O(6,6,2,c);P(4,3,h);},
   rod({L},c,h,d){L(2,10,10,2,c);L(3,10,10,3,d);L(2,9,9,2,h);},
   chip({R,P},c,h,d){R(2,2,8,8,c);R(2,9,8,1,d);for(let i=3;i<9;i+=2){P(i,1,h);P(i,10,h);P(1,i,h);P(10,i,h);}R(4,4,4,4,d);P(5,5,h);},
-  module({R,P},c,h,d){R(2,2,8,8,'#2a2e34');R(3,3,6,6,c);R(4,4,2,2,h);R(2,9,8,1,d);},
+  module({R,P,L},c,h,d,sym){R(2,2,8,8,'#2a2e34');R(3,3,6,6,c);R(2,9,8,1,d);
+    if(sym==='arrow'){L(4,6,7,6,h);P(6,5,h);P(6,7,h);P(5,4,h);P(5,8,h);}
+    else if(sym==='plus'){R(5,4,2,5,h);R(4,5,4,2,h);}
+    else{P(6,4,h);R(5,5,2,1,h);R(4,6,4,2,h);R(5,8,2,1,h);}},
   engine({R,P},c,h,d){R(2,4,8,6,c);R(3,2,2,2,c);R(7,2,2,2,c);R(2,4,8,1,h);R(2,9,8,1,d);P(4,6,d);P(7,6,d);},
-  book({R,P},c,h,d){R(2,1,8,10,c);R(2,1,1,10,d);R(3,1,7,1,h);R(4,3,5,1,h);R(4,5,4,1,shade(c,.3));R(9,2,1,9,'#e8e0d0');},
+  book({R,P},c,h,d,e){R(2,1,8,10,c);R(2,1,1,10,d);R(3,1,7,1,h);R(9,2,1,9,'#e8e0d0');R(3,10,6,1,d);
+    (BOOK_EMBLEMS[e]||BOOK_EMBLEMS[0]).forEach((row,y)=>[...row].forEach((ch,x)=>{if(ch==='#')P(4+x,4+y,h);}));},
   frame({L,R},c,h,d){R(2,2,8,1,c);R(2,9,8,1,c);R(2,2,1,8,c);R(9,2,1,8,c);L(2,2,9,9,d);L(9,2,2,9,h);},
   can({R,P},c,h,d){R(3,3,6,8,c);R(4,1,3,2,d);R(3,3,1,8,h);R(8,3,1,8,d);R(4,6,4,2,h);},
   barrel({R},c,h,d){R(3,2,6,9,c);R(2,3,8,7,c);R(2,4,8,1,d);R(2,8,8,1,d);R(3,2,1,9,h);},
@@ -1892,9 +1981,15 @@ const ITEM_SHAPES={
   tube({R,P},c,h,d){R(4,1,4,10,'#2a2e34');R(5,2,2,8,c);R(5,2,1,8,h);P(5,1,'#888');P(6,10,'#888');},
   orb({C,P},c,h,d){C(6,6,4,d);C(6,6,3,c);P(5,4,h);P(4,5,h);P(5,5,'#ffffff');},
 };
-function itemSpr(id){
+Object.assign(ITEM_SHAPES,ITEM_SHAPES_2);
+// f: animation frame (0-3); only ITEM_GLOW items change, with a travelling glint
+function itemSpr(id,f=0){
   const art=ITEM_ART[id]; if(!art)return null;
-  return mkSpr(`i:${id}`,12,12,a=>ITEM_SHAPES[art[0]](a,art[1],art[2],art[3]));
+  const fr=ITEM_GLOW.has(id)?f&3:0;
+  return mkSpr(`i:${id}:${fr}`,12,12,a=>{
+    ITEM_SHAPES[art[0]](a,art[1],art[2],art[3],art[4]);
+    if(fr){const[x,y]=[[3,3],[8,4],[7,8],[4,7]][fr];a.P(x,y,'#ffffff');a.P(x+1,y,shade(art[2],.5));a.P(x,y+1,shade(art[2],.5));}
+  });
 }
 // Small 8×8 life-stage badges for living machines
 function stageSpr(name){
@@ -1924,19 +2019,28 @@ function drawGhostIcon(def,px,py,pw,ph){
 }
 // Draw an item on the canvas centred at (x,y), size sz
 function drawItem(ctx,id,x,y,sz){
-  const s=TEX_PIXEL&&itemSpr(id);
+  const s=TEX_PIXEL&&itemSpr(id,Math.floor(performance.now()/180));
   if(s){ctx.drawImage(s,Math.round(x-sz/2),Math.round(y-sz/2),Math.round(sz),Math.round(sz));return;}
   ctx.font=`${Math.floor(sz*.9)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(ITEMS[id]?.icon||'·',x,y);
 }
-// Icon-only art for machines the renderer draws by hand (belts, inserters, pipes…)
+// Art for machines the renderer draws by hand (belts, inserters, pipes…): used for icons and ghosts
 Object.assign(MACHINE_ART,{
-  belt(a){a.g.drawImage(beltSpr(0),0,0);},
-  inserter(a){const{R,C,L}=a;R(0,0,16,16,'#141414');C(8,11,3,'#666');L(8,11,12,4,'#f5a623');L(8,10,12,3,'#f5a623');C(12,3,1,'#f5c400');},
-  long_inserter(a){const{R,C,L}=a;R(0,0,16,16,'#141414');C(4,12,3,'#26c6a0');L(4,12,14,2,'#26c6a0');L(4,11,13,2,'#26c6a0');C(14,2,1,'#b8fff0');},
-  splitter(a){const{R,L}=a;R(0,0,16,32,'#141414');R(1,1,14,30,'#2a1e10');L(2,16,13,6,'#e67e22');L(2,16,13,26,'#e67e22');L(2,15,13,5,'#e67e22');L(2,17,13,27,'#e67e22');},
-  tunnel(a){const{R,C}=a;R(0,0,16,16,'#0a0a14');C(8,8,6,'#1e3a5a');C(8,8,4,'#4a90d9');C(8,8,2,'#0a0a14');},
-  pipe(a){const{R}=a;R(0,0,16,16,'#121212');R(0,5,16,6,'#2e2e2e');R(5,0,6,16,'#2e2e2e');R(0,7,16,2,'#7fdbff');R(7,0,2,16,'#7fdbff');},
+  belt(a,f){a.g.drawImage(beltSpr(f),0,0);},
+  inserter(a,f){const{R,C,L,P}=a;R(0,0,16,16,'#141414');R(4,12,8,3,'#3a3a3a');C(8,11,2,'#777');
+    const t=-Math.PI/2+[-.6,-.2,.2,.6][f];const x=8+Math.round(Math.cos(t)*7),y=11+Math.round(Math.sin(t)*7);
+    L(8,11,x,y,'#f5a623');L(9,11,x+1,y,'#c88a10');R(x-1,y-1,3,2,'#f5c400');},
+  long_inserter(a,f){const{R,C,L}=a;R(0,0,16,16,'#141414');R(2,12,12,3,'#1a3a30');C(8,12,2,'#26c6a0');
+    const t=-Math.PI/2+[-.8,-.3,.3,.8][f];const x=8+Math.round(Math.cos(t)*9),y=12+Math.round(Math.sin(t)*9);
+    L(8,12,x,y,'#26c6a0');L(9,12,x+1,y,'#1a8a6a');R(x-1,y-1,3,2,'#b8fff0');},
+  splitter(a,f){const{R,P,L}=a;R(0,0,16,32,'#141414');R(1,1,14,30,'#2a1e10');R(1,1,14,1,'#4a3420');
+    for(const y of[8,24]){R(9,y-2,6,4,'#3a2a18');P(14,y,'#e67e22');P(13,y-1,'#e67e22');P(13,y+1,'#e67e22');}
+    L(2,16,6,16,'#e67e22');L(6,16,9,8,'#e67e22');L(6,16,9,24,'#e67e22');
+    const dots=[[3,16],[6,16],[8,10],[8,22]];const[dx,dy]=dots[f];R(dx,dy-1,2,2,'#ffd08a');},
+  tunnel(a,f){const{R,C,P}=a;R(0,0,16,16,'#0a0a14');C(8,8,6,'#1e3a5a');C(8,8,4,'#4a90d9');C(8,8,2,'#0a0a14');
+    for(let k=0;k<3;k++){const t=k*2.09+f*.52;P(8+Math.round(Math.cos(t)*5),8+Math.round(Math.sin(t)*5),'#bde0ff');}},
+  pipe(a,f){const{R,P}=a;R(0,0,16,16,'#121212');R(0,5,16,6,'#2e2e2e');R(5,0,6,16,'#2e2e2e');R(0,7,16,2,'#2a7a9a');R(7,0,2,16,'#2a7a9a');
+    for(let k=0;k<4;k++){P((k*4+f)%16,7,'#bdf0ff');P(7,(k*4+f)%16,'#bdf0ff');}},
 });
 
 // ═══════════════════════════════════════════════════
