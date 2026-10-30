@@ -771,6 +771,25 @@ const ITEMS = {
   r_battbank:   {name:'Battery Bank',   icon:'🔌', cat:'rocket3'},
   r_guidance:   {name:'Guidance Crystal',icon:'🔮', cat:'rocket3'},
   r_drill:      {name:'Shaft Drill',    icon:'⚒️', cat:'rocket3'},
+  // Zone 4 — The Bloom
+  enzymes:      {name:'Enzymes',        icon:'🧪', cat:'fluid'},
+  biomass:      {name:'Biomass',        icon:'🍃', cat:'raw'},
+  spores:       {name:'Spores',         icon:'🍄', cat:'raw'},
+  luminite:     {name:'Luminite Ore',   icon:'❇️', cat:'raw'},
+  nutrient:     {name:'Nutrient Paste', icon:'🥣', cat:'processed'},
+  algae:        {name:'Algae',          icon:'🌿', cat:'processed'},
+  bio_oil:      {name:'Bio-Oil',        icon:'🍯', cat:'processed'},
+  mycelium:     {name:'Mycelium',       icon:'🧶', cat:'processed'},
+  lum_crystal:  {name:'Luminite Crystal',icon:'💫', cat:'processed'},
+  bio_composite:{name:'Bio-Composite',  icon:'🥥', cat:'parts'},
+  lum_rod:      {name:'Luminite Rod',   icon:'🔦', cat:'parts'},
+  hyperfuel:    {name:'Bio-Hyperfuel',  icon:'🌟', cat:'rocket4'},
+  sci_bloom:    {name:'Bloom Notes',    icon:'📒', cat:'science'},
+  sci_growth:   {name:'Growth Data',    icon:'📊', cat:'science'},
+  sci_synth:    {name:'Synthesis Data', icon:'📙', cat:'science'},
+  r_biohull:    {name:'Bio-Hull',       icon:'🐚', cat:'rocket4'},
+  r_bionav:     {name:'Living Navigator',icon:'🧠', cat:'rocket4'},
+  r_core:       {name:'Reactor Core',   icon:'⚛️', cat:'rocket4'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -838,6 +857,21 @@ const RECIPES = {
   z3_battbank:{name:'Battery Bank',      machine:'assembler', time:20, in:{battery:4,circuit:2},              out:{r_battbank:1},  unlock:'lattice_fuel'},
   z3_guidance:{name:'Guidance Crystal',  machine:'assembler', time:24, in:{lattice_core:2,circuit:4},         out:{r_guidance:1},  unlock:'lattice_fuel'},
   z3_drill:   {name:'Shaft Drill',       machine:'assembler', time:28, in:{steel_plate:8,magnet:4,engine:2},  out:{r_drill:1},     unlock:'lattice_fuel'},
+  // Zone 4 — The Bloom (living machines grow faster when well fed)
+  z4_paste:   {name:'Nutrient Paste',    machine:'assembler', time:6,  in:{biomass:2},                        out:{nutrient:1},    unlock:'bio_cultivation'},
+  z4_algae:   {name:'Grow Algae',        machine:'algae_vat', time:12, in:{}, fluid:{enzymes:3},              out:{algae:2},       unlock:'bio_cultivation'},
+  z4_lum:     {name:'Luminite Crystal',  machine:'electric_smelter', time:8, in:{luminite:2},                 out:{lum_crystal:1}, unlock:'luminite_refining'},
+  z4_biooil:  {name:'Bio-Oil',           machine:'bioreactor', time:10, in:{algae:2,biomass:1},               out:{bio_oil:1},     unlock:'symbiosis'},
+  z4_mycel:   {name:'Mycelium',          machine:'spore_incubator', time:12, in:{spores:3,nutrient:1},        out:{mycelium:2},    unlock:'symbiosis'},
+  z4_composite:{name:'Bio-Composite',    machine:'assembler', time:10, in:{mycelium:2,steel_plate:1},         out:{bio_composite:1},unlock:'symbiosis'},
+  z4_rod:     {name:'Luminite Rod',      machine:'assembler', time:16, in:{lum_crystal:3,steel_plate:2},      out:{lum_rod:1},     unlock:'nuclear_power'},
+  z4_hyper:   {name:'Bio-Hyperfuel',     machine:'hyper_synth', time:20, in:{bio_oil:3,lum_crystal:1}, fluid:{enzymes:4}, out:{hyperfuel:1}, unlock:'hyperfuel'},
+  z4_sci_bloom:{name:'Bloom Notes',      machine:'lab', time:8,  in:{biomass:2,copper_wire:1},                out:{sci_bloom:1}},
+  z4_sci_growth:{name:'Growth Data',     machine:'lab', time:10, in:{algae:2,circuit:1},                      out:{sci_growth:1},  unlock:'bio_cultivation'},
+  z4_sci_synth:{name:'Synthesis Data',   machine:'lab', time:14, in:{bio_oil:1,lum_crystal:1},                out:{sci_synth:1},   unlock:'symbiosis'},
+  z4_biohull: {name:'Bio-Hull',          machine:'assembler', time:24, in:{bio_composite:4,steel_plate:4},    out:{r_biohull:1},   unlock:'hyperfuel'},
+  z4_bionav:  {name:'Living Navigator',  machine:'assembler', time:24, in:{algae:6,circuit:6,lum_crystal:2},   out:{r_bionav:1},    unlock:'hyperfuel'},
+  z4_core:    {name:'Reactor Core',      machine:'assembler', time:30, in:{lum_rod:2,steel_plate:10,circuit:4},out:{r_core:1},     unlock:'hyperfuel'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -847,9 +881,9 @@ const MDEFS = {
   miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits'},
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter — needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter — 2× speed'},
-  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium'], desc:'No coal needed — runs on power. 3× speed. Makes propellant.'},
-  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill'], desc:'Crafts parts and components'},
-  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat'], desc:'Produces science packs'},
+  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed — runs on power. 3× speed. Makes propellant.'},
+  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill','z4_paste','z4_composite','z4_rod','z4_biohull','z4_bionav','z4_core'], desc:'Crafts parts and components'},
+  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat','z4_sci_bloom','z4_sci_growth','z4_sci_synth'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
   belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
@@ -874,6 +908,14 @@ const MDEFS = {
   rod_press:      {name:'Rod Press',        icon:'🧰', size:[2,2], power:24,  cost:{steel_plate:10,circuit:6,magnet:4},              unlock:'lattice_fuel', recipes:['z3_rod'], fluidPort:true, desc:'Presses lattice fuel rods. Needs 60%+ pipe pressure'},
   lumen_panel:    {name:'Lumen Panel',      icon:'💡', size:[2,2], power:-40, cost:{silicon:6,steel_plate:4,copper_wire:6},          unlock:'crystal_refining', recipes:[], noItems:true, desc:'40kW from the cave glow — nothing while the glow tide is dim'},
   accumulator:    {name:'Accumulator',      icon:'🔋', size:[1,1], power:0,   cost:{battery:4,steel_plate:2,circuit:2},              unlock:'energy_storage', recipes:[], noItems:true, desc:'Stores surplus power and releases it during shortfalls'},
+  // Zone 4 machines — living:true machines grow/decay (see LIVING), fed Nutrient Paste
+  enzyme_pump:    {name:'Enzyme Pump',      icon:'🍶', size:[2,2], power:8,   cost:{iron_plate:10,iron_gear:4,circuit:2},            unlock:'bio_cultivation', recipes:[], fluidPort:true, pumps:'enzymes', noItems:true, desc:'Pumps enzymes from an enzyme pool into connected pipes'},
+  algae_vat:      {name:'Algae Vat',        icon:'🌊', size:[2,2], power:6,   cost:{iron_plate:10,circuit:2,biomass:10},             unlock:'bio_cultivation', recipes:['z4_algae'], fluidPort:true, living:true, desc:'LIVING — grows algae from enzymes. Feed it Nutrient Paste'},
+  bioreactor:     {name:'Bioreactor',       icon:'🦠', size:[2,2], power:12,  cost:{steel_plate:6,circuit:4,biomass:15},             unlock:'symbiosis', recipes:['z4_biooil'], living:true, desc:'LIVING — digests algae and biomass into bio-oil'},
+  spore_incubator:{name:'Spore Incubator',  icon:'🏺', size:[2,2], power:10,  cost:{iron_plate:10,circuit:3,spores:10},              unlock:'symbiosis', recipes:['z4_mycel'], living:true, desc:'LIVING — cultures spores into mycelium'},
+  hyper_synth:    {name:'Hyperfuel Synth.', icon:'🧬', size:[2,2], power:30,  cost:{steel_plate:12,circuit:8,lum_crystal:4},         unlock:'hyperfuel', recipes:['z4_hyper'], fluidPort:true, living:true, desc:'LIVING — synthesises bio-hyperfuel'},
+  reactor:        {name:'Nuclear Reactor',  icon:'☢️', size:[3,3], power:-2000,cost:{steel_plate:40,circuit:20,lum_crystal:10},      unlock:'nuclear_power', recipes:[], desc:'Burns Luminite Rods → 2,000kW. Overheats without Heat Sinks'},
+  heat_sink:      {name:'Heat Sink',        icon:'❄️', size:[1,1], power:0,   cost:{steel_plate:4,copper_plate:6},                   unlock:'luminite_refining', recipes:[], noItems:true, desc:'Cools an adjacent reactor'},
 };
 
 // Hand-craft recipes — click to process raw materials into items
@@ -895,6 +937,7 @@ const HAND_CRAFTS = [
   // Unlocked by electronics research
   {id:'speed_module', name:'Speed Module', icon:'🔵', in:{circuit:3,iron_gear:2},              out:{speed_module:1}, clicks:40, unlock:'electronics',  desc:'Hand-build a speed module'},
   {id:'prod_module',  name:'Prod. Module', icon:'🟢', in:{circuit:4,copper_wire:4},            out:{prod_module:1},  clicks:40, unlock:'electronics',  desc:'Hand-build a production module'},
+  {id:'nutrient',     name:'Nutrient Paste',icon:'🥣', in:{biomass:3},                         out:{nutrient:1},     clicks:6,  unlock:null,           desc:'Mash biomass into paste for living machines'},
   {id:'eff_module',   name:'Eff. Module',  icon:'🔴', in:{circuit:3,iron_rod:3},               out:{eff_module:1},   clicks:40, unlock:'electronics',  desc:'Hand-build an efficiency module'},
 ];
 
@@ -904,6 +947,7 @@ const MACHINE_BUILDS = [
   'blast_furnace','electric_smelter','assembler','lab',
   'oil_pump','cracker','refinery','combustion_gen','scrubber',
   'pipe','brine_pump','fluid_tank','relief_valve','evaporator','separator','rod_press','lumen_panel','accumulator',
+  'enzyme_pump','algae_vat','bioreactor','spore_incubator','hyper_synth','reactor','heat_sink',
 ];
 // ═══════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════
@@ -950,6 +994,15 @@ const DRAWER_DEFS = {
       {id:'rod_press',name:'Rod Press',icon:'🧰'},
       {id:'lumen_panel',name:'Lumen',icon:'💡'},
       {id:'accumulator',name:'Accum.',icon:'🔋'},
+    ]},
+    {label:'Bloom', zones:[4,5], items:[
+      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶'},
+      {id:'algae_vat',name:'Algae Vat',icon:'🌊'},
+      {id:'bioreactor',name:'Bioreactor',icon:'🦠'},
+      {id:'spore_incubator',name:'Incubator',icon:'🏺'},
+      {id:'hyper_synth',name:'Hyper Synth',icon:'🧬'},
+      {id:'reactor',name:'Reactor',icon:'☢️'},
+      {id:'heat_sink',name:'Heat Sink',icon:'❄️'},
     ]},
   ],
   tools: [
@@ -1046,6 +1099,37 @@ const TECHS = {
     desc:'Unlocks the Rod Press and all escape-shaft rocket parts',
     zone:3,
   },
+  // Zone 4 — The Bloom
+  bio_cultivation: {
+    name:'Bio Cultivation', icon:'🌱', era:'The Bloom — Era 1',
+    cost:{sci_bloom:10}, req:[],
+    desc:'Unlocks Enzyme Pump, Algae Vat, Nutrient Paste and Growth Data',
+    zone:4,
+  },
+  luminite_refining: {
+    name:'Luminite Refining', icon:'❇️', era:'The Bloom — Era 1',
+    cost:{sci_bloom:15}, req:[],
+    desc:'Unlocks Luminite Crystal smelting and the Heat Sink',
+    zone:4,
+  },
+  symbiosis: {
+    name:'Symbiosis', icon:'🦠', era:'The Bloom — Era 2',
+    cost:{sci_bloom:30,sci_growth:20}, req:['bio_cultivation'],
+    desc:'Unlocks Bioreactor, Spore Incubator, Bio-Composite and Synthesis Data',
+    zone:4,
+  },
+  nuclear_power: {
+    name:'Nuclear Power', icon:'☢️', era:'The Bloom — Era 2',
+    cost:{sci_bloom:40,sci_growth:30}, req:['bio_cultivation','luminite_refining'],
+    desc:'Unlocks the Nuclear Reactor and Luminite Rods',
+    zone:4,
+  },
+  hyperfuel: {
+    name:'Hyperfuel', icon:'🌟', era:'The Bloom — Era 3',
+    cost:{sci_bloom:60,sci_growth:50,sci_synth:30}, req:['symbiosis','nuclear_power'],
+    desc:'Unlocks the Hyperfuel Synthesiser and all Bloom rocket parts',
+    zone:4,
+  },
 };
 
 // ═══════════════════════════════════════════════════
@@ -1072,6 +1156,13 @@ const ROCKET_PARTS_Z3 = [
   {id:'r_battbank',   name:'Battery Bank',     need:2, unlock:'lattice_fuel'},
   {id:'r_guidance',   name:'Guidance Crystal', need:1, unlock:'lattice_fuel'},
   {id:'r_drill',      name:'Shaft Drill',      need:1, unlock:'lattice_fuel'},
+];
+
+const ROCKET_PARTS_Z4 = [
+  {id:'hyperfuel',    name:'Bio-Hyperfuel',    need:6, unlock:'hyperfuel'},
+  {id:'r_biohull',    name:'Bio-Hull',         need:3, unlock:'hyperfuel'},
+  {id:'r_bionav',     name:'Living Navigator', need:1, unlock:'hyperfuel'},
+  {id:'r_core',       name:'Reactor Core',     need:1, unlock:'hyperfuel'},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -1107,6 +1198,17 @@ const ZONES={
        The walls glow. The air hums with pressure.<br><br>
        <span style="color:var(--amber)">Pump the brine. Grow the crystals.</span><br>
        <span style="color:var(--text3);font-size:5px">Watch the 💧 pressure gauge — pipes burst above 90%.</span>`},
+  4:{name:'The Bloom', icon:'🌸', rocketTech:'hyperfuel', parts:ROCKET_PARTS_Z4, fuel:null,
+     partsCat:'rocket4', partsLabel:'Bloom Rocket (Zone 4)', sci:['sci_bloom','sci_growth','sci_synth'],
+     hazards:['pressure','decay','heat'], buildMap:()=>buildZoneMap(DEPOSITS_Z4,0xb100),
+     mapSize:[96,64],
+     launchLabel:'IGNITE HYPERFUEL', launchText:'Bio-hyperfuel ignites in a bloom of green fire.<br>The jungle-sea falls away, glowing.',
+     launchTease:'Four worlds tug at the rocket at once. Space folds...',
+     arrivalTitle:'🌸 THE BLOOM', arrivalBtn:'GROW',
+     arrivalHtml:`You splash down in a <span style="color:var(--green)">glowing sea-jungle</span>.<br>
+       Everything here is alive. Even the machines.<br><br>
+       <span style="color:var(--amber)">Feed them, or they wither.</span><br>
+       <span style="color:var(--text3);font-size:5px">Living machines need 🥣 Nutrient Paste. Reactors need ❄️ Heat Sinks.</span>`},
 };
 function zoneDef(z){return ZONES[z||G.zone]||ZONES[1];}
 function zoneHas(hazard){return zoneDef().hazards.includes(hazard);}
@@ -1273,6 +1375,15 @@ function buildZoneMap(deposits,salt,w=MAP_W,h=MAP_H){
   return map;
 }
 
+const DEPOSITS_Z4=[
+  ['biomass',6,8,5,6],['biomass',5,7,4,5],['biomass',5,6,4,5],['biomass',4,5,3,4],
+  ['luminite',5,7,4,5],['luminite',5,6,4,5],['luminite',4,5,3,4],['luminite',4,5,3,4],
+  ['spores',5,6,4,5],['spores',4,5,3,4],['spores',4,5,3,4],
+  ['enzymes',6,7,4,5],['enzymes',5,6,4,5],['enzymes',4,6,4,4],
+  ['iron_ore',5,6,4,5],['iron_ore',4,5,3,4],['copper_ore',4,6,3,5],['copper_ore',4,5,3,4],
+  ['coal',4,5,3,4],['coal',3,4,3,3],['stone',4,5,3,4],['stone',3,4,3,3],
+];
+
 let G = null;
 
 function defaultState(){
@@ -1302,7 +1413,7 @@ function defaultState(){
     power:{out:0,in:0},
     research:{done:[]},
     cam:{x:0,y:0,zoom:1},
-    stats:{placed:0,taps:0,mined:0,launched:false,bursts:0},
+    stats:{placed:0,taps:0,mined:0,launched:false,bursts:0,withered:0,scrams:0},
     blueprints:[],
     craftState:{recipeId:null, clicks:0},
     achievements:[],
@@ -1330,6 +1441,7 @@ function mkMachine(type,x,y,dir){
     splitSide:0,
     tunnelId:null,
     modules:[],   // installed module item ids, max slots = tier-1
+    ...(MDEFS[type].living?{vit:VIT_START}:{}),
   };
 }
 
@@ -1340,8 +1452,9 @@ let canvas, ctx, rafId;
 let lastTickMs=0; // real timestamp of last gameTick — used for sub-tick interpolation
 
 const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e',oil:'#1a0f00',
-  quartz:'#3a3f5a',rare_earth:'#4a3424',brine:'#0d3b4a',radiant_dust:'#4a4410'};
-const FLUID_COL={brine:'#7fdbff'};
+  quartz:'#3a3f5a',rare_earth:'#4a3424',brine:'#0d3b4a',radiant_dust:'#4a4410',
+  biomass:'#1f4a1a',spores:'#4a2a4a',luminite:'#1a3a4a',enzymes:'#3a4a0d'};
+const FLUID_COL={brine:'#7fdbff',enzymes:'#c6ff00'};
 const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',long_inserter:'#26c6a0',chest:'#7d5a3c',oil_pump:'#5a4a2a',cracker:'#8b5e3c',refinery:'#6b4226',combustion_gen:'#e67e22',scrubber:'#2e7d52'};
 
 function initCanvas(){
@@ -1714,6 +1827,28 @@ function draw(){
     if(def.fluidPort&&m.active&&(m._fluidStatus==='lowpressure'||m._fluidStatus==='nopipe')&&ts>14){
       ctx.fillStyle=Math.floor(G.tick/4)%2?'#42a5f5':'#0d3b4a';
       ctx.beginPath(); ctx.arc(px+pw-8,py+ph-16,4,0,Math.PI*2); ctx.fill();
+    }
+    // Living machines: vitality bar + stage badge; withered = grey
+    if(def.living){
+      const st=lifeStage(m);
+      if(m.withered){ctx.fillStyle='rgba(60,60,60,.6)';ctx.fillRect(px+1,py+1,pw-2,ph-2);}
+      else{ctx.fillStyle='#4caf50';ctx.globalAlpha=.05+.04*Math.sin(G.tick*.15+m.id);ctx.fillRect(px+1,py+1,pw-2,ph-2);ctx.globalAlpha=1;}
+      if(ts>14){
+        const v=(m.vit||0)/100;
+        // Vitality bar sits under the output-buffer strip; recipe progress keeps the bottom edge
+        ctx.fillStyle='#111'; ctx.fillRect(px+4,py+10,pw-8,4);
+        ctx.fillStyle=v<.25?'#e53935':v>.8?'#f48fb1':'#4caf50'; ctx.fillRect(px+4,py+10,(pw-8)*v,4);
+        ctx.font=`${Math.max(8,Math.floor(ts*.24))}px serif`; ctx.textAlign='left'; ctx.textBaseline='top';
+        ctx.fillText(st.icon,px+4,py+16);
+      }
+    }
+    // Reactor heat bar + SCRAM flash
+    if(m.type==='reactor'&&ts>14){
+      const h=(m.heat||0)/100;
+      ctx.fillStyle='#111'; ctx.fillRect(px+4,py+ph-9,pw-8,5);
+      ctx.fillStyle=h>.8?'#e53935':h>.5?'#f5a623':'#26c6a0'; ctx.fillRect(px+4,py+ph-9,(pw-8)*h,5);
+      if(m.scram>0){ctx.fillStyle=`rgba(229,57,53,${Math.floor(G.tick/2)%2?.25:.08})`;ctx.fillRect(px+1,py+1,pw-2,ph-2);}
+      else if((m.inBuf.lum_rod||0)>0){ctx.fillStyle='#c6ff00';ctx.globalAlpha=.05+.04*Math.sin(G.tick*.3);ctx.fillRect(px+1,py+1,pw-2,ph-2);ctx.globalAlpha=1;}
     }
     // Lumen panels go dark during the dim glow tide
     if(m.type==='lumen_panel'){
@@ -2670,6 +2805,7 @@ function gameTick(){
   }
   runBelts();
   settleFluidNets();
+  tickLiving();
 
   // Smog tick — natural decay + clamp
   if(zoneHas('smog')){
@@ -2783,6 +2919,9 @@ function runMachine(m){
     if(glowBright())G.power.out+=Math.abs(def.power);
     return;
   }
+  if(m.type==='reactor'){runReactor(m,def);return;}
+  if(m.type==='heat_sink')return;
+  if(def.living&&m.withered)return;
   if(def.pumps){runPump(m,def);return;}
   if(def.fluidCap||m.type==='accumulator')return; // pipes, tanks, valves: handled by settleFluidNets
   if(m.type==='scrubber'){
@@ -2830,7 +2969,8 @@ function runMachine(m){
   const tierMult=m.tier===3?2:m.tier===2?1.5:1;
   // Smog reduces efficiency in Zone 2 for all powered machines
   const smogEff=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
-  const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff;
+  const lifeMult=def.living?lifeStage(m).mult:1;
+  const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff*lifeMult;
 
   if(m.prog===0){
     if(canFill(m,rec)&&fluidReady(m,rec)){consumeInputs(m,rec);consumeFluid(m,rec);m.prog=1;}
@@ -2873,7 +3013,7 @@ function consumeInputs(m,rec){
 //  draw out at recipe start. ≥90% with inflow builds strain → a pipe bursts.
 // ═══════════════════════════════════════════════════
 const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80, VALVE_VENT=0.75;
-const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP'};
+const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP',enzymes:'🧪 NEEDS ENZYME PUMP'};
 let FLUID_NETS=[];
 let burstFx=[];
 
@@ -2991,6 +3131,68 @@ function worstNet(){
   let worst=null;
   for(const n of FLUID_NETS)if(n.type&&(!worst||n.strain>worst.strain||(n.strain===worst.strain&&pressureOf(n)>pressureOf(worst))))worst=n;
   return worst;
+}
+
+// ═══════════════════════════════════════════════════
+//  LIVING MACHINES (Zone 4)
+//  Vitality 0–100 decays every tick. A machine eats 1 Nutrient Paste from its
+//  input buffer every FEED_EVERY ticks while below 100. Stage sets speed:
+//  Sprout <30 ×0.5 · Mature ×1 · Bloom >80 ×1.5. At 0 it withers and stops
+//  until replanted (5 biomass).
+// ═══════════════════════════════════════════════════
+const VIT_START=40, VIT_DECAY=0.06, FEED_EVERY=20, FEED_GAIN=12, REPLANT_COST=5;
+function lifeStage(m){
+  if(m.withered)return {name:'Withered',icon:'🥀',mult:0};
+  const v=m.vit||0;
+  if(v<30)return {name:'Sprout',icon:'🌱',mult:0.5};
+  if(v>80)return {name:'Bloom',icon:'🌸',mult:1.5};
+  return {name:'Mature',icon:'🌿',mult:1};
+}
+function tickLiving(){
+  const decay=VIT_DECAY*(G.perks?.spent?.vital1?0.75:1);
+  for(const m of Object.values(G.machines)){
+    if(!MDEFS[m.type]?.living||m.withered)continue;
+    if(m.vit===undefined)m.vit=VIT_START;
+    m.vit=Math.max(0,m.vit-decay);
+    if(m.vit<100&&G.tick%FEED_EVERY===0&&(m.inBuf.nutrient||0)>0){
+      m.inBuf.nutrient--; m.vit=Math.min(100,m.vit+FEED_GAIN);
+    }
+    if(m.vit<=0){
+      m.withered=true; G.stats.withered=(G.stats.withered||0)+1;
+      toast(`🥀 ${MDEFS[m.type].name} withered — replant it`,'bad');
+    }
+  }
+}
+function replantMachine(id){
+  const m=G.machines[id]; if(!m||!m.withered)return;
+  if((G.inv.biomass||0)<REPLANT_COST){toast(`Need ${REPLANT_COST}× Biomass`,'wrn');sfx('error');return;}
+  G.inv.biomass-=REPLANT_COST; m.withered=false; m.vit=VIT_START; m.prog=0;
+  sfx('craft'); toast(`🌱 ${MDEFS[m.type].name} replanted`,'ok'); renderMachPanel();
+}
+function feedMachine(id){
+  const m=G.machines[id]; if(!m)return;
+  if((G.inv.nutrient||0)<1){toast('No Nutrient Paste in inventory','wrn');sfx('error');return;}
+  G.inv.nutrient--; m.inBuf.nutrient=(m.inBuf.nutrient||0)+1;
+  sfx('craft'); renderMachPanel();
+}
+
+// ── Nuclear reactor + heat ──
+// Running adds heat; passive cooling + each adjacent Heat Sink removes it.
+// At 100 the reactor SCRAMs: offline for REACTOR_SCRAM ticks while it cools.
+const REACTOR_HEAT=0.5, REACTOR_COOL=0.1, SINK_COOL=0.2, REACTOR_SCRAM=240, ROD_TICKS=480;
+function runReactor(m,def){
+  const sinks=machineNeighbors(m).filter(n=>n.type==='heat_sink').length;
+  m.heat=Math.max(0,(m.heat||0)-REACTOR_COOL-sinks*SINK_COOL);
+  if(m.scram>0){m.scram--;return;}
+  if((m.inBuf.lum_rod||0)<=0)return;
+  G.power.out+=Math.abs(def.power);
+  m.heat+=REACTOR_HEAT;
+  m.burn=(m.burn||0)+1;
+  if(m.burn>=ROD_TICKS){m.burn=0;m.inBuf.lum_rod--;}
+  if(m.heat>=100){
+    m.heat=100; m.scram=REACTOR_SCRAM; G.stats.scrams=(G.stats.scrams||0)+1;
+    toast('☢️ REACTOR SCRAM — overheated! Add Heat Sinks','bad'); sfx('error');
+  }
 }
 
 // ── Glow tide (Zone 3 light cycle) ──
@@ -3294,7 +3496,7 @@ function updateHUD(){
   const el=document.getElementById('hudRes');
   const free=G.power.out-G.power.in;
   const hasConsumers=G.power.in>0;
-  const pwrLabel=hasConsumers?(free>=0?`+${fmt(free)}kW`:`${fmt(free)}kW`):`${fmt(G.power.out)}kW`;
+  const pwrLabel=hasConsumers?(free>=0?`+${fmtKW(free)}`:`-${fmtKW(-free)}`):fmtKW(G.power.out);
   let html=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   html+=hudHazardsHtml();
   el.innerHTML=html;
@@ -3312,6 +3514,19 @@ function hudHazardsHtml(){
     const n=worstNet();
     if(n){const pr=Math.round(pressureOf(n));html+=gauge('💧',`${pr}%`,n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)');}
   }
+  if(zoneHas('decay')){
+    const living=Object.values(G.machines).filter(m=>MDEFS[m.type]?.living);
+    const sick=living.filter(m=>m.withered||(m.vit||0)<25).length;
+    if(living.length)html+=gauge(sick?'🥀':'🌱',sick?`${sick}`:`${living.length}`,sick?'var(--red)':'var(--green)');
+  }
+  if(zoneHas('heat')){
+    const reactors=Object.values(G.machines).filter(m=>m.type==='reactor');
+    if(reactors.length){
+      const hot=Math.round(Math.max(...reactors.map(m=>m.heat||0)));
+      const scram=reactors.some(m=>m.scram>0);
+      html+=gauge('🌡️',scram?'SCRAM':`${hot}%`,scram||hot>80?'var(--red)':hot>50?'var(--amber)':'var(--teal)');
+    }
+  }
   if(zoneHas('glow')){
     const secs=glowSecsLeft();
     html+=gauge(glowBright()?'☀️':'🌑',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)');
@@ -3326,6 +3541,7 @@ function pwrCol(){
   if(free<G.power.in*.2)return'var(--amber)'; // less than 20% headroom
   return'var(--green)';
 }
+function fmtKW(n){return n>=1000?`${(n/1000).toFixed(1)}MW`:`${Math.floor(n)}kW`;}
 function fmt(n){
   if(n>=1e6)return(n/1e6).toFixed(1)+'M';
   if(n>=1000)return(n/1000).toFixed(1)+'k';
@@ -4069,6 +4285,21 @@ function fluidPanelRows(m,def,rec){
     if(rec?.fluid)html+=irow('Needs',Object.entries(rec.fluid).map(([f,n])=>`${n}× ${ITEMS[f]?.name}`).join(', ')+(rec.minPressure?` @ ${rec.minPressure}%+`:''));
     const net=(m._nets||[])[0]; if(net)html+=netRows(net);
   }
+  if(def.living){
+    const st=lifeStage(m);
+    const v=Math.round(m.vit||0);
+    html+=irow('Vitality',`<span style="color:${m.withered?'var(--text3)':v<25?'var(--red)':'var(--green)'}">${st.icon} ${st.name} · ${v}% · ×${st.mult} speed</span>`);
+    html+=irow('Food',`🥣 ${m.inBuf.nutrient||0} paste in buffer`);
+    html+=m.withered
+      ?`<button class="full-btn amber" style="margin:4px 0" onclick="replantMachine(${m.id})">🌱 REPLANT (${REPLANT_COST} biomass)</button>`
+      :`<button class="full-btn teal" style="margin:4px 0" onclick="feedMachine(${m.id})">🥣 FEED 1 PASTE (have ${G.inv.nutrient||0})</button>`;
+  }
+  if(m.type==='reactor'){
+    const sinks=machineNeighbors(m).filter(n=>n.type==='heat_sink').length;
+    html+=irow('Heat',`<span style="color:${(m.heat||0)>80?'var(--red)':'var(--teal)'}">${Math.round(m.heat||0)}%${m.scram>0?` — SCRAM ${Math.ceil(m.scram*TICK_MS/1000)}s`:''}</span>`);
+    html+=irow('Cooling',`${sinks} heat sink${sinks!==1?'s':''} (${sinks>=2?'stable':'needs '+(2-sinks)+' more'})`);
+    html+=irow('Fuel',`🔦 ${m.inBuf.lum_rod||0} rods · 1 rod / ${ROD_TICKS*TICK_MS/1000}s`);
+  }
   if(m.type==='accumulator')html+=irow('Charge',`${Math.round((m.charge||0)/ACC_CAP*100)}% (${Math.round(m.charge||0)}/${ACC_CAP} kJ)`);
   if(m.type==='lumen_panel')html+=irow('Glow tide',glowBright()?`<span style="color:var(--amber)">☀️ Bright — ${glowSecsLeft()}s left</span>`:`<span style="color:var(--text3)">🌑 Dim — ${glowSecsLeft()}s left</span>`);
   return html;
@@ -4479,7 +4710,13 @@ function hazardPanelHtml(){
     const nets=FLUID_NETS.filter(n=>n.type);
     html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;font-size:5px;color:var(--text3);line-height:2">
       💧 ${nets.length} pipe network${nets.length!==1?'s':''} · bursts this zone: ${G.stats.bursts||0}<br>
-      Keep pressure ${LOW_PRESSURE}–${OVER_PRESSURE}% · Rod Press needs 60%+
+      Keep pressure ${LOW_PRESSURE}–${OVER_PRESSURE}%${G.zone===3?' · Rod Press needs 60%+':''}
+    </div>`;
+  }
+  if(zoneHas('decay')||zoneHas('heat')){
+    html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;font-size:5px;color:var(--text3);line-height:2">
+      🥀 Withered this zone: ${G.stats.withered||0} · ☢️ Reactor SCRAMs: ${G.stats.scrams||0}<br>
+      Keep living machines fed with 🥣 Nutrient Paste
     </div>`;
   }
   return html;
@@ -4560,7 +4797,7 @@ const PERK_DEFS=[
 ];
 
 // Base points earned the first time each zone's rocket launches
-const LAUNCH_PERK_POINTS={1:3,2:3,3:3};
+const LAUNCH_PERK_POINTS={1:3,2:3,3:3,4:3};
 
 // Zone milestones — each one met at launch adds +1 perk point
 const LOGISTICS_TYPES=['belt','splitter','tunnel','inserter','long_inserter','chest'];
@@ -4582,6 +4819,11 @@ const ZONE_MILESTONES={
     {id:'z3_industry', name:'Industrialist', desc:'25+ production machines placed', done:()=>productionMachineCount()>=25},
     {id:'z3_steady',   name:'Steady Hands',  desc:'No pipe bursts this zone',       done:()=>!(G.stats.bursts>0)},
     {id:'z3_night',    name:'Night Shift',   desc:'2+ accumulators placed',         done:()=>Object.values(G.machines).filter(m=>m.type==='accumulator').length>=2},
+  ],
+  4:[
+    {id:'z4_industry', name:'Industrialist', desc:'25+ production machines placed', done:()=>productionMachineCount()>=25},
+    {id:'z4_green',    name:'Green Thumb',   desc:'No machine withered this zone',  done:()=>!(G.stats.withered>0)},
+    {id:'z4_cool',     name:'Cool Head',     desc:'No reactor SCRAMs this zone',    done:()=>!(G.stats.scrams>0)},
   ],
 };
 function zoneMilestones(zone){
@@ -4996,6 +5238,12 @@ const ACHIEVEMENTS=[
   {id:'first_burst',  cat:'Zones',       icon:'💥', name:'Kaboom',             desc:'Burst a pipe'},
   {id:'first_rod',    cat:'Zones',       icon:'🟩', name:'Crystal Fuel',       desc:'Press a Lattice Fuel Rod'},
   {id:'deep_escape',  cat:'Zones',       icon:'🕳️', name:'Deep Escape',        desc:'Drill out of The Deep'},
+  {id:'first_living', cat:'Zones',       icon:'🌱', name:'It\'s Alive',        desc:'Place a living machine'},
+  {id:'full_bloom',   cat:'Zones',       icon:'🌸', name:'Full Bloom',         desc:'Grow a living machine to Bloom stage'},
+  {id:'first_wither', cat:'Zones',       icon:'🥀', name:'Wilted',             desc:'Let a living machine wither'},
+  {id:'reactor_on',   cat:'Zones',       icon:'☢️', name:'Critical Mass',      desc:'Run a Nuclear Reactor'},
+  {id:'first_scram',  cat:'Zones',       icon:'🌡️', name:'Meltdown Averted',   desc:'Trigger a reactor SCRAM'},
+  {id:'bloom_escape', cat:'Zones',       icon:'🌟', name:'Bloom Escape',       desc:'Launch from The Bloom'},
 ];
 
 function checkAchievements(){
@@ -5044,6 +5292,12 @@ function checkAchievements(){
     first_burst:  ()=>(G.stats.bursts||0)>0,
     first_rod:    ()=>(G.inv.fuel_rod||0)>=1,
     deep_escape:  ()=>!!G.perks?.awarded?.[3],
+    first_living: ()=>machines.some(m=>MDEFS[m.type]?.living),
+    full_bloom:   ()=>machines.some(m=>MDEFS[m.type]?.living&&!m.withered&&(m.vit||0)>80),
+    first_wither: ()=>(G.stats.withered||0)>0,
+    reactor_on:   ()=>machines.some(m=>m.type==='reactor'&&(m.inBuf.lum_rod||0)>0&&!(m.scram>0)),
+    first_scram:  ()=>(G.stats.scrams||0)>0,
+    bloom_escape: ()=>!!G.perks?.awarded?.[4],
   };
 
   let anyNew=false;
@@ -5253,6 +5507,14 @@ const ZONE_TUTORIALS={
      done:()=>Object.values(G.machines).some(m=>m.type==='brine_pump'&&m._fluidStatus==='ok')},
     {text:'⚠️ Watch the 💧 pressure gauge — pipes burst after ~20s above 90%. Add a 🥫 Fluid Tank or consumers.',
      done:()=>Object.values(G.machines).some(m=>m.type==='fluid_tank')},
+  ]},
+  4:{done:'The Bloom briefing complete', steps:[
+    {text:'Welcome to The Bloom. Make 📒 Bloom Notes (biomass + wire) in a Lab and research 🌱 Bio Cultivation.',
+     done:()=>G.research.done.includes('bio_cultivation')},
+    {text:'Pump 🧪 enzymes into pipes and place a 🌊 Algae Vat. Hand-craft 🥣 Nutrient Paste from biomass.',
+     done:()=>Object.values(G.machines).some(m=>m.type==='algae_vat')},
+    {text:'⚠️ Living machines decay! Keep feeding them 🥣 paste (inserters work) or they wither and need replanting.',
+     done:()=>Object.values(G.machines).some(m=>MDEFS[m.type].living&&(m.vit||0)>=60)},
   ]},
 };
 
