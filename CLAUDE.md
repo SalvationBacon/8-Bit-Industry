@@ -9,7 +9,7 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.3.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Current build:** v1.4.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
 **Working file:** `index.html`, ~7,000 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
@@ -26,7 +26,7 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v119` |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v120` |
 | `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
@@ -42,10 +42,11 @@ GitHub Pages auto-redeploys within 1–2 minutes; HTML is network-first, so play
 
 ## Dev Mode
 
-**Unlock:** Menu (☰) → 🔒 DEV → type `BIGBANG` · **Disable:** type `BIGBANGOFF`
-Persists as `G.devMode`; adds a 🛠 DEV section to the ☰ menu.
+**Unlock:** ☰ menu → 🔒 DEV tile → type `BIGBANG` · **Disable:** type `BIGBANGOFF`
+Persists as `G.devMode`. The DEV tile then opens the dev panel, and a purple **⏩ speed button** appears in the top bar.
 
-- Sim speed ×1 / ×4 / ×10 / ×20; free crafting / free building toggles; unlock all techs
+- Sim speed `DEV_SPEEDS` ×1 / ×2 / ×5 / ×10 / ×25 / ×50: tap ⏩ to cycle, or pick in the dev panel. `startTick()` runs several ticks per timer interval above ~16×. UI refresh (220ms) and autosave (8s) are throttled by real time so high speeds stay smooth
+- Free crafting / free building toggles; unlock all techs
 - Give resources (per item) + Give All ×500
 - `devCompleteRocket()`: Zone 1 rocket parts + Rocket Science
 - `devCompleteZone()`: researches every tech of the current zone (plus Zone 1's) and gives everything the zone's launch needs (Zone 5: the Singularity components)
@@ -140,7 +141,7 @@ All textures are procedural (`PIXEL SPRITES` section): `mkSpr(key,w,h,fn)` draws
 - `machineSpr(type,frame,on)`: `MACHINE_ART[type](api,frame,on)` at 16px per tile (Singularity 80px). There are 4 frames while `machineWorking(m)`. `chassis()`, `gearArt()` and `fire()` are shared helpers
 - `beltSpr(frame)` tread, rotated by direction; `itemSpr(id)`: `ITEM_ART[id]=[shape,c1,c2,c3]` + `ITEM_SHAPES`; `stageSpr()` life-stage badges
 - **Every icon goes through `iconHtml(id,fallback)` (DOM) or `drawItem()` (canvas).** A new item needs an `ITEM_ART` entry; a new machine needs a `MACHINE_ART` function
-- `TEX_PIXEL` (saved in localStorage `ebi_tex`) switches to emoji: ☰ Settings → Textures
+- Pixel art is the only style (the user removed the emoji toggle). Emoji remain only where no sprite exists: tools, techs, HUD gauges, menu tiles
 
 ## Design System
 
@@ -162,6 +163,16 @@ Recipe `time` is in **ticks** (time:8 = 2s at base speed).
 
 ## Layout
 
+**Shell (v1.4.0):**
+- **Top bar:** zone chip (taps → GOAL) · ⚡ power + hazard gauges · ⏩ (dev only) · ☰.
+- **Bottom tabs:** BUILD · EDIT (the tools: select, multi-select, demolish, rotate, move, blueprint) · CRAFT · RESEARCH · GOAL.
+  - BUILD and EDIT open the drawer. The others open a panel (`TAB_PANELS`). The game starts with nothing open.
+  - Red `!` badges: research affordable now (`badge-research`), launch ready or continue (`badge-goal`); set in `updateRocketBtn()`.
+- **GOAL** is the `rocket` panel: zone header + objective (`goalHeaderHtml`, from the last tutorial step), parts, milestones.
+- **☰ menu** is a tile grid (`openBigMenu`). `MENU_ROUTES` maps tile/section ids to panels or modals (`openSettings`, `openSaves`, `openStardustShop`, `promptDevUnlock`). `openBigMenu('x')` still works as a deep link. `showPanel(id)` opens without toggling.
+- **Panels are bottom sheets in portrait** (map visible above) and right-hand panels in landscape. While one is open, `body.sheet-open` collapses the tutorial to its pill.
+- Build cards show cost (red if unaffordable) or the lock reason.
+
 Portrait is the default. **Landscape phones** (`orientation:landscape and max-height:600px`) switch `#sGame` to a grid: the tab bar becomes a left rail, `#tabDrawer` a side column (2-column item grid), and panels take the right ~50%.
 - Safe areas: `viewport-fit=cover` + `--sat/--sab/--sal/--sar` on the HUD, tab bar and panels.
 - The canvas is high-DPI: the backing store is `CANVAS_DPR` (≤2) × CSS size, and `draw()` works in CSS pixels via `setTransform`. Use `canvas.clientWidth/Height` for layout math, never `canvas.width`.
@@ -181,8 +192,7 @@ Portrait is the default. **Landscape phones** (`orientation:landscape and max-he
 ```
 - `tutHint`, `multiselBar`, `ghostBar`, `buildHUD` stay **outside `#wrap`**, or the canvas eats their taps.
 - HUD gauges (`hudHazardsHtml()`): 🌫️ smog · 💧 worst network pressure · ☀️/🌑 glow tide countdown · 🌱/🥀 living machines (count, or number withering) · 🌡️ hottest reactor / SCRAM. Power shows MW above 1,000 kW (`fmtKW`).
-- 🚀 opens `openBigMenu('rocket')`. It's shown once the zone's rocket tech is researched, and always in Zone 5.
-- ☰ menu sections: Inventory · Rocket · Perks · Statistics · Achievements · Settings & Audio · ✨ Stardust · Save Slots · Dev.
+- ☰ menu tiles: Inventory · Perks · Awards · Stats · Recipes · Blueprints · Stardust · Settings · Saves · Dev.
 - Drawer categories (`DRAWER_DEFS.build`) can have `zones:[...]` and `unlock`: Logistics, Extract, Processing, Oil (2,5), Fluids (3,4,5), Deep (3,5), Bloom (4,5), Singularity (5).
 - Title screen shows ✨ STARDUST once any Stardust has been earned.
 - Placement needs **✓ PLACE**. Tapping the map only moves the ghost.
@@ -354,7 +364,7 @@ Splitters (1×2, rotatable), tunnels (auto-link ≤5 tiles), inserter state mach
 3. Verify the file starts with `<!DOCTYPE html>`
 
 ### Known Gotchas
-- Touch events fire synthetic mouse events (`lastTouch` debounce in `setupInput`)
+- Touch events fire synthetic mouse events (`lastTouch` debounce in `setupInput`). `setupInput()` attaches listeners once (`inputReady`); before v1.4.0 every new game or load doubled them
 - `perkMult()` returns multipliers; `power` multiplies draw
 - `recordOutput()` uses `Date.now()`, so rates look huge in fast headless tests
 - `machSize()` is the canonical size helper; splitter secondary tile must stay registered

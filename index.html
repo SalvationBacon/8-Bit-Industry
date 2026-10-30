@@ -45,7 +45,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   --hud-h:48px;--tab-h:62px;--ct:48px;--cb:62px;--cl:0px;--cr:0px;
 }
 @media(max-width:700px),(pointer:coarse){
-  :root{--f3:7px;--f4:7px;--f5:8px;--f6:9px;--f7:10px;--f8:11px;--f9:12px;--f10:13px;--hud-h:52px;--tab-h:66px}
+  :root{--f3:7px;--f4:7px;--f5:8px;--f6:9px;--f7:10px;--f8:11px;--f9:12px;--f10:13px;--hud-h:52px;--tab-h:74px}
 }
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)}
 .screen{position:fixed;inset:0}
@@ -102,8 +102,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 
 /* ── TAB BAR (replaces old toolbar) ── */
 #tabBar{flex-shrink:0;height:calc(var(--tab-h) + var(--sab));padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar);background:var(--panel);border-top:2px solid var(--border2);display:flex;z-index:100}
-.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--font);font-size:var(--f4);color:var(--text3);border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
-.tab-btn .tab-icon{font-size:24px;line-height:1}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:var(--f5);color:var(--text2);border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
+.tab-btn .tab-icon{font-size:22px;line-height:1}
 .tab-btn:hover{color:var(--text2);background:var(--bg3)}
 .tab-btn.active{color:var(--amber);border-top-color:var(--amber);background:rgba(245,166,35,.06)}
 .tab-btn.active .tab-icon{filter:none}
@@ -119,7 +119,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 /* Items row inside drawer */
 #drawerItems{display:flex;gap:4px;padding:5px 8px;overflow-x:auto;scrollbar-width:none;align-items:center}
 #drawerItems::-webkit-scrollbar{display:none}
-.ditem{min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 8px;cursor:pointer;border:1px solid var(--border);min-width:52px;font-family:var(--font);background:transparent;flex-shrink:0;transition:all .1s}
+.ditem{min-height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 8px;cursor:pointer;border:1px solid var(--border);min-width:52px;font-family:var(--font);background:transparent;flex-shrink:0;transition:all .1s}
 .ditem:hover{border-color:var(--border2);background:var(--bg3)}
 .ditem.sel{border-color:var(--amber);background:rgba(245,166,35,.08)}
 .ditem.locked{opacity:.3;cursor:not-allowed}
@@ -202,6 +202,46 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 .msel-btn.red{border-color:var(--red);color:var(--red)}
 .msel-btn.dim{border-color:var(--border2);color:var(--text2)}
 
+/* ── NEW SHELL: zone chip, tab badges, bottom sheets, menu grid ── */
+.hud-zone{font-family:var(--font);font-size:var(--f6);color:var(--amber);background:rgba(245,166,35,.08);border:1px solid var(--amberDim);padding:8px 10px;min-height:36px;cursor:pointer;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+#hudRes{flex:1;min-width:0;overflow:hidden}
+.hbtn-speed{width:auto!important;padding:0 8px!important;font-size:var(--f6)!important;color:var(--purple)!important;border-color:var(--purple)!important}
+.hbtn-speed.on{background:rgba(171,71,188,.18)!important}
+.tab-btn{position:relative;min-width:0}
+/* While a sheet or panel is open the tutorial shrinks to its pill, so the map stays visible */
+body.sheet-open #tutHint{right:auto;padding:6px 8px}
+body.sheet-open #tutText,body.sheet-open .tut-skip{display:none}
+body.sheet-open #tutMini{display:block}
+.tab-badge:empty{display:none}
+.tab-badge{position:absolute;top:6px;right:calc(50% - 22px);min-width:14px;height:14px;line-height:14px;font-size:var(--f4);background:var(--red);color:#fff;border-radius:7px;padding:0 3px}
+.dc{font-size:var(--f3);color:var(--text3);white-space:nowrap;display:flex;align-items:center;gap:1px;max-width:92px;overflow:hidden;text-overflow:ellipsis}
+.dc.lock{display:block}
+.dc img.ico{width:11px!important;height:11px!important}
+.dc.bad{color:var(--red)}
+.dc.lock{color:var(--text3)}
+.menu-zone{padding:10px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:10px}
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.menu-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:78px;padding:10px 4px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font);cursor:pointer}
+.menu-tile:active{border-color:var(--amber);background:rgba(245,166,35,.08)}
+.mt-ic{font-size:24px;line-height:1}
+.mt-lb{font-size:var(--f5);color:var(--text2)}
+.mt-badge{position:absolute;top:4px;right:4px;font-size:var(--f4);color:var(--amber);border:1px solid var(--amberDim);padding:1px 4px;background:var(--bg)}
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:4px;margin-bottom:12px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.stat-cell{padding:8px;background:var(--bg3);border:1px solid var(--border)}
+.stat-cell .k{font-size:var(--f4);color:var(--text3);margin-bottom:4px}
+.stat-cell .v{font-size:var(--f6);color:var(--amber)}
+.goal-head{border:1px solid var(--amberDim);background:rgba(245,166,35,.06);padding:10px;margin-bottom:12px}
+.gh-zone{font-size:var(--f7);color:var(--amber);margin-bottom:6px}
+.gh-text{font-size:var(--f6);color:var(--text2);line-height:2}
+/* Portrait phones: every panel is a bottom sheet so the map stays visible above */
+@media not ((orientation:landscape) and (max-height:600px)){
+  .spanel{top:auto;left:0;right:0;width:auto;height:min(64vh,calc(100% - var(--hud-h) - var(--sat) - var(--tab-h) - var(--sab) - 40px));
+    border-left:none;border-top:3px solid var(--border2);transform:translateY(calc(100% + var(--tab-h) + var(--sab)));box-shadow:0 -10px 30px rgba(0,0,0,.6)}
+  .spanel.open{transform:translateY(0)}
+  .spanel .ph::before{content:'';position:absolute;left:50%;top:5px;width:40px;height:4px;margin-left:-20px;background:var(--border2)}
+  .spanel .ph{position:relative;padding-top:14px}
+}
 /* ── FLOATING CONTROLS (outside #wrap so the canvas never eats their taps) ── */
 #buildHUD{position:fixed;left:var(--cl);right:var(--cr);bottom:calc(var(--cb) + 10px);display:flex;gap:8px;align-items:center;justify-content:center;z-index:600;pointer-events:none;padding:0 12px}
 #buildHUD button{pointer-events:all;font-family:var(--font);font-size:var(--f8);border-radius:4px;min-height:48px;min-width:84px;padding:12px 16px;cursor:pointer;background:rgba(13,13,13,.95)}
@@ -333,26 +373,17 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
       <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none">✨ STARDUST</button>
     </div>
-    <p class="v-num">v1.3.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.4.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
 <!-- ══ GAME ══ -->
 <div id="sGame" class="screen hidden">
   <div id="hud">
-    <div class="hud-logo">8BI</div>
-    <div id="hudZones">
-      <div class="zone-tab active" title="Zone 1: Ironfield">Z1</div>
-      <div class="zone-tab locked" title="Complete Zone 1 to unlock">Z2</div>
-      <div class="zone-tab locked" title="Complete Zone 2 to unlock">Z3</div>
-      <div class="zone-tab locked" title="Complete Zone 3 to unlock">Z4</div>
-      <div class="zone-tab locked" title="Complete all zones to unlock">Z5</div>
-    </div>
+    <button id="hudZone" class="hud-zone" onclick="switchTab('goal')" title="Zone goal">Z1 IRONFIELD</button>
     <div id="hudRes"></div>
-    <div style="display:flex;gap:3px;flex-shrink:0;margin-left:auto">
-      <button class="hbtn" id="btnRocket" onclick="openBigMenu('rocket')" title="Rocket" style="display:none">🚀</button>
-      <button class="hbtn" onclick="openBigMenu()" title="Menu">☰</button>
-    </div>
+    <button class="hbtn hbtn-speed" id="btnSpeed" onclick="cycleDevSpeed()" style="display:none">⏩×1</button>
+    <button class="hbtn" onclick="openBigMenu()" title="Menu">☰</button>
   </div>
   <div id="wrap"><canvas id="canvas"></canvas>
     <div id="toolTip" class="hidden"></div>
@@ -376,10 +407,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   </div>
   <!-- Tab bar, always visible, replaces old toolbar -->
   <div id="tabBar">
-    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon">🛠️</span>TOOLS</button>
     <button class="tab-btn" id="tab-build"    onclick="switchTab('build')"><span class="tab-icon">🏗️</span>BUILD</button>
+    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon">✏️</span>EDIT</button>
     <button class="tab-btn" id="tab-craft"    onclick="switchTab('craft')"><span class="tab-icon">🔨</span>CRAFT</button>
-    <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon">🔬</span>RESEARCH</button>
+    <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon">🔬</span>RESEARCH<span class="tab-badge" id="badge-research"></span></button>
+    <button class="tab-btn" id="tab-goal"     onclick="switchTab('goal')"><span class="tab-icon">🚀</span>GOAL<span class="tab-badge" id="badge-goal"></span></button>
   </div>
 </div>
 
@@ -419,7 +451,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 </div>
 
 <div id="pRocket" class="spanel">
-  <div class="ph"><span class="ph-title">🚀 ROCKET</span><button class="ph-x" onclick="togglePanel('rocket')">✕</button></div>
+  <div class="ph"><span class="ph-title" id="pRocketTitle">🚀 GOAL</span><button class="ph-x" onclick="togglePanel('rocket')">✕</button></div>
   <div class="pbody" id="pRocketBody"></div>
 </div>
 
@@ -501,7 +533,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.3.0';
+const VER      = '1.4.0';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -678,7 +710,7 @@ function musicStop(){
 function toggleMusic(){
   G.music=!G.music; saveGame();
   if(G.music) musicStart(); else musicStop();
-  openMenu();
+  openSettings();
 }
 
 function setMusicVol(v){
@@ -695,7 +727,7 @@ function setMusicVol(v){
 }
 function toggleSfxMenu(){
   G.sfx=!G.sfx; saveGame();
-  openMenu();
+  openSettings();
 }
 
 // Visibility change, pause/resume music
@@ -1276,11 +1308,8 @@ function rocketReqs(){
 function zoneTechs(z){return Object.entries(TECHS).filter(([,t])=>(t.zone||1)===z);}
 function syncMapSize(){if(G?.map?.length){MAP_H=G.map.length;MAP_W=G.map[0].length;}}
 function updateZoneTabs(){
-  document.querySelectorAll('.zone-tab').forEach((t,i)=>{
-    t.classList.toggle('active',i===G.zone-1);
-    t.classList.toggle('locked',i>G.zone-1);
-    if(ZONES[i+1]&&i<=G.zone-1)t.title=`Zone ${i+1}: ${ZONES[i+1].name}`;
-  });
+  const el=document.getElementById('hudZone');
+  if(el)el.textContent=`Z${G.zone} ${zoneDef().name.toUpperCase()}`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1521,14 +1550,9 @@ function mkMachine(type,x,y,dir){
 //  PIXEL SPRITES
 //  Every texture is drawn procedurally, pixel by pixel, into a tiny offscreen
 //  canvas (16px per tile, 12px per item), cached by key, then scaled up with
-//  smoothing off. No image files. ☰ Settings can switch back to emoji.
+//  smoothing off. No image files.
 // ═══════════════════════════════════════════════════
-let TEX_PIXEL=(()=>{try{return localStorage.getItem('ebi_tex')!=='emoji';}catch(e){return true;}})();
-function toggleTextures(){
-  TEX_PIXEL=!TEX_PIXEL;
-  try{localStorage.setItem('ebi_tex',TEX_PIXEL?'pixel':'emoji');}catch(e){}
-  buildDrawer(); refreshOpenPanel(); openBigMenu('settings');
-}
+const TEX_PIXEL=true; // pixel art is the only style; emoji remain only where no sprite exists (tools, techs)
 const SPR={}, SPR_URL={};
 
 function hash2(x,y,s){
@@ -2788,7 +2812,10 @@ function clampCam(){
   G.cam.y=Math.max(0,Math.min(my||0,G.cam.y));
 }
 
+let inputReady=false;
 function setupInput(){
+  if(inputReady)return; // startGame runs on every new game / load; listeners must attach once
+  inputReady=true;
   const el=document.getElementById('wrap');
   let lastTouch=0;
   const isTouch=()=>Date.now()-lastTouch<500;
@@ -3309,9 +3336,16 @@ function tryRemove(tx,ty){
 //  SIMULATION
 // ═══════════════════════════════════════════════════
 let tickId=null;
+// Ticks run on a timer at the sim speed. Above ~16x the interval would drop
+// under a frame, so each interval runs several ticks instead.
+let lastUiMs=0, lastSaveMs=0;
+const DEV_SPEEDS=[1,2,5,10,25,50];
 function startTick(){
   if(tickId)clearInterval(tickId);
-  tickId=setInterval(gameTick,TICK_MS);
+  const spd=G?.devTickSpeed||1;
+  const interval=Math.max(16,TICK_MS/spd), perInterval=spd*interval/TICK_MS;
+  let acc=0;
+  tickId=setInterval(()=>{acc+=perInterval;let n=Math.min(8,Math.floor(acc));acc-=n;while(n-->0)gameTick();},interval);
 }
 
 function gameTick(){
@@ -3352,8 +3386,11 @@ function gameTick(){
     G.smog=Math.max(0,Math.min(100,G.smog-0.1));
   }
 
-  if(G.tick%4===0){updateHUD();refreshOpenPanel();buildToolbar();checkAchievements();tickTutorial();}
-  if(G.tick%120===0)saveGame();
+  if(G.tick%4===0){checkAchievements();tickTutorial();}
+  // UI refresh is throttled by real time so fast dev speeds don't drown the browser in DOM work
+  const nowMs=performance.now();
+  if(nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();}
+  if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
 function powerRatio(){
@@ -3767,7 +3804,7 @@ function depositToSingularity(){
     if(take>0){G.inv[id]-=take;m.built[id]=(m.built[id]||0)+take;moved+=take;}
   }
   toast(moved?`Deposited ${moved} components`:'No components to deposit',moved?'ok':'wrn');
-  sfx(moved?'craft':'error'); refreshOpenPanel(); if(!document.getElementById('mOverlay').classList.contains('hidden'))openBigMenu('rocket');
+  sfx(moved?'craft':'error'); refreshOpenPanel();
 }
 function singularityStatusHtml(compact){
   if(G.bigBang)return `<div style="font-size:var(--f6);color:var(--purple);text-align:center;line-height:2.2">💥 The Big Bang has happened.<br>
@@ -4257,8 +4294,7 @@ function buildToolbar(){ buildDrawer(); }
 
 function hudSelect(){
   // Snap back to select tool, leave drawer open so player can place again
-  if(activeTab==='craft') closePanel('craft');
-  if(activeTab==='research') closePanel('research');
+  if(TAB_PANELS[activeTab]) closePanel(TAB_PANELS[activeTab]);
   setTool('select');
   updateSelectBtn();
   updateBuildHUD();
@@ -4286,6 +4322,8 @@ function updateSelectBtn(){
   btn.style.background=active?'rgba(245,166,35,.08)':'var(--bg3)';
 }
 
+// Tabs that open a panel instead of the drawer
+const TAB_PANELS={craft:'craft',research:'research',goal:'rocket'};
 function switchTab(tab){
   const drawer=document.getElementById('tabDrawer');
   if(activeTab===tab){
@@ -4293,26 +4331,20 @@ function switchTab(tab){
     activeTab=null;
     drawer.classList.remove('open');
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    // If closing craft/research panel, close it
-    if(tab==='craft') closePanel('craft');
-    if(tab==='research') closePanel('research');
+    if(TAB_PANELS[tab]) closePanel(TAB_PANELS[tab]);
     return;
   }
-  // Close any open craft/research panel when switching tabs
-  if(activeTab==='craft') closePanel('craft');
-  if(activeTab==='research') closePanel('research');
+  // Close any panel the previous tab opened
+  if(TAB_PANELS[activeTab]) closePanel(TAB_PANELS[activeTab]);
   activeTab=tab;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab)?.classList.add('active');
-  if(tab==='craft'){
+  if(TAB_PANELS[tab]){
     drawer.classList.remove('open');
-    togglePanel('craft');
-  } else if(tab==='research'){
-    drawer.classList.remove('open');
-    togglePanel('research');
+    if(openPanel!==TAB_PANELS[tab])togglePanel(TAB_PANELS[tab]);
+    activeTab=tab; document.getElementById('tab-'+tab)?.classList.add('active');
   } else {
-    // build or tools, show drawer
-    closePanel('craft'); closePanel('research');
+    if(openPanel)closePanel(openPanel);
     drawer.classList.add('open');
     buildDrawer();
   }
@@ -4354,9 +4386,11 @@ function buildDrawer(){
     const sel=activeTool===item.id?'sel':'';
     const lk=locked?'locked':'';
     const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
+    const sub=!def?'':locked?`<span class="dc lock">🔒 ${TECHS[def.unlock]?.name||''}</span>`
+      :`<span class="dc${ua?' bad':''}">${Object.entries(def.cost).slice(0,3).map(([k,v])=>`${v}${iconHtml(k)}`).join(' ')}</span>`;
     return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
       <span class="di">${iconHtml(item.id,item.icon)}</span>
-      <span class="dn">${item.name}</span>
+      <span class="dn">${item.name}</span>${sub}
     </div>`;
   }).join('');
 }
@@ -4518,6 +4552,7 @@ function togglePanel(id){
   if(openPanel===id){closePanel(id);return;}
   if(openPanel)closePanel(openPanel);
   openPanel=id;
+  document.body.classList.add('sheet-open');
   document.getElementById('toolTip').classList.add('hidden');
   document.getElementById('p'+cap(id))?.classList.add('open');
   document.getElementById('btn'+cap(id))?.classList.add('on');
@@ -4538,9 +4573,10 @@ function closePanel(id){
   document.getElementById('p'+cap(pid))?.classList.remove('open');
   document.getElementById('btn'+cap(pid))?.classList.remove('on');
   if(openPanel===pid)openPanel=null;
+  document.body.classList.toggle('sheet-open',!!openPanel);
   // Sync tab bar, if the tab that opened this panel is still active, deactivate it
-  if(pid==='craft'||pid==='research'){
-    if(activeTab===pid){
+  if(Object.values(TAB_PANELS).includes(pid)){
+    if(TAB_PANELS[activeTab]===pid){
       activeTab=null;
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     }
@@ -4564,23 +4600,18 @@ function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 
 // ── Inventory ─────────────────────────────────────
 function renderInvPanel(){
-  const catLabels={raw:'Raw',smelted:'Smelted',parts:'Parts',science:'Science',rocket:'Rocket'};
-  const bycat={};
-  for(const[id,item]of Object.entries(ITEMS)){
-    if(!bycat[item.cat])bycat[item.cat]=[];
-    bycat[item.cat].push({id,...item,n:G.inv[id]||0});
-  }
+  const zd=zoneDef();
+  const cats=[['raw','Raw Materials'],['processed','Processed'],['parts','Parts & Components'],['science','Science'],[zd.partsCat,zd.partsLabel]];
   let html='';
-  for(const[cat,lbl]of Object.entries(catLabels)){
-    const items=(bycat[cat]||[]).filter(i=>i.n>0);
+  for(const[cat,label]of cats){
+    const items=Object.entries(ITEMS).filter(([id,it])=>it.cat===cat&&(G.inv[id]||0)>0);
     if(!items.length)continue;
-    html+=`<div style="margin-bottom:10px"><span class="sec-label">${lbl}</span><div class="grid4">`;
-    for(const i of items)
-      html+=`<div class="inv-item"><span class="ii">${iconHtml(i.id)}</span><span class="iv">${fmt(i.n)}</span><span class="in">${i.name}</span></div>`;
-    html+='</div></div>';
+    html+=`<span class="sec-label">${label.toUpperCase()}</span><div class="inv-grid">`;
+    for(const[id,it]of items)
+      html+=`<div class="inv-chip">${iconHtml(id)}<span style="font-size:var(--f6);color:var(--amber)">${fmt(G.inv[id])}</span><span class="n">${it.name}</span></div>`;
+    html+='</div>';
   }
-  if(!html)html=`<div style="color:var(--text3);font-size:var(--f6);text-align:center;padding:20px;line-height:2.2">Tap any ore deposit<br>on the map to mine.</div>`;
-
+  if(!html)html=`<div style="color:var(--text3);font-size:var(--f6);text-align:center;padding:20px;line-height:2.2">Nothing yet.<br>Tap any ore deposit on the map to mine.</div>`;
   document.getElementById('pInvBody').innerHTML=html;
 }
 
@@ -5362,22 +5393,28 @@ function continueBtnHtml(){
   return nz?`<button class="full-btn teal" onclick="continueToNextZone()">CONTINUE TO ZONE ${nz} →</button>`:'';
 }
 
+// Zone header + objective shown at the top of the GOAL panel
+function goalHeaderHtml(){
+  const zd=zoneDef(), fin=TUTORIALS[G.zone]?.steps.slice(-1)[0];
+  return `<div class="goal-head"><div class="gh-zone">${zd.icon} ZONE ${G.zone} · ${zd.name.toUpperCase()}</div>
+    ${fin?`<div class="gh-text">${richText(fin.text)}</div>`:''}</div>`;
+}
 function renderRocketPanel(){
   const el=document.getElementById('pRocketBody');
   const zd=zoneDef();
-  if(zd.renderPanel){zd.renderPanel(el);return;}
+  if(zd.renderPanel){zd.renderPanel(el);el.insertAdjacentHTML('afterbegin',goalHeaderHtml());return;}
   if(G.stats.launched&&nextZone()){
-    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text2);font-size:var(--f6);line-height:2.2">
+    el.innerHTML=goalHeaderHtml()+`<div style="text-align:center;padding:20px;color:var(--text2);font-size:var(--f6);line-height:2.2">
       🚀 Rocket launched.<br><span style="color:var(--amber)">ZONE ${G.zone} COMPLETE</span>
     </div>${continueBtnHtml()}`;
     return;
   }
   if(!rocketUnlocked()){
-    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:var(--f6);line-height:2.2">
-      Research<br><span style="color:var(--amber)">${TECHS[zd.rocketTech]?.name}</span><br>to unlock this panel.
-    </div>`; return;
+    el.innerHTML=goalHeaderHtml()+`<div style="text-align:center;padding:16px;color:var(--text3);font-size:var(--f6);line-height:2.2">
+      Research <span style="color:var(--amber)">${TECHS[zd.rocketTech]?.name}</span> to see the rocket parts.
+    </div>`+milestonesHtml(); return;
   }
-  let html=`<span class="sec-label">COMPONENTS REQUIRED</span>${rocketReqRows(false)}`;
+  let html=goalHeaderHtml()+`<span class="sec-label">COMPONENTS REQUIRED</span>${rocketReqRows(false)}`;
   html+=rocketReady()
     ?`<button class="full-btn launch" onclick="launchRocket()">🚀 ${zd.launchLabel}</button>`
     :`<div style="font-size:var(--f5);color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
@@ -5645,6 +5682,12 @@ function renderPerksPanel(){
 }
 
 // ── Statistics & Bottleneck Detector ──────────────
+function statsSummaryHtml(){
+  const cell=(k,v,span)=>`<div class="stat-cell"${span?' style="grid-column:span 2"':''}><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  return `<div class="stat-grid">${cell('ZONE',`${G.zone} · ${zoneDef().name}`)}${cell('POWER',`${fmtKW(G.power.out)} / ${fmtKW(G.power.in)}`)}
+    ${cell('MACHINES',Object.keys(G.machines).length)}${cell('RESEARCH',`${G.research.done.length}/${Object.keys(TECHS).length}`)}
+    ${zoneHas('smog')?cell('SMOG',`${Math.round(G.smog||0)}% · efficiency ${Math.round(100-(G.smog||0))}%`,true):''}</div>`;
+}
 function renderStatsPanel(){
   const el=document.getElementById('pStatsBody'); if(!el)return;
   const machines=Object.values(G.machines);
@@ -6172,7 +6215,7 @@ const TUTORIALS={
      tally:[['sci_red',50]], done:()=>researched('logistics')},
     {text:'Labs also make [[sci_green]] Circuit Diagrams now. Research Steel and Electronics, then Rocket Science.',
      done:()=>researched('rocket_tech')},
-    {text:'Final goal: build the 4 rocket parts and press 🚀 in the top bar to launch. Milestones there earn bonus perk points.',
+    {text:'Final goal: build the 4 rocket parts and launch from the 🚀 GOAL tab. Milestones there earn bonus perk points.',
      final:true},
   ]},
   2:{done:'The Scar briefing complete', steps:[
@@ -6194,7 +6237,7 @@ const TUTORIALS={
      done:()=>researched('smog_control')},
     {text:'Build a [[scrubber]] Scrubber and feed it refined fuel. One scrubber cancels about 3 oil pumps.',
      done:()=>machinesOf('scrubber').some(m=>(m.inBuf.refined_fuel||0)>0)},
-    {text:'Goal: research Rocket Repair, build 6 repair parts and stock 20 [[refined_fuel]] refined fuel, then relaunch from 🚀.',
+    {text:'Goal: research Rocket Repair, build 6 repair parts and stock 20 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
      final:true},
   ]},
   3:{done:'The Deep briefing complete', steps:[
@@ -6216,7 +6259,7 @@ const TUTORIALS={
      done:()=>hasM('accumulator')},
     {text:'Research Pressure Control for [[relief_valve]] Relief Valves (vent above 80%) and the [[separator]] Separator.',
      done:()=>researched('pressure_control')},
-    {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build 5 escape parts, then 🚀.',
+    {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build 5 escape parts, then launch from 🚀 GOAL.',
      final:true},
   ]},
   4:{done:'The Bloom briefing complete', steps:[
@@ -6238,7 +6281,7 @@ const TUTORIALS={
      done:()=>machinesOf('reactor').some(r=>machineNeighbors(r).filter(n=>n.type==='heat_sink').length>=2)},
     {text:'Fuel it with [[lum_rod]] Luminite Rods (Assembler). 2,000kW, but watch the 🌡️ gauge.',
      done:()=>machinesOf('reactor').some(r=>(r.inBuf.lum_rod||0)>0)},
-    {text:'Goal: research Symbiosis and Hyperfuel. Build [[hyperfuel]] hyperfuel and the 4 Bloom rocket parts, then 🚀.',
+    {text:'Goal: research Symbiosis and Hyperfuel. Build [[hyperfuel]] hyperfuel and the 4 Bloom rocket parts, then launch from 🚀 GOAL.',
      final:true},
   ]},
   5:{done:'The Singularity briefing complete', steps:[
@@ -6254,7 +6297,7 @@ const TUTORIALS={
      tally:[['sci_void',100]], done:()=>researched('singularity')},
     {text:'Place the [[singularity]] Singularity (BUILD → Singularity). It needs a clear 10×10 area.',
      done:()=>!!singularity()},
-    {text:'Build its 4 components and feed them in with inserters, or press DEPOSIT in the 🚀 panel.',
+    {text:'Build its 4 components and feed them in with inserters, or press DEPOSIT in the 🚀 GOAL tab.',
      tally:()=>Object.entries(SING_REQS).map(([id,n])=>({id,label:ITEMS[id].name,have:(singularity()?.built||{})[id]||0,need:n})),
      done:()=>!!singularity()?.complete},
     {text:'It now draws 5,000kW. [[reactor]] Reactors give 2,000kW each. Hold full power for 60 seconds.',
@@ -6373,94 +6416,60 @@ function showModal(title,body,foot){
 }
 function closeModal(){document.getElementById('mOverlay').classList.add('hidden')}
 
+// Tab badges: research you can afford now, and a launch that is ready
 function updateRocketBtn(){
-  const btn=document.getElementById('btnRocket');
-  if(!btn)return;
-  btn.style.display=(rocketUnlocked()||zoneDef().renderPanel)?'':'none';
+  const goal=document.getElementById('badge-goal'), res=document.getElementById('badge-research');
+  if(goal)goal.textContent=(G.stats.launched&&nextZone())||(rocketUnlocked()&&rocketReady()&&!G.stats.launched)?'!':'';
+  if(res){
+    const can=Object.entries(TECHS).some(([id,t])=>!G.research.done.includes(id)&&(G.zone===5||(t.zone||1)===G.zone)
+      &&t.req.every(r=>G.research.done.includes(r))&&Object.entries(t.cost).every(([k,v])=>(G.inv[k]||0)>=v));
+    res.textContent=can?'!':'';
+  }
 }
 
+// ═══════════════════════════════════════════════════
+//  MENU: a grid of tiles, each opening one screen (panel or modal)
+// ═══════════════════════════════════════════════════
+function showPanel(id){if(openPanel!==id)togglePanel(id);else refreshOpenPanel();}
+const MENU_ROUTES={
+  rocket:()=>switchTab('goal'), goal:()=>switchTab('goal'),
+  inventory:()=>showPanel('inv'), perks:()=>showPanel('perks'), stats:()=>showPanel('stats'),
+  achievements:()=>showPanel('achieve'), recipes:()=>showPanel('recipes'), blueprints:()=>showPanel('blueprint'),
+  dev:()=>showPanel('dev'), devlock:()=>promptDevUnlock(),
+  stardust:()=>openStardustShop(), settings:()=>openSettings(), saves:()=>openSaves(),
+};
 function openBigMenu(section){
-  // Build inline menu with all named sections
-  const devMode=G.devMode;
-  const zd=zoneDef();
-
-  // Inventory
-  const invCats={raw:[],processed:[],parts:[],science:[],[zd.partsCat]:[]};
-  for(const[id,item]of Object.entries(ITEMS)){
-    const amt=G.inv[id]||0;
-    if(amt<=0&&!['iron_ore','copper_ore','coal','stone'].includes(id))continue;
-    const cat=item.cat||'raw';
-    if(!invCats[cat])invCats[cat]=[];
-    invCats[cat].push({id,item,amt});
-  }
-  const catLabels={raw:'Raw Materials',processed:'Processed',parts:'Parts & Components',science:'Science',[zd.partsCat]:zd.partsLabel};
-  let invHtml='';
-  for(const[cat,items]of Object.entries(invCats)){
-    if(!items.length)continue;
-    if(cat.startsWith('rocket')&&cat!==zd.partsCat)continue; // other zones' rocket parts
-    invHtml+=`<div style="font-size:var(--f4);color:var(--text3);letter-spacing:2px;margin:8px 0 4px">${catLabels[cat]||cat}</div>`;
-    invHtml+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:4px;margin-bottom:6px">`;
-    for(const{id,item,amt}of items){
-      invHtml+=`<div class="inv-chip" title="${item.name}">
-        <span>${iconHtml(id)}</span>
-        <span style="font-size:var(--f6);color:var(--amber)">${fmt(amt)}</span>
-        <span class="n">${item.name}</span>
-      </div>`;
-    }
-    invHtml+=`</div>`;
-  }
-
-  // Rocket panel summary
-  let rocketHtml='';
-  if(zd.menuRocketHtml){
-    rocketHtml=zd.menuRocketHtml();
-  } else if(G.stats.launched&&nextZone()){
-    rocketHtml=`<div style="color:var(--teal);font-size:var(--f5);margin-bottom:6px">🚀 Rocket launched. Zone ${G.zone} complete.</div>
-      ${continueBtnHtml()}`;
-  } else if(rocketUnlocked()){
-    rocketHtml=rocketReqRows(true);
-    if(rocketReady()) rocketHtml+=`<button class="full-btn launch" style="margin-top:6px" onclick="closeModal();launchRocket()">🚀 ${zd.launchLabel}</button>`;
-    rocketHtml+=milestonesHtml();
-  } else {
-    rocketHtml=`<div style="color:var(--text3);font-size:var(--f5)">Research ${TECHS[zd.rocketTech]?.name} to unlock.</div>`;
-  }
-
-  // Stats
-  const free=G.power.out-G.power.in;
-  let statsHtml=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:var(--f6)">
-      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <div style="color:var(--text3);font-size:var(--f4);margin-bottom:3px">ZONE</div>
-        <div style="color:var(--amber)">${G.zone} · ${zd.name}</div>
-      </div>
-      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <div style="color:var(--text3);font-size:var(--f4);margin-bottom:3px">POWER</div>
-        <div style="color:${free<0?'var(--red)':free<G.power.in*.2?'var(--amber)':'var(--green)'}">${fmt(G.power.out)}kW / ${fmt(G.power.in)}kW</div>
-      </div>
-      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <div style="color:var(--text3);font-size:var(--f4);margin-bottom:3px">MACHINES</div>
-        <div style="color:var(--text)">${G.stats.placed}</div>
-      </div>
-      <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <div style="color:var(--text3);font-size:var(--f4);margin-bottom:3px">RESEARCH</div>
-        <div style="color:var(--text)">${G.research.done.length}/${Object.keys(TECHS).length}</div>
-      </div>
-      ${zoneHas('smog')?`<div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border);grid-column:span 2">
-        <div style="color:var(--text3);font-size:var(--f4);margin-bottom:3px">SMOG</div>
-        <div class="prog-wrap" style="margin:4px 0"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
-        <div style="color:${(G.smog||0)>70?'var(--red)':(G.smog||0)>40?'var(--amber)':'var(--teal)'};">${Math.round(G.smog||0)}%, efficiency ${Math.round(100-(G.smog||0))}%</div>
-      </div>`:''}
-    </div>`;
-
-  // Achievements
-  let achieveHtml=`<div style="font-size:var(--f5);color:var(--text2)">${G.achievements.length} unlocked</div>`;
-
-  // Settings / audio
+  if(section&&MENU_ROUTES[section]){closeModal();MENU_ROUTES[section]();return;}
+  const zd=zoneDef(), pts=G.perks?.points||0;
+  const tiles=[
+    ['inventory','📦','INVENTORY',''],
+    ['perks','⭐','PERKS',pts||''],
+    ['achievements','🏆','AWARDS',`${G.achievements.length}/${ACHIEVEMENTS.length}`],
+    ['stats','📊','STATS',''],
+    ['recipes','📖','RECIPES',''],
+    ['blueprints','📐','BLUEPRINTS',''],
+    ['stardust','✨','STARDUST',PRESTIGE.stardust||''],
+    ['settings','⚙️','SETTINGS',''],
+    ['saves','💾','SAVES',''],
+    G.devMode?['dev','🛠','DEV','ON']:['devlock','🔒','DEV',''],
+  ];
+  const body=`<div class="menu-zone">
+      <div style="color:var(--amber);font-size:var(--f7)">ZONE ${G.zone} · ${zd.name.toUpperCase()}</div>
+      <div style="color:var(--text3);font-size:var(--f5);margin-top:4px">⚡ ${fmtKW(G.power.out)} · ${Object.keys(G.machines).length} machines · ${G.research.done.length}/${Object.keys(TECHS).length} research</div>
+    </div>
+    <div class="menu-grid">${tiles.map(([id,ic,label,badge])=>`<button class="menu-tile" onclick="openBigMenu('${id}')">
+      <span class="mt-ic">${ic}</span><span class="mt-lb">${label}</span>${badge!==''?`<span class="mt-badge">${badge}</span>`:''}</button>`).join('')}</div>`;
+  showModal('☰ MENU', body,
+    `<button class="btn btn-sm btn-red" onclick="quitToTitle()">QUIT</button>
+     <button class="btn btn-teal btn-sm" onclick="closeModal()">RESUME</button>`);
+}
+const backToMenu=`<button class="btn btn-sm" onclick="openBigMenu()">◀ MENU</button>`;
+function openSettings(){
   let settingsHtml=`
     <div style="display:flex;gap:8px;margin-bottom:6px">
       <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
         <span style="font-size:var(--f6);color:var(--text2)">🔊 SFX</span>
-        <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="G.sfx=!G.sfx;saveGame();openBigMenu()">${G.sfx?'ON':'OFF'}</button>
+        <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="G.sfx=!G.sfx;saveGame();openSettings()">${G.sfx?'ON':'OFF'}</button>
       </div>
       <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
         <span style="font-size:var(--f6);color:var(--text2)">🎵 Music</span>
@@ -6473,12 +6482,11 @@ function openBigMenu(section){
       <span style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
     </div>`;
 
-  settingsHtml+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
-      <span style="font-size:var(--f6);color:var(--text2)">🎨 Textures</span>
-      <button class="mini-btn teal" onclick="toggleTextures()">${TEX_PIXEL?'PIXEL ART':'EMOJI'}</button></div>`;
   settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
 
-  // Save slots
+  showModal('⚙️ SETTINGS',settingsHtml,backToMenu);
+}
+function openSaves(){
   let slotsHtml='';
   for(let s=1;s<=3;s++){
     const raw=localStorage.getItem(`ebi_save_slot${s}`);
@@ -6493,52 +6501,7 @@ function openBigMenu(section){
     </div>`;
   }
 
-  // Perks summary
-  const perkPts=G.perks?.points||0;
-  const perkOwned=Object.keys(G.perks?.spent||{}).length;
-  const perksHtml=`<div style="font-size:var(--f5);color:var(--text3);margin-bottom:6px;line-height:2">
-      <span style="color:var(--amber)">${perkPts} point${perkPts!==1?'s':''}</span> available · ${perkOwned}/${PERK_DEFS.length} unlocked
-    </div>
-    <button class="full-btn teal" onclick="closeModal();togglePanel('perks')">⭐ OPEN PERKS</button>`;
-
-  // Dev section
-  let devHtml='';
-  if(devMode){
-    devHtml=`<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">
-      <button class="mini-btn" style="border-color:var(--purple);color:var(--purple)" onclick="closeModal();togglePanel('dev')">🛠 OPEN DEV PANEL</button>
-    </div>`;
-  }
-
-  // Build sections with collapsible headers
-  function sec(id,label,content,open){
-    const isOpen=section===id||(!section&&open);
-    return `<div style="border:1px solid var(--border);margin-bottom:6px">
-      <div onclick="openBigMenu('${id}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg3);cursor:pointer;user-select:none">
-        <span style="font-size:var(--f6);color:var(--amber);letter-spacing:1px">${label}</span>
-        <span style="font-size:var(--f8);color:var(--text3)">${isOpen?'▲':'▼'}</span>
-      </div>
-      ${isOpen?`<div style="padding:10px">${content}</div>`:''}
-    </div>`;
-  }
-
-  const body=`
-    ${sec('inventory','📦 INVENTORY',invHtml,true)}
-    ${sec('rocket','🚀 ROCKET',rocketHtml,false)}
-    ${sec('perks',`⭐ PERKS${perkPts?` (${perkPts})`:''}`,perksHtml,false)}
-    ${sec('stats','📊 STATISTICS',statsHtml,false)}
-    ${sec('achievements','🏆 ACHIEVEMENTS',achieveHtml,false)}
-    ${sec('settings','⚙️ SETTINGS & AUDIO',settingsHtml,false)}
-    ${sec('stardust',`✨ STARDUST${PRESTIGE.stardust?` (${PRESTIGE.stardust})`:''}`,
-      `<div style="font-size:var(--f5);color:var(--text3);line-height:2;margin-bottom:6px">${PRESTIGE.bangs?`${PRESTIGE.bangs} Big Bang${PRESTIGE.bangs!==1?'s':''} · ✨ ${PRESTIGE.stardust} to spend`:'Trigger the Big Bang in Zone 5 to earn Stardust, permanent upgrades across runs.'}</div>
-       <button class="full-btn teal" onclick="openStardustShop()">✨ OPEN SHOP</button>`,false)}
-    ${sec('saves','💾 SAVE SLOTS',slotsHtml,false)}
-    ${devMode?sec('dev','🛠 DEV',devHtml,false):''}
-  `;
-
-  showModal('☰ MENU', body,
-    `<button class="btn btn-teal btn-sm" onclick="closeModal()">RESUME</button>
-     <button class="btn btn-sm btn-red" onclick="quitToTitle()">QUIT</button>`
-  );
+  showModal('💾 SAVE SLOTS',`<div style="font-size:var(--f5);color:var(--text3);margin-bottom:8px;line-height:2">The game also autosaves. Slots keep separate copies.</div>`+slotsHtml,backToMenu);
 }
 
 function saveToSlot(s){
@@ -6563,7 +6526,7 @@ function loadFromSlot(s){
     if(!G.zone)G.zone=1;
     migrateSave();
     G.power={out:0,in:0};
-    if(document.getElementById('modal')&&!document.getElementById('modal').classList.contains('hidden'))closeModal();
+    closeModal(); if(openPanel)closePanel(openPanel);
     startGame(false);
     toast(`Loaded slot ${s}`,'ok');
     backfillLaunchPerks();
@@ -6573,7 +6536,7 @@ function loadFromSlot(s){
 function deleteSlot(s){
   localStorage.removeItem(`ebi_save_slot${s}`);
   toast(`Slot ${s} deleted`,'ok');
-  openMenu();
+  openSaves();
 }
 
 function promptDevUnlock(){
@@ -6591,12 +6554,12 @@ function checkDevCode(){
   const code=(document.getElementById('devCodeInput')?.value||'').toUpperCase().trim();
   if(code==='BIGBANG'){
     G.devMode=true;
-    document.getElementById('btnDev').style.display='';
-    saveGame(); closeModal();
-    toast('🛠 Dev mode ON','ok');
+    updateSpeedBtn();
+    saveGame(); closeModal(); showPanel('dev');
+    toast('🛠 Dev mode ON. Tap ⏩ in the top bar to speed up','ok');
   } else if(code==='BIGBANGOFF'){
-    G.devMode=false;
-    document.getElementById('btnDev').style.display='none';
+    G.devMode=false; G.devTickSpeed=1; startTick();
+    updateSpeedBtn();
     if(openPanel==='dev')closePanel('dev');
     saveGame(); closeModal();
     toast('Dev mode OFF','');
@@ -6626,8 +6589,8 @@ function renderDevPanel(){
 
   // Tick speed
   html+=`<span class="sec-label" style="color:var(--purple)">SIMULATION</span>
-  <div style="display:flex;gap:4px;margin-bottom:10px">
-    ${[1,4,10,20].map(s=>`<button class="mini-btn ${tickSpeed===s?'amber':''}" onclick="setDevSpeed(${s})" style="${tickSpeed===s?'border-color:var(--amber);color:var(--amber)':''}">×${s}</button>`).join('')}
+  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">
+    ${DEV_SPEEDS.map(s=>`<button class="mini-btn ${tickSpeed===s?'amber':''}" onclick="setDevSpeed(${s})" style="${tickSpeed===s?'border-color:var(--amber);color:var(--amber)':''}">×${s}</button>`).join('')}
   </div>`;
 
   // Free crafting toggle
@@ -6671,10 +6634,20 @@ function renderDevPanel(){
 
 function setDevSpeed(s){
   G.devTickSpeed=s;
-  clearInterval(tickId);
-  tickId=setInterval(gameTick, Math.round(TICK_MS/s));
-  renderDevPanel();
+  startTick(); updateSpeedBtn();
+  if(openPanel==='dev')renderDevPanel();
   toast(`Sim speed ×${s}`,'ok');
+}
+function cycleDevSpeed(){
+  const i=DEV_SPEEDS.indexOf(G.devTickSpeed||1);
+  setDevSpeed(DEV_SPEEDS[(i+1)%DEV_SPEEDS.length]);
+}
+// The ⏩ button sits in the HUD whenever dev mode is on
+function updateSpeedBtn(){
+  const b=document.getElementById('btnSpeed'); if(!b)return;
+  b.style.display=G.devMode?'':'none';
+  b.textContent=`⏩×${G.devTickSpeed||1}`;
+  b.classList.toggle('on',(G.devTickSpeed||1)>1);
 }
 
 function toggleDevFreeCraft(){
@@ -6843,7 +6816,10 @@ function startGame(isNew){
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
   document.getElementById('wrap').getBoundingClientRect(); // force layout before canvas sizing
-  initCanvas(); setupInput(); switchTab('tools'); updateSelectBtn(); updateBuildHUD();
+  initCanvas(); setupInput();
+  activeTab=null; document.getElementById('tabDrawer').classList.remove('open');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  setTool('select'); updateSelectBtn(); updateBuildHUD(); updateSpeedBtn();
   G.power.out=0; G.power.in=0;
   const _pm=perkMult();
   for(const m of Object.values(G.machines)){

@@ -23,7 +23,7 @@ https://salvationbacon.github.io/8-Bit-Industry/
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v119` → `ebi-v120`) on every update
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v120` → `ebi-v121`) on every update
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open
@@ -31,7 +31,7 @@ https://salvationbacon.github.io/8-Bit-Industry/
 > Keep the icon filenames hyphenated (`icon-192.png`, not `icon192.png`): the manifest and service worker reference them by exact name.
 
 ## Dev mode
-Menu (☰) → 🔒 DEV → type `BIGBANG`
+☰ menu → 🔒 DEV tile → type `BIGBANG`, then tap ⏩ in the top bar to speed up (up to ×50)
 
 ## Version
-v1.3.0: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v1.4.0: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
