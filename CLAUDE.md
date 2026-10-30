@@ -9,7 +9,7 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.4.2, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Current build:** v1.5.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
 **Working file:** `index.html`, ~7,000 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
@@ -28,7 +28,7 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v122` |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v123` |
 | `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
@@ -63,6 +63,7 @@ Persists as `G.devMode`. The DEV tile then opens the dev panel, and a purple **�
 | `ebi_save` (`SAVE_KEY`) | Autosave, the full `G` |
 | `ebi_save_slot1..3` | Manual slots |
 | `ebi_prestige` (`PRESTIGE_KEY`) | Stardust, Big Bang count, owned Stardust upgrades, theme. **Never wiped** by resets or new games |
+| `ebi_prefs` (`PREFS_KEY`) | Display prefs per device: `{fps:30\|60, res:1..0.1}`. Not part of any save |
 
 - Autosave every 120 ticks (30s) and on place/remove, research, launch, perk purchase.
 - Saves go through `serializeG()`. It packs the map to one character per tile (`packMap`; a full Zone 5 map went from ~950 KB to ~36 KB), and `migrateSave()` unpacks it (`unpackMap` rebuilds machine tiles from `G.machines`). Old unpacked saves still load. It also drops transient per-tick keys (`TRANSIENT_KEYS`: `_net`, `_nets`, `_fluidStatus`). Fluid networks are circular and would break `JSON.stringify`.
@@ -147,6 +148,13 @@ All textures are procedural (`PIXEL SPRITES` section): `mkSpr(key,w,h,fn)` draws
 - **Every icon goes through `iconHtml(id,fallback)` (DOM) or `drawItem()` (canvas).** A new item needs an `ITEM_ART` entry; a new machine needs a `MACHINE_ART` function
 - Pixel art is the only style (the user removed the emoji toggle). Emoji remain only where no sprite exists: tools, techs, HUD gauges, menu tiles
 
+## Title screen & display prefs (v1.5.0)
+
+- **Living title screen** (`TITLE SCREEN` section, just above `CANVAS + RENDERER`): `#titleCanvas` sits behind a translucent `.title-card`. `buildTitleScene(zone,seed)` hand-lays one factory per zone from the game's own sprites (deposits, machines, belts with items, pipes). Scenes pan slowly and crossfade every `TITLE_SCENE_MS` (8s), and `#titleCaption` names the zone. It never touches `G`, so it runs before a save loads. `startTitleScene()` runs on load and in `quitToTitle()`; `stopTitleScene()` runs in `startGame()`. It is capped at 30fps.
+- **`PREFS`** (`ebi_prefs`): `fps` caps `startRender()` (30 or 60; about 8fps behind a modal; nothing while the tab is hidden). `res` (`RES_STEPS` 100% to 10%) multiplies `CANVAS_DPR` in `sizeCanvas()`, and the canvas switches to `image-rendering:pixelated`. ☰ Settings has FPS, RES and 🔋 SAVER (30fps + 50%). `setPref(k,v)` saves and applies. Sim speed never depends on these.
+- **Ground chunk cache:** floor and still deposits are baked once into `CHUNK`×`CHUNK` (16) tile canvases at 16px per tile (`groundChunk`). `draw()` blits those, then draws only `ANIM_RES` pool tiles per frame. The cache resets itself when `G.map`, the zone or the map size changes (load, zone change, `expandMap`); `invalidateChunks()` forces it. **Tile terrain must stay immutable after map generation**, or call `invalidateChunks()`.
+- **`setHtml(el,html)`** rewrites an element only when its markup changed. The HUD and every auto-refreshed panel use it.
+
 ## Design System
 
 ```css
@@ -213,6 +221,7 @@ Portrait is the default. **Landscape phones** (`orientation:landscape and max-he
 - **Hard power cutoff:** `powerRatio()` is 0 or 1. Stone and blast furnaces are power-immune.
 - Speed multiplier = power × perks × tier × modules × smog efficiency × life stage. Pumps (oil, brine, enzymes) also scale with tier.
 - Recipe progress bars use `m._dur` (the real cycle length), not `rec.time`.
+- The map render loop is frame-capped by `PREFS.fps`; never assume `draw()` runs every rAF.
 - Canvas animation uses the smooth clock `at = now/TICK_MS` inside `draw()`, never `G.tick` (which only steps 4×/s and speeds up at dev speed). Belt interpolation divides by `tickInterval()`; inserter timings use `insMs()`.
 
 ---

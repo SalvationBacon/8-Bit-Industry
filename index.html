@@ -53,8 +53,14 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 
 /* ── TITLE ── */
 #sTitle{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
-.title-grid{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent,transparent 47px,rgba(255,255,255,.012) 47px,rgba(255,255,255,.012) 48px),repeating-linear-gradient(0deg,transparent,transparent 47px,rgba(255,255,255,.012) 47px,rgba(255,255,255,.012) 48px)}
 .title-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 50% 35% at 50% 55%,rgba(245,166,35,.07) 0%,transparent 70%)}
+#titleCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+#titleCaption{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + var(--sab,0px));white-space:nowrap;padding:6px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.08);font-size:var(--f5);color:var(--amber);letter-spacing:3px;text-shadow:2px 2px 0 #000;pointer-events:none;transition:opacity .3s}
+#titleCaption:empty{display:none}
+.title-card{position:relative;text-align:center;padding:20px 18px 14px;width:min(92vw,380px);max-height:calc(100% - 70px);overflow-y:auto;background:rgba(10,10,10,.62);border:1px solid rgba(255,255,255,.08);box-shadow:0 0 0 4px rgba(0,0,0,.35),0 10px 40px rgba(0,0,0,.6);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.title-card .logo{margin-bottom:22px}.title-card .logo-icon{margin-bottom:8px}
+.title-card .tagline{line-height:2.2;margin-bottom:22px}.title-card .v-num{margin-top:16px;line-height:1.9}
+@media (orientation:landscape) and (max-height:600px){.title-card{padding:12px 16px 10px}.title-card .logo{margin-bottom:10px}.title-card .tagline{margin-bottom:12px}.title-card .v-num{margin-top:10px}.title-card .logo-icon{display:none}#titleCaption{bottom:6px}}
 .logo{position:relative;text-align:center;margin-bottom:44px}
 .logo-8{display:block;font-size:clamp(22px,8vw,36px);color:var(--amber);letter-spacing:6px;text-shadow:0 0 24px rgba(245,166,35,.5),3px 3px 0 #000;animation:flicker 5s infinite}
 .logo-rest{display:block;font-size:clamp(9px,3vw,13px);color:var(--text);letter-spacing:10px;margin-top:8px;text-shadow:2px 2px 0 #000}
@@ -359,9 +365,10 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 
 <!-- ══ TITLE ══ -->
 <div id="sTitle" class="screen">
-  <div class="title-grid"></div>
+  <canvas id="titleCanvas"></canvas>
   <div class="title-glow"></div>
-  <div style="position:relative;text-align:center">
+  <div id="titleCaption"></div>
+  <div class="title-card">
     <span class="logo-icon">🏭</span>
     <div class="logo">
       <span class="logo-8">8-BIT</span>
@@ -373,7 +380,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
       <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none">✨ STARDUST</button>
     </div>
-    <p class="v-num">v1.4.2 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.5.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -533,7 +540,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.4.2';
+const VER      = '1.5.0';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2044,6 +2051,217 @@ Object.assign(MACHINE_ART,{
 });
 
 // ═══════════════════════════════════════════════════
+//  DISPLAY PREFS (per device, not per save)
+// ═══════════════════════════════════════════════════
+// fps: frame cap for the map (30 or 60). res: render scale, 1 = full sharpness.
+// Lower values draw fewer pixels per frame, which is most of the battery cost.
+const PREFS_KEY='ebi_prefs';
+const RES_STEPS=[1,.75,.5,.35,.25,.1];
+const PREFS=(()=>{const d={fps:60,res:1};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
+function setPref(k,v){
+  PREFS[k]=v; savePrefs();
+  if(canvas)sizeCanvas();
+  if(G&&!document.getElementById('mOverlay').classList.contains('hidden'))openSettings();
+}
+function batterySaver(on){PREFS.fps=on?30:60;PREFS.res=on?.5:1;savePrefs();if(canvas)sizeCanvas();openSettings();}
+
+// ═══════════════════════════════════════════════════
+//  TITLE SCREEN: a living factory behind the menu
+//  Five handmade scenes (one per zone) built from the game's own sprites,
+//  slowly panning and crossfading every TITLE_SCENE_MS. Standalone: never
+//  touches G, so it runs before any save is loaded.
+// ═══════════════════════════════════════════════════
+const TITLE_SCENE_MS=8000, TITLE_FADE_MS=900;
+const TITLE={canvas:null,ctx:null,scene:null,order:[],idx:0,t0:0,raf:null,last:0,dpr:1};
+
+function titleRng(seed){let s=seed>>>0;return()=>{s=(s+0x6D2B79F5)>>>0;let t=Math.imul(s^(s>>>15),1|s);t^=t+Math.imul(t^(t>>>7),61|t);return((t^(t>>>14))>>>0)/4294967296;};}
+
+// Scene builder: deposits, machines, belt paths (with the items they carry), pipes
+function buildTitleScene(zone,seed){
+  const W=46,H=28, rnd=titleRng(seed);
+  const S={zone,w:W,h:H,res:[...Array(H)].map(()=>Array(W).fill(null)),mach:[],belts:[],pipes:[],fx:zone};
+  const dep=(r,x,y,w,h)=>{for(let j=y;j<y+h&&j<H;j++)for(let i=x;i<x+w&&i<W;i++)S.res[j][i]=r;};
+  const M=(type,x,y,dir=0)=>S.mach.push({type,x,y,dir,ph:Math.floor(rnd()*4)});
+  // Belt through corner points, carrying a cycle of items
+  const B=(pts,items)=>{
+    const path=[];
+    for(let k=0;k<pts.length-1;k++){
+      let[x,y]=pts[k]; const[x2,y2]=pts[k+1];
+      const dx=Math.sign(x2-x),dy=Math.sign(y2-y), dir=dx>0?0:dy>0?1:dx<0?2:3;
+      while(x!==x2||y!==y2){path.push({x,y,dir});x+=dx;y+=dy;}
+    }
+    const last=pts[pts.length-1], pd=path.length?path[path.length-1].dir:0;
+    path.push({x:last[0],y:last[1],dir:pd});
+    S.belts.push({path,items,speed:1.2+rnd()*.6});
+  };
+  const P=(x0,y0,x1,y1)=>{const dx=Math.sign(x1-x0),dy=Math.sign(y1-y0);let x=x0,y=y0;for(;;){S.pipes.push({x,y});if(x===x1&&y===y1)break;x+=dx;y+=dy;}};
+  const o=Math.floor(rnd()*3); // small layout jitter per visit
+  if(zone===1){
+    dep('iron_ore',2,3,8,5); dep('coal',2,11,6,4); dep('copper_ore',2,18,8,5); dep('stone',38,20,6,5);
+    for(const x of[3,5,7])M('miner',x,4); for(const x of[3,5,7])M('miner',x,6);
+    B([[2,8],[30,8]],['iron_ore','iron_ore','coal']);
+    for(let x=12;x<30;x+=3){M('inserter',x,7,3);M('stone_furnace',x,6);}
+    for(const x of[3,5])M('miner',x,12); B([[2,14],[11,14],[11,9]],['coal']);
+    M('blast_furnace',13,11);M('blast_furnace',16,11);M('blast_furnace',19,11);
+    B([[22,12],[31,12],[31,4],[44,4]],['iron_plate','iron_plate','steel_plate']);
+    M('assembler',32+o,6);M('assembler',35+o,6);M('assembler',32+o,9);M('assembler',35+o,9);
+    M('lab',39,6);M('lab',39,9);M('lab',42,6);
+    for(const x of[3,5,7])M('miner',x,19); B([[2,22],[24,22],[24,15],[44,15]],['copper_ore','copper_plate','copper_wire']);
+    M('assembler',26,17);M('assembler',29,17);M('assembler',32,17);M('chest',35,16);M('chest',36,16);
+    M('generator',13,24);M('generator',16,24);M('generator',19,24);M('burner',22,24);M('burner',23,24);
+    B([[38,23],[26,23],[26,26],[12,26]],['stone','stone_brick']);
+  } else if(zone===2){
+    dep('oil',2,3,9,7); dep('oil',2,16,9,7); dep('iron_ore',36,20,7,5); dep('coal',28,22,5,4);
+    for(const[x,y]of[[2,3],[5,3],[8,3],[2,6],[5,6],[8,6]])M('oil_pump',x,y);
+    for(const[x,y]of[[2,16],[5,16],[8,16],[2,19],[5,19]])M('oil_pump',x,y);
+    B([[2,11],[20,11],[20,5],[30,5]],['crude_oil','raw_fuel']);
+    B([[2,24],[20,24],[20,14],[30,14]],['crude_oil','plastic']);
+    M('cracker',22,7);M('cracker',25,7);M('cracker',22,15+o);M('cracker',25,15+o);
+    M('refinery',29,8);M('refinery',32,8);B([[28,10],[44,10]],['raw_fuel','plastic','refined_fuel']);
+    M('combustion_gen',35,3);M('combustion_gen',38,3);M('combustion_gen',41,3);
+    for(const x of[35,36,37,38,39,40])M('scrubber',x,12);
+    M('assembler',30,17);M('assembler',33,17);M('lab',36,17);M('lab',39,17);
+    B([[30,20],[44,20]],['polymer_sheet','sci_smog','sci_scar']);
+  } else if(zone===3){
+    dep('brine',2,3,8,5); dep('brine',2,19,8,5); dep('quartz',16,21,9,5); dep('rare_earth',32,22,8,4); dep('radiant_dust',40,3,4,3);
+    M('brine_pump',2,3);M('brine_pump',4,3);M('brine_pump',6,3);M('brine_pump',2,19);M('brine_pump',4,19);
+    P(8,4,34,4); P(34,4,34,13); P(6,21,12,21); P(12,21,12,9); P(12,9,20,9);
+    M('fluid_tank',10,5);M('fluid_tank',14,5);
+    M('evaporator',17,5);M('evaporator',20,5);M('evaporator',23,5);M('rod_press',26,5);M('separator',35,6);M('separator',35,9);
+    for(let i=0;i<4;i++)for(let j=0;j<2;j++)M('lumen_panel',14+i*2,11+j*2);
+    for(let i=0;i<5;i++)M('accumulator',23+i,12);M('relief_valve',30,4+0*o);
+    for(const x of[17,19,21,23])M('miner',x,22);
+    B([[16,24],[30,24],[30,17],[44,17]],['quartz','silicon','quartz']);
+    M('electric_smelter',36,13);M('electric_smelter',39,13);M('lab',42,13);
+  } else if(zone===4){
+    dep('enzymes',2,3,8,5); dep('enzymes',2,19,7,5); dep('biomass',15,21,9,5); dep('spores',28,22,6,4); dep('luminite',38,3,6,5);
+    M('enzyme_pump',2,3);M('enzyme_pump',4,3);M('enzyme_pump',6,3);M('enzyme_pump',2,19);
+    P(8,4,24,4); P(4,18,4,9); P(4,9,12,9);
+    M('algae_vat',12,5);M('algae_vat',15,5);M('algae_vat',18,5);M('hyper_synth',21,5);
+    M('bioreactor',12,10);M('bioreactor',15,10);M('spore_incubator',18,10);M('spore_incubator',21,10);
+    M('reactor',30,9);for(const[x,y]of[[29,9],[29,10],[29,11],[33,9],[33,10],[33,11],[30,8],[31,8],[32,8]])M('heat_sink',x,y);
+    for(const x of[38,40,42])M('miner',x,4);B([[38,8],[38,13],[24,13]],['luminite','lum_crystal']);
+    for(const x of[16,18,20,22])M('miner',x,22);
+    B([[15,25],[27,25],[27,16],[44,16]],['biomass','algae','bio_oil','nutrient']);
+    M('assembler',36,18);M('assembler',39,18);M('lab',42,18);
+  } else {
+    dep('iron_ore',2,2,6,4); dep('oil',2,22,7,5); dep('brine',38,2,6,4); dep('luminite',38,22,6,5); dep('biomass',20,24,6,3);
+    M('singularity',18,8);
+    for(const[x,y]of[[4,8],[4,13],[39,8],[39,13]])M('reactor',x,y);
+    for(const[x,y]of[[3,8],[3,9],[3,13],[3,14],[42,8],[42,9],[42,13],[42,14]])M('heat_sink',x,y);
+    for(const[x,y]of[[10,4],[13,4],[30,4],[33,4],[10,20],[13,20],[30,20],[33,20]])M('assembler',x,y);
+    B([[8,7],[16,7],[16,12],[17,12]],['grav_lens','stellar_casing']);
+    B([[37,7],[30,7],[30,13],[28,13]],['void_engine','quantum_mind']);
+    B([[8,19],[16,19],[16,16],[17,16]],['hyperfuel','lattice_core']);
+    for(const x of[3,5])M('miner',x,3);
+  }
+  return S;
+}
+
+function titleGround(S){
+  const c=document.createElement('canvas'); c.width=S.w*16; c.height=S.h*16;
+  const g=c.getContext('2d');
+  for(let y=0;y<S.h;y++)for(let x=0;x<S.w;x++){
+    const r=S.res[y][x], v=(x*7+y*13)&3;
+    g.drawImage(r?resSpr(r,v,0):groundSpr(S.zone,v),x*16,y*16);
+  }
+  return c;
+}
+
+function startTitleScene(){
+  TITLE.canvas=document.getElementById('titleCanvas'); if(!TITLE.canvas)return;
+  TITLE.ctx=TITLE.canvas.getContext('2d');
+  if(!TITLE.order.length){TITLE.order=[1,2,3,4,5];TITLE.idx=Math.floor(Math.random()*5);}
+  nextTitleScene(performance.now());
+  if(!TITLE.raf)TITLE.raf=requestAnimationFrame(titleLoop);
+}
+function stopTitleScene(){if(TITLE.raf)cancelAnimationFrame(TITLE.raf);TITLE.raf=null;}
+function nextTitleScene(now){
+  const zone=TITLE.order[TITLE.idx%TITLE.order.length]; TITLE.idx++;
+  const S=buildTitleScene(zone,(Math.random()*1e9)|0);
+  S.ground=titleGround(S);
+  S.dir=Math.random()<.5?1:-1; S.cam0=Math.random()*.6;
+  TITLE.scene=S; TITLE.t0=now;
+  const cap=document.getElementById('titleCaption');
+  if(cap)cap.textContent=`ZONE ${zone} · ${ZONES[zone].name.toUpperCase()}`;
+}
+function titleLoop(t){
+  TITLE.raf=requestAnimationFrame(titleLoop);
+  if(document.hidden)return;
+  if(t-TITLE.last<1000/Math.min(30,PREFS.fps)-4)return; // the title never needs more than 30fps
+  TITLE.last=t;
+  if(t-TITLE.t0>TITLE_SCENE_MS)nextTitleScene(t);
+  drawTitle(t);
+}
+function drawTitle(t){
+  const cv=TITLE.canvas, g=TITLE.ctx, S=TITLE.scene; if(!cv||!S)return;
+  const dpr=Math.min(2,window.devicePixelRatio||1)*PREFS.res;
+  const cw=cv.clientWidth, ch=cv.clientHeight;
+  if(cv.width!==Math.round(cw*dpr)||cv.height!==Math.round(ch*dpr)){cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);}
+  g.setTransform(dpr,0,0,dpr,0,0); g.imageSmoothingEnabled=false;
+  const el=t-TITLE.t0, k=el/TITLE_SCENE_MS;
+  // tile size: the scene always fills the screen height with a little room to pan
+  const ts=Math.max(24,Math.ceil(ch/(S.h-2)));
+  const worldW=S.w*ts, worldH=S.h*ts;
+  const span=Math.max(0,worldW-cw);
+  const camX=span*Math.min(1,S.cam0+.4*(S.dir>0?k:1-k));
+  const camY=Math.max(0,(worldH-ch)/2+Math.sin(k*Math.PI)*ts*.6);
+  g.fillStyle='#0d0d0d'; g.fillRect(0,0,cw,ch);
+  g.drawImage(S.ground,-camX,-camY,worldW,worldH);
+  const fr=Math.floor(t/140)&3;
+  // animated deposits on top of the cached ground
+  for(let y=0;y<S.h;y++)for(let x=0;x<S.w;x++){
+    const r=S.res[y][x]; if(!r||!ANIM_RES.has(r))continue;
+    const px=x*ts-camX, py=y*ts-camY; if(px<-ts||py<-ts||px>cw||py>ch)continue;
+    g.drawImage(resSpr(r,(x*7+y*13)&3,Math.floor(t/750)),Math.floor(px),Math.floor(py),Math.ceil(ts)+1,Math.ceil(ts)+1);
+  }
+  for(const p of S.pipes)g.drawImage(machineSpr('pipe',fr,true),Math.floor(p.x*ts-camX),Math.floor(p.y*ts-camY),Math.ceil(ts),Math.ceil(ts));
+  // belts and the items riding them
+  for(const b of S.belts){
+    for(const c of b.path){
+      const px=c.x*ts-camX+ts/2, py=c.y*ts-camY+ts/2;
+      g.save(); g.translate(px,py); g.rotate(c.dir*Math.PI/2);
+      g.drawImage(beltSpr(Math.floor(t/1000*b.speed*8)&3),-ts/2,-ts/2,ts+.5,ts+.5); g.restore();
+    }
+    const L=b.path.length, off=(t/1000*b.speed)%0.5;
+    for(let s=off,i=0;s<L-1;s+=0.5,i++){
+      const c=b.path[Math.floor(s)], f=s-Math.floor(s), [dx,dy]=D_VEC[c.dir];
+      drawItem(g,b.items[(i+Math.floor(t/1000*b.speed*2))%b.items.length],c.x*ts-camX+ts/2+dx*(f-.5)*ts,c.y*ts-camY+ts/2+dy*(f-.5)*ts,ts*.42);
+    }
+  }
+  // machines, always working
+  for(const m of S.mach){
+    const[w,h]=MDEFS[m.type].size, px=m.x*ts-camX, py=m.y*ts-camY;
+    if(px>cw||py>ch||px+w*ts<0||py+h*ts<0)continue;
+    const spr=machineSpr(m.type,(fr+m.ph)&3,true);
+    if(m.type==='inserter'){g.save();g.translate(px+ts/2,py+ts/2);g.rotate((m.dir+1)*Math.PI/2);g.drawImage(spr,-ts/2,-ts/2,ts,ts);g.restore();continue;}
+    g.drawImage(spr,Math.floor(px),Math.floor(py),Math.ceil(w*ts),Math.ceil(h*ts));
+    if(m.type==='singularity'){
+      const cx=px+w*ts/2, cy=py+h*ts/2, R=w*ts*.42, sp=(Math.sin(t/1600)+1)/2, rot=t/400*(1+sp*3);
+      g.lineWidth=Math.max(2,ts*.12); g.strokeStyle='#ab47bc'; g.beginPath(); g.arc(cx,cy,R,0,Math.PI*2); g.stroke();
+      for(let q=0;q<3;q++){g.strokeStyle=`rgba(179,136,255,${.4+.5*sp})`;g.lineWidth=Math.max(1.5,ts*.06);g.beginPath();g.arc(cx,cy,R*(.75-q*.2)*(1-sp*.3),rot+q*2.1,rot+q*2.1+Math.PI*.9);g.stroke();}
+    }
+  }
+  // zone atmosphere
+  if(S.fx===2){g.fillStyle='rgba(40,30,0,.16)';g.fillRect(0,0,cw,ch);
+    for(let i=0;i<14;i++){const x=((i*173+t*.012*(1+i%3))%(cw+120))-60,y=(i*97)%ch;g.fillStyle='rgba(90,70,20,.10)';g.beginPath();g.arc(x,y,30+(i%4)*14,0,Math.PI*2);g.fill();}}
+  if(S.fx===3){g.fillStyle='rgba(0,10,20,.25)';g.fillRect(0,0,cw,ch);}
+  if(S.fx===3||S.fx===4||S.fx===5){
+    const col=S.fx===3?'127,219,255':S.fx===4?'198,255,0':'200,160,255';
+    for(let i=0;i<26;i++){const x=(i*211+Math.sin(t/1700+i)*40+cw)%cw, y=(i*137+t*.008*(i%5+1))%ch;
+      g.fillStyle=`rgba(${col},${.25+.35*((Math.sin(t/500+i)+1)/2)})`;g.fillRect(Math.floor(x),Math.floor(ch-y),2,2);}
+  }
+  // vignette so the menu stays readable, then the scene crossfade
+  const vg=g.createRadialGradient(cw/2,ch*.45,Math.min(cw,ch)*.2,cw/2,ch*.45,Math.max(cw,ch)*.75);
+  vg.addColorStop(0,'rgba(0,0,0,.25)'); vg.addColorStop(1,'rgba(0,0,0,.85)');
+  g.fillStyle=vg; g.fillRect(0,0,cw,ch);
+  const fade=el<TITLE_FADE_MS?1-el/TITLE_FADE_MS:el>TITLE_SCENE_MS-TITLE_FADE_MS?(el-(TITLE_SCENE_MS-TITLE_FADE_MS))/TITLE_FADE_MS:0;
+  if(fade>0){g.fillStyle=`rgba(0,0,0,${Math.min(1,fade)})`;g.fillRect(0,0,cw,ch);}
+  const cap=document.getElementById('titleCaption'); if(cap)cap.style.opacity=String(Math.max(0,1-fade*1.5));
+}
+
+// ═══════════════════════════════════════════════════
 //  CANVAS + RENDERER
 // ═══════════════════════════════════════════════════
 let canvas, ctx, rafId;
@@ -2056,6 +2274,33 @@ const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a
   biomass:'#1f4a1a',spores:'#4a2a4a',luminite:'#1a3a4a',enzymes:'#3a4a0d'};
 const FLUID_COL={brine:'#7fdbff',enzymes:'#c6ff00'};
 const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',long_inserter:'#26c6a0',chest:'#7d5a3c',oil_pump:'#5a4a2a',cracker:'#8b5e3c',refinery:'#6b4226',combustion_gen:'#e67e22',scrubber:'#2e7d52'};
+
+// ── Ground chunk cache ──
+// Floor and still deposits never change after the map is built, so they are drawn
+// once into 16×16-tile canvases (16px per tile) and blitted as a few big images per
+// frame instead of thousands of tiles. Only animated pools are drawn per tile.
+const CHUNK=16;
+const ANIM_RES=new Set(['oil','brine','enzymes','luminite','radiant_dust']);
+const chunkCache={key:'',map:null,c:new Map()};
+function invalidateChunks(){chunkCache.c.clear();chunkCache.key='';}
+function groundChunk(cx,cy){
+  const key=`${G.zone}:${MAP_W}x${MAP_H}`;
+  if(chunkCache.map!==G.map||chunkCache.key!==key){chunkCache.c.clear();chunkCache.map=G.map;chunkCache.key=key;}
+  const id=cy*1000+cx;
+  let ch=chunkCache.c.get(id);
+  if(ch)return ch;
+  const cv=document.createElement('canvas'); cv.width=cv.height=CHUNK*16;
+  const g=cv.getContext('2d'), anim=[];
+  for(let y=0;y<CHUNK;y++)for(let x=0;x<CHUNK;x++){
+    const tx=cx*CHUNK+x, ty=cy*CHUNK+y; if(tx>=MAP_W||ty>=MAP_H)continue;
+    const tile=G.map[ty][tx], v=(tx*7+ty*13)&3, res=tile.type===T_RESOURCE?tile.res:null;
+    g.drawImage(res?resSpr(res,v,0):groundSpr(G.zone,v),x*16,y*16);
+    if(res&&ANIM_RES.has(res))anim.push(tx,ty);
+  }
+  ch={cv,anim};
+  chunkCache.c.set(id,ch);
+  return ch;
+}
 
 function initCanvas(){
   canvas=document.getElementById('canvas');
@@ -2070,7 +2315,8 @@ function initCanvas(){
 let CANVAS_DPR=1;
 function sizeCanvas(){
   const w=document.getElementById('wrap');
-  CANVAS_DPR=Math.min(2,window.devicePixelRatio||1);
+  CANVAS_DPR=Math.min(2,window.devicePixelRatio||1)*PREFS.res;
+  canvas.style.imageRendering=PREFS.res<1?'pixelated':'';
   canvas.width=Math.round(w.clientWidth*CANVAS_DPR); canvas.height=Math.round(w.clientHeight*CANVAS_DPR);
   canvas.style.width=w.clientWidth+'px'; canvas.style.height=w.clientHeight+'px';
   layoutOverlays();
@@ -2090,9 +2336,20 @@ function watchWrap(){
   wrapObserver=new ResizeObserver(()=>{if(canvas)sizeCanvas();});
   wrapObserver.observe(document.getElementById('wrap'));
 }
+// Frame-capped render loop: PREFS.fps while playing, ~8fps behind a modal
+// (the map is dimmed anyway), nothing while the tab is hidden
+let lastFrameMs=0;
 function startRender(){
   if(rafId)cancelAnimationFrame(rafId);
-  (function loop(){draw();rafId=requestAnimationFrame(loop);})();
+  const ov=document.getElementById('mOverlay');
+  (function loop(t){
+    rafId=requestAnimationFrame(loop);
+    if(document.hidden)return;
+    const cap=ov.classList.contains('hidden')?PREFS.fps:8;
+    if(t&&t-lastFrameMs<1000/cap-4)return;
+    lastFrameMs=t||performance.now();
+    draw();
+  })();
 }
 
 // Port layout per machine type:
@@ -2194,44 +2451,20 @@ function draw(){
   const x1=Math.min(MAP_W,Math.ceil((cx+W)/ts));
   const y1=Math.min(MAP_H,Math.ceil((cy+H)/ts));
 
-  // Tiles
+  // Ground: cached chunks, then animated pools on top
+  const cs=CHUNK*ts, af=Math.floor(at/3), tss=Math.ceil(ts)+1;
+  for(let cy2=Math.floor(y0/CHUNK);cy2*CHUNK<y1;cy2++) for(let cx2=Math.floor(x0/CHUNK);cx2*CHUNK<x1;cx2++){
+    const ch=groundChunk(cx2,cy2);
+    const ax=Math.floor(cx2*cs-cx), ay=Math.floor(cy2*cs-cy);
+    ctx.drawImage(ch.cv,ax,ay,Math.floor((cx2+1)*cs-cx)-ax+1,Math.floor((cy2+1)*cs-cy)-ay+1);
+    for(let k=0;k<ch.anim.length;k+=2){
+      const tx=ch.anim[k], ty=ch.anim[k+1]; if(tx<x0||tx>=x1||ty<y0||ty>=y1)continue;
+      ctx.drawImage(resSpr(G.map[ty][tx].res,(tx*7+ty*13)&3,af),Math.floor(tx*ts-cx),Math.floor(ty*ts-cy),tss,tss);
+    }
+  }
   for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
     const px=tx*ts-cx, py=ty*ts-cy;
     const tile=G.map[ty][tx];
-    const pxs=Math.floor(px), pys=Math.floor(py), tss=Math.ceil(ts)+1; // whole pixels, no seams
-    if(TEX_PIXEL){
-      const v=(tx*7+ty*13)&3;
-      ctx.drawImage(tile.type===T_RESOURCE?resSpr(tile.res,v,Math.floor(at/3)):groundSpr(G.zone,v),pxs,pys,tss,tss);
-    } else {
-      ctx.fillStyle='#111'; ctx.fillRect(px,py,ts,ts);
-      ctx.strokeStyle='#161616'; ctx.lineWidth=1; ctx.strokeRect(px,py,ts,ts);
-    }
-
-    if(!TEX_PIXEL&&tile.type===T_RESOURCE){
-      ctx.fillStyle=RES_COL[tile.res]||'#333';
-      ctx.globalAlpha=.6; ctx.fillRect(px+1,py+1,ts-2,ts-2); ctx.globalAlpha=1;
-      // Oil deposit, draw dark bubbling texture
-      if(tile.res==='oil'&&ts>10){
-        ctx.fillStyle='#0d0800';
-        ctx.globalAlpha=.85; ctx.fillRect(px+1,py+1,ts-2,ts-2); ctx.globalAlpha=1;
-        if(ts>16){
-          // Draw oil slick shimmer dots
-          const dotR=Math.max(1,ts*.06);
-          const positions=[[.3,.3],[.65,.45],[.45,.7],[.75,.25],[.2,.65]];
-          for(const[rx,ry]of positions){
-            ctx.beginPath(); ctx.arc(px+rx*ts,py+ry*ts,dotR,0,Math.PI*2);
-            ctx.fillStyle='#3a2a00'; ctx.globalAlpha=.8; ctx.fill(); ctx.globalAlpha=1;
-          }
-          ctx.font=`${Math.floor(ts*.38)}px serif`;
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText('🛢️',px+ts/2,py+ts/2);
-        }
-      } else if(ts>16){
-        ctx.font=`${Math.floor(ts*.43)}px serif`;
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText(ITEMS[tile.res]?.icon||'?',px+ts/2,py+ts/2);
-      }
-    }
 
     // MineTap active tile highlight, show tap progress as pips
     if(mineTap.active&&mineTap.tx===tx&&mineTap.ty===ty&&ts>8){
@@ -4371,6 +4604,13 @@ function returnItem(srcTile,item){
 // ═══════════════════════════════════════════════════
 const HUD_ITEMS=['iron_ore','iron_plate','copper_plate','iron_gear','circuit','sci_red','coal'];
 
+// Rewrite an element only when its markup changed (the UI refreshes 4-5×/s;
+// identical rewrites cost layout and battery, and reset scroll and focus)
+function setHtml(el,html){
+  if(!el)return;
+  if(el._html===html&&el.firstChild===el._first)return;
+  el.innerHTML=html; el._html=html; el._first=el.firstChild;
+}
 function updateHUD(){
   const el=document.getElementById('hudRes');
   const free=G.power.out-G.power.in;
@@ -4378,7 +4618,7 @@ function updateHUD(){
   const pwrLabel=hasConsumers?(free>=0?`+${fmtKW(free)}`:`-${fmtKW(-free)}`):fmtKW(G.power.out);
   let html=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   html+=hudHazardsHtml();
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 // Zone hazard gauges shown next to power in the HUD
@@ -4761,7 +5001,7 @@ function renderInvPanel(){
     html+='</div>';
   }
   if(!html)html=`<div style="color:var(--text3);font-size:var(--f6);text-align:center;padding:20px;line-height:2.2">Nothing yet.<br>Tap any ore deposit on the map to mine.</div>`;
-  document.getElementById('pInvBody').innerHTML=html;
+  setHtml(document.getElementById('pInvBody'),html);
 }
 
 // ── Hand Craft Panel ───────────────────────────────
@@ -4834,7 +5074,7 @@ function renderCraftPanel(){
       </div>
     </div>`;
   }
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 function startCraft(id){
@@ -5144,7 +5384,7 @@ function renderMachPanel(){
     <button class="mini-btn red" style="flex:1" onclick="tryRemove(${m.x},${m.y})">REMOVE</button>
   </div>`;
 
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 // Pipe network, pump, accumulator and lumen details for the machine panel
@@ -5372,7 +5612,7 @@ function renderBlueprintPanel(){
       </div>`;
     }
   }
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 function ejectBuf(id){
@@ -5457,7 +5697,7 @@ function renderResPanel(){
       </div>`;
     }
   }
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 function doResearch(id){
@@ -5544,7 +5784,7 @@ function renderRocketPanel(){
     </div>`;
   }
   html+='</div>';
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 // Zone hazard summary for the rocket panel
@@ -5904,7 +6144,7 @@ function renderStatsPanel(){
     }
   }
 
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 // Selection count in the multi-select bar
@@ -6215,7 +6455,7 @@ function renderAchievePanel(){
       </div>`;
     }
   }
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 function renderRecipesPanel(){
@@ -6259,7 +6499,7 @@ function renderRecipesPanel(){
     }
   }
   if(!html)html='<div style="font-size:var(--f6);color:var(--text3);text-align:center;padding:12px">No recipes yet.</div>';
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 // ═══════════════════════════════════════════════════
@@ -6578,6 +6818,13 @@ function openSettings(){
       <span id="musicVolLabel" style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
     </div>`;
 
+  const saver=PREFS.fps===30&&PREFS.res===.5;
+  const row=(label,btns)=>`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px"><span style="font-size:var(--f6);color:var(--text2);min-width:62px">${label}</span>${btns}</div>`;
+  settingsHtml+=row('🎞️ FPS',[30,60].map(f=>`<button class="mini-btn ${PREFS.fps===f?'amber':'dim'}" onclick="setPref('fps',${f})">${f}</button>`).join(''));
+  settingsHtml+=row('🖼️ RES',RES_STEPS.map(r=>`<button class="mini-btn ${PREFS.res===r?'amber':'dim'}" onclick="setPref('res',${r})">${Math.round(r*100)}%</button>`).join(''));
+  settingsHtml+=row('🔋 SAVER',`<button class="mini-btn ${saver?'teal':'dim'}" onclick="batterySaver(${!saver})">${saver?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">30 FPS + 50% resolution</span>`);
+  settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
+
   settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
 
   showModal('⚙️ SETTINGS',settingsHtml,backToMenu);
@@ -6725,7 +6972,7 @@ function renderDevPanel(){
   <button class="full-btn" style="border-color:var(--purple);color:var(--purple)" onclick="devCompleteZone()">UNLOCK ZONE TECHS + GIVE LAUNCH PARTS</button>
   <button class="full-btn" style="border-color:var(--red);color:var(--red);margin-top:4px" onclick="devReset()">RESET SAVE (new game)</button>`;
 
-  el.innerHTML=html;
+  setHtml(el,html);
 }
 
 function setDevSpeed(s){
@@ -6859,7 +7106,7 @@ function quitToTitle(){
   rafId=null; tickId=null;
   document.getElementById('sGame').classList.add('hidden');
   document.getElementById('sTitle').classList.remove('hidden');
-  buildTitleSlots();
+  buildTitleSlots(); startTitleScene();
 }
 
 // ═══════════════════════════════════════════════════
@@ -6935,6 +7182,7 @@ function newGame(){
 }
 
 function startGame(isNew){
+  stopTitleScene();
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
@@ -6987,7 +7235,7 @@ function startGame(isNew){
 window.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
-  buildTitleSlots();
+  buildTitleSlots(); startTitleScene();
   document.addEventListener('contextmenu',e=>e.preventDefault());
 });
 </script>
