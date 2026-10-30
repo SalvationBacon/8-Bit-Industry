@@ -180,6 +180,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .mini-btn.teal:hover{background:rgba(38,198,160,.1)}
 .mini-btn.red{border-color:var(--red);color:var(--red)}
 .mini-btn.red:hover{background:rgba(229,57,53,.1)}
+.bk-area{width:100%;height:110px;resize:vertical;background:var(--bg);color:var(--teal);border:1px solid var(--border2);font-family:monospace;font-size:11px;padding:6px;word-break:break-all;margin-bottom:8px}
 .full-btn{min-height:44px;width:100%;font-family:var(--font);font-size:var(--f6);padding:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;margin-bottom:5px;text-align:left}
 .full-btn.amber{border-color:var(--amber);color:var(--amber)}
 .full-btn.amber:hover{background:rgba(245,166,35,.08)}
@@ -254,6 +255,8 @@ body.sheet-open #tutMini{display:block}
 #buildRotateBtn{border:2px solid var(--amber);color:var(--amber)}
 #buildConfirmBtn{border:2px solid var(--teal);color:var(--teal)}
 #buildCancelBtn{border:1px solid var(--border2);color:var(--text2)}
+#undoBtn{position:fixed;right:calc(var(--cr) + 10px);bottom:calc(var(--cb) + 70px);z-index:601;width:52px;height:52px;border-radius:50%;border:2px solid var(--amber);background:rgba(13,13,13,.92);color:var(--amber);font-family:var(--font);font-size:20px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+#undoBtn #undoCount{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 3px;border-radius:9px;background:var(--amber);color:#000;font-size:var(--f4);line-height:18px}
 #ghostBar{position:fixed;left:var(--cl);right:var(--cr);bottom:var(--cb);background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:8px 12px;display:flex;align-items:center;gap:8px;z-index:600}
 #ghostBar button{font-family:var(--font);font-size:var(--f7);padding:12px 18px;cursor:pointer;min-height:44px}
 #multiselBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600}
@@ -379,8 +382,12 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
       <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none">✨ STARDUST</button>
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none">📲 INSTALL</button>
+        <button class="btn btn-sm" onclick="openBackup()" style="flex:1">🛟 BACKUP</button>
+      </div>
     </div>
-    <p class="v-num">v1.5.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.6.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -396,6 +403,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <div id="toolTip" class="hidden"></div>
   </div>
   <!-- Build mode controls, fixed, outside canvas touch zone, same pattern as ghostBar -->
+  <button id="undoBtn" class="hidden" onclick="undoLast()" title="Undo">↶<span id="undoCount"></span></button>
   <div id="buildHUD" class="hidden">
     <button id="buildRotateBtn" onclick="cycleDir()" style="display:none">↻ →</button>
     <button id="buildConfirmBtn" onclick="confirmPlace()" style="display:none">✓ PLACE</button>
@@ -540,7 +548,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.5.0';
+const VER      = '1.6.0';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -564,7 +572,14 @@ function ac() {
   return _ac;
 }
 
+// Short vibrations matched to the sound effects (Android; iPhone browsers have no vibration API)
+const HAPTICS={tap:8,place:14,remove:[16,30,16],craft:12,research:[20,40,30],launch:[60,40,140],error:[30,40,30]};
+function haptic(type){
+  if(PREFS.haptics===false||!navigator.vibrate)return;
+  const pat=HAPTICS[type]; if(pat)try{navigator.vibrate(pat);}catch(e){}
+}
 function sfx(type) {
+  haptic(type);
   if (!G || !G.sfx) return;
   try {
     const ctx = ac();
@@ -738,9 +753,11 @@ function toggleSfxMenu(){
 }
 
 // Visibility change, pause/resume music
+// and save, so swiping the app away never loses the last 30 seconds
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){
     musicStop();
+    if(G&&tickId)saveGame();
   } else {
     if(G&&G.music&&_music&&!_music.running) musicStart();
   }
@@ -1847,6 +1864,33 @@ function beltSpr(fr){
   });
 }
 
+// Belt corner, drawn for a belt facing right. turn 1: fed from the top; turn 3: fed from the bottom.
+// Each pixel takes the straight tread's colour by its radius (across the belt) and angle (along it),
+// so rails, ridges and the amber studs line up with the straight belts on both sides.
+function beltCornerSpr(fr,turn){
+  return mkSpr(`beltc:${turn}:${fr}`,16,16,({P})=>{
+    const cy=turn===1?0:16;
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+      const dx=x+.5-16, dy=y+.5-cy, r=Math.hypot(dx,dy); if(r>=16)continue;
+      const ang=Math.atan2(dy,dx);
+      const along=Math.floor((turn===1?Math.PI-ang:ang+Math.PI)/(Math.PI/2)*16);
+      const yv=turn===1?Math.floor(r):15-Math.floor(r);
+      let c='#2b2b2b';
+      if(yv===0||yv===15)c='#0e0e0e';
+      else if(yv===1)c=((along-2-fr*2)%8+8)%8===0?'#f5a623':'#5a5a5a';
+      else if(yv===14)c='#5a5a5a';
+      else if(yv>=3&&yv<=12&&(along+fr)%4===0)c='#3c3c3c';
+      P(x,y,c);
+    }
+  });
+}
+// Where an item sits on a belt tile at progress p (0 entering, 1 leaving), in tiles from the centre
+function beltItemPos(dir,turn,p){
+  let u=p-.5,v=0;
+  if(turn){const s=turn===1?-1:1, a=Math.PI+s*p*Math.PI/2; u=.5+.5*Math.cos(a); v=s*.5+.5*Math.sin(a);}
+  return [[u,v],[-v,u],[-u,-v],[v,-u]][dir];
+}
+
 // ── Items: shape templates + colours ──
 const ITEM_ART={
   // raw
@@ -2057,7 +2101,7 @@ Object.assign(MACHINE_ART,{
 // Lower values draw fewer pixels per frame, which is most of the battery cost.
 const PREFS_KEY='ebi_prefs';
 const RES_STEPS=[1,.75,.5,.35,.25,.1];
-const PREFS=(()=>{const d={fps:60,res:1};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+const PREFS=(()=>{const d={fps:60,res:1,haptics:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
 function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
@@ -2093,6 +2137,7 @@ function buildTitleScene(zone,seed){
     }
     const last=pts[pts.length-1], pd=path.length?path[path.length-1].dir:0;
     path.push({x:last[0],y:last[1],dir:pd});
+    for(let i=1;i<path.length;i++){const a=path[i-1].dir,d=path[i].dir;path[i].turn=a===d?0:a===(d+1)%4?1:3;}
     S.belts.push({path,items,speed:1.2+rnd()*.6});
   };
   const P=(x0,y0,x1,y1)=>{const dx=Math.sign(x1-x0),dy=Math.sign(y1-y0);let x=x0,y=y0;for(;;){S.pipes.push({x,y});if(x===x1&&y===y1)break;x+=dx;y+=dy;}};
@@ -2222,12 +2267,13 @@ function drawTitle(t){
     for(const c of b.path){
       const px=c.x*ts-camX+ts/2, py=c.y*ts-camY+ts/2;
       g.save(); g.translate(px,py); g.rotate(c.dir*Math.PI/2);
-      g.drawImage(beltSpr(Math.floor(t/1000*b.speed*8)&3),-ts/2,-ts/2,ts+.5,ts+.5); g.restore();
+      const bf=Math.floor(t/1000*b.speed*8)&3;
+      g.drawImage(c.turn?beltCornerSpr(bf,c.turn):beltSpr(bf),-ts/2,-ts/2,ts+.5,ts+.5); g.restore();
     }
     const L=b.path.length, off=(t/1000*b.speed)%0.5;
     for(let s=off,i=0;s<L-1;s+=0.5,i++){
-      const c=b.path[Math.floor(s)], f=s-Math.floor(s), [dx,dy]=D_VEC[c.dir];
-      drawItem(g,b.items[(i+Math.floor(t/1000*b.speed*2))%b.items.length],c.x*ts-camX+ts/2+dx*(f-.5)*ts,c.y*ts-camY+ts/2+dy*(f-.5)*ts,ts*.42);
+      const c=b.path[Math.floor(s)], [ox,oy]=beltItemPos(c.dir,c.turn||0,s-Math.floor(s));
+      drawItem(g,b.items[(i+Math.floor(t/1000*b.speed*2))%b.items.length],c.x*ts-camX+ts/2+ox*ts,c.y*ts-camY+ts/2+oy*ts,ts*.42);
     }
   }
   // machines, always working
@@ -2350,6 +2396,21 @@ function startRender(){
     lastFrameMs=t||performance.now();
     draw();
   })();
+}
+
+// A belt fed only from one side (nothing feeding it from behind) curves.
+// 0 = straight; 1 = fed by a belt turning clockwise into it; 3 = anticlockwise. Visual only.
+function beltTurn(m){
+  const feeds=d=>{
+    const x=m.x-D_VEC[d][0], y=m.y-D_VEC[d][1];
+    if(x<0||y<0||x>=MAP_W||y>=MAP_H)return false;
+    const id=G.map[y][x].mid; if(id===null)return false;
+    const n=G.machines[id];
+    return !!n&&n.dir===d&&(n.type==='belt'||n.type==='splitter'||n.type==='tunnel');
+  };
+  if(feeds(m.dir))return 0;
+  const a=feeds((m.dir+1)%4), b=feeds((m.dir+3)%4);
+  return a===b?0:a?1:3;
 }
 
 // Port layout per machine type:
@@ -2495,13 +2556,15 @@ function draw(){
         const BELT_BG='#252525';
         const RW=Math.max(1.5,ts*.05);
         const inset=RW/2+0.5;
+        let turn=0;
 
         if(TEX_PIXEL){
           // Tread scrolls at the real belt speed
           const bs=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
           const fr=Math.floor(at*bs*16)&3;
+          turn=beltTurn(m);
           ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
-          ctx.drawImage(beltSpr(fr),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
+          ctx.drawImage(turn?beltCornerSpr(fr,turn):beltSpr(fr),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
         } else {
         // Full dark surface
         ctx.fillStyle=BELT_BG; ctx.fillRect(px,py,ts,ts);
@@ -2549,10 +2612,8 @@ function draw(){
           for(let ii=0;ii<tile.items.length;ii++){
             const it=tile.items[ii];
             const smoothProg=Math.min(0.99, it.prog+beltSpeed2*subTick);
-            const travel=(smoothProg-0.5)*ts;
-            const ix=px+ts/2+dvx*travel;
-            const iy=py+ts/2+dvy*travel;
-            drawItem(ctx,it.id,ix,iy,ts*.42);
+            const[ox,oy]=beltItemPos(m.dir,turn,smoothProg);
+            drawItem(ctx,it.id,px+ts/2+ox*ts,py+ts/2+oy*ts,ts*.42);
           }
           ctx.restore();
         }
@@ -3291,6 +3352,7 @@ function handleTap(tile,isLong){
       }
 
       // Place at new location
+      undoRec({op:'pos',list:[{id:m.id,x:moveState.origX,y:moveState.origY,dir:m.dir}]});
       m.x=x; m.y=y;
       refreshMineRes(m);
       for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
@@ -3339,6 +3401,7 @@ function handleTap(tile,isLong){
         return true;
       });
       if(!canMove){toast('Cannot place here: tiles occupied','bad');sfx('error');return;}
+      undoRec({op:'pos',list:ms.ids.map(id=>G.machines[id]).filter(Boolean).map(posSnap)});
       // Clear old tiles first
       for(const id of ms.ids){
         const m=G.machines[id]; if(!m)continue;
@@ -3554,6 +3617,89 @@ function unlinkTunnel(m){
   const partner=G.machines[m.tunnelId]; if(partner)partner.tunnelId=null;
   m.tunnelId=null;
 }
+// ═══ UNDO ═══
+// Build actions record how to reverse themselves. One entry can hold several ops
+// (multi-select demolish, move, rotate, paste). Ops:
+//   place  {id,src}  undone by demolishing; the refund goes back where the cost came from
+//   remove {snap}    undone by rebuilding (pays the cost again; contents stay in inventory)
+//   pos    {list}    undone by putting machines back where and how they faced
+// The stack lives outside G: it is per session and clears on load and zone change.
+const UNDO_MAX=30;
+let undoStack=[], undoGroup=null, undoBusy=false;
+function undoRec(op){if(undoBusy)return; if(undoGroup)undoGroup.push(op); else pushUndo([op]);}
+function undoBegin(){if(!undoBusy)undoGroup=[];}
+function undoEnd(){const g=undoGroup;undoGroup=null;if(g&&g.length)pushUndo(g);}
+function pushUndo(ops){undoStack.push(ops);if(undoStack.length>UNDO_MAX)undoStack.shift();updateUndoBtn();}
+function clearUndo(){undoStack=[];undoGroup=null;updateUndoBtn();}
+function posSnap(m){return{id:m.id,x:m.x,y:m.y,dir:m.dir};}
+function updateUndoBtn(){
+  const b=document.getElementById('undoBtn'); if(!b)return;
+  const show=undoStack.length>0&&(activeTab==='build'||activeTab==='tools');
+  b.classList.toggle('hidden',!show);
+  const n=document.getElementById('undoCount'); if(n)n.textContent=undoStack.length;
+}
+// Put machines at recorded positions/directions, all or nothing
+function relocate(list){
+  const ms=list.map(e=>G.machines[e.id]).filter(Boolean);
+  const before=ms.map(posSnap);
+  const clear=()=>{for(const m of ms){const[w,h]=machSize(m);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)G.map[m.y+dy][m.x+dx].mid=null;}};
+  const claim=()=>{for(const m of ms){const[w,h]=machSize(m);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)G.map[m.y+dy][m.x+dx].mid=m.id;}};
+  clear();
+  for(const m of ms){const e=list.find(q=>q.id===m.id); m.x=e.x; m.y=e.y; m.dir=e.dir;}
+  const fits=ms.every(m=>{
+    const[w,h]=machSize(m);
+    for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){
+      const x=m.x+dx,y=m.y+dy;
+      if(x<0||y<0||x>=MAP_W||y>=MAP_H||G.map[y][x].mid!==null||!terrainOk(m.type,G.map[y][x]))return false;
+    }
+    return true;
+  });
+  if(!fits){for(const m of ms){const b=before.find(q=>q.id===m.id);m.x=b.x;m.y=b.y;m.dir=b.dir;}claim();return false;}
+  claim();
+  for(const m of ms){refreshMineRes(m);unlinkTunnel(m);}
+  for(const m of ms)linkTunnel(m);
+  return true;
+}
+function undoLast(){
+  const ops=undoStack[undoStack.length-1];
+  if(!ops){toast('Nothing to undo','wrn');return;}
+  // Rebuilds must fit and be affordable before anything changes
+  const rebuilds=ops.filter(o=>o.op==='remove');
+  if(rebuilds.length){
+    if(!rebuilds.every(o=>canPlace(o.snap.type,o.snap.x,o.snap.y,o.snap.dir))){toast('Cannot undo: something is built there now','bad');sfx('error');return;}
+    if(!G.devFreeBuild){
+      const need={};
+      for(const o of rebuilds)for(const[k,n]of Object.entries(MDEFS[o.snap.type].cost))need[k]=(need[k]||0)+n;
+      const miss=Object.entries(need).find(([k,n])=>(G.inv[k]||0)<n);
+      if(miss){toast(`Cannot undo: need ${miss[1]}× ${ITEMS[miss[0]]?.name||miss[0]}`,'bad');sfx('error');return;}
+    }
+  }
+  undoBusy=true;
+  try{
+    for(let i=ops.length-1;i>=0;i--){
+      const o=ops[i];
+      if(o.op==='pos'){
+        if(!relocate(o.list)){toast('Cannot undo: the old spot is taken','bad');sfx('error');return;}
+      } else if(o.op==='place'){
+        const m=G.machines[o.id]; if(!m)continue;
+        const type=m.type; tryRemove(m.x,m.y,true);
+        if(o.src!=='inv'){
+          for(const[k,n]of Object.entries(MDEFS[type].cost))G.inv[k]=Math.max(0,(G.inv[k]||0)-n);
+          if(o.src==='crafted')G.crafted[type]=(G.crafted[type]||0)+1;
+        }
+      } else if(o.op==='remove'){
+        const sn=o.snap;
+        if(!G.devFreeBuild)for(const[k,n]of Object.entries(MDEFS[sn.type].cost))G.inv[k]-=n;
+        const m=stampMachine(sn,sn.x,sn.y);
+        if(m){m.modules=[...(sn.modules||[])]; G.stats.placed--;}
+      }
+    }
+  } finally {undoBusy=false;}
+  undoStack.pop(); updateUndoBtn();
+  updateHUD(); saveGame(); sfx('remove');
+  toast('↶ Undone','ok');
+}
+
 // Can a copied layout (blueprint / clipboard) be stamped with its origin at x,y?
 function stampFits(data,x,y){
   return data.every(e=>MDEFS[e.type]&&canPlace(e.type,x+e.rx,y+e.ry,e.dir));
@@ -3569,6 +3715,7 @@ function stampMachine(e,x,y){
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)G.map[y+dy][x+dx].mid=m.id;
   refreshMineRes(m); linkTunnel(m);
   G.stats.placed++;
+  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':'inv'});
   return m;
 }
 
@@ -3626,6 +3773,7 @@ function tryPlace(type,tx,ty){
   }
 
   const m=mkMachine(type,tx,ty,placeDir);
+  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
   if(def.pumps)m.mineRes=def.pumps;
@@ -3658,6 +3806,7 @@ function completePlacement(type,tx,ty){
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
   const m=mkMachine(type,tx,ty,placeDir);
+  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
   if(def.pumps)m.mineRes=def.pumps;
@@ -3670,10 +3819,11 @@ function completePlacement(type,tx,ty){
   document.getElementById('toolTip').classList.add('hidden');
   if(!LOGISTICS_TOOLS.has(type)) hudSelect();
 }
-function tryRemove(tx,ty){
+function tryRemove(tx,ty,quiet){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
   const m=G.machines[mid]; if(!m)return;
   const def=MDEFS[m.type];
+  undoRec({op:'remove',snap:{type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])]}});
   const[mw,mh]=machSize(m);
   unlinkTunnel(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
@@ -3697,6 +3847,7 @@ function tryRemove(tx,ty){
     if(n>0)G.inv[item]=(G.inv[item]||0)+n;
   delete G.machines[mid];
   if(openPanel==='machine')closePanel('machine');
+  if(quiet)return;
   updateHUD(); saveGame(); sfx('remove');
   toast(`Removed ${def.name}`,'ok');
 }
@@ -3763,7 +3914,7 @@ function gameTick(){
   const nowMs=performance.now();
   // Skipped while a finger/button is down: rebuilding a panel mid-tap swaps the
   // button under the finger and the tap is silently lost
-  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();}
+  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();updateUndoBtn();}
   if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
@@ -4707,6 +4858,7 @@ function updateSelectBtn(){
 // Tabs that open a panel instead of the drawer
 const TAB_PANELS={craft:'craft',research:'research',goal:'rocket'};
 function switchTab(tab){
+  setTimeout(updateUndoBtn,0);
   const drawer=document.getElementById('tabDrawer');
   if(activeTab===tab){
     // Toggle off, close drawer, clear active tab
@@ -5434,6 +5586,7 @@ function setRecipe(id,rid){const m=G.machines[id];if(!m)return;m.recipe=rid||nul
 function toggleM(id){const m=G.machines[id];if(!m)return;m.active=!m.active;renderMachPanel();}
 function rotateM(id){
   const m=G.machines[id];if(!m)return;
+  const was=posSnap(m);
   unlinkTunnel(m); // re-linked below in the new direction
   // Splitter rotation, clear old secondary tile, rotate, register new secondary tile
   if(m.type==='splitter'){
@@ -5453,10 +5606,12 @@ function rotateM(id){
       toast('No room to rotate splitter','wrn'); sfx('error'); return;
     }
     G.map[ny2][nx2].mid=m.id;
+    undoRec({op:'pos',list:[was]});
     renderMachPanel(); saveGame();
     toast(`Splitter: ${D_ARR[m.dir]}`,'ok'); sfx('place'); return;
   }
   m.dir=(m.dir+1)%4;
+  undoRec({op:'pos',list:[was]});
   if(m.type==='tunnel'){const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');}
   renderMachPanel();
   saveGame();
@@ -5552,7 +5707,7 @@ function pasteBlueprintAt(data,x,y){
   if(!blueprintCanAfford(data)){toast('Not enough materials','bad');sfx('error');return;}
   const costs=G.devFreeBuild?{}:blueprintCost(data);
   for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
-  for(const e of data)stampMachine(e,x+e.rx,y+e.ry);
+  undoBegin(); for(const e of data)stampMachine(e,x+e.rx,y+e.ry); undoEnd();
   blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
   document.getElementById('ghostBar')?.classList.add('hidden');
   updateHUD(); saveGame(); sfx('place');
@@ -6179,10 +6334,12 @@ function multiselStartMove(){
 }
 function multiselDemolish(){
   const ms=multiselState; if(!ms.ids.length)return;
+  undoBegin();
   for(const id of ms.ids){
     const m=G.machines[id]; if(!m)continue;
-    tryRemove(m.x,m.y);
+    tryRemove(m.x,m.y,true);
   }
+  undoEnd(); updateHUD(); saveGame(); sfx('remove');
   ms.ids=[]; ms.mode='idle';
   document.getElementById('multiselBar')?.classList.add('hidden');
   setTool('select');
@@ -6190,7 +6347,7 @@ function multiselDemolish(){
 }
 function multiselRotate(){
   const ms=multiselState; if(!ms.ids.length)return;
-  for(const id of ms.ids) rotateM(id);
+  undoBegin(); for(const id of ms.ids) rotateM(id); undoEnd();
   saveGame(); sfx('place');
   toast(`Rotated ${ms.ids.length} machine${ms.ids.length>1?'s':''}`, 'ok');
 }
@@ -6245,7 +6402,7 @@ function ghostConfirm(){
     }
     const costs=G.devFreeBuild?{}:blueprintCost(data);
     for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
-    for(const e of data)stampMachine(e,x+e.rx,y+e.ry);
+    undoBegin(); for(const e of data)stampMachine(e,x+e.rx,y+e.ry); undoEnd();
     ms.pasteAnchor=null; // clear anchor so ghost follows cursor again for next paste
     updateHUD(); saveGame(); sfx('place');
     toast(`Pasted ${data.length} machine${data.length!==1?'s':''}!`,'ok');
@@ -6772,6 +6929,7 @@ const MENU_ROUTES={
   inventory:()=>showPanel('inv'), perks:()=>showPanel('perks'), stats:()=>showPanel('stats'),
   achievements:()=>showPanel('achieve'), recipes:()=>showPanel('recipes'), blueprints:()=>showPanel('blueprint'),
   dev:()=>showPanel('dev'), devlock:()=>promptDevUnlock(),
+  backup:()=>openBackup(), install:()=>installApp(),
   stardust:()=>openStardustShop(), settings:()=>openSettings(), saves:()=>openSaves(),
 };
 function openBigMenu(section){
@@ -6787,6 +6945,8 @@ function openBigMenu(section){
     ['stardust','✨','STARDUST',PRESTIGE.stardust||''],
     ['settings','⚙️','SETTINGS',''],
     ['saves','💾','SAVES',''],
+    ['backup','🛟','BACKUP',''],
+    ...(canInstall()?[['install','📲','INSTALL','']]:[]),
     G.devMode?['dev','🛠','DEV','ON']:['devlock','🔒','DEV',''],
   ];
   const body=`<div class="menu-zone">
@@ -6823,6 +6983,7 @@ function openSettings(){
   settingsHtml+=row('🎞️ FPS',[30,60].map(f=>`<button class="mini-btn ${PREFS.fps===f?'amber':'dim'}" onclick="setPref('fps',${f})">${f}</button>`).join(''));
   settingsHtml+=row('🖼️ RES',RES_STEPS.map(r=>`<button class="mini-btn ${PREFS.res===r?'amber':'dim'}" onclick="setPref('res',${r})">${Math.round(r*100)}%</button>`).join(''));
   settingsHtml+=row('🔋 SAVER',`<button class="mini-btn ${saver?'teal':'dim'}" onclick="batterySaver(${!saver})">${saver?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">30 FPS + 50% resolution</span>`);
+  settingsHtml+=row('📳 HAPTICS',navigator.vibrate?`<button class="mini-btn ${PREFS.haptics!==false?'teal':'dim'}" onclick="setPref('haptics',${PREFS.haptics===false});haptic('place')">${PREFS.haptics!==false?'ON':'OFF'}</button>`:`<span style="font-size:var(--f4);color:var(--text3)">Not supported in this browser</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
 
   settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
@@ -6845,6 +7006,123 @@ function openSaves(){
   }
 
   showModal('💾 SAVE SLOTS',`<div style="font-size:var(--f5);color:var(--text3);margin-bottom:8px;line-height:2">The game also autosaves. Slots keep separate copies.</div>`+slotsHtml,backToMenu);
+}
+
+// ═══ BACKUPS ═══
+// A backup code holds the autosave, the three slots and the Stardust profile:
+// gzipped where the browser can (CompressionStream), then base64.
+function b64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
+function unb64(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+const zipBytes=(u8,Stream)=>new Response(new Blob([u8]).stream().pipeThrough(new Stream('gzip'))).arrayBuffer().then(b=>new Uint8Array(b));
+async function makeBackupCode(){
+  if(G&&tickId)saveGame();
+  const data={v:1,at:Date.now(),save:localStorage.getItem(SAVE_KEY),prestige:localStorage.getItem(PRESTIGE_KEY),
+    slots:[1,2,3].map(n=>localStorage.getItem(`ebi_save_slot${n}`))};
+  const bytes=new TextEncoder().encode(JSON.stringify(data));
+  if(window.CompressionStream)return 'EBI1.'+b64(await zipBytes(bytes,CompressionStream));
+  return 'EBI0.'+b64(bytes);
+}
+async function readBackupCode(code){
+  const m=String(code||'').replace(/\s+/g,'').match(/^EBI([01])\.([A-Za-z0-9+/=]+)$/);
+  if(!m)throw new Error('That is not an 8-Bit Industry backup code');
+  let bytes=unb64(m[2]);
+  if(m[1]==='1'){
+    if(!window.DecompressionStream)throw new Error('This browser cannot read compressed backups');
+    bytes=await zipBytes(bytes,DecompressionStream);
+  }
+  const d=JSON.parse(new TextDecoder().decode(bytes));
+  if(!d||d.v!==1||!(d.save||d.prestige||(d.slots||[]).some(Boolean)))throw new Error('The backup is empty');
+  for(const raw of[d.save,d.prestige,...(d.slots||[])])if(raw)JSON.parse(raw);
+  return d;
+}
+let backupCode='';
+async function openBackup(){
+  let prot='';
+  try{prot=navigator.storage?.persisted?(await navigator.storage.persisted())?'✓ This browser has agreed to keep your data.':'This browser may clear your data if space runs low or the site goes unused.':'';}catch(e){}
+  const close=G?backToMenu:`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`;
+  showModal('🛟 BACKUP',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:10px">
+      Your progress lives only in this browser. Clearing site data deletes it, and so can a phone tidying its storage.
+      Keep a backup code somewhere safe: it holds your game, your save slots and your Stardust.
+      ${prot?`<br><span style="color:var(--text3)">${prot}</span>`:''}</div>
+    <button class="full-btn" onclick="exportBackup()">📤 EXPORT BACKUP</button>
+    <button class="full-btn" onclick="importBackupUI()">📥 IMPORT BACKUP</button>`,close);
+}
+async function exportBackup(){
+  try{backupCode=await makeBackupCode();}catch(e){showModal('🛟 BACKUP','Could not make a backup: '+e.message,`<button class="btn btn-sm" onclick="openBackup()">◀ BACK</button>`);return;}
+  showModal('📤 EXPORT BACKUP',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">Copy this code into a note or message to yourself, or save it as a file. ${Math.ceil(backupCode.length/1024)} KB.</div>
+    <textarea id="bkCode" class="bk-area" readonly>${backupCode}</textarea>`,
+    `<button class="btn btn-sm" onclick="openBackup()">◀</button>
+     <button class="btn btn-sm" onclick="copyBackup()">📋 COPY</button>
+     <button class="btn btn-sm btn-teal" onclick="downloadBackup()">⬇ FILE</button>`);
+}
+async function copyBackup(){
+  let ok=false;
+  try{await navigator.clipboard.writeText(backupCode);ok=true;}catch(e){
+    const t=document.getElementById('bkCode'); if(t){t.select();try{ok=document.execCommand('copy');}catch(e2){}}
+  }
+  const b=[...document.querySelectorAll('#mFoot button')].find(x=>x.textContent.includes('COPY'));
+  if(b)b.textContent=ok?'✓ COPIED':'SELECT + COPY';
+}
+function downloadBackup(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([backupCode],{type:'text/plain'}));
+  a.download=`8bit-industry-backup-${new Date().toISOString().slice(0,10)}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function importBackupUI(msg){
+  showModal('📥 IMPORT BACKUP',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">Paste a backup code, or load a backup file. This replaces the game, slots and Stardust on this device.</div>
+    ${msg?`<div style="font-size:var(--f5);color:var(--red);margin-bottom:8px">${msg}</div>`:''}
+    <textarea id="bkIn" class="bk-area" placeholder="EBI1.…"></textarea>
+    <input id="bkFile" type="file" accept=".txt,text/plain" style="display:none" onchange="readBackupFile(this)">
+    <button class="full-btn" onclick="document.getElementById('bkFile').click()">📄 LOAD FROM FILE</button>`,
+    `<button class="btn btn-sm" onclick="openBackup()">◀</button>
+     <button class="btn btn-sm btn-teal" onclick="importBackup()">IMPORT</button>`);
+}
+function readBackupFile(inp){
+  const f=inp.files&&inp.files[0]; if(!f)return;
+  f.text().then(t=>{const a=document.getElementById('bkIn');if(a)a.value=t.trim();});
+}
+async function importBackup(){
+  const code=document.getElementById('bkIn')?.value||'';
+  let d;
+  try{d=await readBackupCode(code);}catch(e){importBackupUI(e.message||'That code could not be read');return;}
+  const when=d.at?new Date(d.at).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'?';
+  let zone='';try{zone=d.save?` · Zone ${JSON.parse(d.save).zone||1}`:'';}catch(e){}
+  window._pendingBackup=d;
+  showModal('📥 REPLACE PROGRESS?',`<div style="font-size:var(--f6);color:var(--text2);line-height:2.2">Backup from <span style="color:var(--amber)">${when}</span>${zone}.<br>Everything on this device is replaced by it. This cannot be undone.</div>`,
+    `<button class="btn btn-sm" onclick="importBackupUI()">CANCEL</button>
+     <button class="btn btn-sm btn-red" onclick="applyBackup()">REPLACE</button>`);
+}
+function applyBackup(){
+  const d=window._pendingBackup; if(!d)return;
+  noSave=true; if(tickId){clearInterval(tickId);tickId=null;}
+  const put=(k,v)=>{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k);};
+  put(SAVE_KEY,d.save); put(PRESTIGE_KEY,d.prestige);
+  (d.slots||[]).forEach((v,i)=>put(`ebi_save_slot${i+1}`,v));
+  location.reload();
+}
+
+// ═══ INSTALL ═══
+// Android/desktop Chrome hand us an install prompt; iPhone needs Share → Add to Home Screen.
+let installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;updateInstallBtn();});
+window.addEventListener('appinstalled',()=>{installEvt=null;updateInstallBtn();});
+function isStandalone(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function canInstall(){return !isStandalone()&&(!!installEvt||isIOS());}
+function updateInstallBtn(){const b=document.getElementById('titleInstall');if(b)b.style.display=canInstall()?'':'none';}
+async function installApp(){
+  if(installEvt){
+    const e=installEvt; installEvt=null;
+    try{e.prompt();await e.userChoice;}catch(err){}
+    updateInstallBtn(); return;
+  }
+  const close=G?backToMenu:`<button class="btn btn-sm" onclick="closeModal()">GOT IT</button>`;
+  showModal('📲 INSTALL',`<div style="font-size:var(--f6);color:var(--text2);line-height:2.4">
+    In <span style="color:var(--amber)">Safari</span>, tap the <span style="color:var(--amber)">Share</span> button (the square with an arrow),
+    then <span style="color:var(--amber)">Add to Home Screen</span>.<br><br>
+    The game then opens full screen like an app, works offline, and iOS is much less likely to clear its saves.</div>`,close);
 }
 
 function saveToSlot(s){
@@ -7044,7 +7322,7 @@ function devCompleteZone(){
 function devReset(){
   showModal('RESET SAVE?',
     '<div style="font-size:var(--f6);color:var(--red)">This will wipe everything and start a new game.</div>',
-    `<button class="btn btn-sm btn-red" onclick="localStorage.removeItem('${SAVE_KEY}');location.reload()">RESET</button>
+    `<button class="btn btn-sm btn-red" onclick="noSave=true;localStorage.removeItem('${SAVE_KEY}');location.reload()">RESET</button>
      <button class="btn btn-sm" onclick="closeModal()">CANCEL</button>`
   );
 }
@@ -7149,9 +7427,14 @@ function migrateSave(){
   delete G.tutorialZ2;
 }
 
+// noSave is set while a reset or a backup import reloads the page,
+// so the save-on-hide can't write the old game back over it
+let noSave=false;
 function saveGame(){
+  if(noSave||!G)return;
   try{localStorage.setItem(SAVE_KEY,serializeG());}catch(e){}
 }
+window.addEventListener('pagehide',()=>{if(G&&tickId)saveGame();});
 function continueGame(){
   try{
     const raw=localStorage.getItem(SAVE_KEY);
@@ -7182,7 +7465,7 @@ function newGame(){
 }
 
 function startGame(isNew){
-  stopTitleScene();
+  stopTitleScene(); clearUndo();
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
@@ -7235,7 +7518,9 @@ function startGame(isNew){
 window.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
-  buildTitleSlots(); startTitleScene();
+  buildTitleSlots(); startTitleScene(); updateInstallBtn();
+  // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
+  try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
   document.addEventListener('contextmenu',e=>e.preventDefault());
 });
 </script>

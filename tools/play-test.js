@@ -132,6 +132,39 @@ const r=await p.evaluate(async()=>{
   saveGame(); const snap={n:Object.keys(G.machines).length,built:JSON.stringify(sg.built),zone:G.zone,w:MAP_W};
   G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
   ok('save_load_roundtrip',Object.keys(G.machines).length===snap.n&&G.zone===snap.zone&&MAP_W===snap.w&&JSON.stringify(Object.values(G.machines).find(m=>m.type==='singularity').built)===snap.built,{snap,n:Object.keys(G.machines).length});
+  // ── undo: place (from crafted and from materials), demolish, group demolish, move, rotate, paste
+  reset(); G.devFreeBuild=false; clearUndo(); Object.assign(G.inv,{iron_plate:100,iron_gear:100,stone:100,copper_wire:100,circuit:100});
+  G.crafted.chest=1; const uc=put('chest',30,30); const plates0=G.inv.iron_plate;
+  undoLast(); ok('undo_place_crafted',!G.machines[uc.id]&&G.crafted.chest===1&&G.inv.iron_plate===plates0,{cr:G.crafted.chest,p:G.inv.iron_plate,plates0});
+  const p0=G.inv.iron_plate; const ua=put('assembler',30,30); undoLast();
+  ok('undo_place_materials',!G.machines[ua.id]&&G.inv.iron_plate===p0,{p0,now:G.inv.iron_plate});
+  const ud=put('assembler',30,30); ud.recipe='mk_gear'; ud.inBuf.iron_plate=7; const p1=G.inv.iron_plate; tryRemove(30,30); undoLast();
+  const back=G.machines[G.map[30][30].mid];
+  ok('undo_demolish',back&&back.type==='assembler'&&back.recipe==='mk_gear'&&G.inv.iron_plate===p1+7,{t:back?.type,r:back?.recipe,p1,now:G.inv.iron_plate});
+  const g1=put('chest',40,40), g2=put('chest',41,40); setTool('multisel'); handleTap({x:40,y:40}); handleTap({x:41,y:40}); multiselDemolish();
+  undoLast(); ok('undo_group_demolish',G.map[40][40].mid!==null&&G.map[40][41].mid!==null,{a:G.map[40][40].mid,b:G.map[40][41].mid});
+  setTool('select'); const um=put('chest',44,44); setTool('move'); handleTap({x:44,y:44}); handleTap({x:46,y:46}); undoLast(); setTool('select');
+  ok('undo_move',um.x===44&&um.y===44&&G.map[44][44].mid===um.id&&G.map[46][46].mid===null,{x:um.x,y:um.y});
+  const ub=put('belt',50,50,0); rotateM(ub.id); rotateM(ub.id); undoLast(); undoLast(); ok('undo_rotate',ub.dir===0,ub.dir);
+  multiselState.clipboard=[{type:'chest',rx:0,ry:0,dir:0},{type:'chest',rx:1,ry:0,dir:0}]; setTool('multisel'); multiselStartPaste(); multiselState.pasteAnchor={x:52,y:30}; ghostConfirm();
+  const pasted=G.map[30][52].mid!==null&&G.map[30][53].mid!==null; undoLast();
+  ok('undo_paste',pasted&&G.map[30][52].mid===null&&G.map[30][53].mid===null,{pasted});
+  multiselClear(); setTool('select');
+  put('chest',60,60); tryRemove(60,60); undoBusy=true; stampMachine({type:'belt',dir:0},60,60); undoBusy=false; const nU=undoStack.length; undoLast();
+  ok('undo_blocked_rebuild_refused',undoStack.length===nU&&G.machines[G.map[60][60].mid].type==='belt',{nU,now:undoStack.length});
+  G.devFreeBuild=true;
+  // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
+  reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
+  ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
+  const k4=put('belt',11,19,1); ok('belt_sideload_straight',beltTurn(k2)===0,beltTurn(k2));
+  const[ex0,ey0]=beltItemPos(1,3,0), [ex1,ey1]=beltItemPos(1,3,1);
+  ok('belt_corner_item_path',Math.abs(ex0+.5)<1e-9&&Math.abs(ey0)<1e-9&&Math.abs(ex1)<1e-9&&Math.abs(ey1-.5)<1e-9,{ex0,ey0,ex1,ey1});
+  // ── backup code round trip, and save-on-hide
+  saveGame(); const code=await makeBackupCode(); const d=await readBackupCode(code);
+  ok('backup_roundtrip',code.startsWith('EBI')&&d.save===localStorage.getItem(SAVE_KEY)&&d.prestige===localStorage.getItem(PRESTIGE_KEY),{len:code.length});
+  let bad=''; try{await readBackupCode('EBI1.nope');}catch(e){bad=e.message;} ok('backup_rejects_garbage',!!bad,bad);
+  const tk=G.tick; G.tick=tk+12345; tickId=tickId||1; document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('pagehide'));
+  ok('save_on_hide',JSON.parse(localStorage.getItem(SAVE_KEY)).tick===tk+12345,{});
   return R;
 });
 for(const[k,v]of Object.entries(r))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);

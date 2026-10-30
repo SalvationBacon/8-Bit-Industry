@@ -23,7 +23,7 @@ https://salvationbacon.github.io/8-Bit-Industry/
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v123` → `ebi-v124`) on every update
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v124` → `ebi-v125`) on every update
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open
@@ -33,8 +33,11 @@ https://salvationbacon.github.io/8-Bit-Industry/
 ## Dev mode
 ☰ menu → 🔒 DEV tile → type `BIGBANG`, then tap ⏩ in the top bar to speed up (up to ×50)
 
+## Backups
+☰ menu → 🛟 Backup (or BACKUP on the title screen): export a code or file holding your game, save slots and Stardust, and import it on any device.
+
 ## Battery
 ☰ menu → Settings: FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v1.5.0: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v1.6.0: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige

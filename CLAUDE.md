@@ -9,7 +9,7 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.5.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Current build:** v1.6.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
 **Working file:** `index.html`, ~7,000 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
@@ -17,7 +17,7 @@
 - `docs/GDD.md`: original Game Design Document (v1.0), the source of the vision. Where it disagrees with this file or the code, **this file and the code win** (see *GDD divergences*).
 - `docs/ZONE3_DESIGN.md`: Zone 3 design, now implemented. The header lists where the build differs from the draft.
 - `tools/check.js`: headless test (syntax, every zone completable, full Zone 1→5 run, Big Bang).
-- `tools/play-test.js`: 34 real-play scenarios on a fake clock (belts, corners, splitters, tunnels, inserters, furnaces, power cutoff, upgrades, refunds, move/paste rules, every zone's core mechanic, save/load).
+- `tools/play-test.js`: 48 real-play scenarios on a fake clock (belts, corners, splitters, tunnels, inserters, furnaces, power cutoff, upgrades, refunds, move/paste rules, every zone's core mechanic, save/load, undo, belt corners, backup codes, save-on-hide).
 - `tools/touch-test.js`: simulated phone taps in portrait and landscape (new game, mining, build + PLACE, panels, menu, no double input after reload).
 
 ---
@@ -28,7 +28,7 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v123` |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v124` |
 | `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
@@ -63,9 +63,11 @@ Persists as `G.devMode`. The DEV tile then opens the dev panel, and a purple **�
 | `ebi_save` (`SAVE_KEY`) | Autosave, the full `G` |
 | `ebi_save_slot1..3` | Manual slots |
 | `ebi_prestige` (`PRESTIGE_KEY`) | Stardust, Big Bang count, owned Stardust upgrades, theme. **Never wiped** by resets or new games |
-| `ebi_prefs` (`PREFS_KEY`) | Display prefs per device: `{fps:30\|60, res:1..0.1}`. Not part of any save |
+| `ebi_prefs` (`PREFS_KEY`) | Device prefs: `{fps:30\|60, res:1..0.1, haptics}`. Not part of any save or backup |
 
-- Autosave every 120 ticks (30s) and on place/remove, research, launch, perk purchase.
+- Autosave every 120 ticks (30s) and on place/remove, research, launch, perk purchase, **and when the app is hidden or closed** (`visibilitychange`, `pagehide`).
+- `noSave` blocks every save. Set it before any `location.reload()` that follows a storage change (dev reset, backup import), or the save-on-hide writes the old game back.
+- **Backups** (`BACKUPS` section): `makeBackupCode()` packs the autosave, the 3 slots and `ebi_prestige` into `EBI1.` + base64(gzip JSON) (`EBI0.` without gzip where `CompressionStream` is missing). `readBackupCode()` validates. ☰ → 🛟 BACKUP and the title screen offer export (copy or .txt file) and import (paste or file, confirmed, then reload). `navigator.storage.persist()` is requested on load.
 - Saves go through `serializeG()`. It packs the map to one character per tile (`packMap`; a full Zone 5 map went from ~950 KB to ~36 KB), and `migrateSave()` unpacks it (`unpackMap` rebuilds machine tiles from `G.machines`). Old unpacked saves still load. It also drops transient per-tick keys (`TRANSIENT_KEYS`: `_net`, `_nets`, `_fluidStatus`). Fluid networks are circular and would break `JSON.stringify`.
 - Load paths `continueGame()` and `loadFromSlot(s)` both backfill keys and call `migrateSave()` (renames, e.g. `tutorialZ2` → `zoneTut`). New top-level keys need a default in **both**, or in `migrateSave()`.
 
@@ -154,6 +156,13 @@ All textures are procedural (`PIXEL SPRITES` section): `mkSpr(key,w,h,fn)` draws
 - **`PREFS`** (`ebi_prefs`): `fps` caps `startRender()` (30 or 60; about 8fps behind a modal; nothing while the tab is hidden). `res` (`RES_STEPS` 100% to 10%) multiplies `CANVAS_DPR` in `sizeCanvas()`, and the canvas switches to `image-rendering:pixelated`. ☰ Settings has FPS, RES and 🔋 SAVER (30fps + 50%). `setPref(k,v)` saves and applies. Sim speed never depends on these.
 - **Ground chunk cache:** floor and still deposits are baked once into `CHUNK`×`CHUNK` (16) tile canvases at 16px per tile (`groundChunk`). `draw()` blits those, then draws only `ANIM_RES` pool tiles per frame. The cache resets itself when `G.map`, the zone or the map size changes (load, zone change, `expandMap`); `invalidateChunks()` forces it. **Tile terrain must stay immutable after map generation**, or call `invalidateChunks()`.
 - **`setHtml(el,html)`** rewrites an element only when its markup changed. The HUD and every auto-refreshed panel use it.
+
+## Undo, haptics, install (v1.6.0)
+
+- **Undo** (`UNDO` section, above `stampFits`): actions record ops with `undoRec()`; `undoBegin()`/`undoEnd()` group them (multi-select demolish/rotate, paste, blueprints). Ops: `place {id,src}` (undone by demolish; the refund goes back to `crafted`, inventory, or nowhere for dev free build), `remove {snap}` (rebuilds and pays the cost again; contents already went to inventory), `pos {list}` (move/rotate, put back by `relocate()`, all or nothing). Undo of a rebuild is refused if the spot is taken or unaffordable. `undoBusy` stops undo from recording itself. The stack (`UNDO_MAX` 30) lives outside `G`, clears in `startGame()`. The round ↶ button (`#undoBtn`, count badge) shows while BUILD or EDIT is open. **New build actions must call `undoRec`**, and `tryRemove(x,y,true)` is the quiet form for batches.
+- **Haptics:** `haptic(type)` runs at the top of `sfx()` (`HAPTICS` patterns), independent of the SFX toggle. `PREFS.haptics`, toggled in Settings; hidden where `navigator.vibrate` is missing (iPhone).
+- **Install:** `beforeinstallprompt` is kept in `installEvt`; `installApp()` fires it, or shows Safari's Add to Home Screen steps on iOS. `canInstall()` hides everything once running standalone. Title button `#titleInstall` and a ☰ tile.
+- **Belt corners:** `beltTurn(m)` returns 0 (straight: fed from behind, from both sides, or not at all) or 1/3 (fed only from one side). `beltCornerSpr(fr,turn)` maps each pixel to the straight tread by radius and angle so rails and studs line up; `beltItemPos(dir,turn,p)` moves items along the arc. Purely visual: belt logic is unchanged. The title scenes use the same sprites.
 
 ## Design System
 
@@ -348,7 +357,6 @@ Splitters (1×2, rotatable), tunnels (auto-link ≤5 tiles), inserter state mach
 - Fluid/pipe system with pressure; light-cycle power + storage; living machines; reactor heat
 
 ### Ideas / not built
-- Belt corner visuals
 - Cave-wall tiles in Zone 3 (`docs/ZONE3_DESIGN.md` Q2)
 - Relief-valve threshold setting; moving Zone 2 oil onto pipes
 - Zone switcher / rails (GDD stubs); landscape sidebar layout; push notifications
