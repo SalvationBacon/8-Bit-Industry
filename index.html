@@ -261,6 +261,10 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 @media(max-width:600px){.msel-btn{font-size:7px;padding:11px 14px}}
 
 /* Build HUD handled via inline styles on fixed element outside #wrap */
+img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp-edges;vertical-align:middle;display:inline-block}
+.di img.ico{width:26px;height:26px}
+.ii img.ico{width:22px;height:22px}
+#resInfoIcon img.ico{width:30px;height:30px}
 .tut-step{display:inline-block;color:var(--bg);background:var(--amber);padding:1px 4px;margin-right:6px;font-size:.9em}
 .tut-tally{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;color:var(--text2)}
 .tut-tally .ok{color:var(--teal)}
@@ -1527,6 +1531,404 @@ function mkMachine(type,x,y,dir){
 }
 
 // ═══════════════════════════════════════════════════
+//  PIXEL SPRITES
+//  Every texture is drawn procedurally, pixel by pixel, into a tiny offscreen
+//  canvas (16px per tile, 12px per item), cached by key, then scaled up with
+//  smoothing off. No image files. ☰ Settings can switch back to emoji.
+// ═══════════════════════════════════════════════════
+let TEX_PIXEL=(()=>{try{return localStorage.getItem('ebi_tex')!=='emoji';}catch(e){return true;}})();
+function toggleTextures(){
+  TEX_PIXEL=!TEX_PIXEL;
+  try{localStorage.setItem('ebi_tex',TEX_PIXEL?'pixel':'emoji');}catch(e){}
+  buildDrawer(); refreshOpenPanel(); openBigMenu('settings');
+}
+const SPR={}, SPR_URL={};
+
+function hash2(x,y,s){
+  let h=(Math.imul(x,374761393)+Math.imul(y,668265263)+Math.imul(s,1442695041))|0;
+  h=Math.imul(h^(h>>>13),1274126177);
+  return ((h^(h>>>16))>>>0)/4294967296;
+}
+// f>0 mixes toward white, f<0 toward black
+function shade(hex,f){
+  const n=parseInt(hex.slice(1),16), t=f<0?0:255, a=Math.abs(f);
+  const c=v=>Math.round(v+(t-v)*a);
+  return '#'+((1<<24)|(c(n>>16)<<16)|(c(n>>8&255)<<8)|c(n&255)).toString(16).slice(1);
+}
+function mkSpr(key,w,h,fn){
+  if(SPR[key])return SPR[key];
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const g=c.getContext('2d');
+  const P=(x,y,col)=>{if(x<0||y<0||x>=w||y>=h)return;g.fillStyle=col;g.fillRect(x|0,y|0,1,1);};
+  const R=(x,y,ww,hh,col)=>{g.fillStyle=col;g.fillRect(x|0,y|0,ww|0,hh|0);};
+  const C=(cx,cy,r,col)=>{for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++)if(x*x+y*y<=r*r+r*.6)P(cx+x,cy+y,col);};
+  const O=(cx,cy,r,col)=>{for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++){const d=x*x+y*y;if(d<=r*r+r*.6&&d>=(r-1)*(r-1)+(r-1)*.6)P(cx+x,cy+y,col);}};
+  const L=(x0,y0,x1,y1,col)=>{x0|=0;y0|=0;x1|=0;y1|=0;const dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx+dy;
+    for(;;){P(x0,y0,col);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx;}if(e2<=dx){e+=dx;y0+=sy;}}};
+  fn({g,P,R,C,O,L,w,h});
+  return SPR[key]=c;
+}
+function sprURL(key,canvas){return SPR_URL[key]||(SPR_URL[key]=canvas.toDataURL());}
+
+// ── Ground: one palette per zone, 4 variants picked by tile hash ──
+const GROUND={
+  1:{base:'#2a2019',a:'#33271d',b:'#211913',speck:'#4d3828'},   // rust earth
+  2:{base:'#1f1d1b',a:'#282522',b:'#171514',speck:'#3d301c'},   // ash and slag
+  3:{base:'#14171d',a:'#1b1f27',b:'#0e1014',speck:'#2b5566'},   // cave rock, faint glow
+  4:{base:'#0f1e1a',a:'#152823',b:'#0b1613',speck:'#2f6e4c'},   // jungle floor
+  5:{base:'#130f1d',a:'#1a1428',b:'#0c0a14',speck:'#7a58b0'},   // the void
+};
+function groundSpr(zone,v){
+  return mkSpr(`g${zone}:${v}`,16,16,({P,R})=>{
+    const p=GROUND[zone]||GROUND[1];
+    R(0,0,16,16,p.base);
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+      const n=hash2(x,y,v*31+zone);
+      if(n<.16)P(x,y,p.a); else if(n>.9)P(x,y,p.b);
+      if(n>.988)P(x,y,p.speck);
+    }
+    // soft tile seam so the grid still reads
+    R(0,15,16,1,shade(p.base,-.25)); R(15,0,1,16,shade(p.base,-.25));
+  });
+}
+
+// ── Resource deposits ──
+const ORE_ART={
+  iron_ore:  {rock:'#6a7486',hi:'#c4d0e2',dk:'#262a31',fleck:'#9aa8bc'},
+  copper_ore:{rock:'#8c4c28',hi:'#e09050',dk:'#4a2614',fleck:'#3d9a72'},
+  coal:      {rock:'#2c2c31',hi:'#8a8a98',dk:'#0a0a0b',fleck:'#4a4a54'},
+  stone:     {rock:'#7c7c70',hi:'#b4b4a4',dk:'#34342e'},
+  rare_earth:{rock:'#6c3a2a',hi:'#d2703c',dk:'#381c12',fleck:'#ffb04a'},
+};
+function resSpr(res,v,f){
+  const animated=['oil','brine','enzymes','luminite','radiant_dust'].includes(res);
+  const fr=animated?f%4:0;
+  return mkSpr(`r:${res}:${v}:${fr}`,16,16,({P,R,C})=>{
+    const H=(x,y,s=0)=>hash2(x,y,v*17+s);
+    const pool=(deep,mid,lite)=>{
+      R(0,0,16,16,mid);
+      for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(H(x,y,3)<.12)P(x,y,deep);
+      // little "~" wave crests that drift sideways frame to frame
+      for(let k=0;k<3;k++){
+        const ox=(Math.floor(H(k,v,8)*16)+fr*2)%16, oy=2+k*5+Math.floor(H(k,v,9)*2);
+        P(ox,oy,lite);P((ox+1)%16,oy-1,lite);P((ox+2)%16,oy-1,lite);P((ox+3)%16,oy,shade(lite,-.3));
+      }
+    };
+    if(ORE_ART[res]){
+      const a=ORE_ART[res];
+      R(0,0,16,16,a.dk);
+      for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(H(x,y)<.25)P(x,y,shade(a.dk,.08));
+      for(let k=0;k<6;k++){
+        const cx=2+Math.floor(H(k,1,5)*12), cy=2+Math.floor(H(k,2,5)*12), r=1+Math.floor(H(k,3,5)*2);
+        C(cx,cy,r,a.rock); P(cx-1,cy-1,a.hi); if(r>1)P(cx-r+1,cy-1,a.hi); P(cx+1,cy+r-1,a.dk);
+        if(a.fleck&&H(k,4,5)>.5)P(cx,cy,a.fleck);
+      }
+    } else if(res==='quartz'||res==='luminite'){
+      const lum=res==='luminite';
+      const body=lum?'#2aa08e':'#9db0e8', hi=lum?(fr%2?'#b8fff0':'#6affd0'):'#eef3ff', dk=lum?'#145a50':'#5a6aa8';
+      R(0,0,16,16,lum?'#0f1f22':'#1a1c2a');
+      for(let k=0;k<4;k++){
+        const bx=1+Math.floor(H(k,1,7)*12), h=4+Math.floor(H(k,2,7)*6), by=15-Math.floor(H(k,3,7)*4);
+        for(let i=0;i<h;i++){P(bx,by-i,body);P(bx+1,by-i,i<h-1?dk:body);}
+        P(bx,by-h,hi); P(bx,by-h+1,hi);
+      }
+    } else if(res==='radiant_dust'){
+      R(0,0,16,16,'#3a3416');
+      for(let y=0;y<16;y++)for(let x=0;x<16;x++){const n=H(x,y);if(n<.3)P(x,y,'#4f4720');
+        if(n>.95&&((x+y+fr)%3===0))P(x,y,'#fff27a');}
+    } else if(res==='biomass'){
+      R(0,0,16,16,'#13291a');
+      for(let k=0;k<7;k++){const x=Math.floor(H(k,1,4)*14)+1,y=Math.floor(H(k,2,4)*14)+1;
+        P(x,y,'#3f9a3f');P(x+1,y,'#5fcf55');P(x,y+1,'#2e7a2e');P(x-1,y+1,'#2e7a2e');}
+    } else if(res==='spores'){
+      R(0,0,16,16,'#1e1424');
+      for(let k=0;k<4;k++){const x=Math.floor(H(k,1,6)*12)+2,y=Math.floor(H(k,2,6)*10)+4;
+        P(x,y+1,'#d8c8b0');P(x,y+2,'#d8c8b0');R(x-1,y-1,3,2,'#9a4ab0');P(x,y-1,'#e090f0');}
+    } else if(res==='oil'){
+      pool('#050403','#100c08','#5a4a8a');
+      P((3+fr*3+v)%16,(9+v)%16,'#3a7a6a'); // oily rainbow glint
+    } else if(res==='brine'){
+      pool('#09364d','#0e4a66','#7fdbff');
+    } else if(res==='enzymes'){
+      pool('#3e520a','#5a7410','#c6ff00');
+      C(4+((fr*3+v)%8),6+(v%5),1,'#9ad21a');
+    } else {
+      R(0,0,16,16,RES_COL[res]||'#333');
+    }
+  });
+}
+
+// ── Machine chassis + per-machine art ──
+const STEEL={o:'#101215',b:'#383d45',hi:'#5c636e',dk:'#22252a',rv:'#7c848f'};
+function chassis(a,w,h,base){
+  const {R,P}=a, b=base||STEEL.b;
+  R(0,0,w,h,STEEL.o); R(1,1,w-2,h-2,b);
+  R(1,1,w-2,1,shade(b,.25)); R(1,1,1,h-2,shade(b,.18));
+  R(1,h-2,w-2,1,shade(b,-.35)); R(w-2,1,1,h-2,shade(b,-.3));
+  for(const[x,y]of[[2,2],[w-3,2],[2,h-3],[w-3,h-3]])P(x,y,STEEL.rv);
+}
+function gearArt(a,cx,cy,r,col,f){
+  const {P,C}=a;
+  C(cx,cy,r-1,col);
+  for(let t=0;t<8;t++){const ang=t*Math.PI/4+f*Math.PI/16;P(Math.round(cx+Math.cos(ang)*r),Math.round(cy+Math.sin(ang)*r),col);}
+  C(cx,cy,Math.max(1,(r>>1)-1),shade(col,-.5));
+}
+function fire(a,x,y,w,f,lit){
+  const {P}=a;
+  for(let i=0;i<w;i++){
+    const h=lit?2+((i*7+f*3)%3):1;
+    for(let j=0;j<h;j++)P(x+i,y-j,lit?(j===0?'#ff6a00':j===1?'#ffb000':'#fff08a'):'#4a1a08');
+  }
+}
+const MACHINE_ART={
+  miner(a,f,on){const{R,P}=a;chassis(a,16,16);
+    for(let i=0;i<12;i+=2){R(2+i,2,1,2,'#f5c400');R(3+i,2,1,2,'#151515');}
+    const cols=['#8a96a8','#c8d0dc','#5a6474'];
+    for(let y=0;y<8;y++){const hw=Math.max(0,4-(y>>1));for(let x=-hw;x<=hw;x++)P(8+x,6+y,cols[(x+y+(on?f:0)+8)%3]);}
+    P(8,14,'#e0e8f0');P(13,5,on?'#4caf50':'#3a3a3a');},
+  stone_furnace(a,f,on){const{R,P}=a;R(0,0,16,16,'#121212');
+    for(let y=1;y<15;y+=3)for(let x=1-(y%2)*2;x<15;x+=4)R(x,y,3,2,['#6e6e66','#7c7c72','#62625a'][(x+y)%3]);
+    R(5,8,6,7,'#0a0a0a');R(6,7,4,1,'#0a0a0a');fire(a,5,14,6,f,on);},
+  blast_furnace(a,f,on){const{R,P}=a;R(0,0,32,32,'#121212');
+    for(let y=4;y<31;y+=3)for(let x=2-(y%2)*2;x<30;x+=5)R(x,y,4,2,['#7a3326','#8c3d2c','#6a2b20'][(x+y)%3]);
+    R(22,0,6,8,'#3a3a3a');R(23,0,4,8,'#4a4a4a');
+    if(on){P(24,(0+f)%3,'#9a9a9a');P(25,(1+f)%3,'#bdbdbd');}
+    R(8,16,16,14,'#0a0a0a');R(10,14,12,2,'#0a0a0a');fire(a,8,29,16,f,on);fire(a,9,26,14,f+1,on);
+    for(let i=0;i<3;i++)R(4+i*9,10,4,2,on?'#ff8a20':'#3a1a10');},
+  electric_smelter(a,f,on){const{R,P,L}=a;chassis(a,32,32,'#3a2f48');
+    R(6,6,4,20,'#5a4a70');R(22,6,4,20,'#5a4a70');
+    for(let y=8;y<24;y+=3){R(5,y,6,1,'#c87a3a');R(21,y,6,1,'#c87a3a');}
+    R(10,20,12,8,'#1a1420');R(11,21,10,6,on?'#ff7a20':'#3a2010');
+    if(on){let x=10,y=8+(f%2)*2;for(let i=0;i<6;i++){const nx=x+2,ny=y+(i%2?2:-2);L(x,y,nx,ny,'#d8b8ff');x=nx;y=ny;}}},
+  assembler(a,f,on){const{R,P}=a;chassis(a,32,32,'#2c3a52');
+    R(5,5,22,16,'#0f1622');gearArt(a,12,13,6,'#8aa0c0',on?f:0);gearArt(a,21,11,4,'#c8a050',on?3-f:0);
+    R(5,23,22,5,'#1a2436');for(let i=0;i<5;i++)P(7+i*4,25,i===(on?f:0)?'#42a5f5':'#2a3a50');},
+  lab(a,f,on){const{R,P}=a;chassis(a,32,32,'#1f3f3a');
+    R(4,4,24,18,'#0c1a18');
+    const flask=(x,col,o)=>{R(x+2,6,2,5,'#9ad8cc');for(let y=0;y<8;y++){const hw=1+(y>>1);R(x+3-hw,11+y,hw*2,1,y>2?col:'#9ad8cc');}
+      if(on)P(x+2+((f+o)%2),15-((f+o)%4),'#ffffff');};
+    flask(5,'#e53935',0);flask(13,'#4caf50',1);flask(21,'#42a5f5',2);
+    R(4,24,24,4,'#14302b');},
+  burner(a,f,on){const{R,P}=a;R(0,0,16,16,'#101010');R(2,4,12,11,'#2a2a2a');R(3,5,10,9,'#3a3a3a');
+    R(10,0,3,5,'#2a2a2a');R(4,9,8,4,'#0a0a0a');fire(a,4,12,8,f,on);for(let x=4;x<12;x+=2)P(x,9,'#555');},
+  generator(a,f,on){const{R,P,O,L}=a;chassis(a,32,32,'#3a3824');
+    R(2,26,28,3,'#151515');for(let i=0;i<28;i+=4)R(2+i,26,2,3,'#f5c400');
+    O(16,14,10,'#6a6a50');a.C(16,14,9,'#1a1a14');
+    for(let t=0;t<4;t++){const ang=t*Math.PI/2+(on?f:0)*Math.PI/8;L(16,14,16+Math.cos(ang)*8,14+Math.sin(ang)*8,'#c8c8a0');}
+    a.C(16,14,2,'#ffd600');},
+  chest(a){const{R,P}=a;R(0,0,16,16,'#1a1008');R(1,2,14,13,'#7a5233');
+    for(let y=4;y<15;y+=4)R(1,y,14,1,'#5a3a22');R(1,2,14,2,'#8e6440');R(1,8,14,2,'#3a3a3a');R(7,7,2,4,'#c8a050');},
+  oil_pump(a,f,on){const{R,P,L}=a;R(0,0,32,32,'#141210');R(2,28,28,3,'#2a2620');
+    L(10,28,16,10,'#5a5244');L(22,28,16,10,'#5a5244');
+    const tilt=on?[-3,-1,1,3][f]:0;L(4,10-tilt,28,10+tilt,'#f5c400');L(4,11-tilt,28,11+tilt,'#c8a000');
+    R(2,7-tilt,4,7,'#2a2a2a');L(4,14-tilt,4,27,'#888');R(15,9,3,3,'#888');R(25,10+tilt,4,6,'#3a3a3a');},
+  cracker(a,f,on){const{R,P}=a;R(0,0,32,32,'#121212');
+    for(const x of[5,18]){R(x,3,9,26,'#8a5a32');R(x+1,3,2,26,'#b0784a');for(let y=6;y<28;y+=5)R(x,y,9,1,'#5a3a20');}
+    R(14,12,4,2,'#666');fire(a,7,30,5,f,on);fire(a,20,30,5,f+2,on);},
+  refinery(a,f,on){const{R,P,C}=a;R(0,0,32,32,'#121212');R(2,18,28,12,'#4a3a2a');
+    C(9,14,6,'#7a6a5a');C(9,13,5,'#8e7e6c');C(22,16,5,'#7a6a5a');R(26,2,3,16,'#555');
+    if(on){P(27,1,'#ffb000');P(27,0,'#ff6a00');P(26+(f%2),0,'#fff08a');}for(let x=4;x<28;x+=6)R(x,22,3,5,'#2a2018');},
+  combustion_gen(a,f,on){const{R,P}=a;chassis(a,32,32,'#4a2e18');
+    for(let i=0;i<3;i++){const up=on?((f+i)%2)*3:0;R(6+i*8,6+up,5,10,'#9a9a9a');R(6+i*8,5+up,5,2,'#c8c8c8');}
+    R(4,20,24,8,'#2a1a10');R(26,2,4,6,'#3a3a3a');if(on){P(27,1,'#ff6a00');P(28,0,'#ffb000');}},
+  scrubber(a,f,on){const{R,P,L}=a;chassis(a,16,32,'#1f3a2a');
+    for(let y=14;y<30;y+=2)R(3,y,10,1,'#2e6b4a');
+    a.O(8,7,5,'#4a8a6a');for(let t=0;t<3;t++){const ang=t*2.09+(on?f:0)*.5;L(8,7,8+Math.cos(ang)*4,7+Math.sin(ang)*4,'#a8e0c0');}},
+  brine_pump(a,f,on){MACHINE_ART._pump(a,f,on,'#0e4a66','#7fdbff');},
+  enzyme_pump(a,f,on){MACHINE_ART._pump(a,f,on,'#4a5a0e','#c6ff00');},
+  _pump(a,f,on,base,lite){const{R,P}=a;chassis(a,32,32,base);
+    const up=on?[0,2,4,2][f]:0;R(13,3+up,6,14,'#9aa4b0');R(11,2+up,10,3,'#c8d0dc');
+    R(6,18,20,10,shade(base,-.4));a.C(16,23,3,lite);P(16,21,'#ffffff');},
+  fluid_tank(a){const{R,P}=a;R(0,0,32,32,'#101010');R(4,2,24,28,'#7a828c');R(5,2,3,28,'#a8b0ba');R(24,2,3,28,'#5a626c');
+    for(const y of[6,16,26])R(4,y,24,1,'#4a525c');R(14,5,4,22,'#1a1e22');},
+  relief_valve(a,f,on){const{R,P,O}=a;R(0,0,16,16,'#121212');R(0,6,16,4,'#5a626c');R(6,0,4,16,'#5a626c');
+    O(8,8,5,'#e53935');P(8,3,'#e53935');P(8,13,'#e53935');P(3,8,'#e53935');P(13,8,'#e53935');a.C(8,8,1,'#ff8a80');},
+  evaporator(a,f,on){const{R,P}=a;chassis(a,32,32,'#3a3a40');
+    for(const y of[6,16]){R(4,y,24,7,'#1a1a22');R(5,y+1,22,5,'#0e4a66');for(let x=6;x<26;x+=3)P(x,y+2,'#e8f4ff');}
+    if(on)for(let i=0;i<3;i++)P(8+i*8+(f%2),4-((f+i)%3),'#c8d8e8');R(4,25,24,3,'#2a2a30');},
+  separator(a,f,on){const{R,P,C,L}=a;chassis(a,32,32,'#4a3220');
+    C(16,15,10,'#2a1a10');C(16,15,8,'#c87a3a');C(16,15,3,'#2a1a10');
+    for(let t=0;t<4;t++){const ang=t*Math.PI/2+(on?f:0)*Math.PI/8;L(16+Math.cos(ang)*4,15+Math.sin(ang)*4,16+Math.cos(ang)*8,15+Math.sin(ang)*8,'#ffb04a');}},
+  rod_press(a,f,on){const{R,P}=a;chassis(a,32,32,'#283a2a');
+    R(6,3,20,6,'#5a6a5a');const down=on?[0,3,6,3][f]:0;R(13,9,6,4+down,'#a8b8a8');R(10,13+down,12,3,'#8a9a8a');
+    R(6,24,20,4,'#1a2a1a');R(9,22,14,2,'#6aff8a');},
+  lumen_panel(a,f,on){const{R,P}=a;R(0,0,32,32,'#101418');
+    for(let y=0;y<3;y++)for(let x=0;x<3;x++){const bx=2+x*10,by=2+y*10;R(bx,by,8,8,on?'#2a8a9a':'#122a30');
+      R(bx+1,by+1,3,1,on?'#b8fff0':'#1e3a40');if(on&&(x+y+f)%4===0)P(bx+5,by+5,'#ffffff');}},
+  accumulator(a,f,on){const{R,P}=a;R(0,0,16,16,'#101010');R(3,2,10,13,'#3a3a2a');R(6,1,4,2,'#888');
+    for(let i=0;i<3;i++)R(5,11-i*3,6,2,'#2a2a1a');},
+  algae_vat(a,f,on){const{R,P}=a;chassis(a,32,32,'#1a3a3a');R(5,4,22,22,'#9ad8d0');R(6,5,20,20,'#1a6a4a');
+    for(let k=0;k<5;k++){const x=8+k*4;for(let y=0;y<10;y++)P(x+((y+f+k)%4>1?1:0),22-y,'#4ac86a');}
+    if(on)P(10+f*3,8+(f%2)*3,'#c8ffe0');R(5,27,22,2,'#2a4a4a');},
+  bioreactor(a,f,on){const{R,P,C}=a;R(0,0,32,32,'#121010');C(16,16,13,'#3a1e2e');C(16,16,11,on&&f%2?'#7a3a5a':'#6a2e4e');
+    for(let t=0;t<6;t++){const ang=t*1.05;for(let r=3;r<10;r++)P(16+Math.round(Math.cos(ang+r*.15)*r),16+Math.round(Math.sin(ang+r*.15)*r),'#a85a7a');}
+    C(16,16,3,'#c8ff6a');},
+  spore_incubator(a,f,on){const{R,P,C}=a;chassis(a,32,32,'#2a1e30');C(16,17,11,'#c8b8d8');C(16,17,10,'#1e1424');R(5,18,22,10,'#2a1e30');
+    for(const[x,c]of[[11,'#9a4ab0'],[17,'#c060d0'],[22,'#9a4ab0']]){R(x,13,1,5,'#d8c8b0');R(x-2,11,5,2,c);}
+    if(on)for(let i=0;i<3;i++)P(10+i*6,9-((f+i)%4),'#e090f0');},
+  hyper_synth(a,f,on){const{R,P}=a;chassis(a,32,32,'#2a2410');R(8,3,16,26,'#0c0a04');
+    for(let y=0;y<24;y++){const ph=(y+(on?f*2:0))*.5,x1=16+Math.round(Math.sin(ph)*5),x2=16-Math.round(Math.sin(ph)*5);
+      P(x1,4+y,'#ffd54a');P(x2,4+y,'#ff9a2a');if(y%3===0)for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++)P(x,4+y,'#7a5a1a');}},
+  reactor(a,f,on){const{R,P,C}=a;R(0,0,48,48,'#121212');R(2,2,44,44,'#5a5a56');R(3,3,42,1,'#7a7a74');
+    C(24,24,17,'#3a3a38');C(24,24,15,'#6a6a64');C(24,24,9,'#1a1a1a');
+    for(let t=0;t<3;t++){const ang=t*2.094-1.57;for(let r=3;r<9;r++)for(let s=-3;s<=3;s++){const aa=ang+s*.12;P(24+Math.round(Math.cos(aa)*r),24+Math.round(Math.sin(aa)*r),'#f5c400');}}
+    C(24,24,2,on?(f%2?'#e0ff8a':'#c6ff00'):'#3a4a1a');for(const[x,y]of[[5,5],[42,5],[5,42],[42,42]])R(x-1,y-1,3,3,'#3a3a38');},
+  heat_sink(a){const{R}=a;R(0,0,16,16,'#101418');for(let x=2;x<14;x+=3){R(x,2,2,12,'#a8d8f0');R(x,2,1,12,'#e8f8ff');}R(1,13,14,2,'#5a7a8a');},
+  singularity(a,f,on){const{R,P,C,O}=a;R(0,0,80,80,'#0a0812');
+    for(let y=2;y<78;y+=6)for(let x=2;x<78;x+=6)if(hash2(x,y,5)>.4)R(x,y,4,4,'#161226');
+    for(const[x,y]of[[6,6],[66,6],[6,66],[66,66]]){R(x,y,8,8,'#2a2040');R(x+2,y+2,4,4,'#ab47bc');P(x+3,y+3,'#e8c8ff');}
+    C(40,40,22,'#05040a');O(40,40,23,'#4a2a6a');O(40,40,25,'#2a1a3a');},
+};
+// Which machines show animated frames, and when they count as working
+function machineWorking(m){
+  const def=MDEFS[m.type];
+  if(!m.active)return false;
+  if(m.type==='generator'||m.type==='burner')return (m.inBuf.coal||0)>0;
+  if(m.type==='combustion_gen')return (m.inBuf.refined_fuel||0)>0;
+  if(m.type==='reactor')return (m.inBuf.lum_rod||0)>0&&!(m.scram>0);
+  if(m.type==='lumen_panel')return glowBright();
+  if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
+  if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
+  if(def.living&&m.withered)return false;
+  return m.prog>0;
+}
+function machineSpr(type,frame,on){
+  const art=MACHINE_ART[type]; if(!art)return null;
+  const[w,h]=MDEFS[type].size, sw=type==='singularity'?80:w*16, sh=type==='singularity'?80:h*16;
+  const fr=on?frame%4:0;
+  return mkSpr(`m:${type}:${fr}:${on?1:0}`,sw,sh,a=>art(a,fr,on));
+}
+// Belt tread: drawn facing right, rotated at draw time; 4 frames scroll the ridges
+function beltSpr(fr){
+  return mkSpr(`belt:${fr}`,16,16,({R,P})=>{
+    R(0,0,16,16,'#1a1a1a'); R(0,2,16,12,'#2b2b2b');
+    for(let x=0;x<16;x++){if((x+fr)%4===0)R(x,3,1,10,'#3c3c3c');}
+    R(0,1,16,1,'#5a5a5a'); R(0,14,16,1,'#5a5a5a'); R(0,0,16,1,'#0e0e0e'); R(0,15,16,1,'#0e0e0e');
+    for(let x=2;x<16;x+=8){P(x+fr*2%8,1,'#f5a623');}
+  });
+}
+
+// ── Items: shape templates + colours ──
+const ITEM_ART={
+  iron_ore:['ore','#5a6474','#a8b4c4','#2b3038'], copper_ore:['ore','#9a5430','#e8a060','#4a2614'],
+  coal:['ore','#26262a','#6a6a74','#0a0a0b'], stone:['ore','#7a7a70','#b0b0a2','#3a3a34'],
+  iron_plate:['plate','#8a96a8','#d0dae6','#4a5260'], copper_plate:['plate','#c87a3a','#ffc080','#6a3a18'],
+  steel_plate:['plate','#a8b0bc','#f0f4f8','#5a626c'], stone_brick:['brick','#8a8a7c','#b8b8a8','#4a4a40'],
+  iron_gear:['gear','#8a96a8','#d0dae6','#3a424c'], copper_wire:['coil','#d88a3a','#ffc080','#7a4018'],
+  iron_rod:['rod','#8a96a8','#e0e8f0','#3a424c'], circuit:['chip','#2e7a3a','#e8c050','#123a18'],
+  engine:['engine','#6a7280','#a8b0bc','#2a2e34'],
+  speed_module:['module','#42a5f5','#bde0ff','#1a3a5a'], prod_module:['module','#4caf50','#c8f0c8','#1a4a1a'],
+  eff_module:['module','#e53935','#ffc8c8','#5a1a1a'],
+  sci_red:['book','#c83a32','#ff8a80','#5a1a14'], sci_green:['book','#3a9a4a','#a0f0a8','#14401a'],
+  sci_blue:['book','#3a6ac8','#a8c8ff','#14285a'], sci_scar:['book','#8a6a3a','#e0c08a','#3a2a14'],
+  sci_smog:['book','#7a7a6a','#d0d0b8','#3a3a30'], sci_repair:['book','#c8781a','#ffd08a','#5a3008'],
+  sci_deep:['book','#2a7a9a','#9ae0ff','#0e3040'], sci_pressure:['book','#5a5ac8','#c0c0ff','#1e1e5a'],
+  sci_lattice:['book','#2a9a6a','#9affd0','#0e4030'], sci_bloom:['book','#5aa03a','#c8ff9a','#1e4012'],
+  sci_growth:['book','#c85a9a','#ffb0e0','#5a1a40'], sci_synth:['book','#d0901a','#ffe08a','#5a3a08'],
+  sci_void:['book','#6a3aa8','#e0c0ff','#24104a'],
+  r_chassis:['frame','#8a96a8','#d0dae6','#3a424c'], r_computer:['chip','#3a4a6a','#7fdbff','#141e30'],
+  r_frame:['frame','#a8b0bc','#f0f4f8','#4a525c'], r_propellant:['can','#3a3a3a','#ff8a20','#151515'],
+  crude_oil:['barrel','#2a2018','#7a5a3a','#0e0a06'], raw_fuel:['can','#c86a1a','#ffb04a','#5a2a08'],
+  plastic:['sheet','#d8d0c0','#ffffff','#8a8478'], refined_fuel:['can','#e53935','#ffd08a','#5a1414'],
+  polymer_sheet:['sheet','#9a5ac8','#e0b8ff','#4a2a6a'],
+  r_hull:['shield','#8a96a8','#d0dae6','#3a424c'], r_engine_fix:['engine','#c8781a','#ffd08a','#4a2a08'],
+  r_nav:['chip','#2a2a4a','#a8c8ff','#101020'], r_tank:['can','#8a96a8','#d0dae6','#3a424c'],
+  r_thruster:['cone','#6a7280','#ff8a20','#2a2e34'], r_cell:['battery','#3a8a4a','#c8ffb0','#143a18'],
+  brine:['drop','#2a9ac8','#c8f4ff','#0e3a5a'], quartz:['gem','#b0c0f0','#ffffff','#5a6aa8'],
+  rare_earth:['ore','#7a3a26','#e07a40','#381c12'], radiant_dust:['dust','#e8d040','#fff8b0','#7a6a10'],
+  silicon:['gem','#4a6ac8','#c0d0ff','#1a2a5a'], lithium_salt:['dust','#e8eef4','#ffffff','#8a9aa8'],
+  lithium:['gem','#d0d8e0','#ffffff','#7a828c'], re_oxide:['dust','#e0702a','#ffb07a','#6a2a0a'],
+  magnet:['magnet','#e53935','#d0dae6','#5a1414'], battery:['battery','#4a4a3a','#ffd600','#1a1a10'],
+  lattice_core:['gem','#2ac8a0','#c0fff0','#0e5a48'], fuel_rod:['tube','#3aa04a','#c8ffb0','#143a18'],
+  r_phull:['shield','#5a6a8a','#c0d0f0','#1e2a3a'], r_battbank:['battery','#3a3a5a','#7fdbff','#14142a'],
+  r_guidance:['gem','#9a4ac8','#f0c8ff','#3a145a'], r_drill:['cone','#8a96a8','#f5c400','#3a424c'],
+  enzymes:['drop','#9ad21a','#eaffb0','#3e520a'], biomass:['leaf','#3f9a3f','#8ae07a','#1a4a1a'],
+  spores:['shroom','#9a4ab0','#e090f0','#4a1a5a'], luminite:['gem','#2aa08e','#b8fff0','#145a50'],
+  nutrient:['bowl','#8a6a3a','#c8e07a','#3a2a14'], algae:['leaf','#2a8a5a','#7ae0a8','#0e3a24'],
+  bio_oil:['barrel','#c8901a','#ffd06a','#5a3a08'], mycelium:['coil','#d8c8b0','#ffffff','#7a6a5a'],
+  lum_crystal:['gem','#4affc8','#e0fff8','#1a7a6a'], bio_composite:['brick','#7a8a4a','#c0d08a','#3a4020'],
+  lum_rod:['tube','#2ac8a0','#e0fff8','#0e5a48'], hyperfuel:['can','#ffd54a','#fff8c0','#7a5a0a'],
+  r_biohull:['shield','#c8a87a','#fff0d8','#5a4a2a'], r_bionav:['orb','#c85a9a','#ffd0f0','#4a1a3a'],
+  r_core:['orb','#c6ff00','#ffffff','#3a4a0a'],
+  grav_lens:['orb','#7fdbff','#ffffff','#1a4a6a'], stellar_casing:['brick','#a8b8d8','#ffffff','#3a4a6a'],
+  void_engine:['engine','#6a3aa8','#e0c0ff','#24104a'], quantum_mind:['orb','#ab47bc','#ffffff','#3a145a'],
+};
+const ITEM_SHAPES={
+  ore({C,P},c,h,d){C(6,7,4,c);C(4,5,2,c);C(8,5,2,c);P(4,4,h);P(5,4,h);P(7,5,h);P(8,9,d);P(9,8,d);P(5,10,d);},
+  plate({R,P},c,h,d){for(let y=0;y<6;y++)R(2+(5-y)/2|0,3+y,9,1,c);R(4,3,7,1,h);R(1,9,9,1,d);},
+  brick({R},c,h,d){R(1,4,10,6,c);R(1,4,10,1,h);R(1,9,10,1,d);R(5,4,1,6,d);},
+  gear(a,c,h,d){gearArt(a,6,6,5,c,0);a.P(4,3,h);},
+  coil({O,P},c,h,d){O(6,6,4,c);O(6,6,3,d);O(6,6,2,c);P(4,3,h);},
+  rod({L},c,h,d){L(2,10,10,2,c);L(3,10,10,3,d);L(2,9,9,2,h);},
+  chip({R,P},c,h,d){R(2,2,8,8,c);R(2,9,8,1,d);for(let i=3;i<9;i+=2){P(i,1,h);P(i,10,h);P(1,i,h);P(10,i,h);}R(4,4,4,4,d);P(5,5,h);},
+  module({R,P},c,h,d){R(2,2,8,8,'#2a2e34');R(3,3,6,6,c);R(4,4,2,2,h);R(2,9,8,1,d);},
+  engine({R,P},c,h,d){R(2,4,8,6,c);R(3,2,2,2,c);R(7,2,2,2,c);R(2,4,8,1,h);R(2,9,8,1,d);P(4,6,d);P(7,6,d);},
+  book({R,P},c,h,d){R(2,1,8,10,c);R(2,1,1,10,d);R(3,1,7,1,h);R(4,3,5,1,h);R(4,5,4,1,shade(c,.3));R(9,2,1,9,'#e8e0d0');},
+  frame({L,R},c,h,d){R(2,2,8,1,c);R(2,9,8,1,c);R(2,2,1,8,c);R(9,2,1,8,c);L(2,2,9,9,d);L(9,2,2,9,h);},
+  can({R,P},c,h,d){R(3,3,6,8,c);R(4,1,3,2,d);R(3,3,1,8,h);R(8,3,1,8,d);R(4,6,4,2,h);},
+  barrel({R},c,h,d){R(3,2,6,9,c);R(2,3,8,7,c);R(2,4,8,1,d);R(2,8,8,1,d);R(3,2,1,9,h);},
+  sheet({R},c,h,d){R(1,6,10,2,c);R(2,4,9,2,shade(c,.15));R(3,2,8,2,h);R(1,8,10,1,d);},
+  shield({R,P},c,h,d){for(let y=0;y<10;y++){const hw=y<6?4:4-(y-5);R(6-hw,1+y,hw*2,1,c);}R(3,2,2,3,h);P(6,9,d);},
+  cone({R},c,h,d){for(let y=0;y<9;y++){const hw=Math.ceil(y/2);R(6-hw,1+y,hw*2,1,y>6?h:c);}R(4,10,4,1,d);},
+  battery({R},c,h,d){R(3,2,6,9,c);R(5,1,2,1,'#c8c8c8');R(4,4,4,1,h);R(4,6,4,1,h);R(4,8,4,1,d);},
+  drop({C,P},c,h,d){C(6,7,3,c);P(6,2,c);P(6,3,c);P(5,4,c);P(6,4,c);P(7,4,c);P(5,6,h);P(5,7,h);P(8,9,d);},
+  gem({R,P},c,h,d){R(4,2,4,1,h);R(3,3,6,2,c);R(2,5,8,1,c);for(let y=0;y<4;y++)R(3+y,6+y,6-2*y,1,y>1?d:c);P(4,3,'#ffffff');},
+  dust({P},c,h,d){for(const[x,y,k]of[[3,8,0],[5,7,1],[7,8,0],[6,9,2],[4,9,2],[8,9,2],[6,6,1],[5,5,0],[2,4,1],[9,3,1]])P(x,y,[c,h,d][k]);},
+  leaf({L,P},c,h,d){for(let y=0;y<7;y++){L(6-Math.min(y,6-y),2+y,6+Math.min(y,6-y),2+y,c);}L(6,2,6,10,d);P(4,4,h);},
+  shroom({R,P},c,h,d){R(5,6,2,5,'#e0d0b8');R(2,4,8,3,c);R(3,3,6,1,c);P(4,4,h);P(7,5,h);R(2,6,8,1,d);},
+  bowl({R,P},c,h,d){R(2,6,8,3,c);R(3,9,6,1,d);R(3,5,6,1,h);P(5,4,h);},
+  magnet({R},c,h,d){R(2,2,3,7,c);R(7,2,3,7,c);R(2,8,8,2,c);R(2,2,3,2,h);R(7,2,3,2,h);},
+  tube({R,P},c,h,d){R(4,1,4,10,'#2a2e34');R(5,2,2,8,c);R(5,2,1,8,h);P(5,1,'#888');P(6,10,'#888');},
+  orb({C,P},c,h,d){C(6,6,4,d);C(6,6,3,c);P(5,4,h);P(4,5,h);P(5,5,'#ffffff');},
+};
+function itemSpr(id){
+  const art=ITEM_ART[id]; if(!art)return null;
+  return mkSpr(`i:${id}`,12,12,a=>ITEM_SHAPES[art[0]](a,art[1],art[2],art[3]));
+}
+// Small 8×8 life-stage badges for living machines
+function stageSpr(name){
+  return mkSpr(`st:${name}`,8,8,({P,R})=>{
+    if(name==='Withered'){R(3,4,1,4,'#6a5a4a');P(2,3,'#8a6a5a');P(4,2,'#8a6a5a');P(1,4,'#5a4a3a');return;}
+    R(3,3,1,5,'#3a8a3a');
+    if(name==='Sprout'){P(2,3,'#6ad06a');P(4,2,'#6ad06a');return;}
+    P(1,2,'#4ac04a');P(2,3,'#4ac04a');P(4,3,'#4ac04a');P(5,2,'#4ac04a');
+    if(name==='Bloom'){R(2,0,3,2,'#f48fb1');P(3,0,'#ffffff');}
+  });
+}
+
+// Sprite (canvas) for an item or machine id, or null
+function anySpr(id){return itemSpr(id)||(MDEFS[id]&&MACHINE_ART[id]?machineSpr(id,0,false):null);}
+// Icon for an item or machine id, as HTML: pixel sprite, or emoji when textures are off
+function iconHtml(id,fallback){
+  if(TEX_PIXEL){const s=anySpr(id); if(s)return `<img class="ico" src="${sprURL('ico:'+id,s)}" alt="">`;}
+  return ITEMS[id]?.icon||MDEFS[id]?.icon||fallback||'·';
+}
+// Faint machine preview for ghosts (move / paste / blueprint)
+function drawGhostIcon(def,px,py,pw,ph){
+  const type=Object.keys(MDEFS).find(k=>MDEFS[k]===def);
+  const s=TEX_PIXEL&&machineSpr(type,0,false);
+  if(s){ctx.drawImage(s,px,py,pw,ph);return;}
+  ctx.font=`${Math.floor(Math.min(pw,ph)*.35)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(def.icon,px+pw/2,py+ph/2);
+}
+// Draw an item on the canvas centred at (x,y), size sz
+function drawItem(ctx,id,x,y,sz){
+  const s=TEX_PIXEL&&itemSpr(id);
+  if(s){ctx.drawImage(s,Math.round(x-sz/2),Math.round(y-sz/2),Math.round(sz),Math.round(sz));return;}
+  ctx.font=`${Math.floor(sz*.9)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(ITEMS[id]?.icon||'·',x,y);
+}
+// Icon-only art for machines the renderer draws by hand (belts, inserters, pipes…)
+Object.assign(MACHINE_ART,{
+  belt(a){a.g.drawImage(beltSpr(0),0,0);},
+  inserter(a){const{R,C,L}=a;R(0,0,16,16,'#141414');C(8,11,3,'#666');L(8,11,12,4,'#f5a623');L(8,10,12,3,'#f5a623');C(12,3,1,'#f5c400');},
+  long_inserter(a){const{R,C,L}=a;R(0,0,16,16,'#141414');C(4,12,3,'#26c6a0');L(4,12,14,2,'#26c6a0');L(4,11,13,2,'#26c6a0');C(14,2,1,'#b8fff0');},
+  splitter(a){const{R,L}=a;R(0,0,16,32,'#141414');R(1,1,14,30,'#2a1e10');L(2,16,13,6,'#e67e22');L(2,16,13,26,'#e67e22');L(2,15,13,5,'#e67e22');L(2,17,13,27,'#e67e22');},
+  tunnel(a){const{R,C}=a;R(0,0,16,16,'#0a0a14');C(8,8,6,'#1e3a5a');C(8,8,4,'#4a90d9');C(8,8,2,'#0a0a14');},
+  pipe(a){const{R}=a;R(0,0,16,16,'#121212');R(0,5,16,6,'#2e2e2e');R(5,0,6,16,'#2e2e2e');R(0,7,16,2,'#7fdbff');R(7,0,2,16,'#7fdbff');},
+});
+
+// ═══════════════════════════════════════════════════
 //  CANVAS + RENDERER
 // ═══════════════════════════════════════════════════
 let canvas, ctx, rafId;
@@ -1645,6 +2047,7 @@ function draw(){
   const ts=TILE*z;
   const now=performance.now();
   const at=now/TICK_MS; // smooth animation clock in tick units (game ticks only step 4×/s)
+  ctx.imageSmoothingEnabled=false; // pixel sprites stay crisp (resizing the canvas resets this)
   ctx.fillStyle='#090909';
   ctx.fillRect(0,0,W,H);
 
@@ -1657,10 +2060,16 @@ function draw(){
   for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
     const px=tx*ts-cx, py=ty*ts-cy;
     const tile=G.map[ty][tx];
-    ctx.fillStyle='#111'; ctx.fillRect(px,py,ts,ts);
-    ctx.strokeStyle='#161616'; ctx.lineWidth=1; ctx.strokeRect(px,py,ts,ts);
+    const pxs=Math.floor(px), pys=Math.floor(py), tss=Math.ceil(ts)+1; // whole pixels, no seams
+    if(TEX_PIXEL){
+      const v=(tx*7+ty*13)&3;
+      ctx.drawImage(tile.type===T_RESOURCE?resSpr(tile.res,v,Math.floor(at/3)):groundSpr(G.zone,v),pxs,pys,tss,tss);
+    } else {
+      ctx.fillStyle='#111'; ctx.fillRect(px,py,ts,ts);
+      ctx.strokeStyle='#161616'; ctx.lineWidth=1; ctx.strokeRect(px,py,ts,ts);
+    }
 
-    if(tile.type===T_RESOURCE){
+    if(!TEX_PIXEL&&tile.type===T_RESOURCE){
       ctx.fillStyle=RES_COL[tile.res]||'#333';
       ctx.globalAlpha=.6; ctx.fillRect(px+1,py+1,ts-2,ts-2); ctx.globalAlpha=1;
       // Oil deposit, draw dark bubbling texture
@@ -1716,10 +2125,18 @@ function draw(){
         const RW=Math.max(1.5,ts*.05);
         const inset=RW/2+0.5;
 
+        if(TEX_PIXEL){
+          // Tread scrolls at the real belt speed
+          const bs=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
+          const fr=Math.floor(at*bs*16)&3;
+          ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
+          ctx.drawImage(beltSpr(fr),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
+        } else {
         // Full dark surface
         ctx.fillStyle=BELT_BG; ctx.fillRect(px,py,ts,ts);
+        }
 
-        if(ts>10){
+        if(!TEX_PIXEL&&ts>10){
           ctx.save();
           ctx.beginPath(); ctx.rect(px,py,ts,ts); ctx.clip();
 
@@ -1764,9 +2181,7 @@ function draw(){
             const travel=(smoothProg-0.5)*ts;
             const ix=px+ts/2+dvx*travel;
             const iy=py+ts/2+dvy*travel;
-            ctx.font=`${Math.floor(ts*.32)}px serif`;
-            ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.fillText(ITEMS[it.id]?.icon||'·',ix,iy);
+            drawItem(ctx,it.id,ix,iy,ts*.42);
           }
           ctx.restore();
         }
@@ -1790,12 +2205,17 @@ function draw(){
     const isPowering=(m.type==='generator'||m.type==='burner')&&m.active&&(m.inBuf.coal||0)>0;
     const isStub=def.stub;
 
+    const sprM=TEX_PIXEL&&machineSpr(m.type,Math.floor(now/140),machineWorking(m));
+    if(sprM){
+      ctx.drawImage(sprM,Math.floor(px),Math.floor(py),Math.ceil(pw),Math.ceil(ph));
+    } else {
     ctx.fillStyle='#141414'; ctx.fillRect(px,py,pw,ph);
     ctx.strokeStyle=busy||isPowering?col:isStub?'#3a2a4a':'#252525';
     ctx.lineWidth=busy||isPowering?2:1; ctx.strokeRect(px+1,py+1,pw-2,ph-2);
     ctx.fillStyle='#0c0c0c'; ctx.fillRect(px+4,py+4,pw-8,ph-8);
+    }
 
-    if(busy){
+    if(busy&&!sprM){
       ctx.fillStyle=col; ctx.globalAlpha=.07+.05*Math.sin(at*.22);
       ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
     }
@@ -1836,7 +2256,11 @@ function draw(){
       ctx.fillStyle='#ab47bc'; ctx.globalAlpha=.04; ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
     }
 
-    if(ts>10){
+    if(sprM){
+      // Current recipe output in a small corner badge
+      const rec=m.recipe&&(m.type==='assembler'||m.type==='lab'||m.type==='electric_smelter')&&ts>20?RECIPES[m.recipe]:null;
+      if(rec){const bs=Math.max(10,ts*.42);ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(px+3,py+ph-bs-12,bs,bs);drawItem(ctx,Object.keys(rec.out)[0],px+3+bs/2,py+ph-12-bs/2,bs*.85);}
+    } else if(ts>10){
       const fs=Math.floor(Math.min(pw,ph)*.35);
       ctx.font=`${fs}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       // For assembler with recipe: push main icon up, recipe icon down
@@ -1922,8 +2346,9 @@ function draw(){
         // Vitality bar sits under the output-buffer strip; recipe progress keeps the bottom edge
         ctx.fillStyle='#111'; ctx.fillRect(px+4,py+10,pw-8,4);
         ctx.fillStyle=v<.25?'#e53935':v>.8?'#f48fb1':'#4caf50'; ctx.fillRect(px+4,py+10,(pw-8)*v,4);
-        ctx.font=`${Math.max(8,Math.floor(ts*.24))}px serif`; ctx.textAlign='left'; ctx.textBaseline='top';
-        ctx.fillText(st.icon,px+4,py+16);
+        if(TEX_PIXEL)ctx.drawImage(stageSpr(st.name),px+4,py+16,Math.max(8,ts*.28),Math.max(8,ts*.28));
+        else{ctx.font=`${Math.max(8,Math.floor(ts*.24))}px serif`; ctx.textAlign='left'; ctx.textBaseline='top';
+        ctx.fillText(st.icon,px+4,py+16);}
       }
     }
     // Singularity: construction ring, then spinning arcs that tighten with sustain
@@ -2035,9 +2460,7 @@ function draw(){
     ctx.beginPath(); ctx.arc(ax,ay,clawR,0,Math.PI*2); ctx.fill();
 
     if(hasItem&&ts>18){
-      ctx.font=`${Math.floor(ts*.22)}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(ITEMS[arm.item]?.icon||'·',ax,ay);
+      drawItem(ctx,arm.item,ax,ay,ts*.3);
     }
     if(ts>32){
       ctx.fillStyle=isLong?'rgba(38,198,160,.5)':'rgba(136,136,136,.5)';
@@ -2169,7 +2592,7 @@ function draw(){
       if(ts>10){
         ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.globalAlpha=.5; ctx.fillText(def.icon,px+mw*ts/2,py+mh*ts/2); ctx.globalAlpha=1;
+        ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
       }
     }
   } else if(activeTool!=='select'&&activeTool!=='demolish'&&activeTool!=='move'&&hov.x>=0){
@@ -2180,6 +2603,7 @@ function draw(){
       const ok=canPlace(activeTool,hov.x,hov.y);
       ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.14)';
       ctx.fillRect(px,py,mw*ts,mh*ts);
+      ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
       ctx.strokeStyle=ok?'#f5a623':'#e53935';
       ctx.lineWidth=2; ctx.strokeRect(px,py,mw*ts,mh*ts);
       // Output port indicators on ghost
@@ -2240,7 +2664,7 @@ function draw(){
           if(ts>12){
             ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
             ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.globalAlpha=.4; ctx.fillText(def.icon,px+mw*ts/2,py+mh*ts/2); ctx.globalAlpha=1;
+            ctx.globalAlpha=.4; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
           }
         }
       }
@@ -2258,7 +2682,7 @@ function draw(){
           if(ts>12){
             ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
             ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.globalAlpha=.5; ctx.fillText(def.icon,px+mw*ts/2,py+mh*ts/2); ctx.globalAlpha=1;
+            ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
           }
         }
       }
@@ -2281,7 +2705,7 @@ function draw(){
         if(ts>14){
           ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
           ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.globalAlpha=.5; ctx.fillText(def.icon,px+mw*ts/2,py+mh*ts/2); ctx.globalAlpha=1;
+          ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
         }
       }
     }
@@ -2632,7 +3056,7 @@ function tapCollect(x,y){
 function openResInfo(resId, tx, ty){
   const item=ITEMS[resId]||(resId==='oil'?{name:'Oil Deposit',icon:'🛢️'}:null); if(!item)return;
   const stock=G.inv[resId]||0;
-  document.getElementById('resInfoIcon').textContent=item.icon;
+  document.getElementById('resInfoIcon').innerHTML=ITEMS[resId]?iconHtml(resId):item.icon;
   document.getElementById('resInfoName').textContent=item.name;
   document.getElementById('resInfoStock').textContent=`In inventory: ${fmt(stock)}`;
   const btn=document.getElementById('mineTapBtn');
@@ -3348,7 +3772,7 @@ function singularityStatusHtml(compact){
   for(const[id,need]of Object.entries(SING_REQS)){
     const have=(m.built||{})[id]||0, done=have>=need, pct=Math.round(have/need*100);
     html+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-      <span style="font-size:9px;min-width:16px">${ITEMS[id].icon}</span>
+      <span style="min-width:16px">${iconHtml(id)}</span>
       <div style="flex:1"><div style="font-size:5px;color:${done?'var(--teal)':'var(--text2)'};margin-bottom:2px">${ITEMS[id].name}</div>
         <div class="prog-wrap" style="margin:0"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div></div>
       <span style="font-size:5px;color:${done?'var(--teal)':'var(--text3)'};min-width:32px;text-align:right">${have}/${need}</span>
@@ -3807,8 +4231,6 @@ function pwrCol(){
   if(free<G.power.in*.2)return'var(--amber)'; // less than 20% headroom
   return'var(--green)';
 }
-// Icon for an item or machine id, as HTML
-function iconHtml(id){return ITEMS[id]?.icon||MDEFS[id]?.icon||'·';}
 function fmtKW(n){return n>=1000?`${(n/1000).toFixed(1)}MW`:`${Math.floor(n)}kW`;}
 function fmt(n){
   if(n>=1e6)return(n/1e6).toFixed(1)+'M';
@@ -3923,7 +4345,7 @@ function buildDrawer(){
     const lk=locked?'locked':'';
     const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
     return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
-      <span class="di">${item.icon}</span>
+      <span class="di">${iconHtml(item.id,item.icon)}</span>
       <span class="dn">${item.name}</span>
     </div>`;
   }).join('');
@@ -4061,7 +4483,7 @@ function updateToolTip(){
 
   el.innerHTML=`
     <div class="tt-head">
-      <span class="tt-icon">${def.icon}</span>
+      <span class="tt-icon">${iconHtml(activeTool)}</span>
       <span class="tt-name">${def.name}</span>
     </div>
     ${unlockNote}
@@ -4141,7 +4563,7 @@ function renderInvPanel(){
     if(!items.length)continue;
     html+=`<div style="margin-bottom:10px"><span class="sec-label">${lbl}</span><div class="grid4">`;
     for(const i of items)
-      html+=`<div class="inv-item"><span class="ii">${i.icon}</span><span class="iv">${fmt(i.n)}</span><span class="in">${i.name}</span></div>`;
+      html+=`<div class="inv-item"><span class="ii">${iconHtml(i.id)}</span><span class="iv">${fmt(i.n)}</span><span class="in">${i.name}</span></div>`;
     html+='</div></div>';
   }
   if(!html)html=`<div style="color:var(--text3);font-size:6px;text-align:center;padding:20px;line-height:2.2">Tap any ore deposit<br>on the map to mine.</div>`;
@@ -4165,7 +4587,7 @@ function renderCraftPanel(){
     const remaining=active.clicks-cs.clicks;
     const outStr=Object.entries(active.out).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ');
     html+=`<div id="craftActive" style="border:1px solid var(--amber);background:var(--bg3);padding:12px;margin-bottom:10px;text-align:center">
-      <div style="font-size:7px;color:var(--amber);margin-bottom:6px">${active.icon} ${active.name}</div>
+      <div style="font-size:7px;color:var(--amber);margin-bottom:6px">${iconHtml(active.id)} ${active.name}</div>
       <div style="font-size:5px;color:var(--text3);margin-bottom:8px">→ ${outStr}</div>
       <div style="height:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:6px">
         <div style="height:100%;background:var(--amber);width:${pct}%;transition:width .1s"></div>
@@ -4193,7 +4615,7 @@ function renderCraftPanel(){
       // Show locked recipe as a dim hint
       const techName=r.unlock?TECHS[r.unlock]?.name||r.unlock:'';
       html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:8px;margin-bottom:5px;opacity:.3">
-        <div style="font-size:6px;color:var(--text3)">${r.icon} ${r.name} <span style="font-size:4px">🔒 Requires ${techName}</span></div>
+        <div style="font-size:6px;color:var(--text3)">${iconHtml(r.id)} ${r.name} <span style="font-size:4px">🔒 Requires ${techName}</span></div>
       </div>`;
       continue;
     }
@@ -4211,7 +4633,7 @@ function renderCraftPanel(){
     html+=`<div style="border:1px solid ${isActive?'var(--amber)':canAfford?'var(--border2)':'var(--border)'};background:var(--bg3);padding:8px;margin-bottom:5px;opacity:${canAfford||isActive?1:.45}">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:6px;color:${isActive?'var(--amber)':'var(--text)'};margin-bottom:3px">${r.icon} ${r.name}</div>
+          <div style="font-size:6px;color:${isActive?'var(--amber)':'var(--text)'};margin-bottom:3px">${iconHtml(r.id)} ${r.name}</div>
           <div style="font-size:5px;color:var(--blue);margin-bottom:2px">${inStr}</div>
           <div style="font-size:5px;color:var(--text3)">→ ${outStr} &nbsp;·&nbsp; ${r.clicks} clicks</div>
         </div>
@@ -4289,7 +4711,7 @@ function cancelCraft(){
 function openMachinePanel(m){
   if(!m)return;
   inspectId=m.id;
-  document.getElementById('pMachTitle').textContent=`${MDEFS[m.type].icon} ${MDEFS[m.type].name}`;
+  document.getElementById('pMachTitle').innerHTML=`${iconHtml(m.type)} ${MDEFS[m.type].name}`;
   renderMachPanel();
   togglePanel('machine');
 }
@@ -4355,7 +4777,7 @@ function renderMachPanel(){
       html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:4px">`;
       for(const[k,v]of stored){
         html+=`<div style="border:1px solid var(--border);background:var(--bg);padding:5px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="chestTakeOne('${k}',${m.id})">
-          <span style="font-size:10px">${ITEMS[k]?.icon||'?'}</span>
+          <span>${iconHtml(k)}</span>
           <span style="font-size:5px;color:var(--amber)">${v}</span>
           <span style="font-size:4px;color:var(--teal)">TAKE</span>
         </div>`;
@@ -4421,7 +4843,7 @@ function renderMachPanel(){
         for(const[item,need]of Object.entries(rec.in)){
           const inBuf=m.inBuf[item]||0;
           const col=inBuf>=need?'var(--green)':'var(--amber)';
-          html+=`<div style="font-size:5px;margin-bottom:2px;color:${col}">${ITEMS[item]?.icon||''} ${ITEMS[item]?.name||item}: ${inBuf}/${need} in buffer</div>`;
+          html+=`<div style="font-size:5px;margin-bottom:2px;color:${col}">${iconHtml(item)} ${ITEMS[item]?.name||item}: ${inBuf}/${need} in buffer</div>`;
         }
         html+=`</div></div>`;
       }
@@ -4479,7 +4901,7 @@ function renderMachPanel(){
         if(installed){
           const md=MODULE_DEFS[installed];
           html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding:4px;border:1px solid var(--tealDim);background:rgba(38,198,160,.05)">
-            <span style="font-size:5px;color:var(--teal)">${md?.icon||'?'} ${md?.name||installed}, ${md?.desc||''}</span>
+            <span style="font-size:5px;color:var(--teal)">${iconHtml(installed)} ${md?.name||installed}, ${md?.desc||''}</span>
             <button class="mini-btn red" style="font-size:4px" onclick="removeModule(${m.id},${si})">✕</button>
           </div>`;
         } else {
@@ -4487,7 +4909,7 @@ function renderMachPanel(){
           <div style="display:flex;gap:3px;margin-bottom:4px">`;
           for(const[modId,md]of Object.entries(MODULE_DEFS)){
             const have=G.inv[modId]||0;
-            html+=`<button class="mini-btn ${have>0?'teal':'dim'}" style="flex:1;font-size:4px" onclick="installModule(${m.id},${si},'${modId}')" ${have>0?'':'disabled'}>${md.icon} ${md.name}<br><span style="color:var(--text3)">${have} avail</span></button>`;
+            html+=`<button class="mini-btn ${have>0?'teal':'dim'}" style="flex:1;font-size:4px" onclick="installModule(${m.id},${si},'${modId}')" ${have>0?'':'disabled'}>${iconHtml(modId)} ${md.name}<br><span style="color:var(--text3)">${have} avail</span></button>`;
           }
           html+=`</div>`;
         }
@@ -4538,7 +4960,7 @@ function fluidPanelRows(m,def,rec){
   const netRows=net=>{
     const p=Math.round(pressureOf(net));
     const col=net.strain>0?'var(--red)':p>=RELIEF_AT?'var(--amber)':p<LOW_PRESSURE?'var(--blue)':'var(--teal)';
-    return irow('Fluid',net.type?`${ITEMS[net.type]?.icon||''} ${ITEMS[net.type]?.name||net.type}`:'Empty')
+    return irow('Fluid',net.type?`${iconHtml(net.type)} ${ITEMS[net.type]?.name||net.type}`:'Empty')
       +irow('Network',`${Math.round(net.amt)}/${net.cap} · ${net.members.length} parts`)
       +irow('Pressure',`<span style="color:${col}">${p}%${net.strain>0?` ⚠ strain ${Math.round(net.strain/burstStrain()*100)}%`:''}</span>`)
       +`<div class="prog-wrap" style="margin:4px 0 6px;position:relative"><div class="prog-fill" style="width:${p}%;background:${col}"></div></div>`;
@@ -4853,7 +5275,7 @@ function chestTakeOne(itemId,id){
 function renderResPanel(){
   const el=document.getElementById('pResBody');
   const zd=zoneDef();
-  const sciHtml=zd.sci.map(id=>`${ITEMS[id].icon} ${fmt(G.inv[id]||0)} ${ITEMS[id].name}`).join(' &nbsp;&nbsp; ');
+  const sciHtml=zd.sci.map(id=>`${iconHtml(id)} ${fmt(G.inv[id]||0)} ${ITEMS[id].name}`).join(' &nbsp;&nbsp; ');
   let html=`<div class="card" style="margin-bottom:12px">
     <span class="sec-label">SCIENCE PACKS</span>
     <div style="font-size:6px;color:var(--text2);line-height:2">${sciHtml}</div>
@@ -4907,13 +5329,13 @@ function rocketReqRows(compact){
     const done=r.have>=r.need, pct=Math.min(100,Math.round(r.have/r.need*100));
     html+=compact
       ?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <span style="font-size:9px;min-width:16px">${r.icon}</span>
+          <span style="min-width:16px">${iconHtml(r.id)}</span>
           <div style="flex:1"><div class="prog-wrap" style="margin:0"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div></div>
           <span style="font-size:5px;color:${done?'var(--teal)':'var(--text3)'};min-width:32px;text-align:right">${r.have}/${r.need}</span>
         </div>`
       :`<div class="rocket-part ${done?'done':''}">
           <div style="flex:1">
-            <div style="font-size:6px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${r.icon} ${r.name}</div>
+            <div style="font-size:6px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${iconHtml(r.id)} ${r.name}</div>
             <div class="prog-wrap"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div>
           </div>
           <span style="font-size:6px;color:${done?'var(--teal)':'var(--text3)'};margin-left:10px">${r.have}/${r.need}</span>
@@ -4959,7 +5381,7 @@ function renderRocketPanel(){
     if(!rec)continue;
     const ins=[...Object.entries(rec.in),...Object.entries(rec.fluid||{})].map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(', ');
     html+=`<div style="font-size:5px;color:var(--text3);margin-bottom:5px;padding:5px;border:1px solid var(--border)">
-      <span style="color:var(--text)">${ITEMS[p.id].icon} ${p.name}</span><br>
+      <span style="color:var(--text)">${iconHtml(p.id)} ${p.name}</span><br>
       <span style="color:var(--text3)">${ins}</span>
     </div>`;
   }
@@ -5251,7 +5673,7 @@ function renderStatsPanel(){
     for(const[type,count]of Object.entries(typeCounts)){
       const def=MDEFS[type];
       html+=`<div style="display:flex;justify-content:space-between;font-size:5px;margin-bottom:4px">
-        <span style="color:var(--text2)">${def?.icon||''} ${def?.name||type}</span>
+        <span style="color:var(--text2)">${iconHtml(type)} ${def?.name||type}</span>
         <span style="color:var(--amber)">${count}</span>
       </div>`;
     }
@@ -5309,7 +5731,7 @@ function renderStatsPanel(){
       const s=statusMeta[status];
       html+=`<div class="stat-machine ${status}" onclick="selectMachineById(${m.id})" style="cursor:pointer">
         <div style="flex:1">
-          <div style="color:var(--text);margin-bottom:2px">${def.icon} ${def.name} <span style="color:var(--text3)">#${m.id}</span></div>
+          <div style="color:var(--text);margin-bottom:2px">${iconHtml(m.type)} ${def.name} <span style="color:var(--text3)">#${m.id}</span></div>
           <div style="color:var(--text3);line-height:1.8">${s.tip}</div>
         </div>
         <span style="color:${s.col};text-align:right;flex-shrink:0;margin-left:8px;font-size:4px">${s.label}</span>
@@ -5668,8 +6090,8 @@ function renderRecipesPanel(){
     for(const r of recipes){
       const recUnlocked=!r.unlock||done.has(r.unlock);
       const visible=mid==='hand'?recUnlocked:machUnlocked&&recUnlocked;
-      const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${ITEMS[k]?.icon||''}${ITEMS[k]?.name||k}`).join(' + ');
-      const outs=Object.entries(r.out).map(([k,v])=>`${v}× ${ITEMS[k]?.icon||''}${ITEMS[k]?.name||k}`).join(' + ');
+      const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${iconHtml(k)}${ITEMS[k]?.name||k}`).join(' + ');
+      const outs=Object.entries(r.out).map(([k,v])=>`${v}× ${iconHtml(k)}${ITEMS[k]?.name||k}`).join(' + ');
       if(!visible){
         html+=`<div style="padding:6px 8px;margin-bottom:3px;border:1px solid var(--border);background:var(--bg3);opacity:0.4">
           <span style="font-size:6px;color:var(--text3)">🔒 Locked${r.unlock?`, requires ${TECHS[r.unlock]?.name||r.unlock}`:''}</span>
@@ -5953,7 +6375,7 @@ function openBigMenu(section){
     invHtml+=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">`;
     for(const{id,item,amt}of items){
       invHtml+=`<div style="display:flex;align-items:center;gap:3px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);min-width:60px">
-        <span style="font-size:12px">${item.icon}</span>
+        <span>${iconHtml(id)}</span>
         <span style="font-size:5px;color:var(--text2)">${fmt(amt)}</span>
       </div>`;
     }
@@ -6023,6 +6445,9 @@ function openBigMenu(section){
       <span style="font-size:6px;color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
     </div>`;
 
+  settingsHtml+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
+      <span style="font-size:6px;color:var(--text2)">🎨 Textures</span>
+      <button class="mini-btn teal" onclick="toggleTextures()">${TEX_PIXEL?'PIXEL ART':'EMOJI'}</button></div>`;
   settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
 
   // Save slots
