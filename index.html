@@ -339,7 +339,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v1.1.7 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
+    <p class="v-num">v1.1.8 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
   </div>
 </div>
 
@@ -503,7 +503,7 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.1.7';
+const VER      = '1.1.8';
 const TICK_MS  = 250;
 
 const T_FLOOR    = 0;
@@ -1111,8 +1111,8 @@ function defaultState(){
     tutorial:{step:0},
     tutorialZ2:undefined,
     devMode: false,
-    // Perk stubs — populated on zone complete
-    perks:{points:0,spent:{}},
+    // Perks — points earned on each zone's first launch, carried across zones
+    perks:{points:0,spent:{},awarded:{}},
   };
 }
 
@@ -3976,6 +3976,13 @@ function renderRocketPanel(){
       Research<br><span style="color:var(--amber)">Rocket Science</span><br>to unlock this panel.
     </div>`; return;
   }
+  if(G.stats.launched){
+    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text2);font-size:6px;line-height:2.2">
+      🚀 Rocket launched.<br><span style="color:var(--amber)">ZONE 1 COMPLETE</span>
+    </div>
+    <button class="full-btn teal" onclick="continueToZone2()">CONTINUE TO ZONE 2 →</button>`;
+    return;
+  }
   let allReady=true;
   let html='<span class="sec-label">COMPONENTS REQUIRED</span>';
   for(const p of ROCKET_PARTS){
@@ -4020,6 +4027,7 @@ function launchRocket(){
   for(const p of ROCKET_PARTS)
     if((G.inv[p.id]||0)<p.need){toast('Not enough components!','bad');sfx('error');return;}
   for(const p of ROCKET_PARTS)G.inv[p.id]-=p.need;
+  const pts=awardLaunchPerks(G.zone);
   G.stats.launched=true;
   saveGame(); sfx('launch');
   showModal('🚀 LAUNCH SEQUENCE',
@@ -4027,9 +4035,11 @@ function launchRocket(){
       <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
       The rocket ignites.<br>Ironfield shrinks below you.<br><br>
       <span style="color:var(--amber);font-size:7px">ZONE 1 COMPLETE</span><br><br>
+      ${launchPerkLine(pts)}
       <span style="color:var(--text3);font-size:5px">But something's wrong with the trajectory...</span>
     </div>`,
-    `<button class="btn btn-teal btn-sm" onclick="closeModal();transitionToZone2()">CONTINUE →</button>`
+    `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
+     <button class="btn btn-teal btn-sm" onclick="continueToZone2()">CONTINUE →</button>`
   );
 }
 
@@ -4041,6 +4051,7 @@ function launchRocketZ2(){
   if((G.inv.refined_fuel||0)<20){toast('Need 20× Refined Fuel to launch','bad');sfx('error');return;}
   for(const p of parts)G.inv[p.id]-=p.need;
   G.inv.refined_fuel-=20;
+  const pts=awardLaunchPerks(G.zone);
   G.stats.launched=true;
   saveGame(); sfx('launch');
   showModal('🚀 LAUNCH SEQUENCE',
@@ -4048,9 +4059,11 @@ function launchRocketZ2(){
       <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
       The rocket screams upward.<br>The Scar fades to a scar of light.<br><br>
       <span style="color:var(--amber);font-size:7px">ZONE 2 COMPLETE</span><br><br>
+      ${launchPerkLine(pts)}
       <span style="color:var(--text3);font-size:5px">Zone 3 coming soon...</span>
     </div>`,
-    `<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`
+    `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
+     <button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`
   );
 }
 
@@ -4059,6 +4072,7 @@ function transitionToZone2(){
   const researchDone=[...G.research.done];
   const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
   const devMode=G.devMode;
+  const perks=G.perks||{points:0,spent:{},awarded:{}};
   G=defaultState();
   G.zone=2;
   G.smog=0;
@@ -4067,6 +4081,8 @@ function transitionToZone2(){
   G.tutorial={step:-1}; // skip Zone 1 tutorial
   G.tutorialZ2=0;       // start Zone 2 mini-tutorial
   G.research.done=researchDone;
+  G.perks=perks;
+  const quickStart=applyQuickStart();
   G.map=buildMapZ2();
   saveGame();
   // Rebuild UI for Zone 2
@@ -4087,26 +4103,68 @@ function transitionToZone2(){
       The rocket is wrecked. Your tools are gone.<br>But your knowledge survived.<br><br>
       <span style="color:var(--amber)">The ground smells of oil.</span><br>
       <span style="color:var(--text3);font-size:5px">Find the oil deposits. Build the chain. Fix the rocket.</span>
+      ${quickStart?'<br><span style="color:var(--teal);font-size:5px">⭐ Quick Start: +50 of each basic resource salvaged</span>':''}
     </div>`,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">SURVIVE</button>`
   );
 }
 
-// ── Perks (stub) ───────────────────────────────────
+// ── Perks ──────────────────────────────────────────
+const PERK_DEFS=[
+  {id:'yield1',   name:'Ore Richness I',    desc:'+10% resource yield per tap and miner', cost:1, req:[], cat:'Yield'},
+  {id:'yield2',   name:'Ore Richness II',   desc:'+25% resource yield (stacks)', cost:2, req:['yield1'], cat:'Yield'},
+  {id:'speed1',   name:'Machine Haste I',   desc:'+10% all machine processing speed', cost:1, req:[], cat:'Speed'},
+  {id:'speed2',   name:'Machine Haste II',  desc:'+20% all machine processing speed', cost:2, req:['speed1'], cat:'Speed'},
+  {id:'power1',   name:'Power Saver I',     desc:'-15% power consumption all machines', cost:1, req:[], cat:'Efficiency'},
+  {id:'start1',   name:'Quick Start',       desc:'Begin next zone with 50 of each basic resource', cost:2, req:[], cat:'Utility'},
+  {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput (stacks with research)', cost:1, req:[], cat:'Logistics'},
+];
+
+// Points earned the first time each zone's rocket launches
+const LAUNCH_PERK_POINTS={1:3,2:3};
+
+function awardLaunchPerks(zone){
+  if(!G.perks.awarded)G.perks.awarded={};
+  if(G.perks.awarded[zone])return 0;
+  const pts=LAUNCH_PERK_POINTS[zone]||0;
+  G.perks.awarded[zone]=true;
+  G.perks.points=(G.perks.points||0)+pts;
+  return pts;
+}
+
+// Saves from before v1.1.8 launched without earning perks — award them retroactively
+function backfillLaunchPerks(){
+  let pts=0;
+  for(let z=1;z<G.zone;z++)pts+=awardLaunchPerks(z);
+  if(G.stats?.launched)pts+=awardLaunchPerks(G.zone);
+  if(pts){saveGame();toast(`+${pts} ⭐ perk points from past launches`,'ok');}
+}
+
+function launchPerkLine(pts){
+  return pts?`<span style="color:var(--teal);font-size:6px">+${pts} ⭐ PERK POINT${pts!==1?'S':''}</span><br><br>`:'';
+}
+
+// Quick Start perk — called on arrival in a new zone
+function applyQuickStart(){
+  if(!G.perks.spent?.start1)return false;
+  for(const r of ['iron_ore','copper_ore','coal','stone'])G.inv[r]=(G.inv[r]||0)+50;
+  return true;
+}
+
+function continueToZone2(){
+  if(openPanel)closePanel(openPanel);
+  closeModal();
+  transitionToZone2();
+}
+
 function renderPerksPanel(){
   const el=document.getElementById('pPerksBody');
   const pts=G.perks?.points||0;
-  const PERK_DEFS=[
-    {id:'yield1',   name:'Ore Richness I',    desc:'+10% resource yield per tap and miner', cost:1, req:[], cat:'Yield'},
-    {id:'yield2',   name:'Ore Richness II',   desc:'+25% resource yield (stacks)', cost:2, req:['yield1'], cat:'Yield'},
-    {id:'speed1',   name:'Machine Haste I',   desc:'+10% all machine processing speed', cost:1, req:[], cat:'Speed'},
-    {id:'speed2',   name:'Machine Haste II',  desc:'+20% all machine processing speed', cost:2, req:['speed1'], cat:'Speed'},
-    {id:'power1',   name:'Power Saver I',     desc:'-15% power consumption all machines', cost:1, req:[], cat:'Efficiency'},
-    {id:'start1',   name:'Quick Start',       desc:'Begin next zone with 50 of each basic resource', cost:2, req:[], cat:'Utility'},
-    {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput (stacks with research)', cost:1, req:[], cat:'Logistics'},
-  ];
 
-  let html=`<div class="card" style="margin-bottom:10px">
+  let html='';
+  if(G.zone===1&&G.stats.launched)
+    html+=`<button class="full-btn teal" style="margin-bottom:10px" onclick="continueToZone2()">CONTINUE TO ZONE 2 →</button>`;
+  html+=`<div class="card" style="margin-bottom:10px">
     <div style="font-size:5px;color:var(--text3);margin-bottom:4px">AVAILABLE POINTS</div>
     <div style="font-size:10px;color:var(--amber)">${pts} point${pts!==1?'s':''}</div>
     ${pts===0?'<div style="font-size:5px;color:var(--text3);margin-top:4px">Launch rockets to earn more.</div>':''}
@@ -4130,7 +4188,7 @@ function renderPerksPanel(){
       html+=`<div style="border:1px solid ${owned?'var(--teal)':reqMet?'var(--border2)':'var(--border)'};background:var(--bg3);padding:8px;margin-bottom:5px;opacity:${!reqMet&&!owned?.4:1}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
           <span style="font-size:6px;color:${owned?'var(--teal)':'var(--text)'}">${p.name}</span>
-          ${owned?'<span style="color:var(--teal)">✓</span>':'<span style="font-size:5px;color:var(--amber)">${p.cost}pt</span>'}
+          ${owned?'<span style="color:var(--teal)">✓</span>':`<span style="font-size:5px;color:var(--amber)">${p.cost}pt</span>`}
         </div>
         <div style="font-size:5px;color:var(--text3);margin-bottom:${canBuy?5:0}px">${p.desc}</div>
         ${canBuy?`<button class="mini-btn amber" onclick="buyPerk('${p.id}',${p.cost})">UNLOCK</button>`:''}
@@ -4714,7 +4772,7 @@ function buyPerk(id,cost){
   if(!G.perks.spent)G.perks.spent={};
   G.perks.spent[id]=true;
   saveGame(); sfx('research');
-  toast(`Perk unlocked: ${id}`,'ok');
+  toast(`Perk unlocked: ${PERK_DEFS.find(p=>p.id===id)?.name||id}`,'ok');
   renderPerksPanel();
 }
 
@@ -4777,7 +4835,10 @@ function openBigMenu(section){
   const rocketUnlocked=(G.zone===1&&G.research.done.includes('rocket_tech'))||(G.zone===2&&G.research.done.includes('repair_tech'));
   const parts=z2?ROCKET_PARTS_Z2:ROCKET_PARTS;
   let rocketHtml='';
-  if(rocketUnlocked){
+  if(G.zone===1&&G.stats.launched){
+    rocketHtml=`<div style="color:var(--teal);font-size:5px;margin-bottom:6px">🚀 Rocket launched — Zone 1 complete.</div>
+      <button class="full-btn teal" onclick="continueToZone2()">CONTINUE TO ZONE 2 →</button>`;
+  } else if(rocketUnlocked){
     let allReady=true;
     for(const p of parts){
       const have=G.inv[p.id]||0; const done=have>=p.need;
@@ -4866,6 +4927,14 @@ function openBigMenu(section){
     </div>`;
   }
 
+  // Perks summary
+  const perkPts=G.perks?.points||0;
+  const perkOwned=Object.keys(G.perks?.spent||{}).length;
+  const perksHtml=`<div style="font-size:5px;color:var(--text3);margin-bottom:6px;line-height:2">
+      <span style="color:var(--amber)">${perkPts} point${perkPts!==1?'s':''}</span> available · ${perkOwned}/${PERK_DEFS.length} unlocked
+    </div>
+    <button class="full-btn teal" onclick="closeModal();togglePanel('perks')">⭐ OPEN PERKS</button>`;
+
   // Dev section
   let devHtml='';
   if(devMode){
@@ -4889,6 +4958,7 @@ function openBigMenu(section){
   const body=`
     ${sec('inventory','📦 INVENTORY',invHtml,true)}
     ${sec('rocket','🚀 ROCKET',rocketHtml,false)}
+    ${sec('perks',`⭐ PERKS${perkPts?` (${perkPts})`:''}`,perksHtml,false)}
     ${sec('stats','📊 STATISTICS',statsHtml,false)}
     ${sec('achievements','🏆 ACHIEVEMENTS',achieveHtml,false)}
     ${sec('settings','⚙️ SETTINGS & AUDIO',settingsHtml,false)}
@@ -4917,7 +4987,7 @@ function loadFromSlot(s){
   try{
     G=JSON.parse(raw);
     if(!G.crafted)G.crafted={};
-    if(!G.perks)G.perks={points:0,spent:{}};
+    if(!G.perks)G.perks={points:0,spent:{},awarded:{}};
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
     if(!G.blueprints)G.blueprints=[];
@@ -4925,6 +4995,7 @@ function loadFromSlot(s){
     if(document.getElementById('modal')&&!document.getElementById('modal').classList.contains('hidden'))closeModal();
     startGame(false);
     toast(`Loaded slot ${s}`,'ok');
+    backfillLaunchPerks();
   }catch(e){toast('Load failed','bad');}
 }
 
@@ -5164,7 +5235,7 @@ function continueGame(){
     G=JSON.parse(raw);
     if(!G||!G.ver){newGame();return;}
     if(!G.crafted)G.crafted={};
-    if(!G.perks)G.perks={points:0,spent:{}};
+    if(!G.perks)G.perks={points:0,spent:{},awarded:{}};
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
     if(!G.blueprints)G.blueprints=[];
@@ -5172,7 +5243,8 @@ function continueGame(){
     if(G.smog===undefined)G.smog=0;
     G.power={out:0,in:0};
     startGame(false);
-  }catch(e){newGame();}
+  }catch(e){newGame();return;}
+  backfillLaunchPerks();
 }
 
 // ═══════════════════════════════════════════════════
