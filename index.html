@@ -500,8 +500,10 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 //  CONSTANTS
 // ═══════════════════════════════════════════════════
 const TILE     = 48;
-const MAP_W    = 96;
-const MAP_H    = 64;
+const BASE_MAP_W = 96;
+const BASE_MAP_H = 64;
+let MAP_W = BASE_MAP_W;   // per-zone — set by syncMapSize() / zone mapSize
+let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
 const VER      = '1.1.9';
 const TICK_MS  = 250;
@@ -882,7 +884,7 @@ const DRAWER_DEFS = {
       {id:'assembler',name:'Assembler',icon:'🏗️'},
       {id:'lab',name:'Lab',icon:'🔬'},
     ]},
-    {label:'Oil', items:[
+    {label:'Oil', zones:[2,5], unlock:'oil_extraction', items:[
       {id:'oil_pump',name:'Oil Pump',icon:'🛢️'},
       {id:'cracker',name:'Cracker',icon:'⚗️'},
       {id:'refinery',name:'Refinery',icon:'🏭'},
@@ -972,6 +974,51 @@ const ROCKET_PARTS_Z2 = [
   {id:'r_thruster',   name:'Thruster',      need:2, unlock:'repair_tech'},
   {id:'r_cell',       name:'Power Cell',    need:1, unlock:'repair_tech'},
 ];
+
+// ═══════════════════════════════════════════════════
+//  ZONES — per-zone config. Add a zone by adding an entry.
+// ═══════════════════════════════════════════════════
+const ZONES={
+  1:{name:'Ironfield', icon:'⛏️', rocketTech:'rocket_tech', parts:ROCKET_PARTS, fuel:null,
+     partsCat:'rocket', partsLabel:'Rocket (Zone 1)', sci:['sci_red','sci_green','sci_blue'],
+     hazards:[], buildMap:()=>buildMap(), mapSize:[96,64],
+     launchLabel:'LAUNCH ROCKET', launchText:'The rocket ignites.<br>Ironfield shrinks below you.',
+     launchTease:"But something's wrong with the trajectory...",
+     arrivalTitle:'⛏️ IRONFIELD', arrivalBtn:"LET'S GO",
+     arrivalHtml:`Welcome to <span style="color:var(--amber)">Ironfield</span>.<br>No machines. No power. Nothing.<br><br>
+       Tap <span style="color:var(--amber)">🛠️ TOOLS</span> then<br>⛏️ Mine to collect resources.<br><br>Build a rocket to escape.`},
+  2:{name:'The Scar', icon:'💥', rocketTech:'repair_tech', parts:ROCKET_PARTS_Z2, fuel:{item:'refined_fuel',n:20},
+     partsCat:'rocket2', partsLabel:'Repair (Zone 2)', sci:['sci_scar','sci_smog','sci_repair'],
+     hazards:['smog'], buildMap:()=>buildMapZ2(), mapSize:[96,64],
+     launchLabel:'REPAIR & RELAUNCH', launchText:'The rocket screams upward.<br>The Scar fades to a scar of light.',
+     launchTease:'The Nav Computer locks onto a signal — not from the sky, but from below...',
+     arrivalTitle:'💥 CRASH LANDING', arrivalBtn:'SURVIVE',
+     arrivalHtml:`Something went wrong.<br>You've crashed on <span style="color:var(--red)">The Scar</span>.<br><br>
+       The rocket is wrecked. Your tools are gone.<br>But your knowledge survived.<br><br>
+       <span style="color:var(--amber)">The ground smells of oil.</span><br>
+       <span style="color:var(--text3);font-size:5px">Find the oil deposits. Build the chain. Fix the rocket.</span>`},
+};
+function zoneDef(z){return ZONES[z||G.zone]||ZONES[1];}
+function zoneHas(hazard){return zoneDef().hazards.includes(hazard);}
+function nextZone(){return ZONES[G.zone+1]?G.zone+1:null;}
+function rocketUnlocked(){const t=zoneDef().rocketTech;return !!t&&G.research.done.includes(t);}
+// Everything the current zone's launch consumes: parts + any launch fuel
+function rocketReqs(){
+  const zd=zoneDef();
+  const list=zd.parts.map(p=>({id:p.id,name:p.name,need:p.need}));
+  if(zd.fuel)list.push({id:zd.fuel.item,name:`${ITEMS[zd.fuel.item].name} (launch)`,need:zd.fuel.n});
+  return list.map(r=>({...r,icon:ITEMS[r.id]?.icon||'?',have:G.inv[r.id]||0}));
+}
+// Techs that belong to a zone (Zone 1 techs have no zone field)
+function zoneTechs(z){return Object.entries(TECHS).filter(([,t])=>(t.zone||1)===z);}
+function syncMapSize(){if(G?.map?.length){MAP_H=G.map.length;MAP_W=G.map[0].length;}}
+function updateZoneTabs(){
+  document.querySelectorAll('.zone-tab').forEach((t,i)=>{
+    t.classList.toggle('active',i===G.zone-1);
+    t.classList.toggle('locked',i>G.zone-1);
+    if(ZONES[i+1]&&i<=G.zone-1)t.title=`Zone ${i+1}: ${ZONES[i+1].name}`;
+  });
+}
 
 // ═══════════════════════════════════════════════════
 //  MAP
@@ -1081,6 +1128,7 @@ function buildMapZ2(){
 let G = null;
 
 function defaultState(){
+  MAP_W=BASE_MAP_W; MAP_H=BASE_MAP_H;
   return {
     ver:VER, tick:0,
     zone:1,
@@ -1111,7 +1159,7 @@ function defaultState(){
     craftState:{recipeId:null, clicks:0},
     achievements:[],
     tutorial:{step:0},
-    tutorialZ2:undefined,
+    zoneTut:undefined,     // step in ZONE_TUTORIALS[zone] (-1 = done)
     devMode: false,
     // Perks — points earned on each zone's first launch, carried across zones
     perks:{points:0,spent:{},awarded:{}},
@@ -1807,7 +1855,7 @@ function draw(){
   }
 
   // Smog overlay — Zone 2 only, scales with G.smog 0-100
-  if(G&&G.zone===2&&(G.smog||0)>0){
+  if(G&&zoneHas('smog')&&(G.smog||0)>0){
     const smogAlpha=Math.min(0.55,(G.smog/100)*0.55);
     ctx.fillStyle=`rgba(40,30,0,${smogAlpha})`;
     ctx.fillRect(0,0,W,H);
@@ -2396,12 +2444,12 @@ function gameTick(){
   runBelts();
 
   // Smog tick — natural decay + clamp
-  if(G.zone===2){
+  if(zoneHas('smog')){
     if(G.smog===undefined)G.smog=0;
     G.smog=Math.max(0,Math.min(100,G.smog-0.1));
   }
 
-  if(G.tick%4===0){updateHUD();refreshOpenPanel();buildToolbar();checkAchievements();tickTutorial();tickTutorialZ2();}
+  if(G.tick%4===0){updateHUD();refreshOpenPanel();buildToolbar();checkAchievements();tickTutorial();tickZoneTutorial();}
   if(G.tick%120===0)saveGame();
 }
 
@@ -2499,13 +2547,13 @@ function runMachine(m){
       m.produced++;
       recordOutput(m,1);
       // Generate smog
-      if(G.zone===2){G.smog=Math.min(100,(G.smog||0)+0.5);}
+      if(zoneHas('smog')){G.smog=Math.min(100,(G.smog||0)+0.5);}
     }
     return;
   }
   if(m.type==='scrubber'){
     // Burns refined_fuel to remove smog — every 4 ticks
-    if(G.zone!==2||G.tick%4!==0)return;
+    if(!zoneHas('smog')||G.tick%4!==0)return;
     if(powerRatio()===0)return;
     const hasFuel=(m.inBuf.refined_fuel||0)>0;
     if(hasFuel&&(G.smog||0)>0){
@@ -2522,7 +2570,7 @@ function runMachine(m){
     const pm=perkMult();
     const tierMult=m.tier===3?2:m.tier===2?1.5:1;
     // Smog reduces efficiency in Zone 2
-    const smogMult=G.zone===2?Math.max(0.1,(100-(G.smog||0))/100):1;
+    const smogMult=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
     const rate=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smogMult)));
     if(m.prog>=rate){
       const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
@@ -2546,7 +2594,7 @@ function runMachine(m){
   if(ratio===0)return;
   const tierMult=m.tier===3?2:m.tier===2?1.5:1;
   // Smog reduces efficiency in Zone 2 for all powered machines
-  const smogEff=G.zone===2?Math.max(0.1,(100-(G.smog||0))/100):1;
+  const smogEff=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
   const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff;
 
   if(m.prog===0){
@@ -2854,12 +2902,19 @@ function updateHUD(){
   const hasConsumers=G.power.in>0;
   const pwrLabel=hasConsumers?(free>=0?`+${fmt(free)}kW`:`${fmt(free)}kW`):`${fmt(G.power.out)}kW`;
   let html=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
-  if(G.zone===2){
-    const smog=Math.round(G.smog||0);
-    const smogCol=smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)';
-    html+=`<div class="hres" style="margin-left:4px"><span class="hres-icon">🌫️</span><span class="hres-val" style="color:${smogCol}">${smog}%</span></div>`;
-  }
+  html+=hudHazardsHtml();
   el.innerHTML=html;
+}
+
+// Zone hazard gauges shown next to power in the HUD
+function hudHazardsHtml(){
+  let html='';
+  const gauge=(icon,val,col)=>`<div class="hres" style="margin-left:4px"><span class="hres-icon">${icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
+  if(zoneHas('smog')){
+    const smog=Math.round(G.smog||0);
+    html+=gauge('🌫️',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)');
+  }
+  return html;
 }
 
 function pwrCol(){
@@ -2948,11 +3003,9 @@ function switchTab(tab){
 function buildDrawer(){
   const tab=activeTab;
   if(tab!=='build'&&tab!=='tools') return;
-  // Filter Oil category — only show if oil_extraction researched
-  let cats=(DRAWER_DEFS[tab]||[]).filter(c=>{
-    if(c.label==='Oil') return G.research.done.includes('oil_extraction');
-    return true;
-  });
+  // Zone-specific categories only show in their zones, once their tech is researched
+  let cats=(DRAWER_DEFS[tab]||[]).filter(c=>
+    (!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)));
   const catIdx=activeDrawerCat[tab]||0;
   const safeCatIdx=Math.min(catIdx,cats.length-1);
 
@@ -3869,27 +3922,21 @@ function chestTakeOne(itemId,id){
 // ── Research ───────────────────────────────────────
 function renderResPanel(){
   const el=document.getElementById('pResBody');
-  const z2=G.zone===2;
-  let sciHtml=`🗒️ ${fmt(G.inv.sci_red||0)} Field Notes &nbsp;&nbsp; 📋 ${fmt(G.inv.sci_green||0)} Circuit Diagrams`;
-  if(G.research.done.includes('electronics'))sciHtml+=` &nbsp;&nbsp; 📘 ${fmt(G.inv.sci_blue||0)} Adv. Schematics`;
-  if(z2){
-    sciHtml+=`<br>📓 ${fmt(G.inv.sci_scar||0)} Scar Notes &nbsp;&nbsp; 🌫️ ${fmt(G.inv.sci_smog||0)} Smog Data`;
-    if(G.research.done.includes('smog_control'))sciHtml+=` &nbsp;&nbsp; 🔧 ${fmt(G.inv.sci_repair||0)} Repair Data`;
-  }
+  const zd=zoneDef();
+  const sciHtml=zd.sci.map(id=>`${ITEMS[id].icon} ${fmt(G.inv[id]||0)} ${ITEMS[id].name}`).join(' &nbsp;&nbsp; ');
   let html=`<div class="card" style="margin-bottom:12px">
     <span class="sec-label">SCIENCE PACKS</span>
     <div style="font-size:6px;color:var(--text2);line-height:2">${sciHtml}</div>
   </div>`;
 
+  // Show this zone's techs (Zone 5 merges every zone, so it shows all)
+  const visible=([,t])=>G.zone===5||(t.zone||1)===G.zone;
   const eras=[...new Set(Object.values(TECHS).map(t=>t.era))];
   for(const era of eras){
-    // Filter: hide Zone 2 techs in Zone 1, hide Zone 1 techs in Zone 2 (already done)
-    const techsInEra=Object.entries(TECHS).filter(([,t])=>t.era===era);
-    const anyVisible=techsInEra.some(([,t])=>!t.zone||(z2&&t.zone===2)||(!z2&&!t.zone));
-    if(!anyVisible)continue;
+    const techsInEra=Object.entries(TECHS).filter(([,t])=>t.era===era).filter(visible);
+    if(!techsInEra.length)continue;
     html+=`<div style="font-size:5px;color:var(--text3);letter-spacing:2px;margin:10px 0 6px">── ${era} ──</div>`;
     for(const[id,tech]of techsInEra){
-      if(tech.zone&&tech.zone===2&&!z2)continue; // hide Z2 techs in Z1
       const done=G.research.done.includes(id);
       const reqMet=tech.req.every(r=>G.research.done.includes(r));
       const canAfford=reqMet&&!done&&Object.entries(tech.cost).every(([k,v])=>(G.inv[k]||0)>=v);
@@ -3922,102 +3969,64 @@ function doResearch(id){
 }
 
 // ── Rocket ─────────────────────────────────────────
+// Requirement rows shared by the rocket panel and the menu
+function rocketReqRows(compact){
+  let html='';
+  for(const r of rocketReqs()){
+    const done=r.have>=r.need, pct=Math.min(100,Math.round(r.have/r.need*100));
+    html+=compact
+      ?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:9px;min-width:16px">${r.icon}</span>
+          <div style="flex:1"><div class="prog-wrap" style="margin:0"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div></div>
+          <span style="font-size:5px;color:${done?'var(--teal)':'var(--text3)'};min-width:32px;text-align:right">${r.have}/${r.need}</span>
+        </div>`
+      :`<div class="rocket-part ${done?'done':''}">
+          <div style="flex:1">
+            <div style="font-size:6px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${r.icon} ${r.name}</div>
+            <div class="prog-wrap"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div>
+          </div>
+          <span style="font-size:6px;color:${done?'var(--teal)':'var(--text3)'};margin-left:10px">${r.have}/${r.need}</span>
+        </div>`;
+  }
+  return html;
+}
+function rocketReady(){return rocketReqs().every(r=>r.have>=r.need);}
+function continueBtnHtml(){
+  const nz=nextZone();
+  return nz?`<button class="full-btn teal" onclick="continueToNextZone()">CONTINUE TO ZONE ${nz} →</button>`:'';
+}
+
 function renderRocketPanel(){
   const el=document.getElementById('pRocketBody');
-  if(G.zone===2){
-    const unlocked=G.research.done.includes('repair_tech');
-    if(!unlocked){
-      el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:6px;line-height:2.2">
-        Research<br><span style="color:var(--amber)">Rocket Repair</span><br>to unlock repair recipes.
-      </div>`; return;
-    }
-    const parts=ROCKET_PARTS_Z2;
-    let allReady=true;
-    let html='<span class="sec-label">REPAIR COMPONENTS</span>';
-    for(const p of parts){
-      const have=G.inv[p.id]||0;
-      const done=have>=p.need;
-      if(!done)allReady=false;
-      const pct=Math.min(100,Math.round(have/p.need*100));
-      html+=`<div class="rocket-part ${done?'done':''}">
-        <div style="flex:1">
-          <div style="font-size:6px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${ITEMS[p.id]?.icon||'?'} ${p.name}</div>
-          <div class="prog-wrap"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div>
-        </div>
-        <span style="font-size:6px;color:${done?'var(--teal)':'var(--text3)'};margin-left:10px">${have}/${p.need}</span>
-      </div>`;
-    }
-    // Refined fuel requirement
-    const haveFuel=G.inv.refined_fuel||0;
-    const fuelDone=haveFuel>=20;
-    if(!fuelDone)allReady=false;
-    html+=`<div class="rocket-part ${fuelDone?'done':''}">
-      <div style="flex:1">
-        <div style="font-size:6px;color:${fuelDone?'var(--teal)':'var(--text)'};margin-bottom:4px">🔥 Refined Fuel (launch)</div>
-        <div class="prog-wrap"><div class="prog-fill ${fuelDone?'green':'amber'}" style="width:${Math.min(100,Math.round(haveFuel/20*100))}%"></div></div>
-      </div>
-      <span style="font-size:6px;color:${fuelDone?'var(--teal)':'var(--text3)'};margin-left:10px">${haveFuel}/20</span>
-    </div>`;
-    if(allReady){
-      html+=`<button class="full-btn launch" onclick="launchRocket()">🚀 REPAIR &amp; RELAUNCH</button>`;
-    } else {
-      html+=`<div style="font-size:5px;color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
-        Build all components to repair and relaunch.
-      </div>`;
-    }
-    html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">
-      <div style="font-size:5px;color:var(--text3);margin-bottom:4px">🌫️ SMOG: ${Math.round(G.smog||0)}% — efficiency: ${Math.round((100-(G.smog||0)))}%</div>
-      <div class="prog-wrap"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
-    </div>`;
-    html+=milestonesHtml();
-    el.innerHTML=html;
+  const zd=zoneDef();
+  if(zd.renderPanel){zd.renderPanel(el);return;}
+  if(G.stats.launched&&nextZone()){
+    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text2);font-size:6px;line-height:2.2">
+      🚀 Rocket launched.<br><span style="color:var(--amber)">ZONE ${G.zone} COMPLETE</span>
+    </div>${continueBtnHtml()}`;
     return;
   }
-  // Zone 1
-  const unlocked=G.research.done.includes('rocket_tech');
-  if(!unlocked){
+  if(!rocketUnlocked()){
     el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:6px;line-height:2.2">
-      Research<br><span style="color:var(--amber)">Rocket Science</span><br>to unlock this panel.
+      Research<br><span style="color:var(--amber)">${TECHS[zd.rocketTech]?.name}</span><br>to unlock this panel.
     </div>`; return;
   }
-  if(G.stats.launched){
-    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text2);font-size:6px;line-height:2.2">
-      🚀 Rocket launched.<br><span style="color:var(--amber)">ZONE 1 COMPLETE</span>
-    </div>
-    <button class="full-btn teal" onclick="continueToZone2()">CONTINUE TO ZONE 2 →</button>`;
-    return;
-  }
-  let allReady=true;
-  let html='<span class="sec-label">COMPONENTS REQUIRED</span>';
-  for(const p of ROCKET_PARTS){
-    const have=G.inv[p.id]||0;
-    const done=have>=p.need;
-    if(!done)allReady=false;
-    const pct=Math.min(100,Math.round(have/p.need*100));
-    html+=`<div class="rocket-part ${done?'done':''}">
-      <div style="flex:1">
-        <div style="font-size:6px;color:${done?'var(--teal)':'var(--text)'};margin-bottom:4px">${ITEMS[p.id].icon} ${p.name}</div>
-        <div class="prog-wrap"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div>
-      </div>
-      <span style="font-size:6px;color:${done?'var(--teal)':'var(--text3)'};margin-left:10px">${have}/${p.need}</span>
-    </div>`;
-  }
-  if(allReady){
-    html+=`<button class="full-btn launch" onclick="launchRocket()">🚀 LAUNCH ROCKET</button>`;
-  } else {
-    html+=`<div style="font-size:5px;color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
-      Build all components to initiate launch sequence.
-    </div>`;
-  }
+  let html=`<span class="sec-label">COMPONENTS REQUIRED</span>${rocketReqRows(false)}`;
+  html+=rocketReady()
+    ?`<button class="full-btn launch" onclick="launchRocket()">🚀 ${zd.launchLabel}</button>`
+    :`<div style="font-size:5px;color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
+        Build all components to initiate launch sequence.
+      </div>`;
+  html+=hazardPanelHtml();
   html+=milestonesHtml();
   // Recipe reference
   html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
     <span class="sec-label">RECIPE REFERENCE</span>`;
-  for(const p of ROCKET_PARTS){
+  for(const p of zd.parts){
     const recId=Object.keys(RECIPES).find(k=>Object.keys(RECIPES[k].out)[0]===p.id);
     const rec=recId?RECIPES[recId]:null;
     if(!rec)continue;
-    const ins=Object.entries(rec.in).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(', ');
+    const ins=[...Object.entries(rec.in),...Object.entries(rec.fluid||{})].map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(', ');
     html+=`<div style="font-size:5px;color:var(--text3);margin-bottom:5px;padding:5px;border:1px solid var(--border)">
       <span style="color:var(--text)">${ITEMS[p.id].icon} ${p.name}</span><br>
       <span style="color:var(--text3)">${ins}</span>
@@ -4027,90 +4036,76 @@ function renderRocketPanel(){
   el.innerHTML=html;
 }
 
+// Zone hazard summary for the rocket panel
+function hazardPanelHtml(){
+  let html='';
+  if(zoneHas('smog')){
+    html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">
+      <div style="font-size:5px;color:var(--text3);margin-bottom:4px">🌫️ SMOG: ${Math.round(G.smog||0)}% — efficiency: ${Math.round((100-(G.smog||0)))}%</div>
+      <div class="prog-wrap"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
+    </div>`;
+  }
+  return html;
+}
+
 function launchRocket(){
-  if(G.zone===2){launchRocketZ2();return;}
-  for(const p of ROCKET_PARTS)
-    if((G.inv[p.id]||0)<p.need){toast('Not enough components!','bad');sfx('error');return;}
-  for(const p of ROCKET_PARTS)G.inv[p.id]-=p.need;
+  const zd=zoneDef();
+  if(!rocketUnlocked()){toast('Research required first','bad');sfx('error');return;}
+  const miss=rocketReqs().find(r=>r.have<r.need);
+  if(miss){toast(`Need ${miss.need}× ${miss.name}`,'bad');sfx('error');return;}
+  for(const r of rocketReqs())G.inv[r.id]-=r.need;
   const award=awardLaunchPerks(G.zone);
   G.stats.launched=true;
   saveGame(); sfx('launch');
+  const nz=nextZone();
   showModal('🚀 LAUNCH SEQUENCE',
     `<div style="text-align:center;font-size:6px;color:var(--text2);line-height:2.5">
       <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
-      The rocket ignites.<br>Ironfield shrinks below you.<br><br>
-      <span style="color:var(--amber);font-size:7px">ZONE 1 COMPLETE</span><br><br>
+      ${zd.launchText}<br><br>
+      <span style="color:var(--amber);font-size:7px">ZONE ${G.zone} COMPLETE</span><br><br>
       ${launchPerkLine(award)}
-      <span style="color:var(--text3);font-size:5px">But something's wrong with the trajectory...</span>
+      <span style="color:var(--text3);font-size:5px">${nz?zd.launchTease:'More zones coming soon...'}</span>
     </div>`,
     `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
-     <button class="btn btn-teal btn-sm" onclick="continueToZone2()">CONTINUE →</button>`
+     ${nz?`<button class="btn btn-teal btn-sm" onclick="continueToNextZone()">CONTINUE →</button>`
+         :`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`}`
   );
 }
 
-function launchRocketZ2(){
-  const parts=ROCKET_PARTS_Z2;
-  for(const p of parts)
-    if((G.inv[p.id]||0)<p.need){toast('Not enough components!','bad');sfx('error');return;}
-  // Also need refined fuel ×20
-  if((G.inv.refined_fuel||0)<20){toast('Need 20× Refined Fuel to launch','bad');sfx('error');return;}
-  for(const p of parts)G.inv[p.id]-=p.need;
-  G.inv.refined_fuel-=20;
-  const award=awardLaunchPerks(G.zone);
-  G.stats.launched=true;
-  saveGame(); sfx('launch');
-  showModal('🚀 LAUNCH SEQUENCE',
-    `<div style="text-align:center;font-size:6px;color:var(--text2);line-height:2.5">
-      <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
-      The rocket screams upward.<br>The Scar fades to a scar of light.<br><br>
-      <span style="color:var(--amber);font-size:7px">ZONE 2 COMPLETE</span><br><br>
-      ${launchPerkLine(award)}
-      <span style="color:var(--text3);font-size:5px">Zone 3 coming soon...</span>
-    </div>`,
-    `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
-     <button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`
-  );
-}
-
-function transitionToZone2(){
-  // Preserve research and audio settings, wipe everything else
+// Fresh start in zone n — keeps research, perks, audio settings and dev mode
+function transitionToZone(n){
+  const zd=ZONES[n]; if(!zd)return;
   const researchDone=[...G.research.done];
   const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
   const devMode=G.devMode;
   const perks=G.perks||{points:0,spent:{},awarded:{}};
   G=defaultState();
-  G.zone=2;
+  G.zone=n;
   G.smog=0;
   G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
   G.devMode=devMode;
-  G.tutorial={step:-1}; // skip Zone 1 tutorial
-  G.tutorialZ2=0;       // start Zone 2 mini-tutorial
+  G.tutorial={step:-1};                     // Zone 1 tutorial never repeats
+  G.zoneTut=ZONE_TUTORIALS[n]?0:undefined;  // zone mini-tutorial
   G.research.done=researchDone;
   G.perks=perks;
   const quickStart=applyQuickStart();
-  G.map=buildMapZ2();
+  [MAP_W,MAP_H]=zd.mapSize;
+  G.map=zd.buildMap();
+  if(zd.onArrive)zd.onArrive();
   saveGame();
-  // Rebuild UI for Zone 2
-  initCanvas(); buildToolbar(); updateHUD();
+  initCanvas(); buildToolbar(); updateHUD(); updateRocketBtn();
   const ts=TILE*G.cam.zoom;
   G.cam.x=26*ts-canvas.width/2+ts*3;
   G.cam.y=24*ts-canvas.height/2+ts*2;
   clampCam();
-  // Update zone tab
-  document.querySelectorAll('.zone-tab').forEach((t,i)=>{
-    t.classList.toggle('active',i===1);
-    t.classList.toggle('locked',i>1);
-  });
-  showModal('💥 CRASH LANDING',
+  updateZoneTabs();
+  showModal(zd.arrivalTitle,
     `<div style="text-align:center;font-size:6px;color:var(--text2);line-height:2.5">
-      <div style="font-size:28px;margin-bottom:10px">💥</div>
-      Something went wrong.<br>You've crashed on <span style="color:var(--red)">The Scar</span>.<br><br>
-      The rocket is wrecked. Your tools are gone.<br>But your knowledge survived.<br><br>
-      <span style="color:var(--amber)">The ground smells of oil.</span><br>
-      <span style="color:var(--text3);font-size:5px">Find the oil deposits. Build the chain. Fix the rocket.</span>
+      <div style="font-size:28px;margin-bottom:10px">${zd.icon}</div>
+      ${zd.arrivalHtml}
       ${quickStart?'<br><span style="color:var(--teal);font-size:5px">⭐ Quick Start: +50 of each basic resource salvaged</span>':''}
     </div>`,
-    `<button class="btn btn-teal btn-sm" onclick="closeModal()">SURVIVE</button>`
+    `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
   );
 }
 
@@ -4192,10 +4187,11 @@ function applyQuickStart(){
   return true;
 }
 
-function continueToZone2(){
+function continueToNextZone(){
+  const nz=nextZone(); if(!nz)return;
   if(openPanel)closePanel(openPanel);
   closeModal();
-  transitionToZone2();
+  transitionToZone(nz);
 }
 
 function renderPerksPanel(){
@@ -4203,8 +4199,8 @@ function renderPerksPanel(){
   const pts=G.perks?.points||0;
 
   let html='';
-  if(G.zone===1&&G.stats.launched)
-    html+=`<button class="full-btn teal" style="margin-bottom:10px" onclick="continueToZone2()">CONTINUE TO ZONE 2 →</button>`;
+  if(G.stats.launched&&nextZone())
+    html+=`<div style="margin-bottom:10px">${continueBtnHtml()}</div>`;
   html+=`<div class="card" style="margin-bottom:10px">
     <div style="font-size:5px;color:var(--text3);margin-bottom:4px">AVAILABLE POINTS</div>
     <div style="font-size:10px;color:var(--amber)">${pts} point${pts!==1?'s':''}</div>
@@ -4780,30 +4776,32 @@ function hideTutHint(){
 }
 function skipTutorial(){
   if(G.tutorial)G.tutorial.step=-1;
-  if(G.tutorialZ2!==undefined&&G.tutorialZ2>=0)G.tutorialZ2=-1;
+  if(G.zoneTut!==undefined&&G.zoneTut>=0)G.zoneTut=-1;
   hideTutHint();
   toast('Tutorial skipped','ok');
 }
 
-// Zone 2 mini-tutorial — 3 steps
-const Z2_TUTORIAL=[
-  {text:'Welcome to The Scar. Find an 🛢️ oil deposit on the map — dark tiles with a barrel icon.',
-   done:()=>Object.values(G.machines).some(m=>m.type==='oil_pump')},
-  {text:'Research 🛢️ Oil Extraction first — tap RESEARCH tab, spend Scar Notes.',
-   done:()=>G.research.done.includes('oil_extraction')},
-  {text:'⚠️ Oil pumps generate smog! Watch the 🌫️ meter in the HUD. Build 🌿 Scrubbers to clean the air.',
-   done:()=>Object.values(G.machines).some(m=>m.type==='scrubber')},
-];
+// Zone mini-tutorials — keyed by zone, steps advance when done() is true
+const ZONE_TUTORIALS={
+  2:{done:'The Scar briefing complete', steps:[
+    {text:'Welcome to The Scar. Find an 🛢️ oil deposit on the map — dark tiles with a barrel icon.',
+     done:()=>Object.values(G.machines).some(m=>m.type==='oil_pump')},
+    {text:'Research 🛢️ Oil Extraction first — tap RESEARCH tab, spend Scar Notes.',
+     done:()=>G.research.done.includes('oil_extraction')},
+    {text:'⚠️ Oil pumps generate smog! Watch the 🌫️ meter in the HUD. Build 🌿 Scrubbers to clean the air.',
+     done:()=>Object.values(G.machines).some(m=>m.type==='scrubber')},
+  ]},
+};
 
-function tickTutorialZ2(){
-  if(G.zone!==2)return;
-  if(G.tutorialZ2===undefined||G.tutorialZ2<0)return;
-  const step=Z2_TUTORIAL[G.tutorialZ2];
-  if(!step){G.tutorialZ2=-1;hideTutHint();return;}
+function tickZoneTutorial(){
+  const tut=ZONE_TUTORIALS[G.zone];
+  if(!tut||G.zoneTut===undefined||G.zoneTut<0)return;
+  const step=tut.steps[G.zoneTut];
+  if(!step){G.zoneTut=-1;hideTutHint();return;}
   showTutHint(step.text);
   if(step.done()){
-    G.tutorialZ2++;
-    if(G.tutorialZ2>=Z2_TUTORIAL.length){G.tutorialZ2=-1;hideTutHint();toast('The Scar briefing complete','ok');}
+    G.zoneTut++;
+    if(G.zoneTut>=tut.steps.length){G.zoneTut=-1;hideTutHint();toast(tut.done,'ok');}
   }
 }
 
@@ -4837,17 +4835,16 @@ function closeModal(){document.getElementById('mOverlay').classList.add('hidden'
 function updateRocketBtn(){
   const btn=document.getElementById('btnRocket');
   if(!btn)return;
-  const show=(G.zone===1&&G.research.done.includes('rocket_tech'))||(G.zone===2&&G.research.done.includes('repair_tech'));
-  btn.style.display=show?'':'none';
+  btn.style.display=(rocketUnlocked()||zoneDef().renderPanel)?'':'none';
 }
 
 function openBigMenu(section){
   // Build inline menu with all named sections
   const devMode=G.devMode;
-  const z2=G.zone===2;
+  const zd=zoneDef();
 
   // Inventory
-  const invCats={raw:[],processed:[],parts:[],science:[],rocket:[],rocket2:[]};
+  const invCats={raw:[],processed:[],parts:[],science:[],[zd.partsCat]:[]};
   for(const[id,item]of Object.entries(ITEMS)){
     const amt=G.inv[id]||0;
     if(amt<=0&&!['iron_ore','copper_ore','coal','stone'].includes(id))continue;
@@ -4855,12 +4852,11 @@ function openBigMenu(section){
     if(!invCats[cat])invCats[cat]=[];
     invCats[cat].push({id,item,amt});
   }
-  const catLabels={raw:'Raw Materials',processed:'Processed',parts:'Parts & Components',science:'Science',rocket:'Rocket (Zone 1)',rocket2:'Repair (Zone 2)'};
+  const catLabels={raw:'Raw Materials',processed:'Processed',parts:'Parts & Components',science:'Science',[zd.partsCat]:zd.partsLabel};
   let invHtml='';
   for(const[cat,items]of Object.entries(invCats)){
     if(!items.length)continue;
-    if(cat==='rocket'&&z2)continue;
-    if(cat==='rocket2'&&!z2)continue;
+    if(cat.startsWith('rocket')&&cat!==zd.partsCat)continue; // other zones' rocket parts
     invHtml+=`<div style="font-size:4px;color:var(--text3);letter-spacing:2px;margin:8px 0 4px">${catLabels[cat]||cat}</div>`;
     invHtml+=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">`;
     for(const{id,item,amt}of items){
@@ -4873,37 +4869,18 @@ function openBigMenu(section){
   }
 
   // Rocket panel summary
-  const rocketUnlocked=(G.zone===1&&G.research.done.includes('rocket_tech'))||(G.zone===2&&G.research.done.includes('repair_tech'));
-  const parts=z2?ROCKET_PARTS_Z2:ROCKET_PARTS;
   let rocketHtml='';
-  if(G.zone===1&&G.stats.launched){
-    rocketHtml=`<div style="color:var(--teal);font-size:5px;margin-bottom:6px">🚀 Rocket launched — Zone 1 complete.</div>
-      <button class="full-btn teal" onclick="continueToZone2()">CONTINUE TO ZONE 2 →</button>`;
-  } else if(rocketUnlocked){
-    let allReady=true;
-    for(const p of parts){
-      const have=G.inv[p.id]||0; const done=have>=p.need;
-      if(!done)allReady=false;
-      const pct=Math.min(100,Math.round(have/p.need*100));
-      rocketHtml+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <span style="font-size:9px;min-width:16px">${ITEMS[p.id]?.icon||'?'}</span>
-        <div style="flex:1"><div class="prog-wrap" style="margin:0"><div class="prog-fill ${done?'green':'amber'}" style="width:${pct}%"></div></div></div>
-        <span style="font-size:5px;color:${done?'var(--teal)':'var(--text3)'};min-width:32px;text-align:right">${have}/${p.need}</span>
-      </div>`;
-    }
-    if(z2){
-      const haveFuel=G.inv.refined_fuel||0; const fuelDone=haveFuel>=20;
-      if(!fuelDone)allReady=false;
-      rocketHtml+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <span style="font-size:9px;min-width:16px">🔥</span>
-        <div style="flex:1"><div class="prog-wrap" style="margin:0"><div class="prog-fill ${fuelDone?'green':'amber'}" style="width:${Math.min(100,Math.round(haveFuel/20*100))}%"></div></div></div>
-        <span style="font-size:5px;color:${fuelDone?'var(--teal)':'var(--text3)'};min-width:32px;text-align:right">${haveFuel}/20</span>
-      </div>`;
-    }
-    if(allReady) rocketHtml+=`<button class="full-btn launch" style="margin-top:6px" onclick="closeModal();launchRocket()">🚀 ${z2?'REPAIR & RELAUNCH':'LAUNCH ROCKET'}</button>`;
+  if(zd.menuRocketHtml){
+    rocketHtml=zd.menuRocketHtml();
+  } else if(G.stats.launched&&nextZone()){
+    rocketHtml=`<div style="color:var(--teal);font-size:5px;margin-bottom:6px">🚀 Rocket launched — Zone ${G.zone} complete.</div>
+      ${continueBtnHtml()}`;
+  } else if(rocketUnlocked()){
+    rocketHtml=rocketReqRows(true);
+    if(rocketReady()) rocketHtml+=`<button class="full-btn launch" style="margin-top:6px" onclick="closeModal();launchRocket()">🚀 ${zd.launchLabel}</button>`;
     rocketHtml+=milestonesHtml();
   } else {
-    rocketHtml=`<div style="color:var(--text3);font-size:5px">Research ${z2?'Rocket Repair':'Rocket Science'} to unlock.</div>`;
+    rocketHtml=`<div style="color:var(--text3);font-size:5px">Research ${TECHS[zd.rocketTech]?.name} to unlock.</div>`;
   }
 
   // Stats
@@ -4912,7 +4889,7 @@ function openBigMenu(section){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:6px">
       <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
         <div style="color:var(--text3);font-size:4px;margin-bottom:3px">ZONE</div>
-        <div style="color:var(--amber)">${z2?'2 — The Scar':'1 — Ironfield'}</div>
+        <div style="color:var(--amber)">${G.zone} — ${zd.name}</div>
       </div>
       <div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
         <div style="color:var(--text3);font-size:4px;margin-bottom:3px">POWER</div>
@@ -4926,7 +4903,7 @@ function openBigMenu(section){
         <div style="color:var(--text3);font-size:4px;margin-bottom:3px">RESEARCH</div>
         <div style="color:var(--text)">${G.research.done.length}/${Object.keys(TECHS).length}</div>
       </div>
-      ${z2?`<div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border);grid-column:span 2">
+      ${zoneHas('smog')?`<div style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border);grid-column:span 2">
         <div style="color:var(--text3);font-size:4px;margin-bottom:3px">SMOG</div>
         <div class="prog-wrap" style="margin:4px 0"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
         <div style="color:${(G.smog||0)>70?'var(--red)':(G.smog||0)>40?'var(--amber)':'var(--teal)'};">${Math.round(G.smog||0)}% — efficiency ${Math.round(100-(G.smog||0))}%</div>
@@ -5033,6 +5010,8 @@ function loadFromSlot(s){
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
     if(!G.blueprints)G.blueprints=[];
+    if(!G.zone)G.zone=1;
+    migrateSave();
     G.power={out:0,in:0};
     if(document.getElementById('modal')&&!document.getElementById('modal').classList.contains('hidden'))closeModal();
     startGame(false);
@@ -5134,7 +5113,7 @@ function renderDevPanel(){
   // Complete rocket
   html+=`<span class="sec-label" style="color:var(--purple);margin-top:10px">SHORTCUTS</span>
   <button class="full-btn" style="border-color:var(--purple);color:var(--purple)" onclick="devCompleteRocket()">GIVE ROCKET COMPONENTS</button>
-  <button class="full-btn" style="border-color:var(--purple);color:var(--purple)" onclick="devCompleteZ2()">GIVE Z2 REPAIR COMPONENTS</button>
+  <button class="full-btn" style="border-color:var(--purple);color:var(--purple)" onclick="devCompleteZone()">UNLOCK ZONE TECHS + GIVE LAUNCH PARTS</button>
   <button class="full-btn" style="border-color:var(--red);color:var(--red);margin-top:4px" onclick="devReset()">RESET SAVE (new game)</button>`;
 
   el.innerHTML=html;
@@ -5186,14 +5165,14 @@ function devCompleteRocket(){
   toast('Rocket components given','ok');
 }
 
-function devCompleteZ2(){
-  if(G.zone!==2){toast('Switch to Zone 2 first','wrn');return;}
-  for(const id of ['oil_extraction','smog_control','repair_tech'])
-    if(!G.research.done.includes(id))G.research.done.push(id);
-  for(const p of ROCKET_PARTS_Z2) G.inv[p.id]=(G.inv[p.id]||0)+p.need;
-  G.inv.refined_fuel=(G.inv.refined_fuel||0)+20;
-  buildToolbar(); updateHUD();
-  toast('Z2 repair components given','ok');
+function devCompleteZone(){
+  // Research every tech in this zone (and Zone 1's, which they build on)
+  for(const[id,t]of Object.entries(TECHS))
+    if(((t.zone||1)===G.zone||!t.zone)&&!G.research.done.includes(id))G.research.done.push(id);
+  for(const r of rocketReqs()) G.inv[r.id]=(G.inv[r.id]||0)+r.need;
+  if(zoneDef().onDevComplete)zoneDef().onDevComplete();
+  buildToolbar(); updateHUD(); updateRocketBtn();
+  toast(`Zone ${G.zone} techs + launch parts given`,'ok');
 }
 
 function devReset(){
@@ -5267,6 +5246,12 @@ function quitToTitle(){
 // ═══════════════════════════════════════════════════
 //  SAVE / LOAD
 // ═══════════════════════════════════════════════════
+// Key renames between versions — called by both load paths
+function migrateSave(){
+  if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
+  delete G.tutorialZ2;
+}
+
 function saveGame(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(G));}catch(e){}
 }
@@ -5283,6 +5268,7 @@ function continueGame(){
     if(!G.blueprints)G.blueprints=[];
     if(!G.zone)G.zone=1;
     if(G.smog===undefined)G.smog=0;
+    migrateSave();
     G.power={out:0,in:0};
     startGame(false);
   }catch(e){newGame();return;}
@@ -5298,6 +5284,7 @@ function newGame(){
 }
 
 function startGame(isNew){
+  syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
   document.getElementById('wrap').getBoundingClientRect(); // force layout before canvas sizing
@@ -5318,12 +5305,7 @@ function startGame(isNew){
       }
     }
   }
-  const zoneTabs=document.querySelectorAll('.zone-tab');
-  const zoneIdx=(G.zone||1)-1;
-  zoneTabs.forEach((t,i)=>{
-    t.classList.toggle('active',i===zoneIdx);
-    t.classList.toggle('locked',i>zoneIdx);
-  });
+  updateZoneTabs();
   updateHUD(); updateRocketBtn();
   startTick(); startRender();
   if(G.music!==false) musicStart();
@@ -5336,24 +5318,11 @@ function startGame(isNew){
     clampCam();
   });
   if(isNew){
-    if(G.zone===1){G.tutorial={step:0};G.tutorialZ2=undefined;}
-    setTimeout(()=>showModal(G.zone===2?'💥 THE SCAR':'⛏️ IRONFIELD',
-      G.zone===2
-        ?`<div style="font-size:6px;color:var(--text2);line-height:2.4">
-            You've crashed on <span style="color:var(--red)">The Scar</span>.<br>
-            The rocket is wrecked. Your tools are gone.<br>
-            But your knowledge survived.<br><br>
-            <span style="color:var(--amber)">The ground smells of oil.</span><br>
-            Find oil deposits. Build the chain. Fix the rocket.
-          </div>`
-        :`<div style="font-size:6px;color:var(--text2);line-height:2.4">
-            Welcome to <span style="color:var(--amber)">Ironfield</span>.<br>
-            No machines. No power. Nothing.<br><br>
-            Tap <span style="color:var(--amber)">🛠️ TOOLS</span> then<br>
-            ⛏️ Mine to collect resources.<br><br>
-            Build a rocket to escape.
-          </div>`,
-      `<button class="btn btn-teal btn-sm" onclick="closeModal()">${G.zone===2?'SURVIVE':'LET\'S GO'}</button>`
+    if(G.zone===1){G.tutorial={step:0};G.zoneTut=undefined;}
+    const zd=zoneDef();
+    setTimeout(()=>showModal(zd.arrivalTitle,
+      `<div style="font-size:6px;color:var(--text2);line-height:2.4">${zd.arrivalHtml}</div>`,
+      `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
     ),700);
   }
 }
