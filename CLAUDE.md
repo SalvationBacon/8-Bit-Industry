@@ -9,9 +9,13 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.1.8 — Zone 1: Ironfield / Zone 2: The Scar
+**Current build:** v1.1.9 — Zone 1: Ironfield / Zone 2: The Scar
 **Working file:** `index.html` — ~5,300 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
+
+**Related docs**
+- `docs/GDD.md`: original Game Design Document (v1.0). Source of the long-term vision: zone themes, Zones 3–5, prestige, fluids, heat. Where it disagrees with this file or the code, **this file and the code win** (see *GDD divergences*).
+- `docs/ZONE3_DESIGN.md`: Zone 3 design draft, awaiting review. Don't implement it until its open questions are answered.
 
 ---
 
@@ -21,12 +25,13 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker — network-first HTML, cache-first assets. Current: `ebi-v116` |
+| `sw.js` | Service worker — network-first HTML, cache-first assets. Current: `ebi-v117` |
 | `icon-192.png` | Android home screen icon |
 | `icon-512.png` | Splash / store icon |
 | `apple-touch-icon.png` | iOS home screen icon |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
+| `docs/` | GDD and zone design docs |
 
 **Updating GitHub:** Upload via Add file → Upload files, or `.` web editor
 **Always bump cache version** in `sw.js` on every update
@@ -224,7 +229,7 @@ Tap ore tile → TAP TO MINE (4 taps = 1 ore)
 | `cracker` | Cracker | ⚗️ | 2×2 | 16 | oil_extraction | Crude → raw fuel + plastic |
 | `refinery` | Refinery | 🏭 | 2×2 | 12 | oil_extraction | Raw fuel → refined fuel |
 | `combustion_gen` | Combustion Gen. | 🔆 | 2×2 | −80 | smog_control | Burns refined fuel (1 per 8s) |
-| `scrubber` | Scrubber | 🌿 | 1×2 | 6 | smog_control | Burns refined fuel to remove smog — **see Known Issues** |
+| `scrubber` | Scrubber | 🌿 | 1×2 | 6 | smog_control | Needs power + refined fuel (1 per 4s while smog > 0). Removes `SCRUBBER_SMOG` (0.75) every 4 ticks, enough to cancel ~3 oil pumps |
 
 ---
 
@@ -279,26 +284,31 @@ Zone 2 techs carry `zone:2`; the research panel hides techs from the other zone.
 
 - Crash-landed: everything but research and perks is gone
 - Map (`buildMapZ2()`): oil-heavy, with some iron/coal/stone for bootstrapping
-- **Smog** (`G.smog`, 0–100): +0.5 per oil pump output, −0.1 per tick natural decay, Scrubbers meant to remove it. Shown as HUD meter, canvas overlay and in the Rocket section
+- **Smog** (`G.smog`, 0–100): +0.5 per oil pump output (one pump outputs every 8 ticks), −0.1 per tick natural decay, −0.75 per powered and fuelled Scrubber every 4 ticks. Shown as HUD meter, canvas overlay and in the Rocket section
 - 3-step mini-tutorial (`Z2_TUTORIAL`): place oil pump → research Oil Extraction → build a Scrubber
 
 ---
 
 ## Perks
 
-Earned on each zone's **first** launch (`LAUNCH_PERK_POINTS = {1:3, 2:3}`; guarded by `G.perks.awarded[zone]`). Saves from before v1.1.8 are backfilled on load (`backfillLaunchPerks()`). Perks carry across zones. Reached via ☰ → ⭐ PERKS or the ⭐ PERKS button on the launch modal.
+Earned on each zone's **first** launch (guarded by `G.perks.awarded[zone]`): **3 base** (`LAUNCH_PERK_POINTS`) **+1 per zone milestone** met at that moment (`ZONE_MILESTONES`, checked by `awardLaunchPerks()`). That's up to 6 per zone, as in the GDD. Milestones are listed in the Rocket panel and the ☰ Rocket section until the zone launches. Saves from before v1.1.8 are backfilled with base points only (`backfillLaunchPerks()`). Perks carry across zones. Reached via ☰ → ⭐ PERKS or the ⭐ PERKS button on the launch modal.
+
+| Zone | Milestones |
+|---|---|
+| 1 | Industrialist (25+ production machines, i.e. not belts/inserters/splitters/tunnels/chests) · Power Plant (generating 120kW+) · Engineer (5+ machines at T2+) |
+| 2 | Industrialist · Oil Baron (6+ oil pumps) · Clear Skies (smog < 25%) |
 
 | ID | Effect | Cost | Req |
 |---|---|---|---|
 | yield1 | +10% miner yield | 1 | — |
-| yield2 | +25% yield (replaces yield1's bonus) | 2 | yield1 |
+| yield2 | +25% yield, stacks with yield1 (total ×1.35) | 2 | yield1 |
 | speed1 | +10% machine speed | 1 | — |
 | speed2 | +20% machine speed | 2 | speed1 |
 | power1 | −15% power draw | 1 | — |
 | start1 | Quick Start: +50 iron ore, copper ore, coal, stone on arrival in a new zone (`applyQuickStart()`) | 2 | — |
 | belt1 | +20% belt speed | 1 | — |
 
-Total cost is 10 points; 3 per zone means everything is affordable by the end of Zone 4.
+Total cost is 10 points against 3–6 earned per zone. The GDD expects ~16–20 points overall, so more perks are needed as zones are added.
 
 ---
 
@@ -326,24 +336,34 @@ Total cost is 10 points; 3 per zone means everything is affordable by the end of
 - Mobile build flow (✓ PLACE, move/demolish from machine panel, bottom tab bar + drawer)
 - Zone 2: The Scar (oil chain, smog, repair rocket, mini-tutorial)
 - Perk points on launch, perks carried across zones, Quick Start (v1.1.8)
+- Zone milestones (+1 perk each), Scrubber fix, Yield II stacking (v1.1.9)
 
 ### Known Issues
-- **Scrubbers never remove smog.** In `runMachine`, `if(G.zone!==2||!G.tick%4===0)return;` parses as `(!G.tick)%4===0`, which is true on every tick after the first, so the scrubber always returns early. Intended: `G.tick%4!==0`. Fixing it as written would remove 3 smog every 4 ticks (12/sec) against +0.5 per pump output, so tune the numbers when fixing.
 - **Achievements reset on zone transition** (part of the `defaultState()` wipe). Decide whether they should carry over like research.
-- **Yield II** description says "stacks" but `perkMult()` gives a flat 1.25.
 
 ### Mid Term
 - Belt corner visuals (smooth direction-change rendering)
 
 ### Long Term
-- Zone 3: The Deep (crystals, pressure mechanic) — needs a design pass before code
+- Zone 3: The Deep. Design drafted in `docs/ZONE3_DESIGN.md`. It needs the **fluid/pipe system** first (lithium brine; pressure); Zone 4 reuses it
 - Zone 4: The Bloom (biological machines, decay)
-- Zone 5: The Singularity + Big Bang prestige (Z5 tab already in HUD)
+- Zone 5: The Singularity + Big Bang (Z5 tab already in HUD)
+- Prestige: Stardust currency, permanent perks, cosmetics in a never-wiped `ebi_prestige` key
+- Heat system (GDD long-term)
+- More perks unlocking per zone
+
+### GDD divergences (code wins unless the user says otherwise)
+- **Power:** GDD says proportional slowdown; the game uses a hard cutoff (`powerRatio()` 0/1)
+- **Zone 2 resources:** GDD lists crude oil, natural gas, sulfur, scrap metal, scarce iron; rocket fuel refined petroleum + liquid oxygen; 200 kW oil generator. The game has crude oil only, refined fuel and an 80 kW Combustion Gen.
+- **Tech tree:** GDD targets ~60 nodes with 3+ paths to each rocket; the game has 8 techs with linear gating
+- **Costs/recipes:** several Zone 1 costs, tech costs and machine names (Smelter vs Electric Smelter/Blast Furnace) differ
+- **Saves:** GDD says single slot + `ebi_prefs`; the game has AUTO + 3 slots and stores prefs in `G`
 
 ---
 
 ## Coding Conventions
 
+- **Always ask before changing existing logic** (from the GDD). Bugs found while doing something else get reported, not silently fixed.
 - Single `index.html` — never split
 - Vanilla JS only — no frameworks, no libraries
 - All state in `G` declared once in `defaultState()`; backfill new keys in `continueGame()` and `loadFromSlot()`

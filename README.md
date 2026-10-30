@@ -17,10 +17,12 @@ https://salvationbacon.github.io/8-Bit-Industry/
 | `icon-512.png` | Splash / store icon |
 | `apple-touch-icon.png` | iOS home screen icon |
 | `CLAUDE.md` | Project instructions — design, systems, roadmap, conventions |
+| `docs/GDD.md` | Original Game Design Document (long-term vision) |
+| `docs/ZONE3_DESIGN.md` | Zone 3: The Deep — design draft |
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v116` → `ebi-v117`) on every update
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v117` → `ebi-v118`) on every update
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open
@@ -31,4 +33,4 @@ https://salvationbacon.github.io/8-Bit-Industry/
 Menu (☰) → 🔒 DEV → type `BIGBANG`
 
 ## Version
-v1.1.8 — Zone 1: Ironfield · Zone 2: The Scar
+v1.1.9 — Zone 1: Ironfield · Zone 2: The Scar

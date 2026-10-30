@@ -339,7 +339,7 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
     </div>
-    <p class="v-num">v1.1.8 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
+    <p class="v-num">v1.1.9 — ZONE 1: IRONFIELD / ZONE 2: THE SCAR</p>
   </div>
 </div>
 
@@ -503,8 +503,10 @@ const TILE     = 48;
 const MAP_W    = 96;
 const MAP_H    = 64;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.1.8';
+const VER      = '1.1.9';
 const TICK_MS  = 250;
+// Smog removed per scrubber every 4 ticks — one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
+const SCRUBBER_SMOG = 0.75;
 
 const T_FLOOR    = 0;
 const T_RESOURCE = 1;
@@ -2415,7 +2417,7 @@ function powerRatio(){
 function perkMult(){
   const s=G.perks?.spent||{};
   return {
-    yield: s.yield2?1.25 : s.yield1?1.10 : 1,
+    yield: s.yield2?1.35 : s.yield1?1.10 : 1, // II stacks on I: +10% +25%
     speed: s.speed2?1.20 : s.speed1?1.10 : 1,
     belt:  s.belt1?1.20 : 1,
     power: s.power1?0.85 : 1, // multiplier on power draw (0.85 = -15%)
@@ -2503,10 +2505,11 @@ function runMachine(m){
   }
   if(m.type==='scrubber'){
     // Burns refined_fuel to remove smog — every 4 ticks
-    if(G.zone!==2||!G.tick%4===0)return;
+    if(G.zone!==2||G.tick%4!==0)return;
+    if(powerRatio()===0)return;
     const hasFuel=(m.inBuf.refined_fuel||0)>0;
     if(hasFuel&&(G.smog||0)>0){
-      G.smog=Math.max(0,(G.smog||0)-3);
+      G.smog=Math.max(0,(G.smog||0)-SCRUBBER_SMOG);
       if(G.tick%16===0) m.inBuf.refined_fuel--;
     }
     return;
@@ -3966,6 +3969,7 @@ function renderRocketPanel(){
       <div style="font-size:5px;color:var(--text3);margin-bottom:4px">🌫️ SMOG: ${Math.round(G.smog||0)}% — efficiency: ${Math.round((100-(G.smog||0)))}%</div>
       <div class="prog-wrap"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
     </div>`;
+    html+=milestonesHtml();
     el.innerHTML=html;
     return;
   }
@@ -4005,6 +4009,7 @@ function renderRocketPanel(){
       Build all components to initiate launch sequence.
     </div>`;
   }
+  html+=milestonesHtml();
   // Recipe reference
   html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
     <span class="sec-label">RECIPE REFERENCE</span>`;
@@ -4027,7 +4032,7 @@ function launchRocket(){
   for(const p of ROCKET_PARTS)
     if((G.inv[p.id]||0)<p.need){toast('Not enough components!','bad');sfx('error');return;}
   for(const p of ROCKET_PARTS)G.inv[p.id]-=p.need;
-  const pts=awardLaunchPerks(G.zone);
+  const award=awardLaunchPerks(G.zone);
   G.stats.launched=true;
   saveGame(); sfx('launch');
   showModal('🚀 LAUNCH SEQUENCE',
@@ -4035,7 +4040,7 @@ function launchRocket(){
       <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
       The rocket ignites.<br>Ironfield shrinks below you.<br><br>
       <span style="color:var(--amber);font-size:7px">ZONE 1 COMPLETE</span><br><br>
-      ${launchPerkLine(pts)}
+      ${launchPerkLine(award)}
       <span style="color:var(--text3);font-size:5px">But something's wrong with the trajectory...</span>
     </div>`,
     `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
@@ -4051,7 +4056,7 @@ function launchRocketZ2(){
   if((G.inv.refined_fuel||0)<20){toast('Need 20× Refined Fuel to launch','bad');sfx('error');return;}
   for(const p of parts)G.inv[p.id]-=p.need;
   G.inv.refined_fuel-=20;
-  const pts=awardLaunchPerks(G.zone);
+  const award=awardLaunchPerks(G.zone);
   G.stats.launched=true;
   saveGame(); sfx('launch');
   showModal('🚀 LAUNCH SEQUENCE',
@@ -4059,7 +4064,7 @@ function launchRocketZ2(){
       <div style="font-size:28px;margin-bottom:10px;animation:bob 0.6s infinite">🚀</div>
       The rocket screams upward.<br>The Scar fades to a scar of light.<br><br>
       <span style="color:var(--amber);font-size:7px">ZONE 2 COMPLETE</span><br><br>
-      ${launchPerkLine(pts)}
+      ${launchPerkLine(award)}
       <span style="color:var(--text3);font-size:5px">Zone 3 coming soon...</span>
     </div>`,
     `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
@@ -4120,28 +4125,64 @@ const PERK_DEFS=[
   {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput (stacks with research)', cost:1, req:[], cat:'Logistics'},
 ];
 
-// Points earned the first time each zone's rocket launches
+// Base points earned the first time each zone's rocket launches
 const LAUNCH_PERK_POINTS={1:3,2:3};
 
+// Zone milestones — each one met at launch adds +1 perk point
+const LOGISTICS_TYPES=['belt','splitter','tunnel','inserter','long_inserter','chest'];
+function productionMachineCount(){
+  return Object.values(G.machines).filter(m=>!LOGISTICS_TYPES.includes(m.type)).length;
+}
+const ZONE_MILESTONES={
+  1:[
+    {id:'z1_industry', name:'Industrialist', desc:'25+ production machines placed', done:()=>productionMachineCount()>=25},
+    {id:'z1_power',    name:'Power Plant',   desc:'Generating 120kW+',             done:()=>G.power.out>=120},
+    {id:'z1_upgrade',  name:'Engineer',      desc:'5+ machines upgraded to T2+',   done:()=>Object.values(G.machines).filter(m=>(m.tier||1)>=2).length>=5},
+  ],
+  2:[
+    {id:'z2_industry', name:'Industrialist', desc:'25+ production machines placed', done:()=>productionMachineCount()>=25},
+    {id:'z2_oil',      name:'Oil Baron',     desc:'6+ oil pumps placed',            done:()=>Object.values(G.machines).filter(m=>m.type==='oil_pump').length>=6},
+    {id:'z2_clean',    name:'Clear Skies',   desc:'Smog below 25%',                 done:()=>(G.smog||0)<25},
+  ],
+};
+function zoneMilestones(zone){
+  return (ZONE_MILESTONES[zone]||[]).map(ms=>({...ms,met:!!ms.done()}));
+}
+
+// Returns {pts, met:[names]} — milestones only count for the zone being played
 function awardLaunchPerks(zone){
   if(!G.perks.awarded)G.perks.awarded={};
-  if(G.perks.awarded[zone])return 0;
-  const pts=LAUNCH_PERK_POINTS[zone]||0;
+  if(G.perks.awarded[zone])return {pts:0,met:[]};
+  const met=zone===G.zone?zoneMilestones(zone).filter(ms=>ms.met).map(ms=>ms.name):[];
+  const pts=(LAUNCH_PERK_POINTS[zone]||0)+met.length;
   G.perks.awarded[zone]=true;
   G.perks.points=(G.perks.points||0)+pts;
-  return pts;
+  return {pts,met};
+}
+
+// Milestone checklist for the rocket views (hidden once this zone has launched)
+function milestonesHtml(){
+  if(G.perks?.awarded?.[G.zone])return '';
+  const list=zoneMilestones(G.zone); if(!list.length)return '';
+  let html=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">
+    <div style="font-size:5px;color:var(--text3);margin-bottom:5px">MILESTONES · +1 ⭐ EACH AT LAUNCH</div>`;
+  for(const ms of list)
+    html+=`<div style="font-size:5px;line-height:2.2;color:${ms.met?'var(--teal)':'var(--text2)'}">${ms.met?'✓':'○'} ${ms.name} <span style="color:var(--text3)">— ${ms.desc}</span></div>`;
+  return html+'</div>';
 }
 
 // Saves from before v1.1.8 launched without earning perks — award them retroactively
 function backfillLaunchPerks(){
   let pts=0;
-  for(let z=1;z<G.zone;z++)pts+=awardLaunchPerks(z);
-  if(G.stats?.launched)pts+=awardLaunchPerks(G.zone);
+  for(let z=1;z<G.zone;z++)pts+=awardLaunchPerks(z).pts;
+  if(G.stats?.launched)pts+=awardLaunchPerks(G.zone).pts;
   if(pts){saveGame();toast(`+${pts} ⭐ perk points from past launches`,'ok');}
 }
 
-function launchPerkLine(pts){
-  return pts?`<span style="color:var(--teal);font-size:6px">+${pts} ⭐ PERK POINT${pts!==1?'S':''}</span><br><br>`:'';
+function launchPerkLine({pts,met}){
+  if(!pts)return '';
+  return `<span style="color:var(--teal);font-size:6px">+${pts} ⭐ PERK POINT${pts!==1?'S':''}</span><br>
+    ${met.length?`<span style="color:var(--text3);font-size:5px">Milestones: ${met.join(' · ')}</span><br>`:''}<br>`;
 }
 
 // Quick Start perk — called on arrival in a new zone
@@ -4860,6 +4901,7 @@ function openBigMenu(section){
       </div>`;
     }
     if(allReady) rocketHtml+=`<button class="full-btn launch" style="margin-top:6px" onclick="closeModal();launchRocket()">🚀 ${z2?'REPAIR & RELAUNCH':'LAUNCH ROCKET'}</button>`;
+    rocketHtml+=milestonesHtml();
   } else {
     rocketHtml=`<div style="color:var(--text3);font-size:5px">Research ${z2?'Rocket Repair':'Rocket Science'} to unlock.</div>`;
   }
