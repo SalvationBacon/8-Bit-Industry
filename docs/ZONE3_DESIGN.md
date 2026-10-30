@@ -1,9 +1,20 @@
-# Zone 3 — The Deep · Design Draft
+# Zone 3 — The Deep · Design
 
-> **Status:** DRAFT for review. Nothing here is implemented yet.
-> **Sources:** GDD §3 (zone theme, resources, pressure mechanic, rocket fuel), GDD §8 (Zone 3 power), GDD §18 (fluid/pipe system).
-> Numbers are starting points for tuning, not final.
-> Decisions needed before coding are collected in **§12 Open Questions**.
+> **Status: IMPLEMENTED in v1.2.0.** The user said to build the whole game, so the open questions in §12 were settled with this draft's defaults:
+> 1. Bursts destroy **only the pipe** (and half the fluid).
+> 2. **No cave walls** (still an idea; see CLAUDE.md roadmap).
+> 3. **Accumulators: yes.** They cover a shortfall only when they can cover all of it, so the hard power cutoff stays.
+> 4. **Lumen Panel glow tide: yes**, 180s bright / 60s dim.
+> 5. Zone 2 crude oil **stays as belt items**.
+> 6. Relief Valve threshold **fixed at 80%**.
+> 7. Zones stay **one-way**.
+>
+> **Where the build differs from the numbers below:**
+> - Recipe times are in game **ticks** (4/s), as for all recipes.
+> - Fluid amounts were scaled to match a pump's 2 units/s: Evaporator **5** brine, Separator **4**, Rod Press **10**.
+> - Strain rises **+2 per pump push** (pumps push every other tick) and holds between pushes.
+> - Fluid machines now span Zones 3–5. Zone 4's enzymes use the same system.
+> - CLAUDE.md is the reference for the implemented values.
 
 ---
 

@@ -838,7 +838,7 @@ const RECIPES = {
   // Zone 2 — Plastic processing (assembler)
   z2_polymer: {name:'Polymer Sheet',     machine:'assembler', time:6, in:{plastic:2,iron_plate:1},            out:{polymer_sheet:1},       unlock:'oil_extraction'},
   // Zone 2 — Science packs
-  z2_sci_scar:{name:'Scar Notes',        machine:'lab', time:8,  in:{raw_fuel:1,iron_gear:1},                 out:{sci_scar:1}},
+  z2_sci_scar:{name:'Scar Notes',        machine:'lab', time:8,  in:{iron_gear:1,coal:2},                     out:{sci_scar:1}}, // no oil needed — Oil Extraction costs these
   z2_sci_smog:{name:'Smog Data',         machine:'lab', time:10, in:{plastic:2,copper_wire:2},                out:{sci_smog:1},   unlock:'oil_extraction'},
   z2_sci_rep: {name:'Repair Data',       machine:'lab', time:12, in:{refined_fuel:1,circuit:2},               out:{sci_repair:1}, unlock:'smog_control'},
   // Zone 2 — Repair components
@@ -952,6 +952,7 @@ const HAND_CRAFTS = [
   // Unlocked by electronics research
   {id:'speed_module', name:'Speed Module', icon:'🔵', in:{circuit:3,iron_gear:2},              out:{speed_module:1}, clicks:40, unlock:'electronics',  desc:'Hand-build a speed module'},
   {id:'prod_module',  name:'Prod. Module', icon:'🟢', in:{circuit:4,copper_wire:4},            out:{prod_module:1},  clicks:40, unlock:'electronics',  desc:'Hand-build a production module'},
+  {id:'sci_scar',     name:'Scar Notes',   icon:'📓', in:{iron_gear:1,coal:2},                  out:{sci_scar:1},     clicks:12, unlock:null,           desc:'Study the ruins — research notes for The Scar'},
   {id:'nutrient',     name:'Nutrient Paste',icon:'🥣', in:{biomass:3},                         out:{nutrient:1},     clicks:6,  unlock:null,           desc:'Mash biomass into paste for living machines'},
   {id:'eff_module',   name:'Eff. Module',  icon:'🔴', in:{circuit:3,iron_rod:3},               out:{eff_module:1},   clicks:40, unlock:'electronics',  desc:'Hand-build an efficiency module'},
 ];
@@ -5766,10 +5767,10 @@ function skipTutorial(){
 // Zone mini-tutorials — keyed by zone, steps advance when done() is true
 const ZONE_TUTORIALS={
   2:{done:'The Scar briefing complete', steps:[
-    {text:'Welcome to The Scar. Find an 🛢️ oil deposit on the map — dark tiles with a barrel icon.',
-     done:()=>Object.values(G.machines).some(m=>m.type==='oil_pump')},
-    {text:'Research 🛢️ Oil Extraction first — tap RESEARCH tab, spend Scar Notes.',
+    {text:'Welcome to The Scar. Craft 📓 Scar Notes (gear + 2 coal) and research 🛢️ Oil Extraction.',
      done:()=>G.research.done.includes('oil_extraction')},
+    {text:'Place an 🛢️ Oil Pump on an oil deposit — dark tiles with a barrel icon.',
+     done:()=>Object.values(G.machines).some(m=>m.type==='oil_pump')},
     {text:'⚠️ Oil pumps generate smog! Watch the 🌫️ meter in the HUD. Build 🌿 Scrubbers to clean the air.',
      done:()=>Object.values(G.machines).some(m=>m.type==='scrubber')},
   ]},

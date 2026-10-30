@@ -9,13 +9,14 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.1.9 — Zone 1: Ironfield / Zone 2: The Scar
-**Working file:** `index.html` — ~5,300 lines, single file, never split
+**Current build:** v1.2.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Working file:** `index.html`, ~6,400 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
 **Related docs**
-- `docs/GDD.md`: original Game Design Document (v1.0). Source of the long-term vision: zone themes, Zones 3–5, prestige, fluids, heat. Where it disagrees with this file or the code, **this file and the code win** (see *GDD divergences*).
-- `docs/ZONE3_DESIGN.md`: Zone 3 design draft, awaiting review. Don't implement it until its open questions are answered.
+- `docs/GDD.md`: original Game Design Document (v1.0), the source of the vision. Where it disagrees with this file or the code, **this file and the code win** (see *GDD divergences*).
+- `docs/ZONE3_DESIGN.md`: Zone 3 design, now implemented. The header lists where the build differs from the draft.
+- `tools/check.js`: headless test (syntax, every zone completable, full Zone 1→5 run, Big Bang).
 
 ---
 
@@ -25,123 +26,128 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker — network-first HTML, cache-first assets. Current: `ebi-v117` |
-| `icon-192.png` | Android home screen icon |
-| `icon-512.png` | Splash / store icon |
-| `apple-touch-icon.png` | iOS home screen icon |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v118` |
+| `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
 | `docs/` | GDD and zone design docs |
+| `tools/check.js` | Headless test script (not loaded by the game) |
 
-**Updating GitHub:** Upload via Add file → Upload files, or `.` web editor
-**Always bump cache version** in `sw.js` on every update
-**Always bump `VER` constant and `v-num` on title screen** on every delivery
-**Icon filenames must keep their hyphens.** GitHub's uploader stripped them once (v0.95 → `icon192.png`), which broke the manifest icons and the service worker pre-cache. Fixed in v1.1.8.
-GitHub Pages auto-redeploys within 1–2 minutes
-SW uses network-first for HTML — players automatically get updates on next open
+**Updating GitHub:** Upload via Add file → Upload files, or the `.` web editor
+**Always bump cache version** in `sw.js`, the `VER` constant and the title-screen `v-num` on every delivery
+**Icon filenames must keep their hyphens.** GitHub's uploader stripped them once (v0.95 → `icon192.png`), which broke the manifest icons and the service worker pre-cache.
+GitHub Pages auto-redeploys within 1–2 minutes; HTML is network-first, so players get updates on next open.
 
 ---
 
 ## Dev Mode
 
-**Unlock:** Menu (☰) → 🔒 DEV → type `BIGBANG`
-**Disable:** Same, type `BIGBANGOFF`
-Persists in save as `G.devMode`; adds a 🛠 DEV section to the ☰ menu
+**Unlock:** Menu (☰) → 🔒 DEV → type `BIGBANG` · **Disable:** type `BIGBANGOFF`
+Persists as `G.devMode`; adds a 🛠 DEV section to the ☰ menu.
 
-**Dev panel features:**
-- Sim speed: ×1 / ×4 / ×10 / ×20
-- Free crafting / free building toggles
-- Unlock all techs instantly
+- Sim speed ×1 / ×4 / ×10 / ×20; free crafting / free building toggles; unlock all techs
 - Give resources (per item) + Give All ×500
-- Give rocket components (`devCompleteRocket()` — also unlocks Rocket Science)
-- Give Zone 2 repair components (`devCompleteZ2()` — Zone 2 only, unlocks Z2 techs + 20 refined fuel)
-- Reset save (confirmed, reloads page)
+- `devCompleteRocket()`: Zone 1 rocket parts + Rocket Science
+- `devCompleteZone()`: researches every tech of the current zone (plus Zone 1's) and gives everything the zone's launch needs (Zone 5: the Singularity components)
+- Reset save (confirmed, reloads page). Never touches `ebi_prestige`.
 
 ---
 
 ## Save System
 
-**Auto-save key:** `ebi_save` (`SAVE_KEY`)
-**Manual save slots:** `ebi_save_slot1`, `ebi_save_slot2`, `ebi_save_slot3`
-**Autosave:** every 120 ticks (30s); also on place/remove, research, launch, perk purchase
-**Load paths:** `continueGame()` (autosave) and `loadFromSlot(s)` both backfill missing keys — add any new top-level key's default to **both**.
+| Key | Contents |
+|---|---|
+| `ebi_save` (`SAVE_KEY`) | Autosave, the full `G` |
+| `ebi_save_slot1..3` | Manual slots |
+| `ebi_prestige` (`PRESTIGE_KEY`) | Stardust, Big Bang count, owned Stardust upgrades, theme. **Never wiped** by resets or new games |
 
-**State keys in `G`** (all declared in `defaultState()`):
+- Autosave every 120 ticks (30s) and on place/remove, research, launch, perk purchase.
+- Saves go through `serializeG()`, which drops transient per-tick keys (`TRANSIENT_KEYS`: `_net`, `_nets`, `_fluidStatus`). Fluid networks are circular and would break `JSON.stringify`.
+- Load paths `continueGame()` and `loadFromSlot(s)` both backfill keys and call `migrateSave()` (renames, e.g. `tutorialZ2` → `zoneTut`). New top-level keys need a default in **both**, or in `migrateSave()`.
+
+**State keys in `G`** (declared in `defaultState()`):
 
 ```js
 ver, tick, sfx, music, musicVol, _savedAt
-zone         // 1 | 2 — current zone
-smog         // 0–100, Zone 2 only
-inv          // { itemId: count }
-crafted      // { machineId: count } — built but unplaced machines
-map          // MAP_W×MAP_H tile array — buildMap() (Z1) / buildMapZ2() (Z2)
-machines     // { id: machineState }
-nextId
-power        // { out: kW, in: kW } — recomputed every tick
+zone         // 1–5
+smog         // 0–100 (zones with the 'smog' hazard)
+inv, crafted // inventory; built-but-unplaced machines
+map          // MAP_H × MAP_W tiles {type,res,mid,items}; size is per zone (see ZONES.mapSize)
+machines, nextId
+power        // { out, in } kW — recomputed every tick
 research     // { done: [techId] } — carried across zones
-cam          // { x, y, zoom }
-stats        // { placed, taps, mined, launched } — mined = miner/oil pump output (achievements)
-blueprints   // [{ name, data[] }]
-craftState   // { recipeId, clicks }
-achievements // [achievementId]
-tutorial     // { step } — Zone 1 tutorial (-1 = complete/skipped)
-tutorialZ2   // index into Z2_TUTORIAL (-1 = done, undefined = not started)
+cam, blueprints, craftState
+stats        // { placed, taps, mined, launched, bursts, withered, scrams } — reset per zone
+achievements // [id] — carried across zones (since v1.2.0)
+tutorial     // Zone 1 tutorial { step } (-1 = done)
+zoneTut      // step in ZONE_TUTORIALS[zone] (-1 = done, undefined = none)
+perks        // { points, spent:{id:true}, awarded:{zone:true} } — carried across zones, reset by a new run
+bigBang      // true once the Singularity has triggered the Big Bang
 devMode, devFreeCraft, devFreeBuild, devTickSpeed
-perks        // { points, spent:{perkId:true}, awarded:{zone:true} } — carried across zones
 ```
 
-**Machine state keys (per machine in `G.machines`):**
+**Machine state keys:**
 ```js
-id, type, x, y, dir, recipe, prog, active
-inBuf, outBuf, chestInv, mineRes, produced
-lastTransfer, lastTransferMs
-tier          // 1|2|3
-splitSide     // splitter: 0|1 alternating
-tunnelId      // tunnel partner id (null if unlinked)
-modules       // [] installed module ids, max slots = tier-1
-_pending, _times, arm   // transient, initialised lazily
+id, type, x, y, dir, recipe, prog, active, inBuf, outBuf, chestInv, mineRes, produced
+lastTransfer, lastTransferMs, tier, splitSide, tunnelId, modules
+fluid {type, amt}, strain     // pipes/tanks/valves — their share of the network
+charge                        // accumulator, kJ
+vit, withered                 // living machines
+heat, scram, burn             // reactor
+built {item:n}, complete, sustain   // singularity
+_arm, _times, _net, _nets, _fluidStatus   // transient
 ```
 
 ---
 
-## Zone Transitions
+## Zones — `ZONES` table
 
-`transitionToZone2()` replaces `G` with `defaultState()` and keeps only: **research, perks, audio settings, devMode**. Inventory, machines, blueprints, achievements and stats reset. It then applies the Quick Start perk, builds the Zone 2 map, starts the Z2 mini-tutorial and shows the CRASH LANDING modal.
+Every zone-specific behaviour reads `ZONES[n]` (defined after the rocket-part arrays). To add or change a zone, edit its entry:
 
-After a Zone 1 launch, the player is offered ⭐ PERKS / CONTINUE →. If they leave without continuing, the ☰ menu's Rocket section, the Rocket panel and the Perks panel all show **CONTINUE TO ZONE 2 →** (`continueToZone2()`), and relaunching is disabled.
+| Field | Meaning |
+|---|---|
+| `name`, `icon` | Display |
+| `rocketTech` | Tech that unlocks the launch (`null` in Zone 5) |
+| `parts`, `fuel` | Launch requirements (`rocketReqs()` merges them) |
+| `partsCat`, `partsLabel` | Item category for that zone's rocket parts (inventory shows only the current zone's) |
+| `sci` | Science packs shown in the research panel |
+| `hazards` | Any of `smog`, `pressure`, `glow`, `decay`, `heat`. Checked with `zoneHas()` and drive the HUD gauges and simulation |
+| `buildMap`, `mapSize` | Map generator and size |
+| `launchLabel`, `launchText`, `launchTease` | Launch modal |
+| `arrivalTitle`, `arrivalHtml`, `arrivalBtn` | Arrival / new-game modal |
+| `renderPanel`, `menuRocketHtml`, `onDevComplete` | Optional overrides (Zone 5 uses them for the Singularity) |
 
-Zone 2 launch currently ends with "Zone 3 coming soon...".
+Helpers: `zoneDef()`, `zoneHas(h)`, `nextZone()`, `rocketUnlocked()`, `rocketReqs()`, `zoneTechs(z)`, `syncMapSize()`, `updateZoneTabs()`.
+
+**Transitions:** `launchRocket()` (any zone) → `continueToNextZone()` → `transitionToZone(n)`. That replaces `G` with `defaultState()` and keeps **research, perks, achievements, audio settings and devMode**. It then applies Quick Start and Remembered Tools, builds the map, starts the zone tutorial and shows the arrival modal. After a launch, the Rocket panel, the ☰ Rocket section and the Perks panel offer **CONTINUE TO ZONE n →** instead of relaunching.
+
+| Zone | Name | Hazards | Map | Goal |
+|---|---|---|---|---|
+| 1 | Ironfield | — | `buildMap()` 96×64 | 4-part rocket |
+| 2 | The Scar | smog | `buildMapZ2()` 96×64 | 6 repair parts + 20 refined fuel |
+| 3 | The Deep | pressure, glow | `buildZoneMap(DEPOSITS_Z3)` 96×64 | 5-part escape-shaft rocket |
+| 4 | The Bloom | pressure, decay, heat | `buildZoneMap(DEPOSITS_Z4)` 96×64 | 4-part hyperfuel rocket |
+| 5 | The Singularity | all five | `buildZoneMap(DEPOSITS_Z5)` 128×80, expandable to 192×112 | Build + power the Singularity → Big Bang |
+
+`buildZoneMap(deposits, salt, w, h, accept)` places `[res, wMin, wMax, hMin, hMax]` patches with a 1-tile gap. `accept` filters positions; `expandMap()` uses it to put new deposits only in new territory.
 
 ---
 
 ## Design System
 
-### CSS Variables
-
 ```css
---bg:#0d0d0d  --bg2:#111  --bg3:#1a1a1a  --panel:#0f0f0f
---border:#222  --border2:#333
---amber:#f5a623 (primary)  --amberDim:#7a5010
---teal:#26c6a0 (secondary) --tealDim:#0d4a3a
---green:#4caf50  --red:#e53935  --blue:#42a5f5  --purple:#ab47bc (dev)
---text:#e8e8e8  --text2:#999  --text3:#555
---font:'Press Start 2P', monospace
+--bg:#0d0d0d  --bg2:#111  --bg3:#1a1a1a  --panel:#0f0f0f  --border:#222  --border2:#333
+--amber:#f5a623 (primary)  --teal:#26c6a0 (secondary) — overridden by Stardust themes (applyTheme)
+--green:#4caf50  --red:#e53935  --blue:#42a5f5  --purple:#ab47bc
+--text:#e8e8e8  --text2:#999  --text3:#555   --font:'Press Start 2P', monospace
 ```
+Font sizes 4–8px (mobile ≤600px: `.pbody` zoom 1.5, `.mb` zoom 1.4).
 
-### Font Sizes (Press Start 2P)
-- 4–5px: tiny labels, menu sub-text
-- 6px: category headers, panel body
-- 7px: body UI text, values
-- 8px: panel titles, HUD
-- Mobile (≤600px): `.pbody` zoom 1.5, `.mb` zoom 1.4
-
-### Game Constants
 ```js
-TILE=48  MAP_W=96  MAP_H=64  TICK_MS=250 (4 ticks/sec)
-MINE_TAPS=4                 // taps on the resource popup per ore
-INS_GRAB_MS=800  INS_DEPOSIT_MS=80  INS_RETURN_MS=800
-D_RIGHT=0, D_DOWN=1, D_LEFT=2, D_UP=3
+TILE=48  BASE_MAP_W=96  BASE_MAP_H=64  (MAP_W/MAP_H are `let`, per zone)  TICK_MS=250 (4 ticks/s)
+MINE_TAPS=4  INS_GRAB_MS=800  INS_DEPOSIT_MS=80  INS_RETURN_MS=800
 ```
+Recipe `time` is in **ticks** (time:8 = 2s at base speed).
 
 ---
 
@@ -149,249 +155,190 @@ D_RIGHT=0, D_DOWN=1, D_LEFT=2, D_UP=3
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  HUD: 8BI | Z1–Z5 tabs | resources | 🚀 ☰         │
+│  HUD: 8BI | Z1–Z5 tabs | ⚡ + hazard gauges | 🚀 ☰ │
 ├─────────────────────────────────────────────────┤
-│  CANVAS (#wrap)                                  │
-│   grid · machines · belts · items · smog overlay │
-│   resource popup (TAP TO MINE)                   │
+│  CANVAS (#wrap) — tiles, machines, pipes, overlays│
 ├─────────────────────────────────────────────────┤
-│  buildHUD   (fixed, bottom:58px) ↻ / ✓ PLACE / ✕ │
-│  multiselBar (fixed, top:0)                      │
-│  ghostBar   (fixed, bottom:70px)                 │
-│  tutHint    (flex child of #sGame)               │
-│  tabDrawer  (slides up: categories + items)      │
+│  buildHUD / multiselBar / ghostBar / tutHint     │
+│  tabDrawer (categories + items)                  │
 │  tabBar: 🛠️ TOOLS | 🏗️ BUILD | 🔨 CRAFT | 🔬 RESEARCH │
 └─────────────────────────────────────────────────┘
 ```
-
-**Critical layout notes:**
-- `tutHint`, `multiselBar`, `ghostBar` and `buildHUD` all live **outside `#wrap`** — inside it, canvas touch handling eats their taps on mobile.
-- HUD only has 🚀 (`openBigMenu('rocket')`, shown once rocket research is done) and ☰ (`openBigMenu()`).
-- Side panels (`pCraft pInv pResearch pRocket pMachine pDev pPerks pStats pAchieve pRecipes pBlueprint`) slide in from the right via `togglePanel(id)`; one open at a time.
-
-### ☰ Menu (`openBigMenu(section)`)
-Collapsible sections: 📦 Inventory · 🚀 Rocket · ⭐ Perks · 📊 Statistics · 🏆 Achievements · ⚙️ Settings & Audio · 💾 Save Slots · 🛠 Dev (dev mode only). Passing `section` opens that one.
-
-### Bottom tab bar + drawer (`DRAWER_DEFS`, `switchTab`, `buildDrawer`)
-- **TOOLS:** Select, Multi-Sel, Demolish, Rotate, Move, Blueprint
-- **BUILD:** Logistics (Belt, Splitter, Tunnel, Inserter, Long Ins., Chest) · Extract (Miner, Burner, Generator) · Processing (Furnace, Blast Furn., Elec. Smelt., Assembler, Lab) · Oil (Oil Pump, Cracker, Refinery, Comb. Gen., Scrubber)
-- **CRAFT:** hand-craft panel
-- **RESEARCH:** tech tree panel
-
-### Building
-Selecting a machine shows a ghost. Tapping the map **moves the ghost only**; placement needs **✓ PLACE** (`confirmPlace()`) in `buildHUD`. The machine panel has MOVE (`moveSingleMachine` → multisel move), ROTATE (belt, inserters, tunnel, splitter) and DEMOLISH.
+- `tutHint`, `multiselBar`, `ghostBar`, `buildHUD` stay **outside `#wrap`**, or the canvas eats their taps.
+- HUD gauges (`hudHazardsHtml()`): 🌫️ smog · 💧 worst network pressure · ☀️/🌑 glow tide countdown · 🌱/🥀 living machines (count, or number withering) · 🌡️ hottest reactor / SCRAM. Power shows MW above 1,000 kW (`fmtKW`).
+- 🚀 opens `openBigMenu('rocket')`. It's shown once the zone's rocket tech is researched, and always in Zone 5.
+- ☰ menu sections: Inventory · Rocket · Perks · Statistics · Achievements · Settings & Audio · ✨ Stardust · Save Slots · Dev.
+- Drawer categories (`DRAWER_DEFS.build`) can have `zones:[...]` and `unlock`: Logistics, Extract, Processing, Oil (2,5), Fluids (3,4,5), Deep (3,5), Bloom (4,5), Singularity (5).
+- Title screen shows ✨ STARDUST once any Stardust has been earned.
+- Placement needs **✓ PLACE**. Tapping the map only moves the ghost.
 
 ---
 
-## Core Game Loop
+## Core Rules
 
-```
-Tap ore tile → TAP TO MINE (4 taps = 1 ore)
-  → hand-craft plates/gears → Burner Generator + coal → power
-  → Miners on deposits → furnaces/assemblers fed by inserters and belts
-  → labs make science → research
-  → upgrade (T1→T3), modules, splitters, tunnels
-  → rocket components → LAUNCH → perk points → next zone
-```
+- Machines only receive inputs from inserters; belts can't feed machines directly.
+- Output → `outBuf` (stall at 50 total); `inBuf` cap 50 per item type.
+- Inserters only take from a machine's **output face** (`PORTS`). Every machine that produces items needs a `PORTS` entry, or inserters can't empty it (Zone 2 machines were missing theirs until v1.2.0).
+- Machines with `noItems:true` (pipes, pumps, tanks, valves, Lumen Panels, Accumulators, Heat Sinks) refuse inserter deposits.
+- **Pass 1** runs every machine with negative power (generators), then `runAccumulators()`. **Pass 2** runs everything else. Then belts, `settleFluidNets()` and `tickLiving()`.
+- **Hard power cutoff:** `powerRatio()` is 0 or 1. Stone and blast furnaces are power-immune.
+- Speed multiplier = power × perks × tier × modules × smog efficiency × life stage.
 
-**Key simulation rules:**
-- Machines only receive inputs from inserters — belts cannot feed machines directly
-- Output goes to `outBuf`; machine stalls when `outBuf` total ≥ 50
-- `inBuf` capped at 50 **per item type**
-- Generators (burner, generator, combustion_gen) run in **pass 1** of `gameTick`, consumers in pass 2
-- Generators only burn fuel when powered consumers exist
-- **Hard power cutoff** — `powerRatio()` is 0 or 1
-- Stone furnace and blast furnace are power-immune
-- Chest hard cap: 200 items
-- Zone 2: smog multiplies speed of miners and powered machines by `max(0.1, (100-smog)/100)`
+---
+
+## Systems by zone
+
+### Zone 2: Smog
++0.5 per oil-pump output (×0.7 with Clean Burn); −0.1/tick natural decay; −`SCRUBBER_SMOG` (0.75) per powered, fuelled Scrubber every 4 ticks (one cancels ~3 pumps). Speed × `max(0.1,(100−smog)/100)`. Scar Notes are made from gears + coal (lab or hand), so Oil Extraction can be researched before any oil exists.
+
+### Zone 3: Fluids & pressure (reused in Zones 4–5)
+- `fluidCap` machines (Pipe 10, Fluid Tank 200, Relief Valve 5) flood-fill into networks every tick (`buildFluidNets`). `fluidPort` machines attach to adjacent networks (`m._nets`).
+- One fluid per network. `fluidsWouldMix()` refuses a placement that would join two fluids.
+- Pressure = amt / cap. Pumps (`pumps:'brine'|'enzymes'`, placed on their pool) add 1 unit every 2 ticks, even when full.
+- Recipes with `fluid:{...}` draw at start. They need ≥ `LOW_PRESSURE` (20%) and ≥ `minPressure` (Rod Press: 60%).
+- ≥ `OVER_PRESSURE` (90%) with inflow: strain +2 per push. It holds between pushes and falls 2/tick below 90%. At `burstStrain()` (80, or 120 with Reinforced Pipes) `burstPipe()` destroys a random pipe and halves the fluid.
+- Relief Valves vent 0.75/tick above 80%.
+- **Glow tide:** `GLOW_CYCLE` 960 ticks, bright for the first 720. Lumen Panels give 40 kW only while bright.
+- **Accumulators** hold `ACC_CAP` 2,000 kJ: they charge from surplus and cover a shortfall only when they can cover all of it.
+
+### Zone 4: Living machines & reactor
+- `living:true` machines start at `VIT_START` 40 vitality and lose `VIT_DECAY` 0.06/tick (×0.75 with Vital Growth). Every `FEED_EVERY` 20 ticks they eat 1 Nutrient Paste from `inBuf` (+12).
+- Stages: Sprout <30 ×0.5 · Mature ×1 · Bloom >80 ×1.5. At 0 a machine withers and stops.
+- **REPLANT** costs 5 biomass. The panel also has FEED. Nutrient Paste is hand-craftable (3 biomass) or made in an Assembler.
+- **Reactor** (3×3, −2,000 kW): burns 1 Luminite Rod per 480 ticks. Heat +0.5/tick running (×0.8 with Coolant Lines), −0.1 passive, −0.2 per adjacent Heat Sink. At 100 it SCRAMs for 240 ticks. Two sinks hold it stable.
+
+### Zone 5: The Singularity & Big Bang
+- Merged map with every deposit type and all hazards. Expansion I/II (`onResearch` → `expandMap(32,16)`) grow it.
+- Void Data = 1 each of `sci_blue`, `sci_repair`, `sci_lattice`, `sci_synth`.
+- Components need every zone's chains: Graviton Lens, Stellar Casing, Void Engine, Quantum Mind.
+- **Singularity** (10×10): construction needs `SING_REQS` (10/20/10/10), fed by inserters from any side or ⬇ DEPOSIT FROM INVENTORY.
+  - When complete it adds `SING_POWER` 5,000 kW of demand.
+  - Holding full power for `SING_SUSTAIN` 240 ticks (60s) calls `triggerBigBang()`: a white-out, then Stardust = 10 + ⌊achievements/2⌋, saved to `ebi_prestige`.
+  - BEGIN AGAIN → `newGame()`.
 
 ---
 
 ## Machines
 
-| ID | Name | Icon | Size | Power | Unlock | Notes |
-|---|---|---|---|---|---|---|
-| `miner` | Miner | ⛏️ | 1×1 | 3 | — | Mines deposit below. T1–T3 |
-| `stone_furnace` | Stone Furnace | ⚱️ | 1×1 | 0 | — | Power-immune, needs coal |
-| `blast_furnace` | Blast Furnace | 🔥 | 2×2 | 0 | automation | Power-immune, 2× speed |
-| `electric_smelter` | Electric Smelter | 🌩️ | 2×2 | 20 | steel | 3× speed, no coal |
-| `assembler` | Assembler | 🏗️ | 2×2 | 12 | automation | Parts, rocket + repair parts |
-| `lab` | Research Lab | 🔬 | 2×2 | 6 | automation | Science packs |
-| `burner` | Burner Generator | 🪵 | 1×1 | −15 | — | Coal |
-| `generator` | Generator | ⚡ | 2×2 | −60 | logistics | Coal |
-| `belt` | Belt | ➡️ | 1×1 | 0 | — | |
-| `splitter` | Splitter | ⑂ | 1×2 | 0 | logistics | Alternates A/B; rotation supported (blocked if no room) |
-| `tunnel` | Belt Tunnel | ⏬ | 1×1 | 0 | logistics | Auto-links within 5 tiles, same direction |
-| `inserter` | Inserter | 🦾 | 1×1 | 1 | — | |
-| `long_inserter` | Long Inserter | 🦿 | 1×1 | 2 | logistics | 2-tile reach |
-| `chest` | Chest | 📦 | 1×1 | 0 | — | 200 cap |
-| `oil_pump` | Oil Pump | 🛢️ | 2×2 | 8 | oil_extraction | Crude oil from oil deposits; +0.5 smog per output |
-| `cracker` | Cracker | ⚗️ | 2×2 | 16 | oil_extraction | Crude → raw fuel + plastic |
-| `refinery` | Refinery | 🏭 | 2×2 | 12 | oil_extraction | Raw fuel → refined fuel |
-| `combustion_gen` | Combustion Gen. | 🔆 | 2×2 | −80 | smog_control | Burns refined fuel (1 per 8s) |
-| `scrubber` | Scrubber | 🌿 | 1×2 | 6 | smog_control | Needs power + refined fuel (1 per 4s while smog > 0). Removes `SCRUBBER_SMOG` (0.75) every 4 ticks, enough to cancel ~3 oil pumps |
+| ID | Name | Size | Power | Unlock | Notes |
+|---|---|---|---|---|---|
+| `miner` | Miner | 1×1 | 3 | — | Not on fluid deposits. Radiant dust mines at half speed |
+| `stone_furnace` | Stone Furnace | 1×1 | 0 | — | Power-immune |
+| `blast_furnace` | Blast Furnace | 2×2 | 0 | automation | Power-immune, 2× |
+| `electric_smelter` | Electric Smelter | 2×2 | 20 | steel | Also silicon, lithium, luminite crystal |
+| `assembler` | Assembler | 2×2 | 12 | automation | Parts, rocket parts, Singularity components |
+| `lab` | Research Lab | 2×2 | 6 | automation | All science packs |
+| `burner` / `generator` | Burner / Generator | 1×1 / 2×2 | −15 / −60 | — / logistics | Coal |
+| `belt`, `splitter`, `tunnel`, `inserter`, `long_inserter`, `chest` | Logistics | | | | Can sit on resource tiles (`ON_RESOURCE_OK`) |
+| `oil_pump` | Oil Pump | 2×2 | 8 | oil_extraction | Crude oil items; smog |
+| `cracker` / `refinery` | | 2×2 | 16 / 12 | oil_extraction | |
+| `combustion_gen` | Combustion Gen. | 2×2 | −80 | smog_control | Refined fuel |
+| `scrubber` | Scrubber | 1×2 | 6 | smog_control | Removes smog |
+| `pipe` | Pipe | 1×1 | 0 | fluid_handling | Cap 10; may sit on resources |
+| `brine_pump` | Brine Pump | 2×2 | 8 | fluid_handling | On brine |
+| `fluid_tank` | Fluid Tank | 2×2 | 0 | fluid_handling | Cap 200 |
+| `relief_valve` | Relief Valve | 1×1 | 0 | pressure_control | Vents above 80% |
+| `evaporator` | Evaporator | 2×2 | 14 | fluid_handling | 5 brine → lithium salt |
+| `separator` | Separator | 2×2 | 16 | pressure_control | 2 rare earth + 4 brine → RE oxide |
+| `rod_press` | Rod Press | 2×2 | 24 | lattice_fuel | Needs 60%+ pressure |
+| `lumen_panel` | Lumen Panel | 2×2 | −40 | crystal_refining | Glow tide only |
+| `accumulator` | Accumulator | 1×1 | 0 | energy_storage | 2,000 kJ |
+| `enzyme_pump` | Enzyme Pump | 2×2 | 8 | bio_cultivation | On enzyme pools |
+| `algae_vat` | Algae Vat | 2×2 | 6 | bio_cultivation | LIVING; 3 enzymes → 2 algae |
+| `bioreactor` | Bioreactor | 2×2 | 12 | symbiosis | LIVING; algae + biomass → bio-oil |
+| `spore_incubator` | Spore Incubator | 2×2 | 10 | symbiosis | LIVING; spores + paste → mycelium |
+| `hyper_synth` | Hyperfuel Synth. | 2×2 | 30 | hyperfuel | LIVING; needs enzymes |
+| `reactor` | Nuclear Reactor | 3×3 | −2000 | nuclear_power | Luminite Rods, heat |
+| `heat_sink` | Heat Sink | 1×1 | 0 | luminite_refining | Cools adjacent reactor |
+| `singularity` | Singularity | 10×10 | (5,000 once built) | singularity | Win structure |
+
+## Research (27 techs)
+
+| Zone | Era 1 | Era 2 | Era 3 |
+|---|---|---|---|
+| 1 | Basic Automation, Advanced Logistics | Steel Processing, Electronics | Rocket Science |
+| 2 | Oil Extraction (10 📓) | Smog Control | Rocket Repair |
+| 3 | Fluid Handling (10 📔), Crystal Refining (15 📔) | Pressure Control, Energy Storage | Lattice Fuel |
+| 4 | Bio Cultivation (10 📒), Luminite Refining (15 📒) | Symbiosis, Nuclear Power | Hyperfuel |
+| 5 | Expansion I, Void Theory | Expansion II, The Singularity | — |
+
+Techs carry `zone:n`, and the research panel shows the current zone's (Zone 5 shows all). `onResearch` runs a hook (map expansion).
+
+## Rocket requirements
+- **Z1:** Chassis, Flight Computer, Struct. Frame ×1 each, Coal Propellant ×2
+- **Z2:** Hull Patch ×4, Engine Fix, Nav Computer, Fuel Tank ×2, Thruster ×2, Power Cell + 20 Refined Fuel
+- **Z3:** Lattice Fuel Rod ×4, Pressure Hull ×2, Battery Bank ×2, Guidance Crystal, Shaft Drill
+- **Z4:** Bio-Hyperfuel ×6, Bio-Hull ×3, Living Navigator, Reactor Core
 
 ---
 
-## Items
+## Perks & prestige
 
-**Zone 1** — Raw: Iron Ore 🪨, Copper Ore 🟫, Coal ⬛, Stone 🔲 · Smelted: Iron Plate 🔘, Copper Plate 🟠, Steel Plate ⬜, Stone Brick 🧱 · Parts: Iron Gear ⚙️, Copper Wire 〰️, Iron Rod ➖, Circuit 📟, Engine Block 🔧 · Modules: Speed 🔵, Prod 🟢, Eff 🔴 · Science: Field Notes 🗒️ (`sci_red`), Circuit Diagrams 📋 (`sci_green`), Adv. Schematics 📘 (`sci_blue`) · Rocket: Chassis 🗜️, Flight Computer 💾, Struct. Frame 🔩, Coal Propellant ⛽
-
-**Zone 2** — Crude Oil 🛢️, Raw Fuel 🔶, Plastic 🟫, Refined Fuel 🔥, Polymer Sheet 🟪 · Science: Scar Notes 📓 (`sci_scar`), Smog Data 🌫️ (`sci_smog`), Repair Data 🔧 (`sci_repair`) · Repair (`cat:'rocket2'`): Hull Patch 🛡️, Engine Fix ⚙️, Nav Computer 🖥️, Fuel Tank 🗄️, Thruster 🔩, Power Cell 🔋
-
----
-
-## Recipes
-
-### Zone 1
-- **Stone Furnace:** `fn_iron`, `fn_copper` — 2 ore + 1 coal → 1 plate (16s)
-- **Blast Furnace:** `bf_iron/copper` (8s), `bf_steel` 5 plate + 2 coal (16s), `bf_prop` 10 coal + 5 stone → propellant (rocket_tech)
-- **Electric Smelter:** `es_iron/copper` (6s), `es_steel` (10s), `es_prop` (rocket_tech)
-- **Assembler:** `mk_gear/wire/rod/circuit` (automation), `mk_engine` (steel), `mk_speed_mod/prod_mod/eff_mod` (electronics), `mk_chassis/computer/frame` (rocket_tech)
-- **Lab:** `sci_r` gear + 2 wire; `sci_g` circuit + 2 rod (logistics); `sci_b` 2 circuit + steel + 3 wire (electronics)
-
-### Zone 2
-- **Cracker:** `z2_crack` 3 crude → 2 raw fuel + 1 plastic (10s)
-- **Refinery:** `z2_refine` 2 raw fuel → 1 refined fuel (8s)
-- **Assembler:** `z2_polymer` 2 plastic + iron plate → polymer sheet
-- **Lab:** `z2_sci_scar` raw fuel + gear (always); `z2_sci_smog` 2 plastic + 2 wire (oil_extraction); `z2_sci_rep` refined fuel + 2 circuit (smog_control)
-- **Assembler (repair_tech):** `z2_hull` 4 steel + 3 plastic · `z2_engine` 2 refined fuel + engine · `z2_nav` 4 circuit + 2 plastic · `z2_tank` 3 steel + 3 refined fuel · `z2_thrust` engine + 3 plastic · `z2_cell` 3 circuit + 2 refined fuel
-
-### Rocket requirements
-- **Zone 1 (`ROCKET_PARTS`):** Chassis ×1, Flight Computer ×1, Struct. Frame ×1, Coal Propellant ×2
-- **Zone 2 (`ROCKET_PARTS_Z2`):** Hull Patch ×4, Engine Fix ×1, Nav Computer ×1, Fuel Tank ×2, Thruster ×2, Power Cell ×1 **+ 20 Refined Fuel** consumed at launch
-
----
-
-## Research Tech Tree
-
-| Tech | Zone/Era | Cost | Requires | Unlocks |
-|---|---|---|---|---|
-| Basic Automation | Z1 Era 1 | 5 🗒️ | — | Blast Furnace, Assembler, Lab |
-| Advanced Logistics | Z1 Era 1 | 50 🗒️ | automation | Generator, Splitter, Tunnel, Long Inserter, +50% belt, Circuit Diagrams |
-| Steel Processing | Z1 Era 2 | 75 🗒️ + 50 📋 | automation + logistics | Steel, Electric Smelter |
-| Electronics | Z1 Era 2 | 100 🗒️ + 75 📋 | automation + logistics | Modules, Adv. Schematics |
-| Rocket Science | Z1 Era 3 | 125 🗒️ + 125 📋 + 50 📘 | steel + electronics | Rocket components |
-| Oil Extraction | Z2 Era 1 | 10 📓 | — | Oil Pump, Cracker, Refinery, Polymer, Smog Data |
-| Smog Control | Z2 Era 2 | 30 📓 + 20 🌫️ | oil_extraction | Scrubber, Combustion Gen., Repair Data |
-| Rocket Repair | Z2 Era 3 | 50 📓 + 50 🌫️ + 20 🔧 | oil_extraction + smog_control | All 6 repair components |
-
-Zone 2 techs carry `zone:2`; the research panel hides techs from the other zone.
-
----
-
-## Zone 2 — The Scar
-
-- Crash-landed: everything but research and perks is gone
-- Map (`buildMapZ2()`): oil-heavy, with some iron/coal/stone for bootstrapping
-- **Smog** (`G.smog`, 0–100): +0.5 per oil pump output (one pump outputs every 8 ticks), −0.1 per tick natural decay, −0.75 per powered and fuelled Scrubber every 4 ticks. Shown as HUD meter, canvas overlay and in the Rocket section
-- 3-step mini-tutorial (`Z2_TUTORIAL`): place oil pump → research Oil Extraction → build a Scrubber
-
----
-
-## Perks
-
-Earned on each zone's **first** launch (guarded by `G.perks.awarded[zone]`): **3 base** (`LAUNCH_PERK_POINTS`) **+1 per zone milestone** met at that moment (`ZONE_MILESTONES`, checked by `awardLaunchPerks()`). That's up to 6 per zone, as in the GDD. Milestones are listed in the Rocket panel and the ☰ Rocket section until the zone launches. Saves from before v1.1.8 are backfilled with base points only (`backfillLaunchPerks()`). Perks carry across zones. Reached via ☰ → ⭐ PERKS or the ⭐ PERKS button on the launch modal.
+**Perk points:** each zone's first launch gives 3 base + 1 per zone milestone met (`ZONE_MILESTONES`) + 1 with Starborn.
 
 | Zone | Milestones |
 |---|---|
-| 1 | Industrialist (25+ production machines, i.e. not belts/inserters/splitters/tunnels/chests) · Power Plant (generating 120kW+) · Engineer (5+ machines at T2+) |
+| 1 | Industrialist (25+ non-logistics machines) · Power Plant (120 kW+) · Engineer (5+ at T2+) |
 | 2 | Industrialist · Oil Baron (6+ oil pumps) · Clear Skies (smog < 25%) |
+| 3 | Industrialist · Steady Hands (no bursts) · Night Shift (2+ accumulators) |
+| 4 | Industrialist · Green Thumb (nothing withered) · Cool Head (no SCRAMs) |
 
-| ID | Effect | Cost | Req |
-|---|---|---|---|
-| yield1 | +10% miner yield | 1 | — |
-| yield2 | +25% yield, stacks with yield1 (total ×1.35) | 2 | yield1 |
-| speed1 | +10% machine speed | 1 | — |
-| speed2 | +20% machine speed | 2 | speed1 |
-| power1 | −15% power draw | 1 | — |
-| start1 | Quick Start: +50 iron ore, copper ore, coal, stone on arrival in a new zone (`applyQuickStart()`) | 2 | — |
-| belt1 | +20% belt speed | 1 | — |
+**Perks (`PERK_DEFS`):** yield1/2/3, speed1/2/3, power1/2, belt1/2, start1/2 (Quick Start 50 → 200), smog1 (Clean Burn), pressure1 (Reinforced Pipes), vital1 (Vital Growth), cool1 (Coolant Lines). `after:N` perks unlock after Zone N's launch. Total cost 30 points vs 12–24 earnable per run, so players choose. `perkMult()` combines tiers and Stardust upgrades.
 
-Total cost is 10 points against 3–6 earned per zone. The GDD expects ~16–20 points overall, so more perks are needed as zones are added.
+**Stardust (`PRESTIGE`, `PRESTIGE_SHOP`, `THEMES`):**
+- Upgrades: Cosmic Yield (+15%), Starlight Haste (+15%), Dark Energy (−20% power), Starborn (+1 perk/launch), Remembered Tools (5 Miners, 5 Furnaces, 2 Burners ready in every zone), Echoes (start with Automation + Logistics).
+- Themes: Nebula, Red Giant, Mono (3 ✨ each).
+- `applyPrestigeStart()` runs on `newGame()`, and `applyRememberedTools()` on each zone arrival.
 
----
+## Tutorials & achievements
+- Zone 1: 13 steps (`TUTORIAL_STEPS`). Zones 2–5: 3 steps each in `ZONE_TUTORIALS`.
+- 47 achievements (`ACHIEVEMENTS` + `checks` in `checkAchievements()`), including per-zone ones (Plumber, Kaboom, It's Alive, Critical Mass, Godmaker, Big Bang…).
 
-## Other Systems (unchanged from earlier builds)
-
-- **Splitter (1×2):** input from back face; outputs A (top cell front) and B (bottom cell front); alternates via `m.splitSide`, falls back to the other side if full. Only origin tile routes. `splitterArrow()` is defined outside the machine draw loop.
-- **Tunnels:** `distForward > 0` = entrance, `< 0` = exit; unlinked tunnels stall; rotating re-links. Inserters treat tunnel tiles like belts.
-- **Inserters:** destination-first check; state machine (`arm.state`: idle → grabbing → depositing → return) on real ms timings; hold item and retry if destination full; need power.
-- **Multi-select:** select area → MOVE / ROTATE / COPY (auto-enters paste) / DEMO / CLEAR. `multiselState = {mode, x1,y1,x2,y2, ids[], clipboard[], pasteAnchor}`.
-- **Blueprints:** up to 8; paste via ghost + ✓ PLACE (`ghostConfirm()`/`ghostCancel()`).
-- **Tutorial (Zone 1):** 13 steps in `TUTORIAL_STEPS`; final step has inline "THE FACTORY MUST GROW" button → `completeTutorial()`.
-- **Achievements:** 33, checked every 4 ticks. Mining ones count `G.stats.mined`, not taps.
-- **Audio:** Web Audio SFX (`sfx(type)`) and procedural music (`musicStart/Stop`, `setMusicVol`). Pauses on tab hide.
-- **Statistics:** bottleneck detector, Pause All / Resume All.
+## Other systems
+Splitters (1×2, rotatable), tunnels (auto-link ≤5 tiles), inserter state machine, multi-select (move/rotate/copy/paste/demolish), blueprints (8), statistics + bottleneck detector, Web Audio SFX + procedural music. These are unchanged from earlier builds.
 
 ---
 
 ## Roadmap
 
 ### Done ✅
-- Everything in Zone 1 (loop, 14 machine types, research eras, rocket)
-- Inserter animation rework (state machine)
-- Splitter rotation
-- Long inserters
-- Mobile build flow (✓ PLACE, move/demolish from machine panel, bottom tab bar + drawer)
-- Zone 2: The Scar (oil chain, smog, repair rocket, mini-tutorial)
-- Perk points on launch, perks carried across zones, Quick Start (v1.1.8)
-- Zone milestones (+1 perk each), Scrubber fix, Yield II stacking (v1.1.9)
+- Zones 1–5 complete and playable end to end; Big Bang; Stardust prestige; 16 perks; milestones
+- Fluid/pipe system with pressure; light-cycle power + storage; living machines; reactor heat
 
-### Known Issues
-- **Achievements reset on zone transition** (part of the `defaultState()` wipe). Decide whether they should carry over like research.
-
-### Mid Term
-- Belt corner visuals (smooth direction-change rendering)
-
-### Long Term
-- Zone 3: The Deep. Design drafted in `docs/ZONE3_DESIGN.md`. It needs the **fluid/pipe system** first (lithium brine; pressure); Zone 4 reuses it
-- Zone 4: The Bloom (biological machines, decay)
-- Zone 5: The Singularity + Big Bang (Z5 tab already in HUD)
-- Prestige: Stardust currency, permanent perks, cosmetics in a never-wiped `ebi_prestige` key
-- Heat system (GDD long-term)
-- More perks unlocking per zone
+### Ideas / not built
+- Belt corner visuals
+- Cave-wall tiles in Zone 3 (`docs/ZONE3_DESIGN.md` Q2)
+- Relief-valve threshold setting; moving Zone 2 oil onto pipes
+- Zone switcher / rails (GDD stubs); landscape sidebar layout; push notifications
 
 ### GDD divergences (code wins unless the user says otherwise)
-- **Power:** GDD says proportional slowdown; the game uses a hard cutoff (`powerRatio()` 0/1)
-- **Zone 2 resources:** GDD lists crude oil, natural gas, sulfur, scrap metal, scarce iron; rocket fuel refined petroleum + liquid oxygen; 200 kW oil generator. The game has crude oil only, refined fuel and an 80 kW Combustion Gen.
-- **Tech tree:** GDD targets ~60 nodes with 3+ paths to each rocket; the game has 8 techs with linear gating
-- **Costs/recipes:** several Zone 1 costs, tech costs and machine names (Smelter vs Electric Smelter/Blast Furnace) differ
-- **Saves:** GDD says single slot + `ebi_prefs`; the game has AUTO + 3 slots and stores prefs in `G`
+- **Power:** GDD says proportional slowdown; the game uses a hard cutoff
+- **Zone 2 resources:** GDD lists natural gas, sulfur, scrap metal, liquid oxygen and a 200 kW oil generator; the game has crude oil → raw fuel/plastic → refined fuel and an 80 kW Combustion Gen.
+- **Zone 3 power:** GDD "Solar Panel, day only" is the Lumen Panel on the cave glow tide (no sky underground)
+- **Zone 4 power:** GDD "uranium rods" are Luminite Rods
+- **Tech tree:** GDD targets ~60 nodes with 3+ rocket paths; the game has 27, with two parallel Era-1 techs per zone from Zone 3
+- **Zone perks reset on a new run** (Stardust upgrades are the permanent layer)
+- **Saves:** AUTO + 3 slots, prefs in `G` (GDD: single slot + `ebi_prefs`)
 
 ---
 
 ## Coding Conventions
 
-- **Always ask before changing existing logic** (from the GDD). Bugs found while doing something else get reported, not silently fixed.
-- Single `index.html` — never split
-- Vanilla JS only — no frameworks, no libraries
-- All state in `G` declared once in `defaultState()`; backfill new keys in `continueGame()` and `loadFromSlot()`
-- Mobile-first
+- **Always ask before changing existing logic** (from the GDD). Bugs found along the way get reported. Fix them when they block the requested work, and say so.
+- Single `index.html`, vanilla JS, no libraries; all state in `G` via `defaultState()`.
+- New zone content: add items, recipes (append ids to the machine's `recipes`), `MDEFS` (with `PORTS` if it outputs items), `TECHS` (`zone:n`), the `ZONES` entry, deposits, `ZONE_TUTORIALS`, `ZONE_MILESTONES`, achievements and drawer category.
 
 **Every delivery checklist:**
-1. Bump `sw.js` cache version (`ebi-vN`)
-2. Bump `VER` constant in JS
-3. Bump `v-num` on title screen HTML
-4. Run JS syntax check (`new Function()` on each inline script block)
-5. Verify file starts with `<!DOCTYPE html>`
-
-Headless Chromium + Playwright are available in cloud sessions for smoke tests (load `index.html` via `file://`, call `newGame()`, dev helpers like `devCompleteRocket()` / `devCompleteZ2()`, and watch for `pageerror`).
-
-### File Safety Rules
-- Check replacement target strings are unique before replacing
-- After edits near function declarations, verify the function still exists inside `<script>`
-- Never let JS leak before `<!DOCTYPE html>`
-- Keep `tutHint`, `multiselBar`, `ghostBar`, `buildHUD` outside `#wrap`
+1. Bump `sw.js` cache version, `VER`, and the title-screen `v-num`
+2. Run `node tools/check.js`: syntax, every zone completable, full Zone 1→5 run, no page errors
+3. Verify the file starts with `<!DOCTYPE html>`
 
 ### Known Gotchas
-- Touch events fire synthetic mouse events — handled by `lastTouch` debounce in `setupInput`
-- `perkMult()` returns multipliers (1.10 = +10%); `power` is a multiplier on draw (0.85)
-- `recordOutput(m,n)` uses `Date.now()`, not `G.tick`; it also increments `G.stats.mined` for miners/oil pumps
-- `outBuf` stall is per-machine total; `inBuf` cap is per item type
-- `machSize(typeOrM, dir)` is the canonical size helper — use it instead of `def.size`
-- Splitter secondary tile `(m.x, m.y+1)` must stay registered in the map
-- Assembler recipes check `rec.unlock` each tick — locked recipes auto-clear
-- `completePlacement()` duplicates `tryPlace()` minus the power check — keep in sync
-- `buildToolbar()` now just calls `buildDrawer()`
-- `buildTitleSlots()` must be called after `quitToTitle()` and on `DOMContentLoaded`
+- Touch events fire synthetic mouse events (`lastTouch` debounce in `setupInput`)
+- `perkMult()` returns multipliers; `power` multiplies draw
+- `recordOutput()` uses `Date.now()`, so rates look huge in fast headless tests
+- `machSize()` is the canonical size helper; splitter secondary tile must stay registered
+- `completePlacement()` duplicates `tryPlace()` minus the power check, so keep them in sync
+- `buildToolbar()` just calls `buildDrawer()`; `buildTitleSlots()` after `quitToTitle()` and on load
+- Fluid networks rebuild every tick. Never store a network reference across ticks except via `m._net`/`m._nets` (transient)
+- `PRESTIGE` is a cached global. Call `savePrestige()` after changing it
