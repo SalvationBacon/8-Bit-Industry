@@ -194,6 +194,23 @@ const r=await p.evaluate(async()=>{
   { const z0=G.zone; const at=z=>{G.zone=z;return ['sci_scar','sci_deep','sci_bloom','nutrient','z2_sci_scar','z3_sci_deep','z4_sci_bloom','z5_sci_void','sci_red','fn_iron'].filter(zoneRecipeOk).join(',');};
     const r={1:at(1),2:at(2),4:at(4),5:at(5)}; G.zone=z0;
     ok('zone_notes_gated',r[1]==='sci_red,fn_iron'&&r[2]==='sci_scar,z2_sci_scar,sci_red,fn_iron'&&r[4]==='sci_bloom,nutrient,z4_sci_bloom,sci_red,fn_iron'&&r[5].split(',').length===10,r); }
+  // ── belt animation: an item is drawn every frame and never jumps, along straights, corners and a splitter
+  { reset(); G.research.done=Object.keys(TECHS);
+    for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
+    put('belt',16,44,0); put('splitter',17,44,0); for(let x=18;x<22;x++)put('belt',x,44,0); put('chest',22,44);
+    G.map[40][10].items=[{id:'eff_module',prog:0}];
+    G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5;
+    const pts=[]; const orig=drawItem; let frame=null;
+    window.drawItem=(c,id,x,y,sz)=>{if(id==='eff_module')frame.push([x,y]);};
+    let maxStep=0, missing=0, last=null, frames=0, still=0, maxStill=0;
+    for(let t=0;t<130;t++){ run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame=[]; draw(); frames++;
+        const inChest=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+        if(!frame.length){ if(!inChest)missing++; last=null; continue; }
+        const [x,y]=frame[0]; if(last){const d=Math.hypot(x-last[0],y-last[1])/(TILE*.5); maxStep=Math.max(maxStep,d); still=d<1e-6?still+1:0; maxStill=Math.max(maxStill,still);} last=[x,y]; }
+      T=t0; }
+    window.drawItem=orig;
+    const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+    ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});

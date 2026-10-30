@@ -423,7 +423,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.2 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -585,7 +585,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.1';
+const VER      = '1.9.2';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2723,6 +2723,33 @@ function beltTurn(m){
   return a===b?0:a?1:3;
 }
 
+// Draw the items on one belt-like tile. Moving items interpolate smoothly and may run past the edge into
+// the next tile (the simulation hands them over with the leftover move). Items that cannot move on stop
+// just short of the edge and queue a quarter tile apart (even spacing across tiles) instead of piling onto one spot.
+// mode: 'belt' full tile · 'enter' tunnel mouth (sinks at the centre) · 'exit' rises from the centre
+function beltCanTake(tx,ty,dir){
+  const[dx,dy]=D_VEC[dir], t=G.map[ty+dy]?.[tx+dx]; if(!t||t.mid===null)return false;
+  const nm=G.machines[t.mid]; if(!nm)return false;
+  if(nm.type==='chest')return true;
+  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<4;
+}
+function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
+  const flow=mode==='enter'||beltCanTake(tx,ty,dir);
+  const items=[...tile.items].sort((a,b)=>b.prog-a.prog);
+  let lim=flow?1+spd:.875;
+  const[dx,dy]=D_VEC[dir], mx=tx*ts-cx+ts/2, my=ty*ts-cy+ts/2, sz=ts*.42;
+  for(const it of items){
+    let p=Math.max(flow?0:.125,Math.min(it.prog+spd*sub,lim));
+    if(!flow)lim=p-.25;                  // queued items sit a quarter tile apart, evenly across tile edges
+    if(mode==='enter'&&p>=.5)continue;   // gone underground
+    if(mode==='exit')p=.5+p*.5;          // surfaces at the centre
+    let ox,oy;
+    if(p<=1)[ox,oy]=beltItemPos(dir,turn,p);
+    else{[ox,oy]=beltItemPos(dir,turn,1);ox+=dx*(p-1);oy+=dy*(p-1);}
+    drawItem(ctx,it.id,mx+ox*ts,my+oy*ts,sz);
+  }
+}
+
 // Port layout per machine type:
 // Output side per machine type, inserters may NOT deposit into the output side
 const PORTS = {
@@ -2784,6 +2811,7 @@ function draw(){
       ctx.drawImage(resSpr(G.map[ty][tx].res,(tx*7+ty*13)&3,af),Math.floor(tx*ts-cx),Math.floor(ty*ts-cy),tss,tss);
     }
   }
+  const beltQ=[];
   for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
     const px=tx*ts-cx, py=ty*ts-cy;
     const tile=G.map[ty][tx];
@@ -2862,24 +2890,14 @@ function draw(){
           ctx.restore();
         }
 
-        // Items, prog-based position with sub-tick interpolation
-        if(tile.items.length>0){
-          const[dvx,dvy]=D_VEC[m.dir];
-          const beltSpeed2=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
-          const subTick=Math.min(1,(now-lastTickMs)/tickInterval());
-          ctx.save();
-          ctx.beginPath(); ctx.rect(px+2,py+2,ts-4,ts-4); ctx.clip();
-          for(let ii=0;ii<tile.items.length;ii++){
-            const it=tile.items[ii];
-            const smoothProg=Math.min(0.99, it.prog+beltSpeed2*subTick);
-            const[ox,oy]=beltItemPos(m.dir,turn,smoothProg);
-            drawItem(ctx,it.id,px+ts/2+ox*ts,py+ts/2+oy*ts,ts*.42);
-          }
-          ctx.restore();
-        }
+        if(tile.items.length)beltQ.push([tile,m,tx,ty,turn]);
       }
     }
   }
+  // Belt items: drawn after every belt tile so none are clipped at an edge or covered by the next belt
+  const bSpd=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
+  const bSub=Math.min(1,(now-lastTickMs)/tickInterval());
+  for(const[tile,m,tx,ty,turn]of beltQ)drawBeltItems(tile,m.dir,tx,ty,turn,ts,cx,cy,bSpd,bSub,'belt');
 
   // Multi-tile machines
   const drawn=new Set();
@@ -3173,6 +3191,18 @@ function draw(){
     if(ts>14){
       const as=Math.floor(ts*.34);
       ctx.drawImage(arrowSpr(m.dir,linked?MACH_COL.tunnel:'#666'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);
+    }
+  }
+
+  // Items on splitter cells and at tunnel mouths, drawn over their sprites
+  for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
+    const tile=G.map[ty][tx]; if(!tile.items.length||tile.mid===null)continue;
+    const m=G.machines[tile.mid]; if(!m)continue;
+    if(m.type==='splitter')drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,'belt');
+    else if(m.type==='tunnel'){
+      const p=m.tunnelId!==null&&G.machines[m.tunnelId];
+      const isExit=p&&((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1])<0;
+      drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,isExit?'exit':'enter');
     }
   }
 
@@ -4631,6 +4661,8 @@ function runAccumulators(){
   }
 }
 
+const BELT_DONE=1-1e-6;
+const carryProg=p=>Math.max(0,Math.min(.5,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
   const beltSpeed=(G.research.done.includes('logistics')?.15:.1)*pm.belt;
@@ -4640,7 +4672,9 @@ function runBelts(){
     const tile=G.map[ty][tx]; if(tile.mid===null)continue;
     const m=G.machines[tile.mid]; if(!m)continue;
     if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
-    for(const it of tile.items)it.prog=Math.min(1,it.prog+beltSpeed);
+    // No clamp at 1: the overshoot carries into the next tile (BELT_DONE absorbs float error, 10×0.1 < 1),
+    // so each tile takes exactly its time and items never freeze at the edge for a tick
+    for(const it of tile.items)it.prog=Math.min(1+beltSpeed,it.prog+beltSpeed);
   }
 
   // Transfer completed items
@@ -4660,15 +4694,15 @@ function runBelts(){
             // ENTRANCE, teleport arrived items to exit tile
             const exTile=G.map[partner.y][partner.x];
             const room=Math.max(0,4-exTile.items.length); // exit holds 4 like a belt; the rest wait
-            const arr=tile.items.filter(it=>it.prog>=1).slice(0,room);
+            const arr=tile.items.filter(it=>it.prog>=BELT_DONE).slice(0,room);
             if(arr.length){
               tile.items=tile.items.filter(it=>!arr.includes(it));
-              for(const it of arr){it.prog=0;exTile.items.push(it);}
+              for(const it of arr){it.prog=carryProg(it.prog);exTile.items.push(it);}
             }
             continue;
           }
           // EXIT, pass forward; back-pressure if blocked (so inserter can grab)
-          const arr=tile.items.filter(it=>it.prog>=1);
+          const arr=tile.items.filter(it=>it.prog>=BELT_DONE);
           if(!arr.length)continue;
           const nx=tx+dvx,ny=ty+dvy;
           tile.items=tile.items.filter(it=>it.prog<1);
@@ -4681,7 +4715,7 @@ function runBelts(){
             if(next.mid!==null){
               const nm=G.machines[next.mid];
               if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
-                it.prog=0;next.items.push(it);
+                it.prog=carryProg(it.prog);next.items.push(it);
               } else {it.prog=0.99;tile.items.push(it);}
             } else {it.prog=0.99;tile.items.push(it);}
           }
@@ -4692,14 +4726,14 @@ function runBelts(){
       continue;
     }
 
-    const arrived=tile.items.filter(it=>it.prog>=1);
+    const arrived=tile.items.filter(it=>it.prog>=BELT_DONE);
     if(!arrived.length)continue;
     tile.items=tile.items.filter(it=>it.prog<1);
     const[dvx,dvy]=D_VEC[m.dir];
 
     // Splitter: 1×2, second cell always at (m.x, m.y+1)
     if(m.type==='splitter'){
-      if(tx!==m.x||ty!==m.y)continue; // only origin tile routes
+      // Both cells route (the second cell used to drop its items: anything fed into it vanished)
       // Secondary cell is perpendicular to flow direction
       const PERP=[[0,1],[1,0],[0,1],[1,0]]; // perpendicular offset per dir
       const[px,py]=PERP[m.dir];
@@ -4716,7 +4750,7 @@ function runBelts(){
           const nt=G.map[dest.y][dest.x]; if(nt.mid===null)continue;
           const nm=G.machines[nt.mid];
           if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&nt.items.length<4){
-            it.prog=0; nt.items.push(it); placed=true; break;
+            it.prog=carryProg(it.prog); nt.items.push(it); placed=true; break;
           }
         }
         if(!placed){it.prog=0.99; tile.items.push(it);}
@@ -4735,9 +4769,9 @@ function runBelts(){
       if(next.mid!==null){
         const nm=G.machines[next.mid];
         if((nm.type==='belt'||nm.type==='splitter')&&next.items.length<4){
-          it.prog=0;next.items.push(it);
+          it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='tunnel'){
-          it.prog=0;next.items.push(it);
+          it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='chest'){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else {
