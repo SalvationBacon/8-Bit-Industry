@@ -387,7 +387,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1">🛟 BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.6.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.6.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -548,7 +548,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.6.0';
+const VER      = '1.6.1';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -3620,8 +3620,8 @@ function unlinkTunnel(m){
 // ═══ UNDO ═══
 // Build actions record how to reverse themselves. One entry can hold several ops
 // (multi-select demolish, move, rotate, paste). Ops:
-//   place  {id,src}  undone by demolishing; the refund goes back where the cost came from
-//   remove {snap}    undone by rebuilding (pays the cost again; contents stay in inventory)
+//   place  {id,src,tier}  undone by demolishing; the refund goes back where the cost came from
+//   remove {snap}    undone by rebuilding (pays machineWorth again; contents stay in inventory)
 //   pos    {list}    undone by putting machines back where and how they faced
 // The stack lives outside G: it is per session and clears on load and zone change.
 const UNDO_MAX=30;
@@ -3669,7 +3669,7 @@ function undoLast(){
     if(!rebuilds.every(o=>canPlace(o.snap.type,o.snap.x,o.snap.y,o.snap.dir))){toast('Cannot undo: something is built there now','bad');sfx('error');return;}
     if(!G.devFreeBuild){
       const need={};
-      for(const o of rebuilds)for(const[k,n]of Object.entries(MDEFS[o.snap.type].cost))need[k]=(need[k]||0)+n;
+      for(const o of rebuilds)addCost(need,machineWorth(o.snap.type,o.snap.tier,o.snap.modules));
       const miss=Object.entries(need).find(([k,n])=>(G.inv[k]||0)<n);
       if(miss){toast(`Cannot undo: need ${miss[1]}× ${ITEMS[miss[0]]?.name||miss[0]}`,'bad');sfx('error');return;}
     }
@@ -3683,13 +3683,13 @@ function undoLast(){
       } else if(o.op==='place'){
         const m=G.machines[o.id]; if(!m)continue;
         const type=m.type; tryRemove(m.x,m.y,true);
-        if(o.src!=='inv'){
-          for(const[k,n]of Object.entries(MDEFS[type].cost))G.inv[k]=Math.max(0,(G.inv[k]||0)-n);
+        if(o.src!=='inv'){ // it was never paid for in materials: take back what demolish refunded for it
+          for(const[k,n]of Object.entries(machineWorth(type,o.tier)))G.inv[k]=Math.max(0,(G.inv[k]||0)-n);
           if(o.src==='crafted')G.crafted[type]=(G.crafted[type]||0)+1;
         }
       } else if(o.op==='remove'){
         const sn=o.snap;
-        if(!G.devFreeBuild)for(const[k,n]of Object.entries(MDEFS[sn.type].cost))G.inv[k]-=n;
+        if(!G.devFreeBuild)for(const[k,n]of Object.entries(machineWorth(sn.type,sn.tier,sn.modules)))G.inv[k]-=n;
         const m=stampMachine(sn,sn.x,sn.y);
         if(m){m.modules=[...(sn.modules||[])]; G.stats.placed--;}
       }
@@ -3715,7 +3715,7 @@ function stampMachine(e,x,y){
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)G.map[y+dy][x+dx].mid=m.id;
   refreshMineRes(m); linkTunnel(m);
   G.stats.placed++;
-  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':'inv'});
+  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':'inv',tier:m.tier});
   return m;
 }
 
@@ -3833,9 +3833,8 @@ function tryRemove(tx,ty,quiet){
     t.items=[];
   }
   if(m._arm?.item)G.inv[m._arm.item]=(G.inv[m._arm.item]||0)+1;
-  // Full refund
-  for(const[item,n]of Object.entries(def.cost))
-    G.inv[item]=(G.inv[item]||0)+n;
+  // Full refund: build cost, upgrade steps and installed modules
+  addCost(G.inv,machineWorth(m.type,m.tier,m.modules));
   // Return input buffer to inventory
   for(const[item,n]of Object.entries(m.inBuf))
     if(n>0)G.inv[item]=(G.inv[item]||0)+n;
@@ -5506,10 +5505,6 @@ function renderMachPanel(){
   // Tier upgrade
   if(UPGRADEABLE.includes(m.type)){
     const tier=m.tier||1;
-    const TIER_COSTS={
-      2:{iron_plate:10,iron_gear:5,circuit:2},
-      3:{steel_plate:8,circuit:6,engine:2},
-    };
     const TIER_BONUS={2:'1.5× speed & yield',3:'2× speed & yield'};
     if(tier<3){
       const nextTier=tier+1;
@@ -5618,13 +5613,23 @@ function rotateM(id){
   toast(`Direction: ${D_ARR[m.dir]}`,'ok');
 }
 
+// Tier upgrade costs, paid per step (T1→T2, then T2→T3)
+const TIER_COSTS={
+  2:{iron_plate:10,iron_gear:5,circuit:2},
+  3:{steel_plate:8,circuit:6,engine:2},
+};
+function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
+// Everything a machine is worth: build cost, each upgrade step up to its tier, installed modules.
+// Demolish refunds this; paste, blueprints and undo rebuilds charge it.
+function machineWorth(type,tier,modules){
+  const t=addCost({},MDEFS[type]?.cost||{});
+  for(let k=2;k<=Math.min(3,tier||1);k++)addCost(t,TIER_COSTS[k]);
+  for(const mod of modules||[])if(mod)t[mod]=(t[mod]||0)+1;
+  return t;
+}
 function upgradeMachine(id){
   const m=G.machines[id]; if(!m)return;
   const tier=m.tier||1; if(tier>=3)return;
-  const TIER_COSTS={
-    2:{iron_plate:10,iron_gear:5,circuit:2},
-    3:{steel_plate:8,circuit:6,engine:2},
-  };
   const nextTier=tier+1;
   const cost=TIER_COSTS[nextTier];
   for(const[item,need]of Object.entries(cost)){
@@ -5661,8 +5666,7 @@ function blueprintCost(data){
   const totals={};
   for(const e of data){
     const def=MDEFS[e.type]; if(!def||def.stub)continue;
-    for(const[item,n]of Object.entries(def.cost))
-      totals[item]=(totals[item]||0)+n;
+    addCost(totals,machineWorth(e.type,e.tier)); // copies keep their tier, so they pay for it
   }
   return totals;
 }

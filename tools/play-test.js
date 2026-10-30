@@ -152,6 +152,20 @@ const r=await p.evaluate(async()=>{
   multiselClear(); setTool('select');
   put('chest',60,60); tryRemove(60,60); undoBusy=true; stampMachine({type:'belt',dir:0},60,60); undoBusy=false; const nU=undoStack.length; undoLast();
   ok('undo_blocked_rebuild_refused',undoStack.length===nU&&G.machines[G.map[60][60].mid].type==='belt',{nU,now:undoStack.length});
+  // demolish refunds upgrade steps and modules; undo charges them again and restores the machine
+  const inv0={...G.inv}; Object.assign(G.inv,{steel_plate:50,engine:10,speed_module:1});
+  const t3=put('assembler',30,34); upgradeMachine(t3.id); upgradeMachine(t3.id); installModule(t3.id,0,'speed_module');
+  const afterUp={...G.inv}; tryRemove(30,34);
+  const w=machineWorth('assembler',3,['speed_module']); const gotBack=Object.entries(w).every(([k,n])=>(G.inv[k]||0)-(afterUp[k]||0)===n);
+  ok('demolish_refunds_upgrades_modules',gotBack&&w.engine===2&&w.speed_module===1,{w});
+  undoLast(); const rb=G.machines[G.map[34][30].mid];
+  ok('undo_rebuild_charges_worth',rb&&rb.tier===3&&rb.modules[0]==='speed_module'&&Object.keys(afterUp).every(k=>(G.inv[k]||0)===(afterUp[k]||0)),{tier:rb?.tier,mods:rb?.modules});
+  // pasting a T3 copy pays for its tier
+  const cost3=blueprintCost([{type:'assembler',rx:0,ry:0,dir:0,tier:3}]), cost1=blueprintCost([{type:'assembler',rx:0,ry:0,dir:0,tier:1}]);
+  const e0=G.inv.engine||0; multiselState.clipboard=[{type:'assembler',rx:0,ry:0,dir:0,tier:3}]; setTool('multisel'); multiselStartPaste(); multiselState.pasteAnchor={x:36,y:34}; ghostConfirm();
+  ok('paste_charges_tier',cost3.engine===2&&!cost1.engine&&(G.inv.engine||0)===e0-2&&G.machines[G.map[34][36].mid]?.tier===3,{cost3,e0,now:G.inv.engine});
+  undoLast(); ok('undo_paste_refunds_tier',(G.inv.engine||0)===e0&&G.map[34][36].mid===null,{e0,now:G.inv.engine});
+  multiselClear(); setTool('select');
   G.devFreeBuild=true;
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
