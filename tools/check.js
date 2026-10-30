@@ -86,5 +86,5 @@ const { chromium } = require('playwright');
   await browser.close();
   const failures = [...result.failures, ...errors.map(e => 'page error: ' + e)];
   if (failures.length) { console.error('FAIL\n' + failures.join('\n')); process.exit(1); }
-  console.log(`OK — all zones reachable, full run to Big Bang (${result.perks} perk points, ${result.stardust} Stardust)`);
+  console.log(`OK: all zones reachable, full run to Big Bang (${result.perks} perk points, ${result.stardust} Stardust)`);
 })();
