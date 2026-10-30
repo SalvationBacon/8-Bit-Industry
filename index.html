@@ -139,6 +139,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .ditem:hover{border-color:var(--border2);background:var(--bg3)}
 .ditem.sel{border-color:var(--amber);background:rgba(245,166,35,.08)}
 .ditem.locked{opacity:.3;cursor:not-allowed}
+.ditem.off{opacity:.4}
 .ditem.unaffordable{opacity:.8}
 .ditem.unaffordable .di{opacity:.55}
 .ditem .di{font-size:24px;line-height:1}
@@ -279,8 +280,6 @@ body.sheet-open #tutMini{display:block}
 #buildRotateBtn{border:2px solid var(--amber);color:var(--amber)}
 #buildConfirmBtn{border:2px solid var(--teal);color:var(--teal)}
 #buildCancelBtn{border:1px solid var(--border2);color:var(--text2)}
-#undoBtn{position:fixed;right:calc(var(--cr) + 10px);bottom:calc(var(--cb) + 70px);z-index:601;width:52px;height:52px;border-radius:50%;border:2px solid var(--amber);background:rgba(13,13,13,.92);color:var(--amber);font-family:var(--font);font-size:20px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.6)}
-#undoBtn #undoCount{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 3px;border-radius:9px;background:var(--amber);color:#000;font-size:var(--f4);line-height:18px}
 #ghostBar{position:fixed;left:var(--cl);right:var(--cr);bottom:var(--cb);background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:8px 12px;display:flex;align-items:center;gap:8px;z-index:600}
 #ghostBar button{font-family:var(--font);font-size:var(--f7);padding:12px 18px;cursor:pointer;min-height:44px}
 #multiselBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600}
@@ -412,7 +411,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.8.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -429,7 +428,6 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   </div>
   <!-- Build mode controls, fixed, outside canvas touch zone, same pattern as ghostBar -->
   <div id="invStrip" onclick="showPanel('inv')" title="Inventory"></div>
-  <button id="undoBtn" class="hidden" onclick="undoLast()" title="Undo">↶<span id="undoCount"></span></button>
   <div id="buildHUD" class="hidden">
     <div id="buildCost"></div>
     <button id="buildRotateBtn" onclick="cycleDir()" style="display:none">↻ →</button>
@@ -575,7 +573,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.8.0';
+const VER      = '1.8.1';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1118,6 +1116,7 @@ const DRAWER_DEFS = {
   ],
   tools: [
     {label:'Tools', items:[
+      {id:'undo',name:'Undo',icon:'↶',noMachine:true,action:'undoLast()'},
       {id:'select',name:'Select',icon:'👆',noMachine:true},
       {id:'multisel',name:'Multi-Sel',icon:'⬚',noMachine:true},
       {id:'demolish',name:'Demolish',icon:'💥',noMachine:true},
@@ -2198,6 +2197,9 @@ const UI_ART={
     R(0,6,5,1,'#ffd27a');R(1,5,3,1,'#ffd27a');P(2,4,'#ffd27a');},
   move({R,P}){R(7,2,2,12,'#cfcfcf');R(2,7,12,2,'#cfcfcf');
     for(const[x,y,dx,dy]of[[8,0,0,1],[8,15,0,-1],[0,8,1,0],[15,8,-1,0]]){for(let k=0;k<3;k++){if(dx===0){R(x-1-k,y+dy*k,2+k*2,1,'#f5a623');}else{R(x+dx*k,y-1-k,1,2+k*2,'#f5a623');}}}},
+  undo({P,R}){R(4,4,7,2,'#f5a623');R(4,4,7,1,'#ffd27a');R(5,11,6,2,'#f5a623');R(5,12,6,1,'#a86c08');
+    for(let y=3;y<15;y++)for(let x=10;x<16;x++){const d=Math.hypot(x-10,y-8.5);if(d>=2.6&&d<=4.6&&x>=11)P(x,y,d<3.6?'#ffd27a':'#f5a623');}
+    R(3,2,1,6,'#ffd27a');R(2,3,1,4,'#ffd27a');R(1,4,1,2,'#ffd27a');R(4,3,1,4,'#f5a623');},
   blueprint({R,P}){R(1,2,14,12,'#1e5aa8');R(1,2,14,1,'#4a8ae0');for(let x=3;x<15;x+=3)R(x,3,1,11,'#3a7ad0');for(let y=5;y<14;y+=3)R(1,y,14,1,'#3a7ad0');
     R(4,6,5,4,'#e8f0ff');R(5,7,3,2,'#1e5aa8');R(10,9,3,3,'#e8f0ff');},
   // ☰ menu tiles
@@ -3746,12 +3748,8 @@ function undoEnd(){const g=undoGroup;undoGroup=null;if(g&&g.length)pushUndo(g);}
 function pushUndo(ops){undoStack.push(ops);if(undoStack.length>UNDO_MAX)undoStack.shift();updateUndoBtn();}
 function clearUndo(){undoStack=[];undoGroup=null;updateUndoBtn();}
 function posSnap(m){return{id:m.id,x:m.x,y:m.y,dir:m.dir};}
-function updateUndoBtn(){
-  const b=document.getElementById('undoBtn'); if(!b)return;
-  const show=undoStack.length>0&&(activeTab==='build'||activeTab==='tools');
-  b.classList.toggle('hidden',!show);
-  const n=document.getElementById('undoCount'); if(n)n.textContent=undoStack.length;
-}
+// Undo lives in the EDIT tab; its card shows how many steps are left
+function updateUndoBtn(){if(activeTab==='tools')buildDrawer();}
 // Put machines at recorded positions/directions, all or nothing
 function relocate(list){
   const ms=list.map(e=>G.machines[e.id]).filter(Boolean);
@@ -4027,7 +4025,7 @@ function gameTick(){
   const nowMs=performance.now();
   // Skipped while a finger/button is down: rebuilding a panel mid-tap swaps the
   // button under the finger and the tap is silently lost
-  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();updateUndoBtn();if(MDEFS[activeTool])updateBuildHUD();}
+  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();if(MDEFS[activeTool])updateBuildHUD();}
   if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
@@ -5003,7 +5001,6 @@ function updateSelectBtn(){
 // Tabs that open a panel instead of the drawer
 const TAB_PANELS={craft:'craft',research:'research',goal:'rocket'};
 function switchTab(tab){
-  setTimeout(updateUndoBtn,0);
   const drawer=document.getElementById('tabDrawer');
   if(activeTab===tab){
     // Toggle off, close drawer, clear active tab
@@ -5072,6 +5069,13 @@ function buildDrawerItems(cats,safeCatIdx){
     const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
     const sub=!def?'':locked?`<span class="dc lock">🔒 ${TECHS[def.unlock]?.name||''}</span>`
       :`<span class="dc">${costChips(def.cost,item.id)}</span>`;
+    if(item.action){ // one-tap actions (Undo) rather than tools
+      const n=item.id==='undo'?undoStack.length:1;
+      return `<div class="ditem${n?'':' off'}" onclick="${item.action}">
+      <span class="di">${uiIcon(item.id)}</span>
+      <span class="dn">${item.name}</span><span class="dc">${n?`${n} step${n>1?'s':''}`:'nothing yet'}</span>
+    </div>`;
+    }
     return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
       <span class="di">${UI_ART[item.id]&&!MDEFS[item.id]?uiIcon(item.id):iconHtml(item.id,item.icon)}</span>
       <span class="dn">${item.name}</span>${sub}
