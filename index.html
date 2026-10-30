@@ -247,6 +247,9 @@ body.sheet-open #tutMini{display:block}
 .is-chip .pxi,.is-chip img{width:16px;height:16px}
 .is-empty{font-size:var(--f4);color:var(--text3);white-space:nowrap}
 #buildCost{flex-basis:100%;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;align-items:center;font-size:var(--f5);color:var(--text);pointer-events:none}
+#buildCost .bc-info{pointer-events:auto;font-family:var(--font);font-size:var(--f5);width:26px;height:26px;min-width:0;min-height:0;border-radius:50%;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer;padding:0;flex-shrink:0}
+#buildCost .bc-info.on{background:var(--teal);color:#000}
+#buildCost .cc .uico{width:12px;height:12px}
 #buildCost .bc-in{background:rgba(13,13,13,.92);border:1px solid var(--border2);padding:6px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 .dc.lock{display:block}
 .dc img.ico{width:11px!important;height:11px!important}
@@ -341,7 +344,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 /* pbody zoom, clip overflow so content doesn't bleed */
 .pbody{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px;font-size:var(--f6);line-height:1.9}
 #toolTip{
-  position:absolute; bottom:74px; left:8px;
+  position:absolute; bottom:118px; left:8px; /* clear of the cost bar and PLACE row */
   width:min(240px,60vw); max-height:45%; overflow:hidden;
   background:rgba(10,10,10,.93);
   border:1px solid var(--border2);
@@ -417,7 +420,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.8.4 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.5 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -579,7 +582,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.8.4';
+const VER      = '1.8.5';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -5157,7 +5160,8 @@ function updateBuildHUD(){
     const dirLabels=['→','↓','←','↑'];
     rotBtn.textContent='↻ '+dirLabels[placeDir];
     rotBtn.style.display='';
-    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${def.name.toUpperCase()}</span>${costChips(def.cost,activeTool)}</span>`);
+    const pw=def.power>0?`<span class="cc">${uiIcon('power')}${def.power}kW</span>`:def.power<0?`<span class="cc ok">${uiIcon('power')}+${-def.power}kW</span>`:'';
+    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${def.name.toUpperCase()}</span>${costChips(def.cost,activeTool)}${pw}<button class="bc-info${buildInfoOpen?' on':''}" onclick="toggleBuildInfo()" title="Details">i</button></span>`);
     if(confirmBtn) confirmBtn.style.display='';
   } else {
     hud.classList.add('hidden');
@@ -5209,7 +5213,7 @@ function setTool(id){
   if(def?.unlock&&!G.research.done.includes(def.unlock)){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); return;
   }
-  activeTool=id; closeResInfo(); buildDrawer(); updateToolTip(); updateSelectBtn(); updateBuildHUD();
+  activeTool=id; buildInfoOpen=false; closeResInfo(); buildDrawer(); updateToolTip(); updateSelectBtn(); updateBuildHUD();
   if(def&&canvas){const ts=TILE*G.cam.zoom;hov={x:Math.floor((G.cam.x+canvas.clientWidth/2)/ts),y:Math.floor((G.cam.y+canvas.clientHeight*.45)/ts)};}
 }
 
@@ -5274,11 +5278,11 @@ function updateToolTip(){
     ${def.power>0?`<div class="tt-cost">Power: <span>${def.power}kW</span></div>`:''}
     ${def.power<0?`<div class="tt-cost">Generates: <span>${Math.abs(def.power)}kW</span></div>`:''}
     ${recipesHtml}`;
-  el.classList.remove('hidden');
-  // Read-once info: it hides after a few seconds so it never sits over the cost bar and PLACE
-  clearTimeout(updateToolTip._t);
-  updateToolTip._t=setTimeout(()=>el.classList.add('hidden'),3500);
+  // Only on request (the ⓘ button in the cost bar above PLACE): it used to pop up on every pick and cover the map
+  el.classList.toggle('hidden',!buildInfoOpen);
 }
+let buildInfoOpen=false;
+function toggleBuildInfo(){buildInfoOpen=!buildInfoOpen;updateToolTip();updateBuildHUD();}
 
 // ═══════════════════════════════════════════════════
 //  PANELS
