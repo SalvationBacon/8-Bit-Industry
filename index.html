@@ -54,6 +54,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 /* ── TITLE ── */
 #sTitle{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
 .title-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 50% 35% at 50% 55%,rgba(245,166,35,.07) 0%,transparent 70%)}
+#titleMute{position:absolute;top:calc(10px + var(--sat,0px));right:calc(10px + var(--sar,0px));z-index:2;width:44px;height:44px;font-size:20px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer}
 #titleCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
 #titleCaption{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + var(--sab,0px));white-space:nowrap;padding:6px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.08);font-size:var(--f5);color:var(--amber);letter-spacing:3px;text-shadow:2px 2px 0 #000;pointer-events:none;transition:opacity .3s}
 #titleCaption:empty{display:none}
@@ -108,7 +109,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 
 /* ── TAB BAR (replaces old toolbar) ── */
 #tabBar{flex-shrink:0;height:calc(var(--tab-h) + var(--sab));padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar);background:var(--panel);border-top:2px solid var(--border2);display:flex;z-index:100}
-.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:var(--f5);color:var(--text2);border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:var(--f5);color:#c8c8c8;border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
 .tab-btn .tab-icon{font-size:22px;line-height:1}
 .tab-btn:hover{color:var(--text2);background:var(--bg3)}
 .tab-btn.active{color:var(--amber);border-top-color:var(--amber);background:rgba(245,166,35,.06)}
@@ -129,9 +130,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .ditem:hover{border-color:var(--border2);background:var(--bg3)}
 .ditem.sel{border-color:var(--amber);background:rgba(245,166,35,.08)}
 .ditem.locked{opacity:.3;cursor:not-allowed}
-.ditem.unaffordable{opacity:.4;filter:grayscale(.7)}
+.ditem.unaffordable{opacity:.8}
+.ditem.unaffordable .di{opacity:.55}
 .ditem .di{font-size:24px;line-height:1}
-.ditem .dn{font-size:var(--f4);color:var(--text3);white-space:nowrap}
+.ditem .dn{font-size:var(--f5);color:var(--text);white-space:nowrap}
 .ditem.sel .dn{color:var(--amber)}
 
 /* ── SIDE PANEL (Inventory, Machine, Rocket etc, infrequent reference panels) ── */
@@ -221,7 +223,19 @@ body.sheet-open #tutText,body.sheet-open .tut-skip{display:none}
 body.sheet-open #tutMini{display:block}
 .tab-badge:empty{display:none}
 .tab-badge{position:absolute;top:6px;right:calc(50% - 22px);min-width:14px;height:14px;line-height:14px;font-size:var(--f4);background:var(--red);color:#fff;border-radius:7px;padding:0 3px}
-.dc{font-size:var(--f3);color:var(--text3);white-space:nowrap;display:flex;align-items:center;gap:1px;max-width:92px;overflow:hidden;text-overflow:ellipsis}
+.dc{font-size:var(--f4);color:var(--text3);white-space:nowrap;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 5px;max-width:120px}
+.cc{display:inline-flex;align-items:center;gap:2px;font-size:var(--f4);white-space:nowrap}
+.cc.ok{color:var(--teal)} .cc.bad{color:#ff6b6b}
+.cc .pxi,.cc img{width:14px;height:14px}
+#invStrip{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);height:34px;display:flex;align-items:center;gap:4px;padding:0 6px;overflow-x:auto;scrollbar-width:none;background:rgba(10,10,10,.88);border-bottom:1px solid var(--border2);z-index:140;cursor:pointer}
+#invStrip::-webkit-scrollbar{display:none}
+.is-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid transparent;background:var(--bg3);flex-shrink:0;font-size:var(--f5);color:var(--text)}
+.is-chip b{font-weight:normal}
+.is-chip.need{border-color:var(--teal)} .is-chip.short{border-color:var(--red);color:#ff8a8a}
+.is-chip .pxi,.is-chip img{width:16px;height:16px}
+.is-empty{font-size:var(--f4);color:var(--text3);white-space:nowrap}
+#buildCost{flex-basis:100%;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;align-items:center;font-size:var(--f5);color:var(--text);pointer-events:none}
+#buildCost .bc-in{background:rgba(13,13,13,.92);border:1px solid var(--border2);padding:6px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 .dc.lock{display:block}
 .dc img.ico{width:11px!important;height:11px!important}
 .dc.bad{color:var(--red)}
@@ -244,13 +258,13 @@ body.sheet-open #tutMini{display:block}
 /* Portrait phones: every panel is a bottom sheet so the map stays visible above */
 @media not ((orientation:landscape) and (max-height:600px)){
   .spanel{top:auto;left:0;right:0;width:auto;height:min(64vh,calc(100% - var(--hud-h) - var(--sat) - var(--tab-h) - var(--sab) - 40px));
-    border-left:none;border-top:3px solid var(--border2);transform:translateY(calc(100% + var(--tab-h) + var(--sab)));box-shadow:0 -10px 30px rgba(0,0,0,.6)}
-  .spanel.open{transform:translateY(0)}
+    border-left:none;border-top:3px solid var(--border2);transform:translateY(calc(100% + var(--tab-h) + var(--sab)))}
+  .spanel.open{transform:translateY(0);box-shadow:0 -10px 30px rgba(0,0,0,.6)} /* shadow only when open: a closed sheet sits under the tab bar and darkened it */
   .spanel .ph::before{content:'';position:absolute;left:50%;top:5px;width:40px;height:4px;margin-left:-20px;background:var(--border2)}
   .spanel .ph{position:relative;padding-top:14px}
 }
 /* ── FLOATING CONTROLS (outside #wrap so the canvas never eats their taps) ── */
-#buildHUD{position:fixed;left:var(--cl);right:var(--cr);bottom:calc(var(--cb) + 10px);display:flex;gap:8px;align-items:center;justify-content:center;z-index:600;pointer-events:none;padding:0 12px}
+#buildHUD{position:fixed;left:var(--cl);right:var(--cr);bottom:calc(var(--cb) + 10px);display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;z-index:600;pointer-events:none;padding:0 12px}
 #buildHUD button{pointer-events:all;font-family:var(--font);font-size:var(--f8);border-radius:4px;min-height:48px;min-width:84px;padding:12px 16px;cursor:pointer;background:rgba(13,13,13,.95)}
 #buildRotateBtn{border:2px solid var(--amber);color:var(--amber)}
 #buildConfirmBtn{border:2px solid var(--teal);color:var(--teal)}
@@ -261,7 +275,7 @@ body.sheet-open #tutMini{display:block}
 #ghostBar button{font-family:var(--font);font-size:var(--f7);padding:12px 18px;cursor:pointer;min-height:44px}
 #multiselBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600}
 /* Tutorial: a floating card over the top of the map, collapsible to a pill */
-#tutHint{position:fixed;top:calc(var(--ct) + 6px);left:calc(var(--cl) + 8px);right:calc(var(--cr) + 8px);max-width:560px;margin:0 auto;z-index:150;
+#tutHint{position:fixed;top:calc(var(--ct) + 40px);left:calc(var(--cl) + 8px);right:calc(var(--cr) + 8px);max-width:560px;margin:0 auto;z-index:150;
   background:rgba(22,15,4,.95);border:1px solid var(--amber);box-shadow:0 4px 18px rgba(0,0,0,.6);padding:8px 10px;display:flex;gap:8px;align-items:flex-start}
 #tutText{font-size:var(--f6);color:var(--amber);line-height:1.9;flex:1}
 #tutMini{display:none;font-size:var(--f6);color:var(--amber);flex:1}
@@ -369,6 +383,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 <!-- ══ TITLE ══ -->
 <div id="sTitle" class="screen">
   <canvas id="titleCanvas"></canvas>
+  <button id="titleMute" onclick="toggleTitleMusic()" title="Music">🔊</button>
   <div class="title-glow"></div>
   <div id="titleCaption"></div>
   <div class="title-card">
@@ -387,7 +402,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1">🛟 BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.6.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.7.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -403,8 +418,10 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <div id="toolTip" class="hidden"></div>
   </div>
   <!-- Build mode controls, fixed, outside canvas touch zone, same pattern as ghostBar -->
+  <div id="invStrip" onclick="showPanel('inv')" title="Inventory"></div>
   <button id="undoBtn" class="hidden" onclick="undoLast()" title="Undo">↶<span id="undoCount"></span></button>
   <div id="buildHUD" class="hidden">
+    <div id="buildCost"></div>
     <button id="buildRotateBtn" onclick="cycleDir()" style="display:none">↻ →</button>
     <button id="buildConfirmBtn" onclick="confirmPlace()" style="display:none">✓ PLACE</button>
     <button id="buildCancelBtn" onclick="cancelBuild()">✕ CANCEL</button>
@@ -548,7 +565,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.6.1';
+const VER      = '1.7.0';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -731,6 +748,7 @@ function musicStop(){
 
 function toggleMusic(){
   G.music=!G.music; saveGame();
+  PREFS.music=G.music; savePrefs(); // the title screen follows your last choice
   if(G.music) musicStart(); else musicStop();
   openSettings();
 }
@@ -747,6 +765,16 @@ function setMusicVol(v){
   const lbl=document.getElementById('musicVolLabel');
   if(lbl)lbl.textContent=Math.round(G.musicVol*100)+'%';
 }
+// Title screen music: browsers only allow audio after a tap, so it starts on the first one
+function onTitle(){const t=document.getElementById('sTitle');return !!t&&!t.classList.contains('hidden');}
+function titleMusic(){if(PREFS.music!==false&&!_music.running)musicStart();updateTitleMute();}
+document.addEventListener('pointerdown',()=>{if(onTitle()&&!_music.running&&PREFS.music!==false)titleMusic();},true);
+function toggleTitleMusic(){
+  PREFS.music=PREFS.music===false; savePrefs();
+  if(PREFS.music)musicStart(); else musicStop();
+  updateTitleMute();
+}
+function updateTitleMute(){const b=document.getElementById('titleMute');if(b)b.textContent=PREFS.music===false?'🔇':'🔊';}
 function toggleSfxMenu(){
   G.sfx=!G.sfx; saveGame();
   openSettings();
@@ -759,7 +787,8 @@ document.addEventListener('visibilitychange',()=>{
     musicStop();
     if(G&&tickId)saveGame();
   } else {
-    if(G&&G.music&&_music&&!_music.running) musicStart();
+    if(onTitle())titleMusic();
+    else if(G&&G.music&&_music&&!_music.running) musicStart();
   }
 });
 
@@ -2075,15 +2104,48 @@ function drawItem(ctx,id,x,y,sz){
   ctx.font=`${Math.floor(sz*.9)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(ITEMS[id]?.icon||'·',x,y);
 }
+// ── Inserters: a base plate (drawn facing right, rotated to the drop side) and an arm
+// sprite rotated to the swing angle. Arm pivot is at (1.5,2.5) in sprite pixels.
+function insBaseSpr(long){
+  return mkSpr(`insb:${long?1:0}`,16,16,({R,P,C,O})=>{
+    const acc=long?'#26c6a0':'#f5a623', dk=long?'#145a48':'#8a5c10';
+    R(1,1,14,14,'#262626'); R(1,1,14,1,'#3c3c3c'); R(1,1,1,14,'#343434'); R(1,14,14,1,'#141414'); R(14,1,1,14,'#1a1a1a');
+    for(let y=2;y<14;y++)P(2,y,(y>>1)%2?acc:'#101010');      // hazard stripe on the pick-up side
+    for(const[x,y]of[[4,3],[12,3],[4,12],[12,12]])P(x,y,'#555');
+    P(13,7,dk);P(13,8,dk);P(12,6,dk);P(12,9,dk);               // chevron toward the drop side
+    C(8,8,3,'#3a3a3a'); O(8,8,3,'#5e5e5e'); P(7,7,'#8a8a8a');
+  });
+}
+const INS_ARM_LEN={inserter:8,long_inserter:14};
+function insArmSpr(long,state){ // state 0 empty, 1 holding, 2 blocked
+  const L=long?INS_ARM_LEN.long_inserter:INS_ARM_LEN.inserter;
+  return mkSpr(`insa:${long?1:0}:${state}`,L+2,5,({R,P})=>{
+    const c=long?['#26c6a0','#b8fff0','#127a64']:['#f5a623','#ffd27a','#a86c08'];
+    R(1,1,L-2,3,c[0]); R(1,1,L-2,1,c[1]); R(1,3,L-2,1,c[2]);
+    for(let x=4;x<L-2;x+=4)P(x,2,c[2]);
+    R(0,1,3,3,'#5a5a5a'); P(1,2,'#a0a0a0');                    // shoulder joint
+    const claw=state===2?'#e53935':'#b0b0b0';
+    R(L-1,1,1,3,claw);
+    if(state===1){P(L,1,claw);P(L,3,claw);}                    // gripping
+    else{P(L,0,claw);P(L+1,0,claw);P(L,4,claw);P(L+1,4,claw);} // open
+  });
+}
+function drawInsArm(g,long,state,cx,cy,ang,s){
+  const spr=insArmSpr(long,state);
+  g.save(); g.translate(cx,cy); g.rotate(ang);
+  g.drawImage(spr,-1.5*s,-2.5*s,spr.width*s,spr.height*s); g.restore();
+}
+function insIconArt(a,f,long){
+  a.g.imageSmoothingEnabled=false;
+  a.g.drawImage(insBaseSpr(long),0,0);
+  drawInsArm(a.g,long,f%2,8,8,-Math.PI/2+[-.7,-.25,.25,.7][f],long?.6:.85);
+}
+
 // Art for machines the renderer draws by hand (belts, inserters, pipes…): used for icons and ghosts
 Object.assign(MACHINE_ART,{
   belt(a,f){a.g.drawImage(beltSpr(f),0,0);},
-  inserter(a,f){const{R,C,L,P}=a;R(0,0,16,16,'#141414');R(4,12,8,3,'#3a3a3a');C(8,11,2,'#777');
-    const t=-Math.PI/2+[-.6,-.2,.2,.6][f];const x=8+Math.round(Math.cos(t)*7),y=11+Math.round(Math.sin(t)*7);
-    L(8,11,x,y,'#f5a623');L(9,11,x+1,y,'#c88a10');R(x-1,y-1,3,2,'#f5c400');},
-  long_inserter(a,f){const{R,C,L}=a;R(0,0,16,16,'#141414');R(2,12,12,3,'#1a3a30');C(8,12,2,'#26c6a0');
-    const t=-Math.PI/2+[-.8,-.3,.3,.8][f];const x=8+Math.round(Math.cos(t)*9),y=12+Math.round(Math.sin(t)*9);
-    L(8,12,x,y,'#26c6a0');L(9,12,x+1,y,'#1a8a6a');R(x-1,y-1,3,2,'#b8fff0');},
+  inserter(a,f){insIconArt(a,f,false);},
+  long_inserter(a,f){insIconArt(a,f,true);},
   splitter(a,f){const{R,P,L}=a;R(0,0,16,32,'#141414');R(1,1,14,30,'#2a1e10');R(1,1,14,1,'#4a3420');
     for(const y of[8,24]){R(9,y-2,6,4,'#3a2a18');P(14,y,'#e67e22');P(13,y-1,'#e67e22');P(13,y+1,'#e67e22');}
     L(2,16,6,16,'#e67e22');L(6,16,9,8,'#e67e22');L(6,16,9,24,'#e67e22');
@@ -2101,7 +2163,7 @@ Object.assign(MACHINE_ART,{
 // Lower values draw fewer pixels per frame, which is most of the battery cost.
 const PREFS_KEY='ebi_prefs';
 const RES_STEPS=[1,.75,.5,.35,.25,.1];
-const PREFS=(()=>{const d={fps:60,res:1,haptics:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
 function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
@@ -2845,17 +2907,9 @@ function draw(){
     const px=m.x*ts-cx, py=m.y*ts-cy;
     if(px+ts<0||py+ts<0||px>W||py>H)continue;
     const isLong=m.type==='long_inserter';
-    const baseCol=isLong?'#26c6a0':'#666';
-    const borderCol=isLong?'#1a7a5a':'#444';
-
-    // Base tile
-    ctx.fillStyle='#141414'; ctx.fillRect(px,py,ts,ts);
-    ctx.strokeStyle=borderCol; ctx.lineWidth=1; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
-
-    // Base circle
-    const bcx=px+ts/2, bcy=py+ts/2, brad=Math.max(2,ts*.12);
-    ctx.fillStyle=baseCol;
-    ctx.beginPath(); ctx.arc(bcx,bcy,brad,0,Math.PI*2); ctx.fill();
+    const sc=ts/16;
+    ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
+    ctx.drawImage(insBaseSpr(isLong),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
 
     // Arm, state machine driven
     const[dvx,dvy]=D_VEC[m.dir];
@@ -2863,42 +2917,16 @@ function draw(){
     const srcAngle=destAngle+Math.PI;
     const arm=m._arm||(m._arm={state:'idle',stateStart:now,item:null});
     const elapsed=now-arm.stateStart;
-    function insEase(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
-    let curAngle,isMoving,isWaiting;
-    if(arm.state==='idle'){
-      curAngle=srcAngle; isMoving=false; isWaiting=false;
-    } else if(arm.state==='grabbing'){
-      const p=insEase(Math.min(1,elapsed/insMs(INS_GRAB_MS)));
-      curAngle=srcAngle+(destAngle-srcAngle)*p; isMoving=true; isWaiting=false;
-    } else if(arm.state==='depositing'){
-      curAngle=destAngle; isMoving=false; isWaiting=false;
-    } else if(arm.state==='waiting'){
-      curAngle=destAngle; isMoving=false; isWaiting=true;
-    } else {
-      const p=insEase(Math.min(1,elapsed/insMs(INS_RETURN_MS)));
-      curAngle=destAngle+(srcAngle-destAngle)*p; isMoving=true; isWaiting=false;
-    }
-    // Long inserter has longer arm
-    const armLen=Math.max(4,isLong?ts*.82:ts*.40);
-    const ax=bcx+Math.cos(curAngle)*armLen;
-    const ay=bcy+Math.sin(curAngle)*armLen;
-    const hasItem=!!arm.item;
-    const armColor=isWaiting?'#e53935':hasItem||isMoving?(isLong?'#26c6a0':'#f5a623'):(isLong?'#1a7a5a':'#777');
-    ctx.strokeStyle=armColor;
-    ctx.lineWidth=Math.max(1.5,ts*.07);
-    ctx.beginPath(); ctx.moveTo(bcx,bcy); ctx.lineTo(ax,ay); ctx.stroke();
-    const clawR=Math.max(2,ts*.10);
-    ctx.fillStyle=isWaiting?'#e53935':hasItem||isMoving?(isLong?'#26c6a0':'#f5a623'):(isLong?'#26c6a0':'#999');
-    ctx.beginPath(); ctx.arc(ax,ay,clawR,0,Math.PI*2); ctx.fill();
-
-    if(hasItem&&ts>18){
-      drawItem(ctx,arm.item,ax,ay,ts*.3);
-    }
-    if(ts>32){
-      ctx.fillStyle=isLong?'rgba(38,198,160,.5)':'rgba(136,136,136,.5)';
-      ctx.font=`${Math.floor(ts*.22)}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(D_ARR[m.dir],px+ts/2,py+ts*.82);
+    const insEase=t=>t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
+    let curAngle=srcAngle;
+    if(arm.state==='grabbing')curAngle=srcAngle+(destAngle-srcAngle)*insEase(Math.min(1,elapsed/insMs(INS_GRAB_MS)));
+    else if(arm.state==='depositing'||arm.state==='waiting')curAngle=destAngle;
+    else if(arm.state==='returning')curAngle=destAngle+(srcAngle-destAngle)*insEase(Math.min(1,elapsed/insMs(INS_RETURN_MS)));
+    const bcx=px+ts/2, bcy=py+ts/2;
+    drawInsArm(ctx,isLong,arm.state==='waiting'?2:arm.item?1:0,bcx,bcy,curAngle,sc);
+    if(arm.item&&ts>18){
+      const reach=(INS_ARM_LEN[m.type]-.5)*sc;
+      drawItem(ctx,arm.item,bcx+Math.cos(curAngle)*reach,bcy+Math.sin(curAngle)*reach,ts*.3);
     }
   }
 
@@ -3913,7 +3941,7 @@ function gameTick(){
   const nowMs=performance.now();
   // Skipped while a finger/button is down: rebuilding a panel mid-tap swaps the
   // button under the finger and the tap is silently lost
-  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();updateUndoBtn();}
+  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();updateUndoBtn();if(MDEFS[activeTool])updateBuildHUD();}
   if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
@@ -3980,11 +4008,12 @@ function runMachine(m){
     return;
   }
   if(m.type==='burner'){
+    // 1 coal per 6s, so one coal Miner (1 coal per 2s) keeps three Burners running
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
       const hasPowerConsumers=Object.values(G.machines).some(mm=>mm.active&&MDEFS[mm.type]?.power>0);
-      if(G.tick%8===0&&hasPowerConsumers) m.inBuf.coal--;
+      if(G.tick%BURNER_COAL_TICKS===0&&hasPowerConsumers) m.inBuf.coal--;
     }
     return;
   }
@@ -4605,21 +4634,29 @@ function runBelts(){
     }
   }
 
-  // Inserters every 4 ticks
-  if(G.tick%4!==0)return;
+  // Inserters every tick. (Every 4 ticks made each arm phase wait for the next check,
+  // so a 1.7s swing took 4s and an inserter moved 1 item per 4s.)
   for(const m of Object.values(G.machines)){
     if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
   }
 }
 
+// Burner fuel use: 1 coal per this many ticks (24 = 6s). It used to be 8 (2s), the same as a
+// Miner's output, so the Miner + Inserter + Burner loop the tutorial teaches always ran dry.
+const BURNER_COAL_TICKS=24;
 // Inserter arm state machine constants (real ms)
 const INS_GRAB_MS   = 800;
 const INS_DEPOSIT_MS= 80;
 const INS_RETURN_MS = 800;
 function insMs(ms){return ms/(G?.devTickSpeed||1);}
 
+// One tick can finish several phases (grab, drop, return, grab again); time left over
+// from a finished phase carries into the next, so the arm keeps its real 1.7s cycle
 function runInserter(m){
   if(powerRatio()===0)return;
+  for(let k=0;k<5;k++){const st=m._arm?.state; stepInserter(m); if(!m._arm||m._arm.state===st)break;}
+}
+function stepInserter(m){
 
   const[dvx,dvy]=D_VEC[m.dir];
   const reach=m.type==='long_inserter'?2:1;
@@ -4658,11 +4695,11 @@ function runInserter(m){
       }
     }
     if(!item)return;
-    arm.state='grabbing'; arm.stateStart=now; arm.item=item;
+    arm.state='grabbing'; arm.stateStart=Math.max(arm.stateStart,now-insMs(TICK_MS)); arm.item=item;
     m.lastTransfer=G.tick;
 
   } else if(arm.state==='grabbing'){
-    if(now-arm.stateStart>=insMs(INS_GRAB_MS)){arm.state='depositing';arm.stateStart=now;}
+    if(now-arm.stateStart>=insMs(INS_GRAB_MS)){arm.state='depositing';arm.stateStart+=insMs(INS_GRAB_MS);}
 
   } else if(arm.state==='depositing'){
     if(now-arm.stateStart<insMs(INS_DEPOSIT_MS))return;
@@ -4697,7 +4734,7 @@ function runInserter(m){
     }
 
   } else if(arm.state==='returning'){
-    if(now-arm.stateStart>=insMs(INS_RETURN_MS)){arm.state='idle';arm.stateStart=now;}
+    if(now-arm.stateStart>=insMs(INS_RETURN_MS)){arm.state='idle';arm.stateStart+=insMs(INS_RETURN_MS);}
   }
 }
 
@@ -4761,6 +4798,28 @@ function setHtml(el,html){
   if(el._html===html&&el.firstChild===el._first)return;
   el.innerHTML=html; el._html=html; el._first=el.firstChild;
 }
+// Cost as icon + have/need chips (green enough, red short); a machine already built in
+// CRAFT shows READY instead, since placing it uses that first
+function costChips(cost,type){
+  if(type&&(G.crafted[type]||0)>0)return `<span class="cc ok">✓ ${G.crafted[type]} READY</span>`;
+  const e=Object.entries(cost||{});
+  if(!e.length)return `<span class="cc ok">FREE</span>`;
+  return e.map(([k,n])=>{const h=G.inv[k]||0;return `<span class="cc ${h>=n?'ok':'bad'}">${iconHtml(k)}${fmt(h)}/${n}</span>`;}).join('');
+}
+// Resource strip under the top bar: everything you hold, so plates and gears are always in view.
+// Items the selected build needs are outlined (red when short). Tap → inventory.
+const STRIP_CATS=new Set(['raw','smelted','processed','parts','science']);
+function updateInvStrip(){
+  const el=document.getElementById('invStrip'); if(!el||!G)return;
+  const need=MDEFS[activeTool]&&!(G.crafted[activeTool]>0)?MDEFS[activeTool].cost:{};
+  const zc=zoneDef().partsCat;
+  const ids=Object.keys(ITEMS).filter(id=>(G.inv[id]||0)>0&&(STRIP_CATS.has(ITEMS[id].cat)||ITEMS[id].cat===zc)||need[id]);
+  const html=ids.length?ids.map(id=>{
+    const h=G.inv[id]||0, n=need[id];
+    return `<span class="is-chip${n?(h>=n?' need':' short'):''}">${iconHtml(id)}<b>${fmt(h)}</b></span>`;}).join('')
+    :`<span class="is-empty">Inventory empty. Tap an ore tile to mine.</span>`;
+  setHtml(el,html);
+}
 function updateHUD(){
   const el=document.getElementById('hudRes');
   const free=G.power.out-G.power.in;
@@ -4769,6 +4828,7 @@ function updateHUD(){
   let html=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   html+=hudHazardsHtml();
   setHtml(el,html);
+  updateInvStrip();
 }
 
 // Zone hazard gauges shown next to power in the HUD
@@ -4925,7 +4985,7 @@ function buildDrawerItems(cats,safeCatIdx){
     const lk=locked?'locked':'';
     const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
     const sub=!def?'':locked?`<span class="dc lock">🔒 ${TECHS[def.unlock]?.name||''}</span>`
-      :`<span class="dc${ua?' bad':''}">${Object.entries(def.cost).slice(0,3).map(([k,v])=>`${v}${iconHtml(k)}`).join(' ')}</span>`;
+      :`<span class="dc">${costChips(def.cost,item.id)}</span>`;
     return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
       <span class="di">${iconHtml(item.id,item.icon)}</span>
       <span class="dn">${item.name}</span>${sub}
@@ -4963,6 +5023,7 @@ function updateBuildHUD(){
     const dirLabels=['→','↓','←','↑'];
     rotBtn.textContent='↻ '+dirLabels[placeDir];
     rotBtn.style.display='';
+    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${def.name.toUpperCase()}</span>${costChips(def.cost,activeTool)}</span>`);
     if(confirmBtn) confirmBtn.style.display='';
   } else {
     hud.classList.add('hidden');
@@ -5080,6 +5141,9 @@ function updateToolTip(){
     ${def.power<0?`<div class="tt-cost">Generates: <span>${Math.abs(def.power)}kW</span></div>`:''}
     ${recipesHtml}`;
   el.classList.remove('hidden');
+  // Read-once info: it hides after a few seconds so it never sits over the cost bar and PLACE
+  clearTimeout(updateToolTip._t);
+  updateToolTip._t=setTimeout(()=>el.classList.add('hidden'),3500);
 }
 
 // ═══════════════════════════════════════════════════
@@ -5141,7 +5205,7 @@ function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 // ── Inventory ─────────────────────────────────────
 function renderInvPanel(){
   const zd=zoneDef();
-  const cats=[['raw','Raw Materials'],['processed','Processed'],['parts','Parts & Components'],['science','Science'],[zd.partsCat,zd.partsLabel]];
+  const cats=[['raw','Raw Materials'],['smelted','Plates & Bricks'],['processed','Processed'],['parts','Parts & Components'],['science','Science'],[zd.partsCat,zd.partsLabel]];
   let html='';
   for(const[cat,label]of cats){
     const items=Object.entries(ITEMS).filter(([id,it])=>it.cat===cat&&(G.inv[id]||0)>0);
@@ -6838,6 +6902,12 @@ function tutTallyHtml(step){
     return `<span class="${ok?'ok':''}">${iconHtml(r.id)} ${have}/${r.need}${ok?' ✓':''}</span>`;}).join('')}</div>`;
 }
 
+// A step that asks you to place a machine shows what it costs against what you hold
+function tutCostHtml(step){
+  if(!/place|build/i.test(step.text))return '';
+  const id=(step.text.match(/\[\[(\w+)\]\]/g)||[]).map(t=>t.slice(2,-2)).find(k=>MDEFS[k]&&!MDEFS[k].stub);
+  return id?`<div class="tut-tally">${MDEFS[id].name}: ${costChips(MDEFS[id].cost,id)}</div>`:'';
+}
 function completeTutorial(){
   if(!G.tutorial)return;
   G.tutorial.step=-1;
@@ -6857,8 +6927,8 @@ function showTutHint(step,i,n){
   const el=document.getElementById('tutHint');
   const tx=document.getElementById('tutText');
   if(!el||!tx)return;
-  tx.innerHTML=`<span class="tut-step">STEP ${i+1}/${n}</span>${richText(step.text)}${tutTallyHtml(step)}`
-    +(step.final?`<button class="tut-go" onclick="finishTutorial()">GOT IT ▶</button>`:'');
+  setHtml(tx,`<span class="tut-step">STEP ${i+1}/${n}</span>${richText(step.text)}${tutTallyHtml(step)||tutCostHtml(step)}`
+    +(step.final?`<button class="tut-go" onclick="finishTutorial()">GOT IT ▶</button>`:''));
   const mini=document.getElementById('tutMini'); if(mini)mini.textContent=`📖 STEP ${i+1}/${n}`;
   el.classList.toggle('collapsed',tutCollapsed);
   el.classList.remove('hidden');
@@ -7389,6 +7459,7 @@ function quitToTitle(){
   document.getElementById('sGame').classList.add('hidden');
   document.getElementById('sTitle').classList.remove('hidden');
   buildTitleSlots(); startTitleScene();
+  setTimeout(()=>{if(onTitle())titleMusic();},600); // after the game track fades out
 }
 
 // ═══════════════════════════════════════════════════
@@ -7497,7 +7568,7 @@ function startGame(isNew){
   updateZoneTabs();
   updateHUD(); updateRocketBtn();
   startTick(); startRender();
-  if(G.music!==false) musicStart();
+  if(G.music!==false) musicStart(); else musicStop(); // the title track carries straight on
   // Defer cam to next frame so canvas has final dimensions
   requestAnimationFrame(()=>{
     sizeCanvas();
@@ -7522,7 +7593,7 @@ function startGame(isNew){
 window.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
-  buildTitleSlots(); startTitleScene(); updateInstallBtn();
+  buildTitleSlots(); startTitleScene(); updateInstallBtn(); updateTitleMute();
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
   document.addEventListener('contextmenu',e=>e.preventDefault());

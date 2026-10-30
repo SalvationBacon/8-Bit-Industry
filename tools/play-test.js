@@ -167,6 +167,12 @@ const r=await p.evaluate(async()=>{
   undoLast(); ok('undo_paste_refunds_tier',(G.inv.engine||0)===e0&&G.map[34][36].mid===null,{e0,now:G.inv.engine});
   multiselClear(); setTool('select');
   G.devFreeBuild=true;
+  // ── one coal Miner keeps a Burner running (and the Burner fills up)
+  reset(); res(10,10,1,1,'coal'); put('miner',10,10); put('inserter',11,10,0); const bn=put('burner',12,10); bn.inBuf.coal=2;
+  run(1200); ok('burner_self_sustains',(bn.inBuf.coal||0)>10&&G.power.out>0,{coal:bn.inBuf.coal,out:G.power.out});
+  // inserter throughput: about one item per 1.7s, not one per 4s
+  reset(); power(2,2); const s9=put('chest',10,10); s9.chestInv.coal=999; put('inserter',11,10,0); const d9=put('chest',12,10);
+  run(240); ok('inserter_throughput',(d9.chestInv.coal||0)>=30,{moved:d9.chestInv.coal});
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});

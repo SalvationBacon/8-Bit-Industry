@@ -9,7 +9,7 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.6.1, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Current build:** v1.7.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
 **Working file:** `index.html`, ~7,000 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
@@ -17,7 +17,7 @@
 - `docs/GDD.md`: original Game Design Document (v1.0), the source of the vision. Where it disagrees with this file or the code, **this file and the code win** (see *GDD divergences*).
 - `docs/ZONE3_DESIGN.md`: Zone 3 design, now implemented. The header lists where the build differs from the draft.
 - `tools/check.js`: headless test (syntax, every zone completable, full Zone 1→5 run, Big Bang).
-- `tools/play-test.js`: 52 real-play scenarios on a fake clock (belts, corners, splitters, tunnels, inserters, furnaces, power cutoff, upgrades, refunds, move/paste rules, every zone's core mechanic, save/load, undo, belt corners, backup codes, save-on-hide).
+- `tools/play-test.js`: 54 real-play scenarios on a fake clock (belts, corners, splitters, tunnels, inserters, furnaces, power cutoff, upgrades, refunds, move/paste rules, every zone's core mechanic, save/load, undo, belt corners, backup codes, save-on-hide, burner self-sustain, inserter throughput).
 - `tools/touch-test.js`: simulated phone taps in portrait and landscape (new game, mining, build + PLACE, panels, menu, no double input after reload).
 
 ---
@@ -28,7 +28,7 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v125` |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v126` |
 | `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
@@ -63,7 +63,7 @@ Persists as `G.devMode`. The DEV tile then opens the dev panel, and a purple **�
 | `ebi_save` (`SAVE_KEY`) | Autosave, the full `G` |
 | `ebi_save_slot1..3` | Manual slots |
 | `ebi_prestige` (`PRESTIGE_KEY`) | Stardust, Big Bang count, owned Stardust upgrades, theme. **Never wiped** by resets or new games |
-| `ebi_prefs` (`PREFS_KEY`) | Device prefs: `{fps:30\|60, res:1..0.1, haptics}`. Not part of any save or backup |
+| `ebi_prefs` (`PREFS_KEY`) | Device prefs: `{fps:30\|60, res:1..0.1, haptics, music}` (`music` drives the title screen; toggling in-game music updates it). Not part of any save or backup |
 
 - Autosave every 120 ticks (30s) and on place/remove, research, launch, perk purchase, **and when the app is hidden or closed** (`visibilitychange`, `pagehide`).
 - `noSave` blocks every save. Set it before any `location.reload()` that follows a storage change (dev reset, backup import), or the save-on-hide writes the old game back.
@@ -163,6 +163,18 @@ All textures are procedural (`PIXEL SPRITES` section): `mkSpr(key,w,h,fn)` draws
 - **Haptics:** `haptic(type)` runs at the top of `sfx()` (`HAPTICS` patterns), independent of the SFX toggle. `PREFS.haptics`, toggled in Settings; hidden where `navigator.vibrate` is missing (iPhone).
 - **Install:** `beforeinstallprompt` is kept in `installEvt`; `installApp()` fires it, or shows Safari's Add to Home Screen steps on iOS. `canInstall()` hides everything once running standalone. Title button `#titleInstall` and a ☰ tile.
 - **Belt corners:** `beltTurn(m)` returns 0 (straight: fed from behind, from both sides, or not at all) or 1/3 (fed only from one side). `beltCornerSpr(fr,turn)` maps each pixel to the straight tread by radius and angle so rails and studs line up; `beltItemPos(dir,turn,p)` moves items along the arc. Purely visual: belt logic is unchanged. The title scenes use the same sprites.
+
+## v1.7.0: readability, inserters, burners, title music
+
+- **Resource strip** `#invStrip` (fixed under the top bar, z 140; `#tutHint` sits 40px lower): every held item in `STRIP_CATS` (raw, smelted, processed, parts, science) + the zone's rocket parts. Items the selected build needs get a teal (enough) or red (short) outline. Tap → Inventory. Updated from `updateHUD()`.
+- **`costChips(cost,type)`**: icon + have/need chips, or `✓ n READY` when that machine is waiting in `G.crafted`. Used by drawer cards, `#buildCost` (top row of `#buildHUD` while placing) and `tutCostHtml()` (any tutorial step that says place/build a `[[machine]]` and has no tally).
+- The machine info popup (`#toolTip`) hides itself after 3.5s.
+- **Bottom sheets** only cast their shadow when `.open`: closed sheets sit below the tab bar and their shadow made the labels look dark.
+- **Inserters on the map are pixel art:** `insBaseSpr(long)` (rotated to the drop side) + `insArmSpr(long,state)` drawn by `drawInsArm()` at the swing angle (`INS_ARM_LEN`); the claw grips while holding and turns red when blocked. Icons use the same parts (`insIconArt`).
+- **Inserters run every tick** and `runInserter()` chains phases through `stepInserter()` with leftover time carried, so the 1.7s cycle is real (about 0.57 items/s; it was 1 per 4s).
+- **Burner** burns 1 coal per `BURNER_COAL_TICKS` (24 = 6s). One coal Miner (1 per 2s) feeds three. At 2s per coal the tutorial's Miner → Inserter → Burner loop always drained, then deadlocked under the hard power cutoff.
+- **Title music:** `titleMusic()` starts the track on the first tap on the title screen (browsers block audio before a tap), `#titleMute` toggles `PREFS.music`. The track carries into the game when the save's music is on, and comes back after `quitToTitle()`.
+- Inventory panel now lists the `smelted` category (plates and bricks), which it never showed before.
 
 ## Design System
 
