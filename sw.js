@@ -1,4 +1,4 @@
-const CACHE = 'ebi-v135';
+const CACHE = 'ebi-v136';
 const ASSETS = [
   './',
   './index.html',

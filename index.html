@@ -423,7 +423,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -585,7 +585,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.0';
+const VER      = '1.9.1';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -5720,7 +5720,7 @@ function renderMachPanel(){
   const canRotate=(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='tunnel'||m.type==='splitter');
   const rotBtn2=canRotate?`<button class="full-btn teal" style="flex:1" onclick="rotateM(${m.id})">&#x21BB; ${D_ARR[m.dir]}</button>`:'';
   html+=`<div style="display:flex;gap:4px;margin-bottom:5px">
-    <button class="full-btn teal" style="flex:1" onclick="moveSingleMachine(${m.id})">&#x2715; MOVE</button>
+    <button class="full-btn teal" style="flex:1" onclick="moveSingleMachine(${m.id})">✥ MOVE</button>
     ${rotBtn2}
   </div>
   <button class="full-btn red" onclick="tryRemove(${m.x},${m.y});togglePanel('machine')" style="margin-bottom:5px">&#x1F4A5; DEMOLISH</button>`;
@@ -5787,8 +5787,7 @@ function renderMachPanel(){
   // Controls
   html+=`<div style="display:flex;gap:6px;margin-top:6px">
     <button class="mini-btn" style="flex:1;color:var(--text2);border-color:var(--border2)" onclick="toggleM(${m.id})">${m.active?'PAUSE':'RESUME'}</button>
-    <button class="mini-btn red" style="flex:1" onclick="tryRemove(${m.x},${m.y})">REMOVE</button>
-  </div>`;
+  </div>`; // DEMOLISH (with the MOVE row above) is the only remove button
 
   setHtml(el,html);
 }
