@@ -412,7 +412,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.8.2 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.3 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -574,7 +574,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.8.2';
+const VER      = '1.8.3';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -5036,6 +5036,7 @@ function updateSelectBtn(){
 // Tabs that open a panel instead of the drawer
 const TAB_PANELS={craft:'craft',research:'research',goal:'rocket'};
 function switchTab(tab){
+  closeResInfo(); // any tab or menu closes the manual mining popup
   const drawer=document.getElementById('tabDrawer');
   if(activeTab===tab){
     // Toggle off, close drawer, clear active tab
@@ -5280,6 +5281,7 @@ let inspectId=null;
 function togglePanel(id){
   if(openPanel===id){closePanel(id);return;}
   if(openPanel)closePanel(openPanel);
+  closeResInfo();
   openPanel=id;
   document.body.classList.add('sheet-open');
   document.getElementById('toolTip').classList.add('hidden');
@@ -7102,6 +7104,7 @@ function trimToasts(){
 }
 const TITLE_UI={'🛟':'backup','🚀':'goal','🔒':'devlock','📲':'install','📥':'saves','📤':'saves','💾':'saves','💥':'demolish','✨':'stardust','⚡':'power','⚙️':'settings'};
 function showModal(title,body,foot){
+  if(G)closeResInfo();
   // A leading emoji in a modal title becomes its pixel icon
   const lead=Object.keys(TITLE_UI).find(e=>title.startsWith(e+' '));
   const mt=document.getElementById('mTitle');

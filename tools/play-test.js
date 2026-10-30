@@ -173,6 +173,12 @@ const r=await p.evaluate(async()=>{
   // inserter throughput: about one item per 1.7s, not one per 4s
   reset(); power(2,2); const s9=put('chest',10,10); s9.chestInv.coal=999; put('inserter',11,10,0); const d9=put('chest',12,10);
   run(240); ok('inserter_throughput',(d9.chestInv.coal||0)>=30,{moved:d9.chestInv.coal});
+  // ── opening any menu closes the manual mining popup
+  { const hidden=()=>document.getElementById('resInfo').classList.contains('hidden'); const r=[];
+    for(const open of [()=>switchTab('craft'),()=>switchTab('build'),()=>openBigMenu(),()=>showPanel('inv')]){
+      openResInfo('iron_ore',5,5); const shown=!hidden(); open(); r.push(shown&&hidden()&&!mineTap.active);
+      closeModal(); if(openPanel)closePanel(openPanel); if(activeTab)switchTab(activeTab); }
+    ok('menus_close_mining_popup',r.every(Boolean),r); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
