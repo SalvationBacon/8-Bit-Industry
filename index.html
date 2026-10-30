@@ -751,6 +751,26 @@ const ITEMS = {
   r_tank:       {name:'Fuel Tank',      icon:'🗄️', cat:'rocket2'},
   r_thruster:   {name:'Thruster',       icon:'🔩', cat:'rocket2'},
   r_cell:       {name:'Power Cell',     icon:'🔋', cat:'rocket2'},
+  // Zone 3 — The Deep
+  brine:        {name:'Lithium Brine',  icon:'💧', cat:'fluid'},
+  quartz:       {name:'Quartz Crystal', icon:'💎', cat:'raw'},
+  rare_earth:   {name:'Rare Earth Ore', icon:'🟤', cat:'raw'},
+  radiant_dust: {name:'Radiant Dust',   icon:'✨', cat:'raw'},
+  silicon:      {name:'Silicon',        icon:'🔷', cat:'processed'},
+  lithium_salt: {name:'Lithium Salt',   icon:'🧂', cat:'processed'},
+  lithium:      {name:'Lithium',        icon:'⚪', cat:'processed'},
+  re_oxide:     {name:'RE Oxide',       icon:'🟧', cat:'processed'},
+  magnet:       {name:'Magnet',         icon:'🧲', cat:'parts'},
+  battery:      {name:'Battery',        icon:'🪫', cat:'parts'},
+  lattice_core: {name:'Lattice Core',   icon:'💠', cat:'parts'},
+  fuel_rod:     {name:'Lattice Fuel Rod',icon:'🟩', cat:'rocket3'},
+  sci_deep:     {name:'Deep Notes',     icon:'📔', cat:'science'},
+  sci_pressure: {name:'Pressure Data',  icon:'📈', cat:'science'},
+  sci_lattice:  {name:'Lattice Data',   icon:'📗', cat:'science'},
+  r_phull:      {name:'Pressure Hull',  icon:'🛸', cat:'rocket3'},
+  r_battbank:   {name:'Battery Bank',   icon:'🔌', cat:'rocket3'},
+  r_guidance:   {name:'Guidance Crystal',icon:'🔮', cat:'rocket3'},
+  r_drill:      {name:'Shaft Drill',    icon:'⚒️', cat:'rocket3'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -802,6 +822,22 @@ const RECIPES = {
   z2_tank:    {name:'Fuel Tank',         machine:'assembler', time:24, in:{steel_plate:3,refined_fuel:3},     out:{r_tank:1},      unlock:'repair_tech'},
   z2_thrust:  {name:'Thruster',          machine:'assembler', time:28, in:{engine:1,plastic:3},               out:{r_thruster:1},  unlock:'repair_tech'},
   z2_cell:    {name:'Power Cell',        machine:'assembler', time:20, in:{circuit:3,refined_fuel:2},         out:{r_cell:1},      unlock:'repair_tech'},
+  // Zone 3 — The Deep (fluid:{} is drawn from a connected pipe network)
+  z3_silicon: {name:'Silicon',           machine:'electric_smelter', time:6, in:{quartz:2},                   out:{silicon:1},     unlock:'crystal_refining'},
+  z3_lithium: {name:'Lithium',           machine:'electric_smelter', time:8, in:{lithium_salt:1},             out:{lithium:1},     unlock:'energy_storage'},
+  z3_evap:    {name:'Evaporate Brine',   machine:'evaporator', time:8,  in:{}, fluid:{brine:5},                out:{lithium_salt:1},unlock:'fluid_handling'},
+  z3_separate:{name:'Separate Rare Earth',machine:'separator', time:10, in:{rare_earth:2}, fluid:{brine:4},     out:{re_oxide:1},    unlock:'pressure_control'},
+  z3_magnet:  {name:'Magnet',            machine:'assembler', time:8,  in:{re_oxide:1,iron_plate:2},          out:{magnet:1},      unlock:'pressure_control'},
+  z3_battery: {name:'Battery',           machine:'assembler', time:10, in:{lithium:2,copper_plate:1,steel_plate:1}, out:{battery:1}, unlock:'energy_storage'},
+  z3_core:    {name:'Lattice Core',      machine:'assembler', time:16, in:{silicon:3,magnet:1},               out:{lattice_core:1},unlock:'lattice_fuel'},
+  z3_rod:     {name:'Lattice Fuel Rod',  machine:'rod_press', time:20,  in:{lattice_core:1,radiant_dust:5}, fluid:{brine:10}, minPressure:60, out:{fuel_rod:1}, unlock:'lattice_fuel'},
+  z3_sci_deep:{name:'Deep Notes',        machine:'lab', time:8,  in:{quartz:1,copper_wire:2},                 out:{sci_deep:1}},
+  z3_sci_press:{name:'Pressure Data',    machine:'lab', time:10, in:{lithium_salt:1,circuit:1},               out:{sci_pressure:1},unlock:'fluid_handling'},
+  z3_sci_lat: {name:'Lattice Data',      machine:'lab', time:14, in:{silicon:2,magnet:1},                     out:{sci_lattice:1}, unlock:'pressure_control'},
+  z3_phull:   {name:'Pressure Hull',     machine:'assembler', time:20, in:{steel_plate:6,re_oxide:2},         out:{r_phull:1},     unlock:'lattice_fuel'},
+  z3_battbank:{name:'Battery Bank',      machine:'assembler', time:20, in:{battery:4,circuit:2},              out:{r_battbank:1},  unlock:'lattice_fuel'},
+  z3_guidance:{name:'Guidance Crystal',  machine:'assembler', time:24, in:{lattice_core:2,circuit:4},         out:{r_guidance:1},  unlock:'lattice_fuel'},
+  z3_drill:   {name:'Shaft Drill',       machine:'assembler', time:28, in:{steel_plate:8,magnet:4,engine:2},  out:{r_drill:1},     unlock:'lattice_fuel'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -811,9 +847,9 @@ const MDEFS = {
   miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits'},
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter — needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter — 2× speed'},
-  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop'], desc:'No coal needed — runs on power. 3× speed. Makes propellant.'},
-  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell'], desc:'Crafts parts and components'},
-  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep'], desc:'Produces science packs'},
+  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium'], desc:'No coal needed — runs on power. 3× speed. Makes propellant.'},
+  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill'], desc:'Crafts parts and components'},
+  lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
   belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
@@ -828,6 +864,16 @@ const MDEFS = {
   refinery:       {name:'Refinery',         icon:'🏭', size:[2,2], power:12,  cost:{iron_plate:14,iron_gear:6,circuit:4,steel_plate:4},unlock:'oil_extraction',recipes:['z2_refine'], desc:'Refines raw fuel into refined fuel.'},
   combustion_gen: {name:'Combustion Gen.',  icon:'🔆', size:[2,2], power:-80, cost:{iron_plate:10,iron_gear:6,steel_plate:4},        unlock:'smog_control',   recipes:[], desc:'Burns refined fuel → 80kW power.'},
   scrubber:       {name:'Scrubber',         icon:'🌿', size:[1,2], power:6,   cost:{iron_plate:8,iron_gear:4,circuit:2},             unlock:'smog_control',   recipes:[], desc:'Consumes refined fuel to remove smog. Stack for more effect.'},
+  // Zone 3 machines — fluidCap = pipe-network storage, fluidPort = connects to adjacent pipes
+  pipe:           {name:'Pipe',             icon:'🔗', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:'fluid_handling', recipes:[], fluidCap:10, noItems:true, desc:'Carries fluid. Connects to neighbouring pipes and fluid machines'},
+  brine_pump:     {name:'Brine Pump',       icon:'⛲', size:[2,2], power:8,   cost:{iron_plate:10,iron_gear:4,circuit:2},            unlock:'fluid_handling', recipes:[], fluidPort:true, pumps:'brine', noItems:true, desc:'Pumps lithium brine from a brine pool into connected pipes'},
+  fluid_tank:     {name:'Fluid Tank',       icon:'🥫', size:[2,2], power:0,   cost:{iron_plate:12,steel_plate:4},                    unlock:'fluid_handling', recipes:[], fluidCap:200, noItems:true, desc:'Adds 200 fluid capacity to its pipe network'},
+  relief_valve:   {name:'Relief Valve',     icon:'🚿', size:[1,1], power:0,   cost:{iron_plate:4,iron_gear:2},                       unlock:'pressure_control', recipes:[], fluidCap:5, noItems:true, desc:'Vents fluid when its network goes above 80% pressure'},
+  evaporator:     {name:'Evaporator',       icon:'♨️', size:[2,2], power:14,  cost:{iron_plate:12,iron_gear:6,circuit:3},            unlock:'fluid_handling', recipes:['z3_evap'], fluidPort:true, desc:'Evaporates brine into lithium salt'},
+  separator:      {name:'Separator',        icon:'🌀', size:[2,2], power:16,  cost:{iron_plate:14,circuit:4,steel_plate:4},          unlock:'pressure_control', recipes:['z3_separate'], fluidPort:true, desc:'Separates rare earth ore using brine'},
+  rod_press:      {name:'Rod Press',        icon:'🧰', size:[2,2], power:24,  cost:{steel_plate:10,circuit:6,magnet:4},              unlock:'lattice_fuel', recipes:['z3_rod'], fluidPort:true, desc:'Presses lattice fuel rods. Needs 60%+ pipe pressure'},
+  lumen_panel:    {name:'Lumen Panel',      icon:'💡', size:[2,2], power:-40, cost:{silicon:6,steel_plate:4,copper_wire:6},          unlock:'crystal_refining', recipes:[], noItems:true, desc:'40kW from the cave glow — nothing while the glow tide is dim'},
+  accumulator:    {name:'Accumulator',      icon:'🔋', size:[1,1], power:0,   cost:{battery:4,steel_plate:2,circuit:2},              unlock:'energy_storage', recipes:[], noItems:true, desc:'Stores surplus power and releases it during shortfalls'},
 };
 
 // Hand-craft recipes — click to process raw materials into items
@@ -857,6 +903,7 @@ const MACHINE_BUILDS = [
   'miner','stone_furnace','burner','generator','belt','splitter','tunnel','inserter','long_inserter','chest',
   'blast_furnace','electric_smelter','assembler','lab',
   'oil_pump','cracker','refinery','combustion_gen','scrubber',
+  'pipe','brine_pump','fluid_tank','relief_valve','evaporator','separator','rod_press','lumen_panel','accumulator',
 ];
 // ═══════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════
@@ -890,6 +937,19 @@ const DRAWER_DEFS = {
       {id:'refinery',name:'Refinery',icon:'🏭'},
       {id:'combustion_gen',name:'Comb. Gen.',icon:'🔆'},
       {id:'scrubber',name:'Scrubber',icon:'🌿'},
+    ]},
+    {label:'Fluids', zones:[3,4,5], items:[
+      {id:'pipe',name:'Pipe',icon:'🔗'},
+      {id:'brine_pump',name:'Brine Pump',icon:'⛲'},
+      {id:'fluid_tank',name:'Tank',icon:'🥫'},
+      {id:'relief_valve',name:'Valve',icon:'🚿'},
+    ]},
+    {label:'Deep', zones:[3,5], items:[
+      {id:'evaporator',name:'Evaporator',icon:'♨️'},
+      {id:'separator',name:'Separator',icon:'🌀'},
+      {id:'rod_press',name:'Rod Press',icon:'🧰'},
+      {id:'lumen_panel',name:'Lumen',icon:'💡'},
+      {id:'accumulator',name:'Accum.',icon:'🔋'},
     ]},
   ],
   tools: [
@@ -955,6 +1015,37 @@ const TECHS = {
     desc:'Unlocks all 6 rocket repair component recipes',
     zone:2,
   },
+  // Zone 3 — The Deep
+  fluid_handling: {
+    name:'Fluid Handling', icon:'💧', era:'The Deep — Era 1',
+    cost:{sci_deep:10}, req:[],
+    desc:'Unlocks Pipe, Brine Pump, Fluid Tank, Evaporator and Pressure Data',
+    zone:3,
+  },
+  crystal_refining: {
+    name:'Crystal Refining', icon:'💎', era:'The Deep — Era 1',
+    cost:{sci_deep:15}, req:[],
+    desc:'Unlocks Silicon smelting and the Lumen Panel',
+    zone:3,
+  },
+  pressure_control: {
+    name:'Pressure Control', icon:'🚿', era:'The Deep — Era 2',
+    cost:{sci_deep:30,sci_pressure:20}, req:['fluid_handling'],
+    desc:'Unlocks Relief Valve, Separator, Magnets and Lattice Data',
+    zone:3,
+  },
+  energy_storage: {
+    name:'Energy Storage', icon:'🔋', era:'The Deep — Era 2',
+    cost:{sci_deep:30,sci_pressure:20}, req:['fluid_handling','crystal_refining'],
+    desc:'Unlocks Lithium, Batteries and the Accumulator',
+    zone:3,
+  },
+  lattice_fuel: {
+    name:'Lattice Fuel', icon:'🟩', era:'The Deep — Era 3',
+    cost:{sci_deep:50,sci_pressure:40,sci_lattice:20}, req:['pressure_control','energy_storage'],
+    desc:'Unlocks the Rod Press and all escape-shaft rocket parts',
+    zone:3,
+  },
 };
 
 // ═══════════════════════════════════════════════════
@@ -973,6 +1064,14 @@ const ROCKET_PARTS_Z2 = [
   {id:'r_tank',       name:'Fuel Tank',     need:2, unlock:'repair_tech'},
   {id:'r_thruster',   name:'Thruster',      need:2, unlock:'repair_tech'},
   {id:'r_cell',       name:'Power Cell',    need:1, unlock:'repair_tech'},
+];
+
+const ROCKET_PARTS_Z3 = [
+  {id:'fuel_rod',     name:'Lattice Fuel Rod', need:4, unlock:'lattice_fuel'},
+  {id:'r_phull',      name:'Pressure Hull',    need:2, unlock:'lattice_fuel'},
+  {id:'r_battbank',   name:'Battery Bank',     need:2, unlock:'lattice_fuel'},
+  {id:'r_guidance',   name:'Guidance Crystal', need:1, unlock:'lattice_fuel'},
+  {id:'r_drill',      name:'Shaft Drill',      need:1, unlock:'lattice_fuel'},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -997,6 +1096,17 @@ const ZONES={
        The rocket is wrecked. Your tools are gone.<br>But your knowledge survived.<br><br>
        <span style="color:var(--amber)">The ground smells of oil.</span><br>
        <span style="color:var(--text3);font-size:5px">Find the oil deposits. Build the chain. Fix the rocket.</span>`},
+  3:{name:'The Deep', icon:'🕳️', rocketTech:'lattice_fuel', parts:ROCKET_PARTS_Z3, fuel:null,
+     partsCat:'rocket3', partsLabel:'Escape Shaft (Zone 3)', sci:['sci_deep','sci_pressure','sci_lattice'],
+     hazards:['pressure','glow'], buildMap:()=>buildZoneMap(DEPOSITS_Z3,0x0dee9),
+     mapSize:[96,64],
+     launchLabel:'DRILL & LAUNCH', launchText:'The Shaft Drill bites into the cave roof.<br>Light. Real light. You burst out of The Deep.',
+     launchTease:'Below you, something enormous is glowing...',
+     arrivalTitle:'🕳️ THE DEEP', arrivalBtn:'DESCEND',
+     arrivalHtml:`The signal led down. Way down.<br>The rocket is wedged in a <span style="color:var(--teal)">cavern</span>.<br><br>
+       The walls glow. The air hums with pressure.<br><br>
+       <span style="color:var(--amber)">Pump the brine. Grow the crystals.</span><br>
+       <span style="color:var(--text3);font-size:5px">Watch the 💧 pressure gauge — pipes burst above 90%.</span>`},
 };
 function zoneDef(z){return ZONES[z||G.zone]||ZONES[1];}
 function zoneHas(hazard){return zoneDef().hazards.includes(hazard);}
@@ -1125,6 +1235,44 @@ function buildMapZ2(){
   for(const d of guaranteed) place(d.res,d.w,d.h);
   return map;
 }
+// Generic deposit map for zones 3+: list of [res, wMin, wMax, hMin, hMax]
+const DEPOSITS_Z3=[
+  ['quartz',6,8,5,6],['quartz',5,7,4,5],['quartz',5,6,4,5],['quartz',4,5,3,4],
+  ['rare_earth',5,7,4,5],['rare_earth',4,6,3,5],['rare_earth',4,5,3,4],
+  ['brine',6,7,4,5],['brine',5,6,4,5],['brine',4,6,4,4],
+  ['radiant_dust',3,4,3,3],['radiant_dust',3,3,2,3],
+  ['iron_ore',5,6,4,5],['iron_ore',4,5,3,4],['copper_ore',4,6,3,5],['copper_ore',4,5,3,4],
+  ['coal',3,4,3,3],['coal',3,3,2,3],['stone',4,5,3,4],['stone',3,4,3,3],
+];
+function buildZoneMap(deposits,salt,w=MAP_W,h=MAP_H){
+  const map=[];
+  for(let y=0;y<h;y++){
+    map[y]=[];
+    for(let x=0;x<w;x++) map[y][x]={type:T_FLOOR,res:null,mid:null,items:[]};
+  }
+  const rng=(seed=>{let s=seed;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;}})(Date.now()^salt);
+  const ri=(lo,hi)=>lo+Math.floor(rng()*(hi-lo+1));
+  const safe=(x,y,dw,dh)=>{
+    for(let dy=-1;dy<=dh;dy++)for(let dx=-1;dx<=dw;dx++){
+      const tx=x+dx,ty=y+dy;
+      if(tx<2||ty<2||tx+1>=w||ty+1>=h)return false;
+      if(map[ty][tx].type===T_RESOURCE)return false;
+    }
+    return true;
+  };
+  for(const[res,w0,w1,h0,h1]of deposits){
+    const dw=ri(w0,w1), dh=ri(h0,h1);
+    for(let attempt=0;attempt<200;attempt++){
+      const x=ri(8,w-dw-8), y=ri(8,h-dh-8);
+      if(!safe(x,y,dw,dh))continue;
+      for(let dy=0;dy<dh;dy++)for(let dx=0;dx<dw;dx++)
+        map[y+dy][x+dx]={type:T_RESOURCE,res,mid:null,items:[]};
+      break;
+    }
+  }
+  return map;
+}
+
 let G = null;
 
 function defaultState(){
@@ -1154,7 +1302,7 @@ function defaultState(){
     power:{out:0,in:0},
     research:{done:[]},
     cam:{x:0,y:0,zoom:1},
-    stats:{placed:0,taps:0,mined:0,launched:false},
+    stats:{placed:0,taps:0,mined:0,launched:false,bursts:0},
     blueprints:[],
     craftState:{recipeId:null, clicks:0},
     achievements:[],
@@ -1191,7 +1339,9 @@ function mkMachine(type,x,y,dir){
 let canvas, ctx, rafId;
 let lastTickMs=0; // real timestamp of last gameTick — used for sub-tick interpolation
 
-const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e',oil:'#1a0f00'};
+const RES_COL={iron_ore:'#3e3e4a',copper_ore:'#6b3e22',coal:'#1a1a1a',stone:'#5a5a4e',oil:'#1a0f00',
+  quartz:'#3a3f5a',rare_earth:'#4a3424',brine:'#0d3b4a',radiant_dust:'#4a4410'};
+const FLUID_COL={brine:'#7fdbff'};
 const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',electric_smelter:'#ab47bc',assembler:'#42a5f5',lab:'#26c6a0',burner:'#e67e22',generator:'#ffd600',belt:'#555',splitter:'#e67e22',tunnel:'#4a90d9',inserter:'#888',long_inserter:'#26c6a0',chest:'#7d5a3c',oil_pump:'#5a4a2a',cracker:'#8b5e3c',refinery:'#6b4226',combustion_gen:'#e67e22',scrubber:'#2e7d52'};
 
 function initCanvas(){
@@ -1219,6 +1369,12 @@ const PORTS = {
   electric_smelter:{ outputs:[{side:'right',pos:.5}] },
   assembler:       { outputs:[{side:'right',pos:.5}] },
   lab:             { outputs:[{side:'right',pos:.5}] },
+  oil_pump:        { outputs:[{side:'right',pos:.5}] },
+  cracker:         { outputs:[{side:'right',pos:.5}] },
+  refinery:        { outputs:[{side:'right',pos:.5}] },
+  evaporator:      { outputs:[{side:'right',pos:.5}] },
+  separator:       { outputs:[{side:'right',pos:.5}] },
+  rod_press:       { outputs:[{side:'right',pos:.5}] },
   generator:       { outputs:[] },
   burner:          { outputs:[] },
   chest:           { outputs:[{side:'bottom',pos:.5}] },
@@ -1424,7 +1580,7 @@ function draw(){
   // Multi-tile machines
   const drawn=new Set();
   for(const[id,m]of Object.entries(G.machines)){
-    if(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='splitter'||m.type==='tunnel')continue;
+    if(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='splitter'||m.type==='tunnel'||m.type==='pipe')continue;
     if(drawn.has(+id))continue; drawn.add(+id);
     const def=MDEFS[m.type];
     const[mw,mh]=def.size;
@@ -1546,6 +1702,23 @@ function draw(){
           ctx.fillText(`${total}/${CAP}`,px+pw/2,py+ph-14);
         }
       }
+    }
+    // Fluid storage level / accumulator charge — bar along the bottom
+    if(ts>14&&(def.fluidCap||m.type==='accumulator')){
+      const pct=m.type==='accumulator'?(m.charge||0)/ACC_CAP:(m._net?pressureOf(m._net)/100:0);
+      const barCol=m.type==='accumulator'?'#ffd600':(m.strain>0?'#e53935':FLUID_COL[m.fluid?.type]||'#555');
+      ctx.fillStyle='#111'; ctx.fillRect(px+4,py+ph-9,pw-8,5);
+      ctx.fillStyle=barCol; ctx.fillRect(px+4,py+ph-9,(pw-8)*pct,5);
+    }
+    // Fluid machines starved of pressure — blue blinking dot
+    if(def.fluidPort&&m.active&&(m._fluidStatus==='lowpressure'||m._fluidStatus==='nopipe')&&ts>14){
+      ctx.fillStyle=Math.floor(G.tick/4)%2?'#42a5f5':'#0d3b4a';
+      ctx.beginPath(); ctx.arc(px+pw-8,py+ph-16,4,0,Math.PI*2); ctx.fill();
+    }
+    // Lumen panels go dark during the dim glow tide
+    if(m.type==='lumen_panel'){
+      if(glowBright()){ctx.fillStyle='#fff59d';ctx.globalAlpha=.06+.04*Math.sin(G.tick*.2);ctx.fillRect(px+1,py+1,pw-2,ph-2);ctx.globalAlpha=1;}
+      else{ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(px+1,py+1,pw-2,ph-2);}
     }
     // Tier badge (T2 = amber, T3 = teal) — top-left corner
     if((m.tier||1)>1&&ts>16){
@@ -1689,6 +1862,40 @@ function draw(){
         ctx.fillText('÷',midX,midY);
       }
     }
+  }
+
+  // Pipes — auto-connect to neighbouring pipes and fluid machines, core tinted by fluid
+  for(const m of Object.values(G.machines)){
+    if(m.type!=='pipe')continue;
+    const px=m.x*ts-cx, py=m.y*ts-cy;
+    if(px+ts<0||py+ts<0||px>W||py>H)continue;
+    const p=m._net?pressureOf(m._net)/100:0;
+    const fcol=FLUID_COL[m.fluid?.type]||'#444';
+    const thick=Math.max(3,ts*.34), core=Math.max(1.5,ts*.14);
+    const mx=px+ts/2, my=py+ts/2;
+    ctx.fillStyle='#121212'; ctx.fillRect(px,py,ts,ts);
+    const arms=[];
+    for(const[dx,dy]of D_VEC){
+      const t=G.map[m.y+dy]?.[m.x+dx]; if(!t||t.mid===null)continue;
+      const nd=MDEFS[G.machines[t.mid]?.type]; if(nd&&(nd.fluidCap||nd.fluidPort))arms.push([dx,dy]);
+    }
+    ctx.lineCap='butt';
+    ctx.strokeStyle=m.strain>0&&Math.floor(G.tick/2)%2?'#e53935':'#2e2e2e'; ctx.lineWidth=thick;
+    for(const[dx,dy]of arms){ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(mx+dx*ts/2,my+dy*ts/2);ctx.stroke();}
+    ctx.fillStyle=ctx.strokeStyle; ctx.fillRect(mx-thick/2,my-thick/2,thick,thick);
+    ctx.strokeStyle=fcol; ctx.globalAlpha=.25+.75*p; ctx.lineWidth=core;
+    for(const[dx,dy]of arms){ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(mx+dx*ts/2,my+dy*ts/2);ctx.stroke();}
+    ctx.fillStyle=fcol; ctx.fillRect(mx-core/2,my-core/2,core,core);
+    ctx.globalAlpha=1;
+  }
+  // Pipe burst flashes
+  for(let i=burstFx.length-1;i>=0;i--){
+    const b=burstFx[i]; const age=(now-b.t)/700;
+    if(age>1){burstFx.splice(i,1);continue;}
+    const bx=b.x*ts-cx+ts/2, by=b.y*ts-cy+ts/2;
+    ctx.beginPath(); ctx.arc(bx,by,ts*(.3+age*1.2),0,Math.PI*2);
+    ctx.fillStyle=`rgba(127,219,255,${(1-age)*.5})`; ctx.fill();
+    ctx.strokeStyle=`rgba(229,57,53,${1-age})`; ctx.lineWidth=2; ctx.stroke();
   }
 
   // Belt tunnels
@@ -2185,16 +2392,16 @@ function tapCollect(x,y){
 }
 
 function openResInfo(resId, tx, ty){
-  const item=ITEMS[resId]; if(!item)return;
+  const item=ITEMS[resId]||(resId==='oil'?{name:'Oil Deposit',icon:'🛢️'}:null); if(!item)return;
   const stock=G.inv[resId]||0;
   document.getElementById('resInfoIcon').textContent=item.icon;
   document.getElementById('resInfoName').textContent=item.name;
   document.getElementById('resInfoStock').textContent=`In inventory: ${fmt(stock)}`;
   const btn=document.getElementById('mineTapBtn');
-  if(resId==='oil'){
+  if(FLUID_RES[resId]){
     mineTap={active:false,resId,tx,ty,taps:0};
     btn.classList.add('disabled');
-    document.getElementById('mineTapLabel').textContent='🛢️ NEEDS OIL PUMP';
+    document.getElementById('mineTapLabel').textContent=FLUID_RES[resId];
     document.getElementById('minePips').innerHTML='';
   } else {
     if(tx!==undefined&&ty!==undefined){
@@ -2260,6 +2467,20 @@ function machSize(typeOrM, dir){
   return [mw,mh];
 }
 
+// Machines that may sit on resource tiles (logistics only)
+const ON_RESOURCE_OK=new Set(['belt','inserter','long_inserter','chest','splitter','tunnel','pipe']);
+
+// Refuse a pipe/tank that would join networks holding different fluids
+function fluidsWouldMix(type,tx,ty,d){
+  if(!MDEFS[type].fluidCap)return false;
+  const[w,h]=machSize(type,d);
+  const types=new Set();
+  for(const nb of machineNeighbors({type,x:tx,y:ty,dir:d}))
+    if(MDEFS[nb.type].fluidCap&&nb._net?.type)types.add(nb._net.type);
+  if(types.size>1){if(!fluidsWouldMix._warned){fluidsWouldMix._warned=true;toast('Fluids would mix','wrn');setTimeout(()=>fluidsWouldMix._warned=false,2000);}return true;}
+  return false;
+}
+
 function canPlace(type,tx,ty,dir){
   if(!MDEFS[type])return false;
   const d=(dir!==undefined)?dir:placeDir;
@@ -2268,11 +2489,13 @@ function canPlace(type,tx,ty,dir){
     const nx=tx+dx,ny=ty+dy;
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
     if(G.map[ny][nx].mid!==null)return false;
-    if(type==='miner'&&G.map[ny][nx].type!==T_RESOURCE)return false;
-    if(type==='oil_pump'&&G.map[ny][nx].res!=='oil')return false;
-    if(type!=='miner'&&type!=='oil_pump'&&type!=='belt'&&type!=='inserter'&&type!=='chest'&&type!=='splitter'&&type!=='tunnel'&&G.map[ny][nx].type===T_RESOURCE)return false;
+    const tile=G.map[ny][nx];
+    if(type==='miner'&&(tile.type!==T_RESOURCE||FLUID_RES[tile.res]))return false;
+    if(type==='oil_pump'&&tile.res!=='oil')return false;
+    if(MDEFS[type].pumps&&tile.res!==MDEFS[type].pumps)return false;
+    if(type!=='miner'&&type!=='oil_pump'&&!MDEFS[type].pumps&&!ON_RESOURCE_OK.has(type)&&tile.type===T_RESOURCE)return false;
   }
-  return true;
+  return !fluidsWouldMix(type,tx,ty,d);
 }
 
 function tryPlace(type,tx,ty){
@@ -2318,6 +2541,7 @@ function tryPlace(type,tx,ty){
   const m=mkMachine(type,tx,ty,placeDir);
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
+  if(def.pumps)m.mineRes=def.pumps;
   // Link tunnel to nearest unpaired tunnel in same direction within 5 tiles
   if(type==='tunnel'){
     const[dvx,dvy]=D_VEC[placeDir];
@@ -2364,6 +2588,7 @@ function completePlacement(type,tx,ty){
   const m=mkMachine(type,tx,ty,placeDir);
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
+  if(def.pumps)m.mineRes=def.pumps;
   if(type==='tunnel'){
     const[dvx,dvy]=D_VEC[placeDir];
     for(let dist=1;dist<=5;dist++){
@@ -2433,15 +2658,18 @@ function gameTick(){
     G.power.in+=def.power*pm0.power*modEff;
   }
 
-  // Pass 1: generators — establish power supply
+  buildFluidNets();
+  // Pass 1: generators (negative power) — establish power supply
   for(const m of Object.values(G.machines)){
-    if(m.type==='generator'||m.type==='burner'||m.type==='combustion_gen')runMachine(m);
+    if(MDEFS[m.type]?.power<0)runMachine(m);
   }
+  runAccumulators();
   // Pass 2: all other machines — powerRatio() now correct
   for(const m of Object.values(G.machines)){
-    if(m.type!=='generator'&&m.type!=='burner'&&m.type!=='combustion_gen')runMachine(m);
+    if(!(MDEFS[m.type]?.power<0))runMachine(m);
   }
   runBelts();
+  settleFluidNets();
 
   // Smog tick — natural decay + clamp
   if(zoneHas('smog')){
@@ -2551,6 +2779,12 @@ function runMachine(m){
     }
     return;
   }
+  if(m.type==='lumen_panel'){
+    if(glowBright())G.power.out+=Math.abs(def.power);
+    return;
+  }
+  if(def.pumps){runPump(m,def);return;}
+  if(def.fluidCap||m.type==='accumulator')return; // pipes, tanks, valves: handled by settleFluidNets
   if(m.type==='scrubber'){
     // Burns refined_fuel to remove smog — every 4 ticks
     if(!zoneHas('smog')||G.tick%4!==0)return;
@@ -2571,7 +2805,8 @@ function runMachine(m){
     const tierMult=m.tier===3?2:m.tier===2?1.5:1;
     // Smog reduces efficiency in Zone 2
     const smogMult=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
-    const rate=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smogMult)));
+    const resMult=m.mineRes==='radiant_dust'?0.5:1; // radiant vents yield slowly
+    const rate=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smogMult*resMult)));
     if(m.prog>=rate){
       const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
       if(bufTotal>=50)return;
@@ -2598,7 +2833,7 @@ function runMachine(m){
   const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff;
 
   if(m.prog===0){
-    if(canFill(m,rec)){consumeInputs(m,rec);m.prog=1;}
+    if(canFill(m,rec)&&fluidReady(m,rec)){consumeInputs(m,rec);consumeFluid(m,rec);m.prog=1;}
   } else {
     m.prog++;
     if(m.prog>=Math.ceil(rec.time/Math.max(.01,speedMult))){
@@ -2628,6 +2863,164 @@ function canFill(m,rec){
 function consumeInputs(m,rec){
   for(const[item,need]of Object.entries(rec.in)){
     m.inBuf[item]=(m.inBuf[item]||0)-need;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  FLUIDS & PRESSURE
+//  Pipes/tanks/valves (fluidCap) join into networks each tick. A network holds
+//  one fluid; pressure = amount / capacity. Pumps push in, fluidPort machines
+//  draw out at recipe start. ≥90% with inflow builds strain → a pipe bursts.
+// ═══════════════════════════════════════════════════
+const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80, VALVE_VENT=0.75;
+const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP'};
+let FLUID_NETS=[];
+let burstFx=[];
+
+function machineNeighbors(m){
+  const[w,h]=machSize(m); const out=new Set();
+  for(let dy=-1;dy<=h;dy++)for(let dx=-1;dx<=w;dx++){
+    if((dx===-1||dx===w)&&(dy===-1||dy===h))continue; // orthogonal only
+    if(dx>=0&&dx<w&&dy>=0&&dy<h)continue;
+    const tx=m.x+dx,ty=m.y+dy;
+    if(tx<0||ty<0||tx>=MAP_W||ty>=MAP_H)continue;
+    const mid=G.map[ty][tx].mid; if(mid!==null&&G.machines[mid])out.add(G.machines[mid]);
+  }
+  return [...out];
+}
+function pressureOf(net){return net&&net.cap>0?Math.min(100,net.amt/net.cap*100):0;}
+
+function buildFluidNets(){
+  FLUID_NETS=[];
+  const seen=new Set();
+  for(const m of Object.values(G.machines)){ if(MDEFS[m.type]?.fluidPort)m._nets=[]; }
+  for(const start of Object.values(G.machines)){
+    if(!MDEFS[start.type]?.fluidCap||seen.has(start.id))continue;
+    const net={members:[],ports:new Set(),cap:0,amt:0,type:null,strain:0,inflow:0};
+    const queue=[start]; seen.add(start.id);
+    while(queue.length){
+      const cur=queue.pop();
+      net.members.push(cur); cur._net=net;
+      net.cap+=MDEFS[cur.type].fluidCap;
+      if(cur.fluid&&cur.fluid.amt>0){net.amt+=cur.fluid.amt; net.type=net.type||cur.fluid.type;}
+      net.strain=Math.max(net.strain,cur.strain||0);
+      for(const nb of machineNeighbors(cur)){
+        const nd=MDEFS[nb.type];
+        if(nd.fluidCap&&!seen.has(nb.id)){seen.add(nb.id);queue.push(nb);}
+        else if(nd.fluidPort&&!net.ports.has(nb)){net.ports.add(nb);nb._nets.push(net);}
+      }
+    }
+    FLUID_NETS.push(net);
+  }
+}
+
+// Network a machine can use for a given fluid (or an empty one for pumps)
+function portNet(m,fluid,allowEmpty){
+  return (m._nets||[]).find(n=>n.type===fluid||(allowEmpty&&!n.type))||null;
+}
+
+function runPump(m,def){
+  if(m.mineRes!==def.pumps){m._fluidStatus='nodeposit';return;}
+  if(powerRatio()===0){m._fluidStatus='nopower';return;}
+  if(++m.prog<2)return;
+  m.prog=0;
+  const net=portNet(m,def.pumps,true);
+  if(!net){m._fluidStatus='nopipe';return;}
+  m._fluidStatus='ok';
+  net.type=def.pumps;
+  net.amt=Math.min(net.cap,net.amt+1);
+  net.inflow++;
+  m.produced++; recordOutput(m,1);
+}
+
+function fluidReady(m,rec){
+  if(!rec.fluid){m._fluidStatus=null;return true;}
+  const minP=Math.max(LOW_PRESSURE,rec.minPressure||0);
+  for(const[f,n]of Object.entries(rec.fluid)){
+    const net=portNet(m,f,false);
+    if(!net){m._fluidStatus='nopipe';return false;}
+    if(pressureOf(net)<minP||net.amt<n){m._fluidStatus='lowpressure';return false;}
+  }
+  m._fluidStatus='ok';
+  return true;
+}
+function consumeFluid(m,rec){
+  for(const[f,n]of Object.entries(rec.fluid||{})){
+    const net=portNet(m,f,false); if(net)net.amt=Math.max(0,net.amt-n);
+  }
+}
+
+function settleFluidNets(){
+  for(const net of FLUID_NETS){
+    if(!net.members.length)continue;
+    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active).length;
+    if(valves&&pressureOf(net)>RELIEF_AT)
+      net.amt=Math.max(net.cap*RELIEF_AT/100,net.amt-valves*VALVE_VENT);
+    // Strain builds while pumps push into an over-pressured network (pumps push every
+    // other tick, so +2 per push ≈ +1/tick), holds between pushes, eases off below 90%
+    if(pressureOf(net)>=OVER_PRESSURE){if(net.inflow>0)net.strain+=2;}
+    else net.strain=Math.max(0,net.strain-2);
+    if(net.strain>=BURST_STRAIN)burstPipe(net);
+    if(net.amt<0.01){net.amt=0;net.type=null;}
+    for(const m of net.members){
+      m.fluid={type:net.type,amt:net.cap?net.amt*MDEFS[m.type].fluidCap/net.cap:0};
+      m.strain=net.strain;
+    }
+  }
+}
+
+// Over-pressure: one pipe in the network is destroyed and half the fluid is lost
+function burstPipe(net){
+  const pipes=net.members.filter(m=>m.type==='pipe');
+  net.strain=0; net.amt*=0.5;
+  if(!pipes.length)return;
+  const p=pipes[Math.floor(Math.random()*pipes.length)];
+  G.map[p.y][p.x].mid=null;
+  delete G.machines[p.id];
+  net.members.splice(net.members.indexOf(p),1);
+  net.cap-=MDEFS.pipe.fluidCap;
+  net.amt=Math.min(net.amt,net.cap);
+  G.stats.bursts=(G.stats.bursts||0)+1;
+  burstFx.push({x:p.x,y:p.y,t:performance.now()});
+  if(inspectId===p.id&&openPanel==='machine')closePanel('machine');
+  toast('💥 PIPE BURST — over-pressure!','bad'); sfx('error');
+}
+
+// Highest-pressure network, for the HUD
+function worstNet(){
+  let worst=null;
+  for(const n of FLUID_NETS)if(n.type&&(!worst||n.strain>worst.strain||(n.strain===worst.strain&&pressureOf(n)>pressureOf(worst))))worst=n;
+  return worst;
+}
+
+// ── Glow tide (Zone 3 light cycle) ──
+const GLOW_CYCLE=960, GLOW_BRIGHT=720; // ticks: 180s bright, 60s dim
+function glowBright(){return (G.tick%GLOW_CYCLE)<GLOW_BRIGHT;}
+function glowSecsLeft(){
+  const t=G.tick%GLOW_CYCLE;
+  return Math.ceil(((t<GLOW_BRIGHT?GLOW_BRIGHT:GLOW_CYCLE)-t)*TICK_MS/1000);
+}
+
+// ── Accumulators: soak up surplus, cover shortfalls they can fully cover ──
+const ACC_CAP=2000; // kJ — 40kW for 50s
+function runAccumulators(){
+  const accs=Object.values(G.machines).filter(m=>m.type==='accumulator'&&m.active);
+  if(!accs.length)return;
+  const dt=TICK_MS/1000;
+  const surplus=G.power.out-G.power.in;
+  if(surplus<0){
+    let need=-surplus*dt;
+    const stored=accs.reduce((a,m)=>a+(m.charge||0),0);
+    if(stored<need)return;
+    for(const m of accs){const take=Math.min(m.charge||0,need);m.charge=(m.charge||0)-take;need-=take;}
+    G.power.out=G.power.in;
+  } else if(surplus>0){
+    let give=surplus*dt;
+    for(const m of accs){
+      const g=Math.min(ACC_CAP-(m.charge||0),give);
+      m.charge=(m.charge||0)+g; give-=g;
+      if(give<=0)break;
+    }
   }
 }
 
@@ -2781,6 +3174,7 @@ function runInserter(m){
   if(arm.state==='idle'){
     if(dst.mid===null)return;
     const dm=G.machines[dst.mid]; if(!dm)return;
+    if(MDEFS[dm.type]?.noItems)return;
     if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return;
     if(dm.type==='chest'&&isOutputFacing(dm,dvx,dvy))return;
     if((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4)return;
@@ -2913,6 +3307,14 @@ function hudHazardsHtml(){
   if(zoneHas('smog')){
     const smog=Math.round(G.smog||0);
     html+=gauge('🌫️',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)');
+  }
+  if(zoneHas('pressure')){
+    const n=worstNet();
+    if(n){const pr=Math.round(pressureOf(n));html+=gauge('💧',`${pr}%`,n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)');}
+  }
+  if(zoneHas('glow')){
+    const secs=glowSecsLeft();
+    html+=gauge(glowBright()?'☀️':'🌑',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)');
   }
   return html;
 }
@@ -3436,7 +3838,7 @@ function renderMachPanel(){
     : `<span style="color:var(--amber)">⚠ No recipe</span>`;
   const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${Object.values(m.chestInv).reduce((a,b)=>a+b,0)}/200 stored</span>`:null;
   const statusVal = chestCap || minerStatus
-    || (noRecipeTypes.includes(m.type)
+    || (noRecipeTypes.includes(m.type)||!def.recipes.length
       ? (m.active ? `<span style="color:var(--green)">▶ Active</span>` : `<span style="color:var(--text3)">⏸ Paused</span>`)
       : (m.active ? recipeStatus : `<span style="color:var(--text3)">⏸ Paused</span>`));
   html+=irow('Status', statusVal);
@@ -3457,6 +3859,7 @@ function renderMachPanel(){
     if(pm.yield>1)bonuses.push(`+${Math.round((pm.yield-1)*100)}% yield`);
     html+=irow('Perks',`<span style="color:var(--teal)">${bonuses.join(', ')}</span>`);
   }
+  html+=fluidPanelRows(m,def,rec);
   if(m.type==='chest'){
     const tot=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
     html+=irow('Stored',`${tot}/200`);
@@ -3642,6 +4045,33 @@ function renderMachPanel(){
   </div>`;
 
   el.innerHTML=html;
+}
+
+// Pipe network, pump, accumulator and lumen details for the machine panel
+function fluidPanelRows(m,def,rec){
+  let html='';
+  const netRows=net=>{
+    const p=Math.round(pressureOf(net));
+    const col=net.strain>0?'var(--red)':p>=RELIEF_AT?'var(--amber)':p<LOW_PRESSURE?'var(--blue)':'var(--teal)';
+    return irow('Fluid',net.type?`${ITEMS[net.type]?.icon||''} ${ITEMS[net.type]?.name||net.type}`:'Empty')
+      +irow('Network',`${Math.round(net.amt)}/${net.cap} · ${net.members.length} parts`)
+      +irow('Pressure',`<span style="color:${col}">${p}%${net.strain>0?` ⚠ strain ${Math.round(net.strain/BURST_STRAIN*100)}%`:''}</span>`)
+      +`<div class="prog-wrap" style="margin:4px 0 6px;position:relative"><div class="prog-fill" style="width:${p}%;background:${col}"></div></div>`;
+  };
+  if(def.fluidCap&&m._net)html+=netRows(m._net);
+  const status={nopipe:'<span style="color:var(--red)">✗ Not connected to a pipe</span>',
+    lowpressure:'<span style="color:var(--blue)">💧 Low pressure</span>',
+    nodeposit:'<span style="color:var(--red)">✗ Not on a deposit</span>',
+    nopower:'<span style="color:var(--red)">⚡ No power</span>',
+    ok:'<span style="color:var(--green)">✓ Flowing</span>'};
+  if(def.fluidPort){
+    if(m._fluidStatus)html+=irow('Flow',status[m._fluidStatus]||'');
+    if(rec?.fluid)html+=irow('Needs',Object.entries(rec.fluid).map(([f,n])=>`${n}× ${ITEMS[f]?.name}`).join(', ')+(rec.minPressure?` @ ${rec.minPressure}%+`:''));
+    const net=(m._nets||[])[0]; if(net)html+=netRows(net);
+  }
+  if(m.type==='accumulator')html+=irow('Charge',`${Math.round((m.charge||0)/ACC_CAP*100)}% (${Math.round(m.charge||0)}/${ACC_CAP} kJ)`);
+  if(m.type==='lumen_panel')html+=irow('Glow tide',glowBright()?`<span style="color:var(--amber)">☀️ Bright — ${glowSecsLeft()}s left</span>`:`<span style="color:var(--text3)">🌑 Dim — ${glowSecsLeft()}s left</span>`);
+  return html;
 }
 
 function irow(lbl,val){return `<div class="irow"><span class="lbl">${lbl}</span><span>${val}</span></div>`}
@@ -4045,6 +4475,13 @@ function hazardPanelHtml(){
       <div class="prog-wrap"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
     </div>`;
   }
+  if(zoneHas('pressure')){
+    const nets=FLUID_NETS.filter(n=>n.type);
+    html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;font-size:5px;color:var(--text3);line-height:2">
+      💧 ${nets.length} pipe network${nets.length!==1?'s':''} · bursts this zone: ${G.stats.bursts||0}<br>
+      Keep pressure ${LOW_PRESSURE}–${OVER_PRESSURE}% · Rod Press needs 60%+
+    </div>`;
+  }
   return html;
 }
 
@@ -4079,8 +4516,10 @@ function transitionToZone(n){
   const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
   const devMode=G.devMode;
   const perks=G.perks||{points:0,spent:{},awarded:{}};
+  const achievements=[...(G.achievements||[])];
   G=defaultState();
   G.zone=n;
+  G.achievements=achievements;
   G.smog=0;
   G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
   G.devMode=devMode;
@@ -4121,7 +4560,7 @@ const PERK_DEFS=[
 ];
 
 // Base points earned the first time each zone's rocket launches
-const LAUNCH_PERK_POINTS={1:3,2:3};
+const LAUNCH_PERK_POINTS={1:3,2:3,3:3};
 
 // Zone milestones — each one met at launch adds +1 perk point
 const LOGISTICS_TYPES=['belt','splitter','tunnel','inserter','long_inserter','chest'];
@@ -4138,6 +4577,11 @@ const ZONE_MILESTONES={
     {id:'z2_industry', name:'Industrialist', desc:'25+ production machines placed', done:()=>productionMachineCount()>=25},
     {id:'z2_oil',      name:'Oil Baron',     desc:'6+ oil pumps placed',            done:()=>Object.values(G.machines).filter(m=>m.type==='oil_pump').length>=6},
     {id:'z2_clean',    name:'Clear Skies',   desc:'Smog below 25%',                 done:()=>(G.smog||0)<25},
+  ],
+  3:[
+    {id:'z3_industry', name:'Industrialist', desc:'25+ production machines placed', done:()=>productionMachineCount()>=25},
+    {id:'z3_steady',   name:'Steady Hands',  desc:'No pipe bursts this zone',       done:()=>!(G.stats.bursts>0)},
+    {id:'z3_night',    name:'Night Shift',   desc:'2+ accumulators placed',         done:()=>Object.values(G.machines).filter(m=>m.type==='accumulator').length>=2},
   ],
 };
 function zoneMilestones(zone){
@@ -4546,6 +4990,12 @@ const ACHIEVEMENTS=[
   {id:'first_steel_r', cat:'Rocket',     icon:'🔩', name:'Steel Dreams',       desc:'Produce steel for the first time'},
   {id:'rocket_part',  cat:'Rocket',      icon:'🛸', name:'Parts in Motion',    desc:'Craft any rocket component'},
   {id:'launch',       cat:'Rocket',      icon:'🚀', name:'Liftoff',            desc:'Launch your first rocket'},
+  // Zones
+  {id:'scar_escape',  cat:'Zones',       icon:'💥', name:'Out of the Scar',    desc:'Relaunch from The Scar'},
+  {id:'first_pipe',   cat:'Zones',       icon:'🔗', name:'Plumber',            desc:'Place your first pipe'},
+  {id:'first_burst',  cat:'Zones',       icon:'💥', name:'Kaboom',             desc:'Burst a pipe'},
+  {id:'first_rod',    cat:'Zones',       icon:'🟩', name:'Crystal Fuel',       desc:'Press a Lattice Fuel Rod'},
+  {id:'deep_escape',  cat:'Zones',       icon:'🕳️', name:'Deep Escape',        desc:'Drill out of The Deep'},
 ];
 
 function checkAchievements(){
@@ -4589,6 +5039,11 @@ function checkAchievements(){
     power_240:    ()=>G.power.out>=240,
     first_module: ()=>machines.some(m=>(m.modules||[]).length>0),
     first_upgrade:()=>machines.some(m=>(m.tier||1)>=2),
+    scar_escape:  ()=>!!G.perks?.awarded?.[2],
+    first_pipe:   ()=>machines.some(m=>m.type==='pipe'),
+    first_burst:  ()=>(G.stats.bursts||0)>0,
+    first_rod:    ()=>(G.inv.fuel_rod||0)>=1,
+    deep_escape:  ()=>!!G.perks?.awarded?.[3],
   };
 
   let anyNew=false;
@@ -4790,6 +5245,14 @@ const ZONE_TUTORIALS={
      done:()=>G.research.done.includes('oil_extraction')},
     {text:'⚠️ Oil pumps generate smog! Watch the 🌫️ meter in the HUD. Build 🌿 Scrubbers to clean the air.',
      done:()=>Object.values(G.machines).some(m=>m.type==='scrubber')},
+  ]},
+  3:{done:'The Deep briefing complete', steps:[
+    {text:'Welcome to The Deep. Mine 💎 quartz and make 📔 Deep Notes in a Lab, then research 💧 Fluid Handling.',
+     done:()=>G.research.done.includes('fluid_handling')},
+    {text:'Place a ⛲ Brine Pump on a 💧 brine pool and connect 🔗 Pipes to it.',
+     done:()=>Object.values(G.machines).some(m=>m.type==='brine_pump'&&m._fluidStatus==='ok')},
+    {text:'⚠️ Watch the 💧 pressure gauge — pipes burst after ~20s above 90%. Add a 🥫 Fluid Tank or consumers.',
+     done:()=>Object.values(G.machines).some(m=>m.type==='fluid_tank')},
   ]},
 };
 
@@ -4994,7 +5457,7 @@ function openBigMenu(section){
 function saveToSlot(s){
   try{
     G._savedAt=Date.now();
-    localStorage.setItem(`ebi_save_slot${s}`,JSON.stringify(G));
+    localStorage.setItem(`ebi_save_slot${s}`,serializeG());
     toast(`Saved to slot ${s}`,'ok'); sfx('craft');
     openBigMenu('saves');
   }catch(e){toast('Save failed','bad');}
@@ -5246,6 +5709,10 @@ function quitToTitle(){
 // ═══════════════════════════════════════════════════
 //  SAVE / LOAD
 // ═══════════════════════════════════════════════════
+// Transient per-tick links (fluid networks are circular) never go into saves
+const TRANSIENT_KEYS=new Set(['_net','_nets','_fluidStatus']);
+function serializeG(){return JSON.stringify(G,(k,v)=>TRANSIENT_KEYS.has(k)?undefined:v);}
+
 // Key renames between versions — called by both load paths
 function migrateSave(){
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
@@ -5253,7 +5720,7 @@ function migrateSave(){
 }
 
 function saveGame(){
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify(G));}catch(e){}
+  try{localStorage.setItem(SAVE_KEY,serializeG());}catch(e){}
 }
 function continueGame(){
   try{
