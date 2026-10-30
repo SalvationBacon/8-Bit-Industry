@@ -373,7 +373,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
       <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none">✨ STARDUST</button>
     </div>
-    <p class="v-num">v1.4.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.4.2 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -533,7 +533,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.4.1';
+const VER      = '1.4.2';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2698,7 +2698,7 @@ function draw(){
     if(m.type!=='tunnel')continue;
     const px=m.x*ts-cx, py=m.y*ts-cy;
     if(px+ts<0||py+ts<0||px>W||py>H)continue;
-    const linked=m.tunnelId!==null;
+    const linked=m.tunnelId!==null&&!!G.machines[m.tunnelId];
     ctx.fillStyle='#0a0a14'; ctx.fillRect(px,py,ts,ts);
     ctx.strokeStyle=linked?MACH_COL.tunnel:'#444'; ctx.lineWidth=1.5; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
     // Portal circle
@@ -2785,7 +2785,7 @@ function draw(){
       // Highlight selected machines
       for(const id of ms.ids){
         const m=G.machines[id]; if(!m)continue;
-        const def=MDEFS[m.type]; const[mw,mh]=def.size;
+        const[mw,mh]=machSize(m);
         const px=m.x*ts-cx, py=m.y*ts-cy;
         ctx.fillStyle='rgba(66,165,245,.15)'; ctx.fillRect(px,py,mw*ts,mh*ts);
         ctx.strokeStyle='#42a5f5'; ctx.lineWidth=2; ctx.setLineDash([3,3]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
@@ -2836,7 +2836,7 @@ function draw(){
     } else if(bp.mode==='holding'&&hov.x>=0){
       for(const e of bp.data){
         const def=MDEFS[e.type]; if(!def)continue;
-        const[mw,mh]=def.size;
+        const[mw,mh]=machSize(e.type,e.dir);
         const px=( hov.x+e.rx)*ts-cx, py=(hov.y+e.ry)*ts-cy;
         ctx.fillStyle='rgba(38,198,160,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
         ctx.strokeStyle='#26c6a0'; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
@@ -3004,11 +3004,14 @@ function handleTap(tile,isLong){
   const{x,y}=tile;
   if(x<0||y<0||x>=MAP_W||y>=MAP_H)return;
   const t=G.map[y][x];
+  hov={x,y}; // touch taps never fire mousemove, so the build ghost must follow the tap itself
 
-  if(activeTool==='demolish'||isLong){
+  if(activeTool==='demolish'){
     if(t.mid!==null)tryRemove(x,y);
     return;
   }
+  // Long press inspects (it used to demolish, far too easy to trigger by accident on a phone)
+  if(isLong&&t.mid!==null&&activeTool==='select'){selectMachineById(t.mid);return;}
   // No activeTool==='mine', mining is now triggered via resInfo popup button
   if(activeTool==='rotate'){
     if(t.mid!==null){
@@ -3037,7 +3040,7 @@ function handleTap(tile,isLong){
       // Store original position for restore on cancel
       moveState={active:true,machineId:m.id,origX:m.x,origY:m.y};
       // Clear its map tiles so canPlace works correctly on destination
-      const def=MDEFS[m.type]; const[mw,mh]=def.size;
+      const def=MDEFS[m.type]; const[mw,mh]=machSize(m);
       for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
         G.map[m.y+dy][m.x+dx].mid=null;
       toast(`${def.name} picked up. Tap to place`,'ok'); sfx('place');
@@ -3047,16 +3050,16 @@ function handleTap(tile,isLong){
       const m=G.machines[moveState.machineId];
       if(!m){moveState={active:false,machineId:null,origX:0,origY:0};return;}
       const def=MDEFS[m.type];
-      const[mw,mh]=def.size;
+      const[mw,mh]=machSize(m);
 
-      if(!canPlace(m.type,x,y)){
+      if(!canPlace(m.type,x,y,m.dir)){
         // Can't place here, keep machine held, let player try another spot
         toast('Cannot place here','bad'); sfx('error'); return;
       }
 
       // Place at new location
       m.x=x; m.y=y;
-      if(m.type==='miner')m.mineRes=G.map[y][x].res||null;
+      refreshMineRes(m);
       for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
         G.map[y+dy][x+dx].mid=m.id;
       moveState={active:false,machineId:null,origX:0,origY:0};
@@ -3098,6 +3101,7 @@ function handleTap(tile,isLong){
           if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
           const occ=G.map[ny][nx].mid;
           if(occ!==null&&!movingSet.has(occ))return false;
+          if(!terrainOk(m.type,G.map[ny][nx]))return false;
         }
         return true;
       });
@@ -3113,7 +3117,7 @@ function handleTap(tile,isLong){
       for(const id of ms.ids){
         const m=G.machines[id]; if(!m)continue;
         m.x+=dx; m.y+=dy;
-        if(m.type==='miner'||m.type==='oil_pump') m.mineRes=G.map[m.y][m.x].res||null;
+        refreshMineRes(m);
         const[mw,mh]=machSize(m);
         for(let ty2=0;ty2<mh;ty2++) for(let tx2=0;tx2<mw;tx2++)
           G.map[m.y+ty2][m.x+tx2].mid=m.id;
@@ -3284,6 +3288,57 @@ function fluidsWouldMix(type,tx,ty,d){
   return false;
 }
 
+// Terrain rule for one tile of a machine (occupancy checked separately)
+function terrainOk(type,tile){
+  if(type==='miner')return tile.type===T_RESOURCE&&!FLUID_RES[tile.res];
+  if(type==='oil_pump')return tile.res==='oil';
+  if(MDEFS[type].pumps)return tile.res===MDEFS[type].pumps;
+  return ON_RESOURCE_OK.has(type)||tile.type!==T_RESOURCE;
+}
+// After a machine lands on new tiles, re-read what it extracts
+function refreshMineRes(m){
+  const d=MDEFS[m.type], r=G.map[m.y][m.x].res;
+  if(m.type==='miner')m.mineRes=r&&!FLUID_RES[r]?r:null;
+  else if(m.type==='oil_pump')m.mineRes=r==='oil'?'oil':null;
+  else if(d.pumps)m.mineRes=r===d.pumps?d.pumps:null;
+}
+// Link a tunnel to the nearest free tunnel facing the same way, ahead or behind, within 5 tiles.
+// Returns the distance linked, or 0. (Placing the exit before the entrance used to never link.)
+function linkTunnel(m){
+  if(m.type!=='tunnel'||m.tunnelId!==null)return 0;
+  const[dvx,dvy]=D_VEC[m.dir];
+  for(let dist=1;dist<=5;dist++)for(const sgn of[1,-1]){
+    const lx=m.x+dvx*dist*sgn, ly=m.y+dvy*dist*sgn;
+    if(lx<0||ly<0||lx>=MAP_W||ly>=MAP_H)continue;
+    const mid=G.map[ly][lx].mid; if(mid===null)continue;
+    const lm=G.machines[mid];
+    if(lm&&lm.id!==m.id&&lm.type==='tunnel'&&lm.tunnelId===null&&lm.dir===m.dir){m.tunnelId=lm.id;lm.tunnelId=m.id;return dist;}
+  }
+  return 0;
+}
+function unlinkTunnel(m){
+  if(m.type!=='tunnel'||m.tunnelId===null)return;
+  const partner=G.machines[m.tunnelId]; if(partner)partner.tunnelId=null;
+  m.tunnelId=null;
+}
+// Can a copied layout (blueprint / clipboard) be stamped with its origin at x,y?
+function stampFits(data,x,y){
+  return data.every(e=>MDEFS[e.type]&&canPlace(e.type,x+e.rx,y+e.ry,e.dir));
+}
+// Create one machine from a layout entry: tiles, extraction, tunnels, stats
+function stampMachine(e,x,y){
+  const def=MDEFS[e.type]; if(!def||def.stub)return null;
+  const m=mkMachine(e.type,x,y,e.dir);
+  if(e.recipe!==undefined)m.recipe=e.recipe;
+  m.tier=e.tier||1;
+  G.machines[m.id]=m;
+  const[mw,mh]=machSize(m);
+  for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)G.map[y+dy][x+dx].mid=m.id;
+  refreshMineRes(m); linkTunnel(m);
+  G.stats.placed++;
+  return m;
+}
+
 function canPlace(type,tx,ty,dir){
   if(!MDEFS[type])return false;
   const d=(dir!==undefined)?dir:placeDir;
@@ -3292,11 +3347,7 @@ function canPlace(type,tx,ty,dir){
     const nx=tx+dx,ny=ty+dy;
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
     if(G.map[ny][nx].mid!==null)return false;
-    const tile=G.map[ny][nx];
-    if(type==='miner'&&(tile.type!==T_RESOURCE||FLUID_RES[tile.res]))return false;
-    if(type==='oil_pump'&&tile.res!=='oil')return false;
-    if(MDEFS[type].pumps&&tile.res!==MDEFS[type].pumps)return false;
-    if(type!=='miner'&&type!=='oil_pump'&&!MDEFS[type].pumps&&!ON_RESOURCE_OK.has(type)&&tile.type===T_RESOURCE)return false;
+    if(!terrainOk(type,G.map[ny][nx]))return false;
   }
   return !fluidsWouldMix(type,tx,ty,d);
 }
@@ -3345,27 +3396,12 @@ function tryPlace(type,tx,ty){
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
   if(def.pumps)m.mineRes=def.pumps;
-  // Link tunnel to nearest unpaired tunnel in same direction within 5 tiles
-  if(type==='tunnel'){
-    const[dvx,dvy]=D_VEC[placeDir];
-    for(let dist=1;dist<=5;dist++){
-      const lx=tx-dvx*dist, ly=ty-dvy*dist;
-      if(lx<0||ly<0||lx>=MAP_W||ly>=MAP_H)break;
-      const ltile=G.map[ly][lx];
-      if(ltile.mid===null)continue;
-      const lm=G.machines[ltile.mid];
-      if(lm&&lm.type==='tunnel'&&lm.tunnelId===null&&lm.dir===placeDir){
-        m.tunnelId=lm.id; lm.tunnelId=m.id;
-        toast(`Tunnel linked! (${dist} tiles)`,'ok');
-        break;
-      }
-    }
-  }
   G.machines[m.id]=m;
 
   const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
     G.map[ty+dy][tx+dx].mid=m.id;
+  const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
 
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
@@ -3392,20 +3428,10 @@ function completePlacement(type,tx,ty){
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
   if(def.pumps)m.mineRes=def.pumps;
-  if(type==='tunnel'){
-    const[dvx,dvy]=D_VEC[placeDir];
-    for(let dist=1;dist<=5;dist++){
-      const lx=tx-dvx*dist,ly=ty-dvy*dist;
-      if(lx<0||ly<0||lx>=MAP_W||ly>=MAP_H)break;
-      const ltile=G.map[ly][lx];
-      if(ltile.mid===null)continue;
-      const lm=G.machines[ltile.mid];
-      if(lm&&lm.type==='tunnel'&&lm.tunnelId===null&&lm.dir===placeDir){m.tunnelId=lm.id;lm.tunnelId=m.id;toast(`Tunnel linked! (${dist} tiles)`,'ok');break;}
-    }
-  }
   G.machines[m.id]=m;
   const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++) G.map[ty+dy][tx+dx].mid=m.id;
+  const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
@@ -3416,8 +3442,14 @@ function tryRemove(tx,ty){
   const m=G.machines[mid]; if(!m)return;
   const def=MDEFS[m.type];
   const[mw,mh]=machSize(m);
-  for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
-    G.map[m.y+dy][m.x+dx].mid=null;
+  unlinkTunnel(m);
+  for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
+    const t=G.map[m.y+dy][m.x+dx];
+    t.mid=null;
+    for(const it of t.items)G.inv[it.id]=(G.inv[it.id]||0)+1; // items riding the belt come back
+    t.items=[];
+  }
+  if(m._arm?.item)G.inv[m._arm.item]=(G.inv[m._arm.item]||0)+1;
   // Full refund
   for(const[item,n]of Object.entries(def.cost))
     G.inv[item]=(G.inv[item]||0)+n;
@@ -3443,6 +3475,9 @@ let tickId=null;
 // Ticks run on a timer at the sim speed. Above ~16x the interval would drop
 // under a frame, so each interval runs several ticks instead.
 let lastUiMs=0, lastSaveMs=0;
+let uiPress=false;
+document.addEventListener('pointerdown',()=>{uiPress=true;},true);
+for(const ev of['pointerup','pointercancel'])document.addEventListener(ev,()=>setTimeout(()=>{uiPress=false;},150),true);
 const DEV_SPEEDS=[1,2,5,10,25,50];
 function startTick(){
   if(tickId)clearInterval(tickId);
@@ -3460,7 +3495,7 @@ function gameTick(){
   // Pre-pass: accumulate total power demand across ALL consumer machines
   const pm0=perkMult();
   for(const m of Object.values(G.machines)){
-    if(!m.active)continue;
+    if(!m.active||m.withered)continue;
     const def=MDEFS[m.type]; if(!def||def.power<=0)continue;
     if(m.type==='stone_furnace'||m.type==='blast_furnace')continue;
     const mods=m.modules||[];
@@ -3493,7 +3528,9 @@ function gameTick(){
   if(G.tick%4===0){checkAchievements();tickTutorial();}
   // UI refresh is throttled by real time so fast dev speeds don't drown the browser in DOM work
   const nowMs=performance.now();
-  if(nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();}
+  // Skipped while a finger/button is down: rebuilding a panel mid-tap swaps the
+  // button under the finger and the tap is silently lost
+  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();}
   if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
@@ -4093,10 +4130,11 @@ function runBelts(){
           const distForward=(partner.x-m.x)*dvx+(partner.y-m.y)*dvy;
           if(distForward>0){
             // ENTRANCE, teleport arrived items to exit tile
-            const arr=tile.items.filter(it=>it.prog>=1);
+            const exTile=G.map[partner.y][partner.x];
+            const room=Math.max(0,4-exTile.items.length); // exit holds 4 like a belt; the rest wait
+            const arr=tile.items.filter(it=>it.prog>=1).slice(0,room);
             if(arr.length){
-              tile.items=tile.items.filter(it=>it.prog<1);
-              const exTile=G.map[partner.y][partner.x];
+              tile.items=tile.items.filter(it=>!arr.includes(it));
               for(const it of arr){it.prog=0;exTile.items.push(it);}
             }
             continue;
@@ -4466,7 +4504,9 @@ function buildDrawer(){
   // Render category sub-tabs
   const catsEl=document.getElementById('drawerCats');
   if(catsEl){
-    catsEl.innerHTML=cats.map((c,i)=>`<button class="dcat-btn${i===safeCatIdx?' active':''}" onclick="setDrawerCat(${i})">${c.label}</button>`).join('');
+    const catsHtml=cats.map((c,i)=>`<button class="dcat-btn${i===safeCatIdx?' active':''}" onclick="setDrawerCat(${i})">${c.label}</button>`).join('');
+    if(catsEl._html===catsHtml&&catsEl.querySelector('.dcat-btn'))return buildDrawerItems(cats,safeCatIdx);
+    catsEl.innerHTML=catsHtml; catsEl._html=catsHtml;
     // One-time hint: pulse the second category tab to show it's tappable
     if(!localStorage.getItem('ebi_drawerHintSeen')&&cats.length>1){
       const hint=document.createElement('span');
@@ -4477,12 +4517,15 @@ function buildDrawer(){
     }
   }
 
-  // Render items for selected category
+  buildDrawerItems(cats,safeCatIdx);
+}
+// Item cards; only touched when their markup changes
+function buildDrawerItems(cats,safeCatIdx){
   const itemsEl=document.getElementById('drawerItems');
   if(!itemsEl) return;
   const cat=cats[safeCatIdx];
-  if(!cat){itemsEl.innerHTML='';return;}
-  itemsEl.innerHTML=cat.items.map(item=>{
+  if(!cat){itemsEl.innerHTML='';itemsEl._html='';return;}
+  const html=cat.items.map(item=>{
     const def=MDEFS[item.id];
     const locked=def?.unlock&&!G.research.done.includes(def.unlock)&&!def.stub;
     const unaffordable=!locked&&def&&Object.keys(def.cost).length>0&&
@@ -4497,6 +4540,7 @@ function buildDrawer(){
       <span class="dn">${item.name}</span>${sub}
     </div>`;
   }).join('');
+  if(itemsEl._html!==html){itemsEl.innerHTML=html;itemsEl._html=html;}
 }
 
 function cycleDir(){
@@ -4567,7 +4611,7 @@ function setTool(id){
   if(activeTool==='move'&&moveState.active){
     const m=G.machines[moveState.machineId];
     if(m){
-      const def=MDEFS[m.type]; const[mw,mh]=def.size;
+      const[mw,mh]=machSize(m);
       m.x=moveState.origX; m.y=moveState.origY;
       for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
         G.map[moveState.origY+dy][moveState.origX+dx].mid=m.id;
@@ -4580,6 +4624,7 @@ function setTool(id){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); return;
   }
   activeTool=id; closeResInfo(); buildDrawer(); updateToolTip(); updateSelectBtn(); updateBuildHUD();
+  if(def&&canvas){const ts=TILE*G.cam.zoom;hov={x:Math.floor((G.cam.x+canvas.clientWidth/2)/ts),y:Math.floor((G.cam.y+canvas.clientHeight*.45)/ts)};}
 }
 
 function updateToolTip(){
@@ -5149,12 +5194,7 @@ function setRecipe(id,rid){const m=G.machines[id];if(!m)return;m.recipe=rid||nul
 function toggleM(id){const m=G.machines[id];if(!m)return;m.active=!m.active;renderMachPanel();}
 function rotateM(id){
   const m=G.machines[id];if(!m)return;
-  // If tunnel, unlink partner first
-  if(m.type==='tunnel'&&m.tunnelId!==null){
-    const partner=G.machines[m.tunnelId];
-    if(partner)partner.tunnelId=null;
-    m.tunnelId=null;
-  }
+  unlinkTunnel(m); // re-linked below in the new direction
   // Splitter rotation, clear old secondary tile, rotate, register new secondary tile
   if(m.type==='splitter'){
     const PERP=[[0,1],[1,0],[0,1],[1,0]];
@@ -5177,25 +5217,7 @@ function rotateM(id){
     toast(`Splitter: ${D_ARR[m.dir]}`,'ok'); sfx('place'); return;
   }
   m.dir=(m.dir+1)%4;
-  // If tunnel, try to re-link with a partner in new direction
-  if(m.type==='tunnel'){
-    const[dvx,dvy]=D_VEC[m.dir];
-    // Search both forward and backward
-    for(const sign of [1,-1]){
-      for(let dist=1;dist<=5;dist++){
-        const lx=m.x+dvx*sign*dist, ly=m.y+dvy*sign*dist;
-        if(lx<0||ly<0||lx>=MAP_W||ly>=MAP_H)break;
-        const ltile=G.map[ly][lx];if(ltile.mid===null)continue;
-        const lm=G.machines[ltile.mid];
-        if(lm&&lm.type==='tunnel'&&lm.tunnelId===null&&lm.dir===m.dir){
-          m.tunnelId=lm.id; lm.tunnelId=m.id;
-          toast(`Tunnel linked! (${dist} tiles)`,'ok');
-          break;
-        }
-      }
-      if(m.tunnelId!==null)break;
-    }
-  }
+  if(m.type==='tunnel'){const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');}
   renderMachPanel();
   saveGame();
   toast(`Direction: ${D_ARR[m.dir]}`,'ok');
@@ -5255,6 +5277,7 @@ function blueprintCostStr(data){
   return Object.entries(c).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ');
 }
 function blueprintCanAfford(data){
+  if(G.devFreeBuild)return true;
   const c=blueprintCost(data);
   return Object.entries(c).every(([k,v])=>(G.inv[k]||0)>=v);
 }
@@ -5284,31 +5307,12 @@ function startPasteBlueprint(idx){
   document.getElementById('ghostBar')?.classList.remove('hidden');
 }
 function pasteBlueprintAt(data,x,y){
-  const canPlace2=data.every(e=>{
-    const def=MDEFS[e.type]; if(!def)return false;
-    const[mw,mh]=machSize(e.type,e.dir);
-    for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
-      const nx=x+e.rx+dx,ny=y+e.ry+dy;
-      if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
-      if(G.map[ny][nx].mid!==null)return false;
-    }
-    return true;
-  });
-  if(!canPlace2){toast('Cannot place here: tiles occupied','bad');sfx('error');return;}
+  const canPlace2=stampFits(data,x,y);
+  if(!canPlace2){toast('Cannot place here: blocked or wrong terrain','bad');sfx('error');return;}
   if(!blueprintCanAfford(data)){toast('Not enough materials','bad');sfx('error');return;}
-  const costs=blueprintCost(data);
+  const costs=G.devFreeBuild?{}:blueprintCost(data);
   for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
-  for(const e of data){
-    const def=MDEFS[e.type]; if(!def||def.stub)continue;
-    const m=mkMachine(e.type,x+e.rx,y+e.ry,e.dir);
-    m.recipe=e.recipe; m.tier=e.tier||1;
-    if(e.type==='miner')m.mineRes=G.map[y+e.ry][x+e.rx].res||null;
-    G.machines[m.id]=m;
-    const[mw,mh]=machSize(m);
-    for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
-      G.map[y+e.ry+dy][x+e.rx+dx].mid=m.id;
-    G.stats.placed++;
-  }
+  for(const e of data)stampMachine(e,x+e.rx,y+e.ry);
   blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
   document.getElementById('ghostBar')?.classList.add('hidden');
   updateHUD(); saveGame(); sfx('place');
@@ -5597,15 +5601,15 @@ function transitionToZone(n){
   const zd=ZONES[n]; if(!zd)return;
   const researchDone=[...G.research.done];
   const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
-  const devMode=G.devMode;
+  const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
   const achievements=[...(G.achievements||[])];
   G=defaultState();
+  Object.assign(G,dev);
   G.zone=n;
   G.achievements=achievements;
   G.smog=0;
   G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
-  G.devMode=devMode;
   G.tutorial={step:-1};                     // Zone 1 tutorial never repeats
   G.zoneTut=TUTORIALS[n]?0:undefined;      // zone tutorial
   G.research.done=researchDone;
@@ -5617,6 +5621,7 @@ function transitionToZone(n){
   if(zd.onArrive)zd.onArrive();
   saveGame();
   initCanvas(); buildToolbar(); updateHUD(); updateRocketBtn();
+  startTick(); updateSpeedBtn();
   const ts=TILE*G.cam.zoom;
   G.cam.x=26*ts-canvas.clientWidth/2+ts*3;
   G.cam.y=24*ts-canvas.clientHeight/2+ts*2;
@@ -5902,6 +5907,12 @@ function renderStatsPanel(){
   el.innerHTML=html;
 }
 
+// Selection count in the multi-select bar
+function updateMultiselBar(){
+  const ms=multiselState, cnt=document.getElementById('multiselCount');
+  if(cnt)cnt.textContent=`${ms.ids.length} machine${ms.ids.length!==1?'s':''} selected`;
+}
+
 function moveSingleMachine(id){
   const m=G.machines[id]; if(!m)return;
   const ms=multiselState;
@@ -5984,36 +5995,17 @@ function ghostConfirm(){
     if(!anchor){toast('Tap the map to set position first','wrn');return;}
     const x=anchor.x, y=anchor.y;
     const data=ms.clipboard;
-    const canPlace2=data.every(e=>{
-      const def=MDEFS[e.type]; if(!def)return false;
-      const[mw,mh]=machSize(e.type,e.dir);
-      for(let dy2=0;dy2<mh;dy2++) for(let dx2=0;dx2<mw;dx2++){
-        const nx=x+e.rx+dx2, ny=y+e.ry+dy2;
-        if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
-        if(G.map[ny][nx].mid!==null)return false;
-      }
-      return true;
-    });
-    if(!canPlace2){toast('Cannot place here: tiles occupied','bad');sfx('error');return;}
+    const canPlace2=stampFits(data,x,y);
+    if(!canPlace2){toast('Cannot place here: blocked or wrong terrain','bad');sfx('error');return;}
     if(!blueprintCanAfford(data)){
       const missing=Object.entries(blueprintCost(data))
         .filter(([k,v])=>(G.inv[k]||0)<v)
         .map(([k,v])=>`${v-(G.inv[k]||0)}× ${ITEMS[k]?.name||k}`).join(', ');
       toast(`Need: ${missing}`,'bad'); sfx('error'); return;
     }
-    const costs=blueprintCost(data);
+    const costs=G.devFreeBuild?{}:blueprintCost(data);
     for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
-    for(const e of data){
-      const def=MDEFS[e.type]; if(!def||def.stub)continue;
-      const m=mkMachine(e.type,x+e.rx,y+e.ry,e.dir);
-      m.recipe=e.recipe; m.tier=e.tier||1;
-      if(e.type==='miner')m.mineRes=G.map[y+e.ry][x+e.rx].res||null;
-      G.machines[m.id]=m;
-      const[mw,mh]=machSize(m);
-      for(let dy2=0;dy2<mh;dy2++) for(let dx2=0;dx2<mw;dx2++)
-        G.map[y+e.ry+dy2][x+e.rx+dx2].mid=m.id;
-      G.stats.placed++;
-    }
+    for(const e of data)stampMachine(e,x+e.rx,y+e.ry);
     ms.pasteAnchor=null; // clear anchor so ghost follows cursor again for next paste
     updateHUD(); saveGame(); sfx('place');
     toast(`Pasted ${data.length} machine${data.length!==1?'s':''}!`,'ok');
@@ -6582,8 +6574,8 @@ function openSettings(){
     </div>
     <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
       <span style="font-size:var(--f6);color:var(--text2);flex-shrink:0">🔉 Vol</span>
-      <input type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}" oninput="setMusicVol(this.value)" style="flex:1;accent-color:var(--amber)">
-      <span style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
+      <input id="musicVolSlider" type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}" oninput="setMusicVol(this.value)" style="flex:1;accent-color:var(--amber)">
+      <span id="musicVolLabel" style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
     </div>`;
 
   settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
@@ -6875,10 +6867,37 @@ function quitToTitle(){
 // ═══════════════════════════════════════════════════
 // Transient per-tick links (fluid networks are circular) never go into saves
 const TRANSIENT_KEYS=new Set(['_net','_nets','_fluidStatus']);
-function serializeG(){return JSON.stringify(G,(k,v)=>TRANSIENT_KEYS.has(k)?undefined:v);}
+function serializeG(){return JSON.stringify(G,(k,v)=>TRANSIENT_KEYS.has(k)?undefined:k==='map'&&v===G.map?packMap(v):v);}
+// Saves store the map as one character per tile (a full Zone 5 map was ~1MB as
+// objects, enough to hit phone storage limits). Machine tiles are rebuilt on load.
+function packMap(map){
+  const codes=[], idx={}; let res='';
+  const items=[];
+  for(let y=0;y<map.length;y++)for(let x=0;x<map[y].length;x++){
+    const t=map[y][x];
+    if(t.res){if(idx[t.res]===undefined){idx[t.res]=codes.length;codes.push(t.res);}res+=String.fromCharCode(65+idx[t.res]);}
+    else res+='.';
+    if(t.items&&t.items.length)items.push([x,y,t.items]);
+  }
+  return {packed:1,w:map[0].length,h:map.length,codes,res,items};
+}
+function unpackMap(pk,machines){
+  const map=[];
+  for(let y=0;y<pk.h;y++){map[y]=[];for(let x=0;x<pk.w;x++){
+    const c=pk.res[y*pk.w+x], r=c&&c!=='.'?pk.codes[c.charCodeAt(0)-65]:null;
+    map[y][x]={type:r?T_RESOURCE:T_FLOOR,res:r,mid:null,items:[]};
+  }}
+  for(const[x,y,its]of pk.items)if(map[y]?.[x])map[y][x].items=its;
+  for(const m of Object.values(machines)){
+    const[w,h]=machSize(m);
+    for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)if(map[m.y+dy]?.[m.x+dx])map[m.y+dy][m.x+dx].mid=m.id;
+  }
+  return map;
+}
 
 // Key renames between versions, called by both load paths
 function migrateSave(){
+  if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }

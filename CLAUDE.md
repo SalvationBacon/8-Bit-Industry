@@ -9,7 +9,7 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.4.1, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Current build:** v1.4.2, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
 **Working file:** `index.html`, ~7,000 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
@@ -17,6 +17,8 @@
 - `docs/GDD.md`: original Game Design Document (v1.0), the source of the vision. Where it disagrees with this file or the code, **this file and the code win** (see *GDD divergences*).
 - `docs/ZONE3_DESIGN.md`: Zone 3 design, now implemented. The header lists where the build differs from the draft.
 - `tools/check.js`: headless test (syntax, every zone completable, full Zone 1→5 run, Big Bang).
+- `tools/play-test.js`: 34 real-play scenarios on a fake clock (belts, corners, splitters, tunnels, inserters, furnaces, power cutoff, upgrades, refunds, move/paste rules, every zone's core mechanic, save/load).
+- `tools/touch-test.js`: simulated phone taps in portrait and landscape (new game, mining, build + PLACE, panels, menu, no double input after reload).
 
 ---
 
@@ -26,7 +28,7 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v121` |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v122` |
 | `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
@@ -63,7 +65,7 @@ Persists as `G.devMode`. The DEV tile then opens the dev panel, and a purple **�
 | `ebi_prestige` (`PRESTIGE_KEY`) | Stardust, Big Bang count, owned Stardust upgrades, theme. **Never wiped** by resets or new games |
 
 - Autosave every 120 ticks (30s) and on place/remove, research, launch, perk purchase.
-- Saves go through `serializeG()`, which drops transient per-tick keys (`TRANSIENT_KEYS`: `_net`, `_nets`, `_fluidStatus`). Fluid networks are circular and would break `JSON.stringify`.
+- Saves go through `serializeG()`. It packs the map to one character per tile (`packMap`; a full Zone 5 map went from ~950 KB to ~36 KB), and `migrateSave()` unpacks it (`unpackMap` rebuilds machine tiles from `G.machines`). Old unpacked saves still load. It also drops transient per-tick keys (`TRANSIENT_KEYS`: `_net`, `_nets`, `_fluidStatus`). Fluid networks are circular and would break `JSON.stringify`.
 - Load paths `continueGame()` and `loadFromSlot(s)` both backfill keys and call `migrateSave()` (renames, e.g. `tutorialZ2` → `zoneTut`). New top-level keys need a default in **both**, or in `migrateSave()`.
 
 **State keys in `G`** (declared in `defaultState()`):
@@ -360,12 +362,17 @@ Splitters (1×2, rotatable), tunnels (auto-link ≤5 tiles), inserter state mach
 - Single `index.html`, vanilla JS, no libraries; all state in `G` via `defaultState()`.
 - New zone content: add items, recipes (append ids to the machine's `recipes`), `MDEFS` (with `PORTS` if it outputs items), `TECHS` (`zone:n`), the `ZONES` entry, deposits, `ZONE_TUTORIALS`, `ZONE_MILESTONES`, achievements and drawer category.
 
+- **Placement rules live in one place:** `terrainOk(type,tile)` (used by `canPlace`, multi-select move and paste), `refreshMineRes(m)` after any move, `linkTunnel(m)`/`unlinkTunnel(m)` (two-way search), and `stampMachine()`/`stampFits()` for blueprints and paste. Don't hand-roll machine creation.
+
 **Every delivery checklist:**
 1. Bump `sw.js` cache version, `VER`, and the title-screen `v-num`
-2. Run `node tools/check.js`: syntax, every zone completable, full Zone 1→5 run, no page errors
+2. Run `node tools/check.js`, `node tools/play-test.js` and `node tools/touch-test.js`: everything passes, no page errors
 3. Verify the file starts with `<!DOCTYPE html>`
 
 ### Known Gotchas
+- Touch taps never fire mousemove, so `handleTap()` sets `hov` itself (the build ghost follows taps). Picking a machine puts its ghost mid-screen. A long press inspects; it used to demolish.
+- UI refresh (HUD, open panel, drawer) is skipped while a pointer is down (`uiPress`), and the drawer only rebuilds when its markup changes. Rebuilding mid-tap swapped the button under the finger and lost the tap.
+- `transitionToZone()` keeps the dev settings (speed, free build, free craft) and restarts the clock.
 - Touch events fire synthetic mouse events (`lastTouch` debounce in `setupInput`). `setupInput()` attaches listeners once (`inputReady`); before v1.4.0 every new game or load doubled them
 - `perkMult()` returns multipliers; `power` multiplies draw
 - `recordOutput()` uses `Date.now()`, so rates look huge in fast headless tests
