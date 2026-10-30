@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#0d0d0d">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <title>8-BIT INDUSTRY</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
@@ -54,6 +55,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 /* ── TITLE ── */
 #sTitle{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
 .title-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 50% 35% at 50% 55%,rgba(245,166,35,.07) 0%,transparent 70%)}
+#titleMute{position:absolute;top:calc(10px + var(--sat,0px));right:calc(10px + var(--sar,0px));z-index:2;width:44px;height:44px;font-size:20px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer}
 #titleCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
 #titleCaption{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + var(--sab,0px));white-space:nowrap;padding:6px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.08);font-size:var(--f5);color:var(--amber);letter-spacing:3px;text-shadow:2px 2px 0 #000;pointer-events:none;transition:opacity .3s}
 #titleCaption:empty{display:none}
@@ -66,6 +68,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .logo-rest{display:block;font-size:clamp(9px,3vw,13px);color:var(--text);letter-spacing:10px;margin-top:8px;text-shadow:2px 2px 0 #000}
 @keyframes flicker{0%,91%,95%,100%{opacity:1}92%,94%{opacity:.65}}
 .logo-icon{font-size:36px;display:block;margin-bottom:14px;animation:bob 2.2s ease-in-out infinite}
+.logo-icon .uico{width:56px;height:56px}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.4)}50%{box-shadow:0 0 0 6px rgba(245,166,35,0)}}
@@ -108,8 +111,15 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 
 /* ── TAB BAR (replaces old toolbar) ── */
 #tabBar{flex-shrink:0;height:calc(var(--tab-h) + var(--sab));padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar);background:var(--panel);border-top:2px solid var(--border2);display:flex;z-index:100}
-.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:var(--f5);color:var(--text2);border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
-.tab-btn .tab-icon{font-size:22px;line-height:1}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:var(--f5);color:#c8c8c8;border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
+.tab-btn .tab-icon{font-size:22px;line-height:1;height:26px;display:flex;align-items:center}
+.uico{image-rendering:pixelated;display:inline-block;vertical-align:middle}
+.tab-icon .uico{width:26px;height:26px}
+.mt-ic .uico{width:32px;height:32px}
+.hres-icon .uico{width:16px;height:16px}
+.btn .uico,.ditem .di .uico{width:24px;height:24px}
+.btn .uico{width:16px;height:16px;margin:-4px 4px 0 0}
+#titleMute .uico{width:24px;height:24px}
 .tab-btn:hover{color:var(--text2);background:var(--bg3)}
 .tab-btn.active{color:var(--amber);border-top-color:var(--amber);background:rgba(245,166,35,.06)}
 .tab-btn.active .tab-icon{filter:none}
@@ -129,16 +139,19 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .ditem:hover{border-color:var(--border2);background:var(--bg3)}
 .ditem.sel{border-color:var(--amber);background:rgba(245,166,35,.08)}
 .ditem.locked{opacity:.3;cursor:not-allowed}
-.ditem.unaffordable{opacity:.4;filter:grayscale(.7)}
+.ditem.off{opacity:.4}
+.ditem.unaffordable{opacity:.8}
+.ditem.unaffordable .di{opacity:.55}
 .ditem .di{font-size:24px;line-height:1}
-.ditem .dn{font-size:var(--f4);color:var(--text3);white-space:nowrap}
+.ditem .dn{font-size:var(--f5);color:var(--text);white-space:nowrap}
 .ditem.sel .dn{color:var(--amber)}
 
 /* ── SIDE PANEL (Inventory, Machine, Rocket etc, infrequent reference panels) ── */
 .spanel{position:fixed;top:calc(var(--hud-h) + var(--sat));right:0;bottom:calc(var(--tab-h) + var(--sab));width:min(400px,100vw);padding-right:var(--sar);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
 .spanel.open{transform:translateX(0)}
 .ph{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:2px solid var(--border2);flex-shrink:0;background:#0f0f0f}
-.ph-title{color:var(--amber);font-size:var(--f8)}
+.ph-title{color:var(--amber);font-size:var(--f8);display:flex;align-items:center;gap:8px}
+.ph-title .uico,#mTitle .uico{width:20px;height:20px}
 .pbody::-webkit-scrollbar{width:3px}
 .pbody::-webkit-scrollbar-thumb{background:var(--border2)}
 
@@ -153,7 +166,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #mOverlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:500;display:flex;align-items:center;justify-content:center}
 .modal{background:var(--panel);border:2px solid var(--border2);width:min(440px,94vw);max-height:calc(100dvh - var(--sat) - var(--sab) - 24px);display:flex;flex-direction:column}
 .mh{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-bottom:1px solid var(--border)}
-.mh-title{color:var(--amber);font-size:var(--f8)}
+.mh-title{color:var(--amber);font-size:var(--f8);display:flex;align-items:center;gap:8px}
 .mb{padding:14px;overflow-y:auto;flex:1;line-height:1.8}
 .mf{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 
@@ -221,7 +234,19 @@ body.sheet-open #tutText,body.sheet-open .tut-skip{display:none}
 body.sheet-open #tutMini{display:block}
 .tab-badge:empty{display:none}
 .tab-badge{position:absolute;top:6px;right:calc(50% - 22px);min-width:14px;height:14px;line-height:14px;font-size:var(--f4);background:var(--red);color:#fff;border-radius:7px;padding:0 3px}
-.dc{font-size:var(--f3);color:var(--text3);white-space:nowrap;display:flex;align-items:center;gap:1px;max-width:92px;overflow:hidden;text-overflow:ellipsis}
+.dc{font-size:var(--f4);color:var(--text3);white-space:nowrap;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 5px;max-width:120px}
+.cc{display:inline-flex;align-items:center;gap:2px;font-size:var(--f4);white-space:nowrap}
+.cc.ok{color:var(--teal)} .cc.bad{color:#ff6b6b}
+.cc .pxi,.cc img{width:14px;height:14px}
+#invStrip{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);height:34px;display:flex;align-items:center;gap:4px;padding:0 6px;overflow-x:auto;scrollbar-width:none;background:rgba(10,10,10,.88);border-bottom:1px solid var(--border2);z-index:140;cursor:pointer}
+#invStrip::-webkit-scrollbar{display:none}
+.is-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid transparent;background:var(--bg3);flex-shrink:0;font-size:var(--f5);color:var(--text)}
+.is-chip b{font-weight:normal}
+.is-chip.need{border-color:var(--teal)} .is-chip.short{border-color:var(--red);color:#ff8a8a}
+.is-chip .pxi,.is-chip img{width:16px;height:16px}
+.is-empty{font-size:var(--f4);color:var(--text3);white-space:nowrap}
+#buildCost{flex-basis:100%;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;align-items:center;font-size:var(--f5);color:var(--text);pointer-events:none}
+#buildCost .bc-in{background:rgba(13,13,13,.92);border:1px solid var(--border2);padding:6px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 .dc.lock{display:block}
 .dc img.ico{width:11px!important;height:11px!important}
 .dc.bad{color:var(--red)}
@@ -244,24 +269,22 @@ body.sheet-open #tutMini{display:block}
 /* Portrait phones: every panel is a bottom sheet so the map stays visible above */
 @media not ((orientation:landscape) and (max-height:600px)){
   .spanel{top:auto;left:0;right:0;width:auto;height:min(64vh,calc(100% - var(--hud-h) - var(--sat) - var(--tab-h) - var(--sab) - 40px));
-    border-left:none;border-top:3px solid var(--border2);transform:translateY(calc(100% + var(--tab-h) + var(--sab)));box-shadow:0 -10px 30px rgba(0,0,0,.6)}
-  .spanel.open{transform:translateY(0)}
+    border-left:none;border-top:3px solid var(--border2);transform:translateY(calc(100% + var(--tab-h) + var(--sab)))}
+  .spanel.open{transform:translateY(0);box-shadow:0 -10px 30px rgba(0,0,0,.6)} /* shadow only when open: a closed sheet sits under the tab bar and darkened it */
   .spanel .ph::before{content:'';position:absolute;left:50%;top:5px;width:40px;height:4px;margin-left:-20px;background:var(--border2)}
   .spanel .ph{position:relative;padding-top:14px}
 }
 /* ── FLOATING CONTROLS (outside #wrap so the canvas never eats their taps) ── */
-#buildHUD{position:fixed;left:var(--cl);right:var(--cr);bottom:calc(var(--cb) + 10px);display:flex;gap:8px;align-items:center;justify-content:center;z-index:600;pointer-events:none;padding:0 12px}
+#buildHUD{position:fixed;left:var(--cl);right:var(--cr);bottom:calc(var(--cb) + 10px);display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;z-index:600;pointer-events:none;padding:0 12px}
 #buildHUD button{pointer-events:all;font-family:var(--font);font-size:var(--f8);border-radius:4px;min-height:48px;min-width:84px;padding:12px 16px;cursor:pointer;background:rgba(13,13,13,.95)}
 #buildRotateBtn{border:2px solid var(--amber);color:var(--amber)}
 #buildConfirmBtn{border:2px solid var(--teal);color:var(--teal)}
 #buildCancelBtn{border:1px solid var(--border2);color:var(--text2)}
-#undoBtn{position:fixed;right:calc(var(--cr) + 10px);bottom:calc(var(--cb) + 70px);z-index:601;width:52px;height:52px;border-radius:50%;border:2px solid var(--amber);background:rgba(13,13,13,.92);color:var(--amber);font-family:var(--font);font-size:20px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.6)}
-#undoBtn #undoCount{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 3px;border-radius:9px;background:var(--amber);color:#000;font-size:var(--f4);line-height:18px}
 #ghostBar{position:fixed;left:var(--cl);right:var(--cr);bottom:var(--cb);background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:8px 12px;display:flex;align-items:center;gap:8px;z-index:600}
 #ghostBar button{font-family:var(--font);font-size:var(--f7);padding:12px 18px;cursor:pointer;min-height:44px}
 #multiselBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600}
 /* Tutorial: a floating card over the top of the map, collapsible to a pill */
-#tutHint{position:fixed;top:calc(var(--ct) + 6px);left:calc(var(--cl) + 8px);right:calc(var(--cr) + 8px);max-width:560px;margin:0 auto;z-index:150;
+#tutHint{position:fixed;top:calc(var(--ct) + 40px);left:calc(var(--cl) + 8px);right:calc(var(--cr) + 8px);max-width:560px;margin:0 auto;z-index:150;
   background:rgba(22,15,4,.95);border:1px solid var(--amber);box-shadow:0 4px 18px rgba(0,0,0,.6);padding:8px 10px;display:flex;gap:8px;align-items:flex-start}
 #tutText{font-size:var(--f6);color:var(--amber);line-height:1.9;flex:1}
 #tutMini{display:none;font-size:var(--f6);color:var(--amber);flex:1}
@@ -369,10 +392,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 <!-- ══ TITLE ══ -->
 <div id="sTitle" class="screen">
   <canvas id="titleCanvas"></canvas>
+  <button id="titleMute" onclick="toggleTitleMusic()" title="Music">🔊</button>
   <div class="title-glow"></div>
   <div id="titleCaption"></div>
   <div class="title-card">
-    <span class="logo-icon">🏭</span>
+    <span class="logo-icon" data-ui="factory"></span>
     <div class="logo">
       <span class="logo-8">8-BIT</span>
       <span class="logo-rest">INDUSTRY</span>
@@ -381,13 +405,13 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:320px;margin:0 auto">
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
-      <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none">✨ STARDUST</button>
+      <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none"><span data-ui="stardust"></span>STARDUST</button>
       <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none">📲 INSTALL</button>
-        <button class="btn btn-sm" onclick="openBackup()" style="flex:1">🛟 BACKUP</button>
+        <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none"><span data-ui="install"></span>INSTALL</button>
+        <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.6.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -403,8 +427,9 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <div id="toolTip" class="hidden"></div>
   </div>
   <!-- Build mode controls, fixed, outside canvas touch zone, same pattern as ghostBar -->
-  <button id="undoBtn" class="hidden" onclick="undoLast()" title="Undo">↶<span id="undoCount"></span></button>
+  <div id="invStrip" onclick="showPanel('inv')" title="Inventory"></div>
   <div id="buildHUD" class="hidden">
+    <div id="buildCost"></div>
     <button id="buildRotateBtn" onclick="cycleDir()" style="display:none">↻ →</button>
     <button id="buildConfirmBtn" onclick="confirmPlace()" style="display:none">✓ PLACE</button>
     <button id="buildCancelBtn" onclick="cancelBuild()">✕ CANCEL</button>
@@ -422,11 +447,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   </div>
   <!-- Tab bar, always visible, replaces old toolbar -->
   <div id="tabBar">
-    <button class="tab-btn" id="tab-build"    onclick="switchTab('build')"><span class="tab-icon">🏗️</span>BUILD</button>
-    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon">✏️</span>EDIT</button>
-    <button class="tab-btn" id="tab-craft"    onclick="switchTab('craft')"><span class="tab-icon">🔨</span>CRAFT</button>
-    <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon">🔬</span>RESEARCH<span class="tab-badge" id="badge-research"></span></button>
-    <button class="tab-btn" id="tab-goal"     onclick="switchTab('goal')"><span class="tab-icon">🚀</span>GOAL<span class="tab-badge" id="badge-goal"></span></button>
+    <button class="tab-btn" id="tab-build"    onclick="switchTab('build')"><span class="tab-icon" data-ui="build"></span>BUILD</button>
+    <button class="tab-btn" id="tab-tools"    onclick="switchTab('tools')"><span class="tab-icon" data-ui="edit"></span>EDIT</button>
+    <button class="tab-btn" id="tab-craft"    onclick="switchTab('craft')"><span class="tab-icon" data-ui="craft"></span>CRAFT</button>
+    <button class="tab-btn" id="tab-research" onclick="switchTab('research')"><span class="tab-icon" data-ui="research"></span>RESEARCH<span class="tab-badge" id="badge-research"></span></button>
+    <button class="tab-btn" id="tab-goal"     onclick="switchTab('goal')"><span class="tab-icon" data-ui="goal"></span>GOAL<span class="tab-badge" id="badge-goal"></span></button>
   </div>
 </div>
 
@@ -451,60 +476,60 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 
 <!-- ══ PANELS ══ -->
 <div id="pCraft" class="spanel">
-  <div class="ph"><span class="ph-title">🔨 HAND CRAFT</span><button class="ph-x" onclick="togglePanel('craft')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="craft"></span>HAND CRAFT</span><button class="ph-x" onclick="togglePanel('craft')">✕</button></div>
   <div class="pbody" id="pCraftBody"></div>
 </div>
 
 <div id="pInv" class="spanel">
-  <div class="ph"><span class="ph-title">📦 INVENTORY</span><button class="ph-x" onclick="togglePanel('inv')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="inventory"></span>INVENTORY</span><button class="ph-x" onclick="togglePanel('inv')">✕</button></div>
   <div class="pbody" id="pInvBody"></div>
 </div>
 
 <div id="pResearch" class="spanel">
-  <div class="ph"><span class="ph-title">🔬 RESEARCH</span><button class="ph-x" onclick="togglePanel('research')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="research"></span>RESEARCH</span><button class="ph-x" onclick="togglePanel('research')">✕</button></div>
   <div class="pbody" id="pResBody"></div>
 </div>
 
 <div id="pRocket" class="spanel">
-  <div class="ph"><span class="ph-title" id="pRocketTitle">🚀 GOAL</span><button class="ph-x" onclick="togglePanel('rocket')">✕</button></div>
+  <div class="ph"><span class="ph-title" id="pRocketTitle"><span data-ui="goal"></span>GOAL</span><button class="ph-x" onclick="togglePanel('rocket')">✕</button></div>
   <div class="pbody" id="pRocketBody"></div>
 </div>
 
 <div id="pMachine" class="spanel">
-  <div class="ph"><span class="ph-title" id="pMachTitle">⚙️ MACHINE</span><button class="ph-x" onclick="togglePanel('machine')">✕</button></div>
+  <div class="ph"><span class="ph-title" id="pMachTitle"><span data-ui="settings"></span>MACHINE</span><button class="ph-x" onclick="togglePanel('machine')">✕</button></div>
   <div class="pbody" id="pMachBody"></div>
 </div>
 
 <div id="pDev" class="spanel" style="border-color:var(--purple)">
   <div class="ph" style="border-color:var(--purple)">
-    <span class="ph-title" style="color:var(--purple)">🛠 DEV MODE</span>
+    <span class="ph-title" style="color:var(--purple)"><span data-ui="dev"></span>DEV MODE</span>
     <button class="ph-x" onclick="togglePanel('dev')">✕</button>
   </div>
   <div class="pbody" id="pDevBody"></div>
 </div>
 
 <div id="pPerks" class="spanel">
-  <div class="ph"><span class="ph-title">⭐ PERKS</span><button class="ph-x" onclick="togglePanel('perks')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="perks"></span>PERKS</span><button class="ph-x" onclick="togglePanel('perks')">✕</button></div>
   <div class="pbody" id="pPerksBody"></div>
 </div>
 
 <div id="pStats" class="spanel">
-  <div class="ph"><span class="ph-title">📊 STATISTICS</span><button class="ph-x" onclick="togglePanel('stats')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="stats"></span>STATISTICS</span><button class="ph-x" onclick="togglePanel('stats')">✕</button></div>
   <div class="pbody" id="pStatsBody"></div>
 </div>
 
 <div id="pAchieve" class="spanel">
-  <div class="ph"><span class="ph-title">🏆 ACHIEVEMENTS</span><button class="ph-x" onclick="togglePanel('achieve')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="achievements"></span>ACHIEVEMENTS</span><button class="ph-x" onclick="togglePanel('achieve')">✕</button></div>
   <div class="pbody" id="pAchieveBody"></div>
 </div>
 
 <div id="pRecipes" class="spanel">
-  <div class="ph"><span class="ph-title">📖 RECIPE BOOK</span><button class="ph-x" onclick="togglePanel('recipes')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="recipes"></span>RECIPE BOOK</span><button class="ph-x" onclick="togglePanel('recipes')">✕</button></div>
   <div class="pbody" id="pRecipesBody"></div>
 </div>
 
 <div id="pBlueprint" class="spanel">
-  <div class="ph"><span class="ph-title">📐 BLUEPRINTS</span><button class="ph-x" onclick="togglePanel('blueprint')">✕</button></div>
+  <div class="ph"><span class="ph-title"><span data-ui="blueprints"></span>BLUEPRINTS</span><button class="ph-x" onclick="togglePanel('blueprint')">✕</button></div>
   <div class="pbody" id="pBlueprintBody"></div>
 </div>
 
@@ -548,7 +573,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.6.1';
+const VER      = '1.8.1';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -731,6 +756,7 @@ function musicStop(){
 
 function toggleMusic(){
   G.music=!G.music; saveGame();
+  PREFS.music=G.music; savePrefs(); // the title screen follows your last choice
   if(G.music) musicStart(); else musicStop();
   openSettings();
 }
@@ -747,6 +773,16 @@ function setMusicVol(v){
   const lbl=document.getElementById('musicVolLabel');
   if(lbl)lbl.textContent=Math.round(G.musicVol*100)+'%';
 }
+// Title screen music: browsers only allow audio after a tap, so it starts on the first one
+function onTitle(){const t=document.getElementById('sTitle');return !!t&&!t.classList.contains('hidden');}
+function titleMusic(){if(PREFS.music!==false&&!_music.running)musicStart();updateTitleMute();}
+document.addEventListener('pointerdown',()=>{if(onTitle()&&!_music.running&&PREFS.music!==false)titleMusic();},true);
+function toggleTitleMusic(){
+  PREFS.music=PREFS.music===false; savePrefs();
+  if(PREFS.music)musicStart(); else musicStop();
+  updateTitleMute();
+}
+function updateTitleMute(){const b=document.getElementById('titleMute');if(b)b.innerHTML=uiIcon(PREFS.music===false?'mute':'sound');}
 function toggleSfxMenu(){
   G.sfx=!G.sfx; saveGame();
   openSettings();
@@ -759,7 +795,8 @@ document.addEventListener('visibilitychange',()=>{
     musicStop();
     if(G&&tickId)saveGame();
   } else {
-    if(G&&G.music&&_music&&!_music.running) musicStart();
+    if(onTitle())titleMusic();
+    else if(G&&G.music&&_music&&!_music.running) musicStart();
   }
 });
 
@@ -1079,6 +1116,7 @@ const DRAWER_DEFS = {
   ],
   tools: [
     {label:'Tools', items:[
+      {id:'undo',name:'Undo',icon:'↶',noMachine:true,action:'undoLast()'},
       {id:'select',name:'Select',icon:'👆',noMachine:true},
       {id:'multisel',name:'Multi-Sel',icon:'⬚',noMachine:true},
       {id:'demolish',name:'Demolish',icon:'💥',noMachine:true},
@@ -2075,15 +2113,48 @@ function drawItem(ctx,id,x,y,sz){
   ctx.font=`${Math.floor(sz*.9)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(ITEMS[id]?.icon||'·',x,y);
 }
+// ── Inserters: a base plate (drawn facing right, rotated to the drop side) and an arm
+// sprite rotated to the swing angle. Arm pivot is at (1.5,2.5) in sprite pixels.
+function insBaseSpr(long){
+  return mkSpr(`insb:${long?1:0}`,16,16,({R,P,C,O})=>{
+    const acc=long?'#26c6a0':'#f5a623', dk=long?'#145a48':'#8a5c10';
+    R(1,1,14,14,'#262626'); R(1,1,14,1,'#3c3c3c'); R(1,1,1,14,'#343434'); R(1,14,14,1,'#141414'); R(14,1,1,14,'#1a1a1a');
+    for(let y=2;y<14;y++)P(2,y,(y>>1)%2?acc:'#101010');      // hazard stripe on the pick-up side
+    for(const[x,y]of[[4,3],[12,3],[4,12],[12,12]])P(x,y,'#555');
+    P(13,7,dk);P(13,8,dk);P(12,6,dk);P(12,9,dk);               // chevron toward the drop side
+    C(8,8,3,'#3a3a3a'); O(8,8,3,'#5e5e5e'); P(7,7,'#8a8a8a');
+  });
+}
+const INS_ARM_LEN={inserter:8,long_inserter:14};
+function insArmSpr(long,state){ // state 0 empty, 1 holding, 2 blocked
+  const L=long?INS_ARM_LEN.long_inserter:INS_ARM_LEN.inserter;
+  return mkSpr(`insa:${long?1:0}:${state}`,L+2,5,({R,P})=>{
+    const c=long?['#26c6a0','#b8fff0','#127a64']:['#f5a623','#ffd27a','#a86c08'];
+    R(1,1,L-2,3,c[0]); R(1,1,L-2,1,c[1]); R(1,3,L-2,1,c[2]);
+    for(let x=4;x<L-2;x+=4)P(x,2,c[2]);
+    R(0,1,3,3,'#5a5a5a'); P(1,2,'#a0a0a0');                    // shoulder joint
+    const claw=state===2?'#e53935':'#b0b0b0';
+    R(L-1,1,1,3,claw);
+    if(state===1){P(L,1,claw);P(L,3,claw);}                    // gripping
+    else{P(L,0,claw);P(L+1,0,claw);P(L,4,claw);P(L+1,4,claw);} // open
+  });
+}
+function drawInsArm(g,long,state,cx,cy,ang,s){
+  const spr=insArmSpr(long,state);
+  g.save(); g.translate(cx,cy); g.rotate(ang);
+  g.drawImage(spr,-1.5*s,-2.5*s,spr.width*s,spr.height*s); g.restore();
+}
+function insIconArt(a,f,long){
+  a.g.imageSmoothingEnabled=false;
+  a.g.drawImage(insBaseSpr(long),0,0);
+  drawInsArm(a.g,long,f%2,8,8,-Math.PI/2+[-.7,-.25,.25,.7][f],long?.6:.85);
+}
+
 // Art for machines the renderer draws by hand (belts, inserters, pipes…): used for icons and ghosts
 Object.assign(MACHINE_ART,{
   belt(a,f){a.g.drawImage(beltSpr(f),0,0);},
-  inserter(a,f){const{R,C,L,P}=a;R(0,0,16,16,'#141414');R(4,12,8,3,'#3a3a3a');C(8,11,2,'#777');
-    const t=-Math.PI/2+[-.6,-.2,.2,.6][f];const x=8+Math.round(Math.cos(t)*7),y=11+Math.round(Math.sin(t)*7);
-    L(8,11,x,y,'#f5a623');L(9,11,x+1,y,'#c88a10');R(x-1,y-1,3,2,'#f5c400');},
-  long_inserter(a,f){const{R,C,L}=a;R(0,0,16,16,'#141414');R(2,12,12,3,'#1a3a30');C(8,12,2,'#26c6a0');
-    const t=-Math.PI/2+[-.8,-.3,.3,.8][f];const x=8+Math.round(Math.cos(t)*9),y=12+Math.round(Math.sin(t)*9);
-    L(8,12,x,y,'#26c6a0');L(9,12,x+1,y,'#1a8a6a');R(x-1,y-1,3,2,'#b8fff0');},
+  inserter(a,f){insIconArt(a,f,false);},
+  long_inserter(a,f){insIconArt(a,f,true);},
   splitter(a,f){const{R,P,L}=a;R(0,0,16,32,'#141414');R(1,1,14,30,'#2a1e10');R(1,1,14,1,'#4a3420');
     for(const y of[8,24]){R(9,y-2,6,4,'#3a2a18');P(14,y,'#e67e22');P(13,y-1,'#e67e22');P(13,y+1,'#e67e22');}
     L(2,16,6,16,'#e67e22');L(6,16,9,8,'#e67e22');L(6,16,9,24,'#e67e22');
@@ -2094,6 +2165,85 @@ Object.assign(MACHINE_ART,{
     for(let k=0;k<4;k++){P((k*4+f)%16,7,'#bdf0ff');P(7,(k*4+f)%16,'#bdf0ff');}},
 });
 
+// Point-in-polygon test for star and burst shapes
+function uiInPoly(px,py,pts){let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const[xi,yi]=pts[i],[xj,yj]=pts[j];if((yi>py)!==(yj>py)&&px<(xj-xi)*(py-yi)/(yj-yi)+xi)c=!c;}return c;}
+// ── UI icons: tabs, tools, menu tiles, HUD gauges (pixel art, 16×16) ──
+const UI_ART={
+  // bottom tabs
+  build({R,P,L}){R(2,14,9,2,'#4a4a4a');R(4,3,2,11,'#f5a623');for(let y=4;y<14;y+=2)P(4+(y>>1)%2,y,'#8a5c10');
+    R(3,2,12,2,'#f5a623');R(1,2,2,3,'#7a7a7a');for(let x=6;x<14;x+=2)P(x,3,'#8a5c10');
+    L(12,4,12,8,'#cfcfcf');R(11,9,3,1,'#9a9a9a');P(11,10,'#9a9a9a');P(13,10,'#9a9a9a');R(10,11,5,2,'#c0392b');},
+  edit({P,L,R}){for(let k=0;k<3;k++)L(3+k,11+k-1,11+k,3+k-1,['#ffd27a','#f5a623','#a86c08'][k]);
+    L(11,2,13,4,'#ff8fa3');L(12,2,14,4,'#ff8fa3');P(13,2,'#cfcfcf');P(12,3,'#cfcfcf');
+    P(2,13,'#3a3a3a');P(3,13,'#e8d5b0');P(2,12,'#e8d5b0');P(3,12,'#e8d5b0');},
+  craft({R,L,P}){for(let k=0;k<2;k++)L(3+k,14,10+k,7,k?'#6b4226':'#9a6a3a');
+    R(7,2,8,5,'#9aa4b0');R(7,2,8,1,'#d0dae6');R(7,6,8,1,'#5a626e');R(5,3,2,3,'#7a828e');P(14,3,'#d0dae6');},
+  research({R,P,C}){R(6,1,4,1,'#cfcfcf');R(7,2,2,5,'#9ad8ff');P(6,2,'#7aa8c8');P(9,2,'#7aa8c8');
+    for(let y=7;y<14;y++){const w=(y-6);R(8-w,y,w*2,1,y>9?'#26c6a0':'#9ad8ff');P(8-w,y,'#7aa8c8');P(7+w,y,'#7aa8c8');}
+    R(1,14,14,1,'#7aa8c8');P(6,11,'#c8fff0');P(9,12,'#c8fff0');P(8,9,'#c8fff0');},
+  goal({R,P}){R(6,3,4,9,'#e8e8e8');R(7,1,2,2,'#e53935');P(6,3,'#e53935');P(9,3,'#e53935');R(10,3,1,9,'#a0a0a0');
+    R(7,5,2,2,'#26c6a0');R(4,9,2,4,'#c0392b');R(10,9,2,4,'#c0392b');R(7,12,2,1,'#7a7a7a');
+    R(7,13,2,2,'#f5a623');P(6,14,'#ffd27a');P(9,14,'#ffd27a');P(7,15,'#e53935');P(8,15,'#ffd27a');},
+  // EDIT tools
+  select({R,P}){const rows=[1,2,3,4,5,6,7,8,9,6,6,3,2];
+    rows.forEach((w,y)=>{for(let x=0;x<w;x++)P(4+x,2+y,x===0||x===w-1||y===rows.length-1?'#8a8a8a':'#f0f0f0');});
+    R(8,14,2,2,'#f0f0f0');R(7,13,2,2,'#f0f0f0');},
+  multisel({R,P}){for(let i=1;i<15;i+=3){R(i,1,2,1,'#26c6a0');R(i,14,2,1,'#26c6a0');R(1,i,1,2,'#26c6a0');R(14,i,1,2,'#26c6a0');}
+    R(5,5,3,3,'#42a5f5');R(9,8,3,3,'#42a5f5');R(5,9,2,2,'#7a7a7a');},
+  demolish({P,C}){const pts=[];for(let i=0;i<16;i++){const r=i%2?3.6:7.6,t=i*Math.PI/8+.2;pts.push([7.5+Math.cos(t)*r,7.5+Math.sin(t)*r]);}
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(uiInPoly(x+.5,y+.5,pts))P(x,y,'#e53935');
+    C(8,8,3,'#f5a623');C(8,8,1,'#fff3b0');},
+  rotate({P,R}){for(let y=0;y<16;y++)for(let x=0;x<16;x++){const dx=x-7.5,dy=y-7.5,d=Math.hypot(dx,dy);if(d>=4.6&&d<=6.6&&!(dx<0&&dy<0))P(x,y,d>5.6?'#f5a623':'#ffd27a');}
+    R(0,6,5,1,'#ffd27a');R(1,5,3,1,'#ffd27a');P(2,4,'#ffd27a');},
+  move({R,P}){R(7,2,2,12,'#cfcfcf');R(2,7,12,2,'#cfcfcf');
+    for(const[x,y,dx,dy]of[[8,0,0,1],[8,15,0,-1],[0,8,1,0],[15,8,-1,0]]){for(let k=0;k<3;k++){if(dx===0){R(x-1-k,y+dy*k,2+k*2,1,'#f5a623');}else{R(x+dx*k,y-1-k,1,2+k*2,'#f5a623');}}}},
+  undo({P,R}){R(4,4,7,2,'#f5a623');R(4,4,7,1,'#ffd27a');R(5,11,6,2,'#f5a623');R(5,12,6,1,'#a86c08');
+    for(let y=3;y<15;y++)for(let x=10;x<16;x++){const d=Math.hypot(x-10,y-8.5);if(d>=2.6&&d<=4.6&&x>=11)P(x,y,d<3.6?'#ffd27a':'#f5a623');}
+    R(3,2,1,6,'#ffd27a');R(2,3,1,4,'#ffd27a');R(1,4,1,2,'#ffd27a');R(4,3,1,4,'#f5a623');},
+  blueprint({R,P}){R(1,2,14,12,'#1e5aa8');R(1,2,14,1,'#4a8ae0');for(let x=3;x<15;x+=3)R(x,3,1,11,'#3a7ad0');for(let y=5;y<14;y+=3)R(1,y,14,1,'#3a7ad0');
+    R(4,6,5,4,'#e8f0ff');R(5,7,3,2,'#1e5aa8');R(10,9,3,3,'#e8f0ff');},
+  // ☰ menu tiles
+  inventory({R,P}){R(1,4,14,11,'#8a5a2c');R(1,4,14,2,'#b07a40');R(1,9,14,1,'#5a3a1a');R(7,4,2,11,'#5a3a1a');R(6,8,4,3,'#d0b070');P(7,9,'#5a3a1a');P(8,9,'#5a3a1a');R(1,14,14,1,'#3a2410');},
+  perks({P}){const pts=[];for(let i=0;i<10;i++){const r=i%2?3.3:7.6,t=-Math.PI/2+i*Math.PI/5;pts.push([7.5+Math.cos(t)*r,8.4+Math.sin(t)*r]);}
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(uiInPoly(x+.5,y+.5,pts))P(x,y,y<7||Math.abs(x-7.5)<1.5?'#ffd27a':'#f5a623');},
+  achievements({R,P}){R(4,1,8,7,'#f5c400');R(4,1,8,1,'#fff3b0');R(5,8,6,1,'#d4a000');R(7,9,2,3,'#d4a000');R(4,12,8,3,'#8a5a2c');R(5,13,6,1,'#f5c400');
+    R(1,2,3,1,'#d4a000');R(1,2,1,3,'#d4a000');R(2,5,2,1,'#d4a000');R(12,2,3,1,'#d4a000');R(14,2,1,3,'#d4a000');R(12,5,2,1,'#d4a000');P(6,3,'#fff3b0');},
+  stats({R}){R(1,14,14,1,'#7a7a7a');R(2,9,3,5,'#26c6a0');R(6,5,3,9,'#f5a623');R(10,2,3,12,'#42a5f5');R(2,9,3,1,'#8af0d0');R(6,5,3,1,'#ffd27a');R(10,2,3,1,'#9ad8ff');},
+  recipes({R,P}){R(1,3,6,11,'#e8e0c8');R(9,3,6,11,'#e8e0c8');R(7,3,2,12,'#8a5a2c');R(1,14,14,1,'#8a5a2c');
+    for(let y=5;y<13;y+=2){R(2,y,4,1,'#9a9080');R(10,y,4,1,'#9a9080');}P(3,5,'#e53935');P(11,7,'#26c6a0');},
+  blueprints(a){UI_ART.blueprint(a);},
+  stardust({P,R}){const sp=(cx,cy,r,c)=>{for(let k=-r;k<=r;k++){P(cx+k,cy,c);P(cx,cy+k,c);}P(cx,cy,'#ffffff');};
+    sp(6,6,4,'#c8a0ff');sp(12,11,3,'#ab47bc');sp(3,13,1,'#e8d8ff');sp(13,3,1,'#e8d8ff');P(5,5,'#e8d8ff');P(7,7,'#e8d8ff');},
+  settings({C,P,R}){for(let i=0;i<8;i++){const t=i*Math.PI/4;R(Math.round(8+Math.cos(t)*6)-1,Math.round(8+Math.sin(t)*6)-1,2,2,'#9aa4b0');}
+    C(8,8,5,'#9aa4b0');C(8,8,2,'#2a2a2a');P(6,5,'#d0dae6');P(5,6,'#d0dae6');},
+  saves({R,P}){R(1,1,14,14,'#2a5aa8');R(1,1,14,1,'#4a8ae0');R(4,1,8,5,'#cfcfcf');R(9,2,2,3,'#2a2a2a');R(3,8,10,7,'#e8e8e8');for(let y=10;y<14;y+=2)R(4,y,8,1,'#9a9a9a');P(14,1,'#0d0d0d');},
+  backup({P}){for(let y=0;y<16;y++)for(let x=0;x<16;x++){const dx=x-7.5,dy=y-7.5,d=dx*dx+dy*dy;if(d<10||d>54)continue;
+    const q=Math.floor((Math.atan2(dy,dx)+Math.PI/4+2*Math.PI)/(Math.PI/2))%2;P(x,y,q?'#e53935':'#f0f0f0');}},
+  dev({R,P,L}){R(3,3,10,10,'#5a2a7a');R(3,3,10,1,'#8a4ab0');for(let i=4;i<13;i+=2){P(i,1,'#cfcfcf');P(i,2,'#cfcfcf');P(i,13,'#cfcfcf');P(i,14,'#cfcfcf');P(1,i,'#cfcfcf');P(2,i,'#cfcfcf');P(13,i,'#cfcfcf');P(14,i,'#cfcfcf');}
+    R(5,6,2,4,'#e8d8ff');R(9,6,2,4,'#e8d8ff');R(6,10,4,1,'#e8d8ff');},
+  devlock({R,O}){O(8,6,4,'#9aa4b0');O(8,6,3,'#9aa4b0');R(3,7,10,8,'#f5a623');R(3,7,10,1,'#ffd27a');R(7,9,2,3,'#3a2a10');R(3,14,10,1,'#a86c08');},
+  install({R,P}){R(4,1,8,14,'#3a3a3a');R(5,2,6,10,'#26c6a0');R(7,13,2,1,'#7a7a7a');R(7,4,2,4,'#0d3a30');R(5,7,6,1,'#0d3a30');R(6,8,4,1,'#0d3a30');P(7,9,'#0d3a30');P(8,9,'#0d3a30');},
+  // HUD gauges
+  power({P}){const px=[[9,0],[8,1],[9,1],[7,2],[8,2],[6,3],[7,3],[5,4],[6,4],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5],[11,5],[8,6],[9,6],[10,6],[7,7],[8,7],[9,7],[6,8],[7,8],[8,8],[5,9],[6,9],[7,9],[5,10],[6,10],[4,11],[5,11],[4,12],[3,13]];
+    for(const[x,y]of px)P(x+1,y+1,'#ffd600');for(const[x,y]of px.slice(0,8))P(x+1,y+1,'#fff3b0');},
+  smog({C,R}){C(5,9,3,'#8a8070');C(10,8,4,'#9a9080');C(8,6,3,'#aaa090');R(2,10,12,3,'#8a8070');C(11,5,1,'#5a5040');C(3,5,1,'#5a5040');},
+  pressure({P}){for(let y=1;y<15;y++){const w=y<6?Math.ceil(y*0.7):y<12?5:5-(y-11)*1.4;for(let x=-w;x<=w;x++)P(8+Math.round(x),y,x<-w+2&&y>6?'#9ad8ff':'#2a9ac8');}P(6,9,'#e8f8ff');P(6,10,'#e8f8ff');},
+  sun({C,P,R}){C(8,8,4,'#ffd600');R(6,6,2,2,'#fff3b0');for(let i=0;i<8;i++){const t=i*Math.PI/4;P(Math.round(8+Math.cos(t)*6.5),Math.round(8+Math.sin(t)*6.5),'#f5a623');P(Math.round(8+Math.cos(t)*7.4),Math.round(8+Math.sin(t)*7.4),'#f5a623');}},
+  moon({P}){for(let y=0;y<16;y++)for(let x=0;x<16;x++){const a=(x-7.5)**2+(y-7.5)**2<=40,b=(x-10.5)**2+(y-5)**2<=26;if(a&&!b)P(x,y,x<5?'#9aa4b8':'#cfd8e8');}},
+  sprout({R,P}){R(7,7,2,8,'#3f9a3f');for(let k=0;k<4;k++){R(3+k,5+k%2,1,2,'#6ad86a');R(12-k,3+k%2,1,2,'#6ad86a');}R(3,5,4,2,'#6ad86a');R(9,3,4,2,'#8ae07a');R(4,14,8,1,'#6b4226');},
+  wilt({R,P}){R(7,6,2,9,'#6a5a2a');R(3,8,4,2,'#8a6a2a');R(9,5,4,2,'#9a7a3a');P(2,10,'#8a6a2a');P(13,7,'#9a7a3a');R(4,14,8,1,'#6b4226');},
+  heat({R,C,P}){R(7,1,3,10,'#e8e8e8');R(8,3,1,8,'#e53935');C(8,12,3,'#e53935');R(7,1,3,1,'#9a9a9a');P(7,11,'#ff8a8a');for(let y=3;y<10;y+=2)P(10,y,'#9a9a9a');},
+  // title
+  factory({R,P,C}){C(4,2,1,'#5e5e5e');C(11,3,1,'#4e4e4e');R(3,3,2,6,'#4a4a4a');R(3,5,2,1,'#e53935');R(10,4,2,5,'#4a4a4a');R(10,6,2,1,'#e53935');
+    for(let k=0;k<3;k++)for(let i=0;i<5;i++){const h=Math.floor(i*.6);R(1+k*5+i,8-h,1,h+1,i===4?'#ffd27a':'#f5a623');}
+    R(1,9,14,6,'#2a2a2a');R(1,9,14,1,'#a86c08');for(const x of[3,7])R(x,11,2,2,'#26c6a0');R(11,11,3,4,'#151515');P(13,13,'#f5a623');R(0,15,16,1,'#5a5a5a');},
+  sound({R,P}){R(2,6,3,4,'#cfcfcf');for(let k=0;k<4;k++)R(5+k,5-k,1,6+k*2,'#cfcfcf');
+    for(const[x,h]of[[11,4],[13,7]])for(let y=8-h/2;y<8+h/2;y++)P(x,Math.round(y),'#26c6a0');},
+  mute({R,P}){R(2,6,3,4,'#7a7a7a');for(let k=0;k<4;k++)R(5+k,5-k,1,6+k*2,'#7a7a7a');for(let k=0;k<5;k++){P(10+k,6+k,'#e53935');P(14-k,6+k,'#e53935');}},
+};
+function uiSpr(name){const f=UI_ART[name];return f?mkSpr(`ui:${name}`,16,16,a=>f(a)):null;}
+function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cls}" src="${sprURL('ui:'+name,s)}" alt="">`:'';}
+
 // ═══════════════════════════════════════════════════
 //  DISPLAY PREFS (per device, not per save)
 // ═══════════════════════════════════════════════════
@@ -2101,7 +2251,7 @@ Object.assign(MACHINE_ART,{
 // Lower values draw fewer pixels per frame, which is most of the battery cost.
 const PREFS_KEY='ebi_prefs';
 const RES_STEPS=[1,.75,.5,.35,.25,.1];
-const PREFS=(()=>{const d={fps:60,res:1,haptics:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
 function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
@@ -2845,17 +2995,9 @@ function draw(){
     const px=m.x*ts-cx, py=m.y*ts-cy;
     if(px+ts<0||py+ts<0||px>W||py>H)continue;
     const isLong=m.type==='long_inserter';
-    const baseCol=isLong?'#26c6a0':'#666';
-    const borderCol=isLong?'#1a7a5a':'#444';
-
-    // Base tile
-    ctx.fillStyle='#141414'; ctx.fillRect(px,py,ts,ts);
-    ctx.strokeStyle=borderCol; ctx.lineWidth=1; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
-
-    // Base circle
-    const bcx=px+ts/2, bcy=py+ts/2, brad=Math.max(2,ts*.12);
-    ctx.fillStyle=baseCol;
-    ctx.beginPath(); ctx.arc(bcx,bcy,brad,0,Math.PI*2); ctx.fill();
+    const sc=ts/16;
+    ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
+    ctx.drawImage(insBaseSpr(isLong),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
 
     // Arm, state machine driven
     const[dvx,dvy]=D_VEC[m.dir];
@@ -2863,42 +3005,16 @@ function draw(){
     const srcAngle=destAngle+Math.PI;
     const arm=m._arm||(m._arm={state:'idle',stateStart:now,item:null});
     const elapsed=now-arm.stateStart;
-    function insEase(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
-    let curAngle,isMoving,isWaiting;
-    if(arm.state==='idle'){
-      curAngle=srcAngle; isMoving=false; isWaiting=false;
-    } else if(arm.state==='grabbing'){
-      const p=insEase(Math.min(1,elapsed/insMs(INS_GRAB_MS)));
-      curAngle=srcAngle+(destAngle-srcAngle)*p; isMoving=true; isWaiting=false;
-    } else if(arm.state==='depositing'){
-      curAngle=destAngle; isMoving=false; isWaiting=false;
-    } else if(arm.state==='waiting'){
-      curAngle=destAngle; isMoving=false; isWaiting=true;
-    } else {
-      const p=insEase(Math.min(1,elapsed/insMs(INS_RETURN_MS)));
-      curAngle=destAngle+(srcAngle-destAngle)*p; isMoving=true; isWaiting=false;
-    }
-    // Long inserter has longer arm
-    const armLen=Math.max(4,isLong?ts*.82:ts*.40);
-    const ax=bcx+Math.cos(curAngle)*armLen;
-    const ay=bcy+Math.sin(curAngle)*armLen;
-    const hasItem=!!arm.item;
-    const armColor=isWaiting?'#e53935':hasItem||isMoving?(isLong?'#26c6a0':'#f5a623'):(isLong?'#1a7a5a':'#777');
-    ctx.strokeStyle=armColor;
-    ctx.lineWidth=Math.max(1.5,ts*.07);
-    ctx.beginPath(); ctx.moveTo(bcx,bcy); ctx.lineTo(ax,ay); ctx.stroke();
-    const clawR=Math.max(2,ts*.10);
-    ctx.fillStyle=isWaiting?'#e53935':hasItem||isMoving?(isLong?'#26c6a0':'#f5a623'):(isLong?'#26c6a0':'#999');
-    ctx.beginPath(); ctx.arc(ax,ay,clawR,0,Math.PI*2); ctx.fill();
-
-    if(hasItem&&ts>18){
-      drawItem(ctx,arm.item,ax,ay,ts*.3);
-    }
-    if(ts>32){
-      ctx.fillStyle=isLong?'rgba(38,198,160,.5)':'rgba(136,136,136,.5)';
-      ctx.font=`${Math.floor(ts*.22)}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(D_ARR[m.dir],px+ts/2,py+ts*.82);
+    const insEase=t=>t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
+    let curAngle=srcAngle;
+    if(arm.state==='grabbing')curAngle=srcAngle+(destAngle-srcAngle)*insEase(Math.min(1,elapsed/insMs(INS_GRAB_MS)));
+    else if(arm.state==='depositing'||arm.state==='waiting')curAngle=destAngle;
+    else if(arm.state==='returning')curAngle=destAngle+(srcAngle-destAngle)*insEase(Math.min(1,elapsed/insMs(INS_RETURN_MS)));
+    const bcx=px+ts/2, bcy=py+ts/2;
+    drawInsArm(ctx,isLong,arm.state==='waiting'?2:arm.item?1:0,bcx,bcy,curAngle,sc);
+    if(arm.item&&ts>18){
+      const reach=(INS_ARM_LEN[m.type]-.5)*sc;
+      drawItem(ctx,arm.item,bcx+Math.cos(curAngle)*reach,bcy+Math.sin(curAngle)*reach,ts*.3);
     }
   }
 
@@ -3632,12 +3748,8 @@ function undoEnd(){const g=undoGroup;undoGroup=null;if(g&&g.length)pushUndo(g);}
 function pushUndo(ops){undoStack.push(ops);if(undoStack.length>UNDO_MAX)undoStack.shift();updateUndoBtn();}
 function clearUndo(){undoStack=[];undoGroup=null;updateUndoBtn();}
 function posSnap(m){return{id:m.id,x:m.x,y:m.y,dir:m.dir};}
-function updateUndoBtn(){
-  const b=document.getElementById('undoBtn'); if(!b)return;
-  const show=undoStack.length>0&&(activeTab==='build'||activeTab==='tools');
-  b.classList.toggle('hidden',!show);
-  const n=document.getElementById('undoCount'); if(n)n.textContent=undoStack.length;
-}
+// Undo lives in the EDIT tab; its card shows how many steps are left
+function updateUndoBtn(){if(activeTab==='tools')buildDrawer();}
 // Put machines at recorded positions/directions, all or nothing
 function relocate(list){
   const ms=list.map(e=>G.machines[e.id]).filter(Boolean);
@@ -3913,7 +4025,7 @@ function gameTick(){
   const nowMs=performance.now();
   // Skipped while a finger/button is down: rebuilding a panel mid-tap swaps the
   // button under the finger and the tap is silently lost
-  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();updateUndoBtn();}
+  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();if(MDEFS[activeTool])updateBuildHUD();}
   if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
@@ -3980,11 +4092,12 @@ function runMachine(m){
     return;
   }
   if(m.type==='burner'){
+    // 1 coal per 6s, so one coal Miner (1 coal per 2s) keeps three Burners running
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
       const hasPowerConsumers=Object.values(G.machines).some(mm=>mm.active&&MDEFS[mm.type]?.power>0);
-      if(G.tick%8===0&&hasPowerConsumers) m.inBuf.coal--;
+      if(G.tick%BURNER_COAL_TICKS===0&&hasPowerConsumers) m.inBuf.coal--;
     }
     return;
   }
@@ -4605,21 +4718,29 @@ function runBelts(){
     }
   }
 
-  // Inserters every 4 ticks
-  if(G.tick%4!==0)return;
+  // Inserters every tick. (Every 4 ticks made each arm phase wait for the next check,
+  // so a 1.7s swing took 4s and an inserter moved 1 item per 4s.)
   for(const m of Object.values(G.machines)){
     if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
   }
 }
 
+// Burner fuel use: 1 coal per this many ticks (24 = 6s). It used to be 8 (2s), the same as a
+// Miner's output, so the Miner + Inserter + Burner loop the tutorial teaches always ran dry.
+const BURNER_COAL_TICKS=24;
 // Inserter arm state machine constants (real ms)
 const INS_GRAB_MS   = 800;
 const INS_DEPOSIT_MS= 80;
 const INS_RETURN_MS = 800;
 function insMs(ms){return ms/(G?.devTickSpeed||1);}
 
+// One tick can finish several phases (grab, drop, return, grab again); time left over
+// from a finished phase carries into the next, so the arm keeps its real 1.7s cycle
 function runInserter(m){
   if(powerRatio()===0)return;
+  for(let k=0;k<5;k++){const st=m._arm?.state; stepInserter(m); if(!m._arm||m._arm.state===st)break;}
+}
+function stepInserter(m){
 
   const[dvx,dvy]=D_VEC[m.dir];
   const reach=m.type==='long_inserter'?2:1;
@@ -4658,11 +4779,11 @@ function runInserter(m){
       }
     }
     if(!item)return;
-    arm.state='grabbing'; arm.stateStart=now; arm.item=item;
+    arm.state='grabbing'; arm.stateStart=Math.max(arm.stateStart,now-insMs(TICK_MS)); arm.item=item;
     m.lastTransfer=G.tick;
 
   } else if(arm.state==='grabbing'){
-    if(now-arm.stateStart>=insMs(INS_GRAB_MS)){arm.state='depositing';arm.stateStart=now;}
+    if(now-arm.stateStart>=insMs(INS_GRAB_MS)){arm.state='depositing';arm.stateStart+=insMs(INS_GRAB_MS);}
 
   } else if(arm.state==='depositing'){
     if(now-arm.stateStart<insMs(INS_DEPOSIT_MS))return;
@@ -4697,7 +4818,7 @@ function runInserter(m){
     }
 
   } else if(arm.state==='returning'){
-    if(now-arm.stateStart>=insMs(INS_RETURN_MS)){arm.state='idle';arm.stateStart=now;}
+    if(now-arm.stateStart>=insMs(INS_RETURN_MS)){arm.state='idle';arm.stateStart+=insMs(INS_RETURN_MS);}
   }
 }
 
@@ -4761,44 +4882,67 @@ function setHtml(el,html){
   if(el._html===html&&el.firstChild===el._first)return;
   el.innerHTML=html; el._html=html; el._first=el.firstChild;
 }
+// Cost as icon + have/need chips (green enough, red short); a machine already built in
+// CRAFT shows READY instead, since placing it uses that first
+function costChips(cost,type){
+  if(type&&(G.crafted[type]||0)>0)return `<span class="cc ok">✓ ${G.crafted[type]} READY</span>`;
+  const e=Object.entries(cost||{});
+  if(!e.length)return `<span class="cc ok">FREE</span>`;
+  return e.map(([k,n])=>{const h=G.inv[k]||0;return `<span class="cc ${h>=n?'ok':'bad'}">${iconHtml(k)}${fmt(h)}/${n}</span>`;}).join('');
+}
+// Resource strip under the top bar: everything you hold, so plates and gears are always in view.
+// Items the selected build needs are outlined (red when short). Tap → inventory.
+const STRIP_CATS=new Set(['raw','smelted','processed','parts','science']);
+function updateInvStrip(){
+  const el=document.getElementById('invStrip'); if(!el||!G)return;
+  const need=MDEFS[activeTool]&&!(G.crafted[activeTool]>0)?MDEFS[activeTool].cost:{};
+  const zc=zoneDef().partsCat;
+  const ids=Object.keys(ITEMS).filter(id=>(G.inv[id]||0)>0&&(STRIP_CATS.has(ITEMS[id].cat)||ITEMS[id].cat===zc)||need[id]);
+  const html=ids.length?ids.map(id=>{
+    const h=G.inv[id]||0, n=need[id];
+    return `<span class="is-chip${n?(h>=n?' need':' short'):''}">${iconHtml(id)}<b>${fmt(h)}</b></span>`;}).join('')
+    :`<span class="is-empty">Inventory empty. Tap an ore tile to mine.</span>`;
+  setHtml(el,html);
+}
 function updateHUD(){
   const el=document.getElementById('hudRes');
   const free=G.power.out-G.power.in;
   const hasConsumers=G.power.in>0;
   const pwrLabel=hasConsumers?(free>=0?`+${fmtKW(free)}`:`-${fmtKW(-free)}`):fmtKW(G.power.out);
-  let html=`<div class="hres"><span class="hres-icon">⚡</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
+  let html=`<div class="hres"><span class="hres-icon">${uiIcon('power')}</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   html+=hudHazardsHtml();
   setHtml(el,html);
+  updateInvStrip();
 }
 
 // Zone hazard gauges shown next to power in the HUD
 function hudHazardsHtml(){
   let html='';
-  const gauge=(icon,val,col)=>`<div class="hres" style="margin-left:4px"><span class="hres-icon">${icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
+  const gauge=(icon,val,col)=>`<div class="hres" style="margin-left:4px"><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
   if(zoneHas('smog')){
     const smog=Math.round(G.smog||0);
-    html+=gauge('🌫️',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)');
+    html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)');
   }
   if(zoneHas('pressure')){
     const n=worstNet();
-    if(n){const pr=Math.round(pressureOf(n));html+=gauge('💧',`${pr}%`,n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)');}
+    if(n){const pr=Math.round(pressureOf(n));html+=gauge('pressure',`${pr}%`,n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)');}
   }
   if(zoneHas('decay')){
     const living=Object.values(G.machines).filter(m=>MDEFS[m.type]?.living);
     const sick=living.filter(m=>m.withered||(m.vit||0)<25).length;
-    if(living.length)html+=gauge(sick?'🥀':'🌱',sick?`${sick}`:`${living.length}`,sick?'var(--red)':'var(--green)');
+    if(living.length)html+=gauge(sick?'wilt':'sprout',sick?`${sick}`:`${living.length}`,sick?'var(--red)':'var(--green)');
   }
   if(zoneHas('heat')){
     const reactors=Object.values(G.machines).filter(m=>m.type==='reactor');
     if(reactors.length){
       const hot=Math.round(Math.max(...reactors.map(m=>m.heat||0)));
       const scram=reactors.some(m=>m.scram>0);
-      html+=gauge('🌡️',scram?'SCRAM':`${hot}%`,scram||hot>80?'var(--red)':hot>50?'var(--amber)':'var(--teal)');
+      html+=gauge('heat',scram?'SCRAM':`${hot}%`,scram||hot>80?'var(--red)':hot>50?'var(--amber)':'var(--teal)');
     }
   }
   if(zoneHas('glow')){
     const secs=glowSecsLeft();
-    html+=gauge(glowBright()?'☀️':'🌑',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)');
+    html+=gauge(glowBright()?'sun':'moon',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)');
   }
   return html;
 }
@@ -4857,7 +5001,6 @@ function updateSelectBtn(){
 // Tabs that open a panel instead of the drawer
 const TAB_PANELS={craft:'craft',research:'research',goal:'rocket'};
 function switchTab(tab){
-  setTimeout(updateUndoBtn,0);
   const drawer=document.getElementById('tabDrawer');
   if(activeTab===tab){
     // Toggle off, close drawer, clear active tab
@@ -4925,9 +5068,16 @@ function buildDrawerItems(cats,safeCatIdx){
     const lk=locked?'locked':'';
     const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
     const sub=!def?'':locked?`<span class="dc lock">🔒 ${TECHS[def.unlock]?.name||''}</span>`
-      :`<span class="dc${ua?' bad':''}">${Object.entries(def.cost).slice(0,3).map(([k,v])=>`${v}${iconHtml(k)}`).join(' ')}</span>`;
+      :`<span class="dc">${costChips(def.cost,item.id)}</span>`;
+    if(item.action){ // one-tap actions (Undo) rather than tools
+      const n=item.id==='undo'?undoStack.length:1;
+      return `<div class="ditem${n?'':' off'}" onclick="${item.action}">
+      <span class="di">${uiIcon(item.id)}</span>
+      <span class="dn">${item.name}</span><span class="dc">${n?`${n} step${n>1?'s':''}`:'nothing yet'}</span>
+    </div>`;
+    }
     return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
-      <span class="di">${iconHtml(item.id,item.icon)}</span>
+      <span class="di">${UI_ART[item.id]&&!MDEFS[item.id]?uiIcon(item.id):iconHtml(item.id,item.icon)}</span>
       <span class="dn">${item.name}</span>${sub}
     </div>`;
   }).join('');
@@ -4963,6 +5113,7 @@ function updateBuildHUD(){
     const dirLabels=['→','↓','←','↑'];
     rotBtn.textContent='↻ '+dirLabels[placeDir];
     rotBtn.style.display='';
+    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${def.name.toUpperCase()}</span>${costChips(def.cost,activeTool)}</span>`);
     if(confirmBtn) confirmBtn.style.display='';
   } else {
     hud.classList.add('hidden');
@@ -5080,6 +5231,9 @@ function updateToolTip(){
     ${def.power<0?`<div class="tt-cost">Generates: <span>${Math.abs(def.power)}kW</span></div>`:''}
     ${recipesHtml}`;
   el.classList.remove('hidden');
+  // Read-once info: it hides after a few seconds so it never sits over the cost bar and PLACE
+  clearTimeout(updateToolTip._t);
+  updateToolTip._t=setTimeout(()=>el.classList.add('hidden'),3500);
 }
 
 // ═══════════════════════════════════════════════════
@@ -5141,7 +5295,7 @@ function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 // ── Inventory ─────────────────────────────────────
 function renderInvPanel(){
   const zd=zoneDef();
-  const cats=[['raw','Raw Materials'],['processed','Processed'],['parts','Parts & Components'],['science','Science'],[zd.partsCat,zd.partsLabel]];
+  const cats=[['raw','Raw Materials'],['smelted','Plates & Bricks'],['processed','Processed'],['parts','Parts & Components'],['science','Science'],[zd.partsCat,zd.partsLabel]];
   let html='';
   for(const[cat,label]of cats){
     const items=Object.entries(ITEMS).filter(([id,it])=>it.cat===cat&&(G.inv[id]||0)>0);
@@ -6838,6 +6992,12 @@ function tutTallyHtml(step){
     return `<span class="${ok?'ok':''}">${iconHtml(r.id)} ${have}/${r.need}${ok?' ✓':''}</span>`;}).join('')}</div>`;
 }
 
+// A step that asks you to place a machine shows what it costs against what you hold
+function tutCostHtml(step){
+  if(!/place|build/i.test(step.text))return '';
+  const id=(step.text.match(/\[\[(\w+)\]\]/g)||[]).map(t=>t.slice(2,-2)).find(k=>MDEFS[k]&&!MDEFS[k].stub);
+  return id?`<div class="tut-tally">${MDEFS[id].name}: ${costChips(MDEFS[id].cost,id)}</div>`:'';
+}
 function completeTutorial(){
   if(!G.tutorial)return;
   G.tutorial.step=-1;
@@ -6857,8 +7017,8 @@ function showTutHint(step,i,n){
   const el=document.getElementById('tutHint');
   const tx=document.getElementById('tutText');
   if(!el||!tx)return;
-  tx.innerHTML=`<span class="tut-step">STEP ${i+1}/${n}</span>${richText(step.text)}${tutTallyHtml(step)}`
-    +(step.final?`<button class="tut-go" onclick="finishTutorial()">GOT IT ▶</button>`:'');
+  setHtml(tx,`<span class="tut-step">STEP ${i+1}/${n}</span>${richText(step.text)}${tutTallyHtml(step)||tutCostHtml(step)}`
+    +(step.final?`<button class="tut-go" onclick="finishTutorial()">GOT IT ▶</button>`:''));
   const mini=document.getElementById('tutMini'); if(mini)mini.textContent=`📖 STEP ${i+1}/${n}`;
   el.classList.toggle('collapsed',tutCollapsed);
   el.classList.remove('hidden');
@@ -6905,8 +7065,13 @@ function trimToasts(){
   const c=document.getElementById('toasts');
   while(c&&c.children.length>3)c.firstElementChild.remove();
 }
+const TITLE_UI={'🛟':'backup','🚀':'goal','🔒':'devlock','📲':'install','📥':'saves','📤':'saves','💾':'saves','💥':'demolish','✨':'stardust','⚡':'power','⚙️':'settings'};
 function showModal(title,body,foot){
-  document.getElementById('mTitle').textContent=title;
+  // A leading emoji in a modal title becomes its pixel icon
+  const lead=Object.keys(TITLE_UI).find(e=>title.startsWith(e+' '));
+  const mt=document.getElementById('mTitle');
+  if(lead){mt.innerHTML=uiIcon(TITLE_UI[lead])+' ';mt.appendChild(document.createTextNode(title.slice(lead.length+1)));}
+  else mt.textContent=title;
   document.getElementById('mBody').innerHTML=body;
   document.getElementById('mFoot').innerHTML=foot||'';
   document.getElementById('mOverlay').classList.remove('hidden');
@@ -6958,7 +7123,7 @@ function openBigMenu(section){
       <div style="color:var(--text3);font-size:var(--f5);margin-top:4px">⚡ ${fmtKW(G.power.out)} · ${Object.keys(G.machines).length} machines · ${G.research.done.length}/${Object.keys(TECHS).length} research</div>
     </div>
     <div class="menu-grid">${tiles.map(([id,ic,label,badge])=>`<button class="menu-tile" onclick="openBigMenu('${id}')">
-      <span class="mt-ic">${ic}</span><span class="mt-lb">${label}</span>${badge!==''?`<span class="mt-badge">${badge}</span>`:''}</button>`).join('')}</div>`;
+      <span class="mt-ic">${uiIcon(id==='achievements'?'achievements':id)||ic}</span><span class="mt-lb">${label}</span>${badge!==''?`<span class="mt-badge">${badge}</span>`:''}</button>`).join('')}</div>`;
   showModal('☰ MENU', body,
     `<button class="btn btn-sm btn-red" onclick="quitToTitle()">QUIT</button>
      <button class="btn btn-teal btn-sm" onclick="closeModal()">RESUME</button>`);
@@ -7389,6 +7554,7 @@ function quitToTitle(){
   document.getElementById('sGame').classList.add('hidden');
   document.getElementById('sTitle').classList.remove('hidden');
   buildTitleSlots(); startTitleScene();
+  setTimeout(()=>{if(onTitle())titleMusic();},600); // after the game track fades out
 }
 
 // ═══════════════════════════════════════════════════
@@ -7497,7 +7663,7 @@ function startGame(isNew){
   updateZoneTabs();
   updateHUD(); updateRocketBtn();
   startTick(); startRender();
-  if(G.music!==false) musicStart();
+  if(G.music!==false) musicStart(); else musicStop(); // the title track carries straight on
   // Defer cam to next frame so canvas has final dimensions
   requestAnimationFrame(()=>{
     sizeCanvas();
@@ -7522,7 +7688,8 @@ function startGame(isNew){
 window.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
-  buildTitleSlots(); startTitleScene(); updateInstallBtn();
+  document.querySelectorAll('[data-ui]').forEach(e=>{e.innerHTML=uiIcon(e.dataset.ui);});
+  buildTitleSlots(); startTitleScene(); updateInstallBtn(); updateTitleMute();
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
   document.addEventListener('contextmenu',e=>e.preventDefault());
