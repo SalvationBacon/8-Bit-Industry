@@ -173,6 +173,27 @@ const r=await p.evaluate(async()=>{
   // inserter throughput: about one item per 1.7s, not one per 4s
   reset(); power(2,2); const s9=put('chest',10,10); s9.chestInv.coal=999; put('inserter',11,10,0); const d9=put('chest',12,10);
   run(240); ok('inserter_throughput',(d9.chestInv.coal||0)>=30,{moved:d9.chestInv.coal});
+  // ── opening any menu closes the manual mining popup
+  { const hidden=()=>document.getElementById('resInfo').classList.contains('hidden'); const r=[];
+    for(const open of [()=>switchTab('craft'),()=>switchTab('build'),()=>openBigMenu(),()=>showPanel('inv')]){
+      openResInfo('iron_ore',5,5); const shown=!hidden(); open(); r.push(shown&&hidden()&&!mineTap.active);
+      closeModal(); if(openPanel)closePanel(openPanel); if(activeTab)switchTab(activeTab); }
+    ok('menus_close_mining_popup',r.every(Boolean),r); }
+  // ── machine panel rates match the simulation over one game minute
+  reset(); power(2,2); res(10,10,1,1,'coal'); const qm=put('miner',10,10); const qf=put('stone_furnace',14,10); qf.recipe='fn_iron'; qf.inBuf.iron_ore=999; qf.inBuf.coal=999;
+  const qb=put('burner',16,10); qb.inBuf.coal=500; const pM=machineRates(qm).out.coal, pF=machineRates(qf).out.iron_plate, pB=machineRates(qb).in.coal;
+  const m0=qm.produced, f0=qf.produced, b0=qb.inBuf.coal;
+  for(let i=0;i<240;i++){run(1); qm.outBuf={}; qf.outBuf={};}
+  const aM=qm.produced-m0, aF=qf.produced-f0, aB=b0-qb.inBuf.coal;
+  ok('rates_match_sim',Math.abs(aM-pM)<=1.5&&Math.abs(aF-pF)<=1.5&&Math.abs(aB-pB)<=1,{pM,aM,pF,aF,pB,aB});
+  // ── closing EDIT returns to Select and puts a picked-up machine back
+  reset(); const em=put('chest',40,40); switchTab('tools'); setTool('move'); handleTap({x:40,y:40}); switchTab('tools');
+  ok('edit_close_selects',activeTool==='select'&&G.map[40][40].mid===em.id&&em.x===40,{tool:activeTool,at:G.map[40][40].mid});
+  switchTab('tools'); setTool('demolish'); switchTab('craft'); ok('edit_leave_selects',activeTool==='select',activeTool); switchTab('craft');
+  // ── zone notes only in their zone (and Zone 5)
+  { const z0=G.zone; const at=z=>{G.zone=z;return ['sci_scar','sci_deep','sci_bloom','nutrient','z2_sci_scar','z3_sci_deep','z4_sci_bloom','z5_sci_void','sci_red','fn_iron'].filter(zoneRecipeOk).join(',');};
+    const r={1:at(1),2:at(2),4:at(4),5:at(5)}; G.zone=z0;
+    ok('zone_notes_gated',r[1]==='sci_red,fn_iron'&&r[2]==='sci_scar,z2_sci_scar,sci_red,fn_iron'&&r[4]==='sci_bloom,nutrient,z4_sci_bloom,sci_red,fn_iron'&&r[5].split(',').length===10,r); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});

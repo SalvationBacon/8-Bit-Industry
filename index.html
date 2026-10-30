@@ -114,6 +114,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:var(--f5);color:#c8c8c8;border:none;background:transparent;border-top:2px solid transparent;cursor:pointer;padding:6px 2px;transition:all .12s;letter-spacing:.5px}
 .tab-btn .tab-icon{font-size:22px;line-height:1;height:26px;display:flex;align-items:center}
 .uico{image-rendering:pixelated;display:inline-block;vertical-align:middle}
+.toast .uico,.toast .ico,#tutText .uico{width:16px;height:16px;vertical-align:-3px}
 .tab-icon .uico{width:26px;height:26px}
 .mt-ic .uico{width:32px;height:32px}
 .hres-icon .uico{width:16px;height:16px}
@@ -246,6 +247,9 @@ body.sheet-open #tutMini{display:block}
 .is-chip .pxi,.is-chip img{width:16px;height:16px}
 .is-empty{font-size:var(--f4);color:var(--text3);white-space:nowrap}
 #buildCost{flex-basis:100%;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;align-items:center;font-size:var(--f5);color:var(--text);pointer-events:none}
+#buildCost .bc-info{pointer-events:auto;font-family:var(--font);font-size:var(--f5);width:24px;height:24px;min-width:0;min-height:0;border-radius:0;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;padding:0;flex-shrink:0;line-height:1;box-shadow:inset -2px -2px 0 rgba(0,0,0,.45)}
+#buildCost .bc-info.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.12);box-shadow:inset 2px 2px 0 rgba(0,0,0,.45)}
+#buildCost .cc .uico{width:12px;height:12px}
 #buildCost .bc-in{background:rgba(13,13,13,.92);border:1px solid var(--border2);padding:6px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 .dc.lock{display:block}
 .dc img.ico{width:11px!important;height:11px!important}
@@ -324,6 +328,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 .ii img.ico{width:22px;height:22px}
 #resInfoIcon img.ico{width:30px;height:30px}
 .tut-step{display:inline-block;color:var(--bg);background:var(--amber);padding:1px 4px;margin-right:6px;font-size:.9em}
+.rates{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.rate-h{font-size:var(--f5);letter-spacing:1px;margin-top:4px}.rate-h.ok{color:var(--teal)}.rate-h.use{color:var(--amber)}
+.rate-row{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--text)}
+.rate-row .ico{width:18px;height:18px}.rate-n{color:var(--text);min-width:34px;text-align:right}.rate-u{color:var(--text3)}.rate-name{color:var(--text2)}
+.rate-note{font-size:var(--f4);color:var(--text3);line-height:1.8}
 .tut-tally{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;color:var(--text2)}
 .tut-tally .ok{color:var(--teal)}
 .tut-go{font-family:var(--font);font-size:1em;margin-top:5px;padding:6px 12px;border:1px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer;display:block}
@@ -335,7 +344,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 /* pbody zoom, clip overflow so content doesn't bleed */
 .pbody{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px;font-size:var(--f6);line-height:1.9}
 #toolTip{
-  position:absolute; bottom:74px; left:8px;
+  position:absolute; bottom:118px; left:8px; /* clear of the cost bar and PLACE row */
   width:min(240px,60vw); max-height:45%; overflow:hidden;
   background:rgba(10,10,10,.93);
   border:1px solid var(--border2);
@@ -411,7 +420,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.8.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.7 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -573,7 +582,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.8.1';
+const VER      = '1.8.7';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1040,12 +1049,17 @@ const HAND_CRAFTS = [
   // Unlocked by electronics research
   {id:'speed_module', name:'Speed Module', icon:'🔵', in:{circuit:3,iron_gear:2},              out:{speed_module:1}, clicks:40, unlock:'electronics',  desc:'Hand-build a speed module'},
   {id:'prod_module',  name:'Prod. Module', icon:'🟢', in:{circuit:4,copper_wire:4},            out:{prod_module:1},  clicks:40, unlock:'electronics',  desc:'Hand-build a production module'},
-  {id:'sci_scar',     name:'Scar Notes',   icon:'📓', in:{iron_gear:1,coal:2},                  out:{sci_scar:1},     clicks:12, unlock:null,           desc:'Study the ruins, research notes for The Scar'},
-  {id:'sci_deep',     name:'Deep Notes',   icon:'📔', in:{quartz:1,copper_wire:2},              out:{sci_deep:1},     clicks:12, unlock:null,           desc:'Sketch the glowing caves. Research notes for The Deep'},
-  {id:'sci_bloom',    name:'Bloom Notes',  icon:'📒', in:{biomass:2,copper_wire:1},             out:{sci_bloom:1},    clicks:12, unlock:null,           desc:'Catalogue the living jungle. Research notes for The Bloom'},
-  {id:'nutrient',     name:'Nutrient Paste',icon:'🥣', in:{biomass:3},                         out:{nutrient:1},     clicks:6,  unlock:null,           desc:'Mash biomass into paste for living machines'},
+  {id:'sci_scar',     name:'Scar Notes',   icon:'📓', in:{iron_gear:1,coal:2},                  out:{sci_scar:1},     clicks:12, unlock:null, zone:2,           desc:'Study the ruins, research notes for The Scar'},
+  {id:'sci_deep',     name:'Deep Notes',   icon:'📔', in:{quartz:1,copper_wire:2},              out:{sci_deep:1},     clicks:12, unlock:null, zone:3,           desc:'Sketch the glowing caves. Research notes for The Deep'},
+  {id:'sci_bloom',    name:'Bloom Notes',  icon:'📒', in:{biomass:2,copper_wire:1},             out:{sci_bloom:1},    clicks:12, unlock:null, zone:4,           desc:'Catalogue the living jungle. Research notes for The Bloom'},
+  {id:'nutrient',     name:'Nutrient Paste',icon:'🥣', in:{biomass:3},                         out:{nutrient:1},     clicks:6,  unlock:null, zone:4,           desc:'Mash biomass into paste for living machines'},
   {id:'eff_module',   name:'Eff. Module',  icon:'🔴', in:{circuit:3,iron_rod:3},               out:{eff_module:1},   clicks:40, unlock:'electronics',  desc:'Hand-build an efficiency module'},
 ];
+
+// Zone-only recipes: a hand craft with zone:n, or a machine recipe named zN_… Each is available in
+// its own zone and in Zone 5, which brings every chain together (Void Theory needs all the notes).
+function recipeZone(id){const h=HAND_CRAFTS.find(c=>c.id===id);if(h)return h.zone||0;const m=/^z(\d)_/.exec(id);return m?+m[1]:0;}
+function zoneRecipeOk(id){const z=recipeZone(id);return !z||z===G.zone||G.zone===5;}
 
 // Machines you build by hand, consume materials, go into placement queue
 const MACHINE_BUILDS = [
@@ -2233,6 +2247,19 @@ const UI_ART={
   sprout({R,P}){R(7,7,2,8,'#3f9a3f');for(let k=0;k<4;k++){R(3+k,5+k%2,1,2,'#6ad86a');R(12-k,3+k%2,1,2,'#6ad86a');}R(3,5,4,2,'#6ad86a');R(9,3,4,2,'#8ae07a');R(4,14,8,1,'#6b4226');},
   wilt({R,P}){R(7,6,2,9,'#6a5a2a');R(3,8,4,2,'#8a6a2a');R(9,5,4,2,'#9a7a3a');P(2,10,'#8a6a2a');P(13,7,'#9a7a3a');R(4,14,8,1,'#6b4226');},
   heat({R,C,P}){R(7,1,3,10,'#e8e8e8');R(8,3,1,8,'#e53935');C(8,12,3,'#e53935');R(7,1,3,1,'#9a9a9a');P(7,11,'#ff8a8a');for(let y=3;y<10;y+=2)P(10,y,'#9a9a9a');},
+  // tutorial, toasts and achievements
+  pick({R,P,L}){L(3,14,10,5,'#9a6a3a');L(4,14,11,5,'#6b4226');R(5,2,7,2,'#9aa4b0');R(5,2,7,1,'#d0dae6');P(4,3,'#9aa4b0');P(3,4,'#7a828e');
+    P(12,3,'#9aa4b0');P(13,4,'#9aa4b0');P(14,5,'#7a828e');P(8,4,'#5a626e');P(9,4,'#5a626e');},
+  warn({R,P}){for(let y=1;y<15;y++){const h=Math.floor((y-1)*0.55);R(8-h-1,y,h*2+2,1,y===14?'#a86c08':'#f5a623');P(8-h-1,y,'#a86c08');P(8+h,y,'#a86c08');}
+    R(7,5,2,5,'#1a1a1a');R(7,11,2,2,'#1a1a1a');},
+  map({R,P}){R(1,3,14,10,'#d8c8a0');R(5,3,1,10,'#b0a078');R(10,3,1,10,'#b0a078');R(1,12,14,1,'#a09068');
+    for(const[x,y]of[[3,10],[4,9],[6,9],[7,8],[8,7]])P(x,y,'#3f9a3f');P(11,5,'#e53935');P(13,5,'#e53935');P(12,6,'#e53935');P(11,7,'#e53935');P(13,7,'#e53935');},
+  rad({C,P}){C(8,8,7,'#ffd600');for(let y=0;y<16;y++)for(let x=0;x<16;x++){const dx=x-7.5,dy=y-7.5,d=Math.hypot(dx,dy);if(d<2.4||d>6.2)continue;
+      const a=(Math.atan2(dy,dx)*180/Math.PI+360+90)%120;if(a<60)P(x,y,'#1a1a1a');}C(8,8,1,'#1a1a1a');},
+  fast({P}){for(let y=3;y<13;y++){const w=6-Math.abs(y-7.5)|0;for(let x=0;x<w;x++){P(2+x,y,'#ab47bc');P(8+x,y,'#ce93d8');}}},
+  up({R}){R(6,7,4,8,'#4caf50');for(let k=0;k<6;k++)R(7-k,1+k,2+k*2,1,k<2?'#a5d6a7':'#4caf50');},
+  bloom({C,R,P}){R(7,9,2,6,'#3f9a3f');R(4,12,3,2,'#6ad86a');for(let i=0;i<5;i++){const t=i*Math.PI*2/5-Math.PI/2;C(Math.round(8+Math.cos(t)*3.3),Math.round(6+Math.sin(t)*3.3),2,'#f48fb1');}
+    C(8,6,1,'#ffd600');P(7,5,'#fff3b0');},
   // title
   factory({R,P,C}){C(4,2,1,'#5e5e5e');C(11,3,1,'#4e4e4e');R(3,3,2,6,'#4a4a4a');R(3,5,2,1,'#e53935');R(10,4,2,5,'#4a4a4a');R(10,6,2,1,'#e53935');
     for(let k=0;k<3;k++)for(let i=0;i<5;i++){const h=Math.floor(i*.6);R(1+k*5+i,8-h,1,h+1,i===4?'#ffd27a':'#f5a623');}
@@ -2242,6 +2269,27 @@ const UI_ART={
   mute({R,P}){R(2,6,3,4,'#7a7a7a');for(let k=0;k<4;k++)R(5+k,5-k,1,6+k*2,'#7a7a7a');for(let k=0;k<5;k++){P(10+k,6+k,'#e53935');P(14-k,6+k,'#e53935');}},
 };
 function uiSpr(name){const f=UI_ART[name];return f?mkSpr(`ui:${name}`,16,16,a=>f(a)):null;}
+// Emoji in tutorial text and toasts → pixel icons. 'ui:x' is a UI_ART icon; anything else an item/machine id
+const EMOJI_PIX={'⛏️':'ui:pick','⛏':'ui:pick','🔨':'ui:craft','🏗️':'ui:build','🏗':'ui:build','🔬':'ui:research','🚀':'ui:goal',
+  '⚠️':'ui:warn','⚠':'ui:warn','🌫️':'ui:smog','💧':'ui:pressure','☀️':'ui:sun','🌑':'ui:moon','🌱':'ui:sprout','🥀':'ui:wilt',
+  '🌡️':'ui:heat','📕':'sci_void','✨':'ui:stardust','🗺️':'ui:map','💥':'ui:demolish','☢️':'ui:rad','⭐':'ui:perks','🛠':'ui:dev',
+  '⏩':'ui:fast','⚡':'ui:power','📦':'ui:inventory','🏆':'ui:achievements','💾':'ui:saves','🛟':'ui:backup','📖':'ui:recipes',
+  '📐':'ui:blueprint','📲':'ui:install','🔒':'ui:devlock','⚙️':'ui:settings','🌸':'ui:bloom','🌌':'singularity'};
+const EMOJI_RE=new RegExp(Object.keys(EMOJI_PIX).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'g');
+function pixIcon(spec){return spec.startsWith('ui:')?uiIcon(spec.slice(3)):iconHtml(spec);}
+function pixEmoji(html){return html.replace(EMOJI_RE,e=>pixIcon(EMOJI_PIX[e]));}
+const escHtml=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Achievement badges: a pixel icon per achievement
+const ACH_PIX={first_ore:'ui:pick',ore_100:'iron_ore',ore_1000:'ui:pick',first_miner:'miner',miners_5:'miner',first_machine:'ui:build',
+  first_belt:'belt',first_insert:'inserter',first_circuit:'circuit',first_steel:'steel_plate',machines_10:'ui:build',machines_25:'assembler',
+  first_power:'ui:power',power_60:'generator',power_120:'ui:power',first_notes:'sci_red',first_diagrams:'sci_green',automation:'iron_gear',
+  all_research:'ui:research',first_chest:'chest',first_tunnel:'tunnel',first_generator:'generator',first_blueprint:'ui:blueprint',
+  first_schematic:'sci_blue',machines_50:'ui:factory',power_240:'ui:power',first_module:'speed_module',first_upgrade:'ui:up',
+  first_steel_r:'blast_furnace',rocket_part:'r_chassis',launch:'ui:goal',scar_escape:'r_hull',first_pipe:'pipe',first_burst:'ui:demolish',
+  first_rod:'fuel_rod',deep_escape:'r_drill',full_bloom:'ui:bloom',first_wither:'ui:wilt',reactor_on:'reactor',first_scram:'ui:heat',
+  bloom_escape:'r_biohull',void_walker:'ui:stardust',sing_built:'singularity',big_bang:'ui:demolish',
+  first_splitter:'splitter',logistics_research:'belt'};
+function achIcon(a){const sp=ACH_PIX[a.id];const h=sp&&pixIcon(sp);return h&&!/^[^<]*$/.test(h)?h:pixEmoji(a.icon);}
 function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cls}" src="${sprURL('ui:'+name,s)}" alt="">`:'';}
 
 // ═══════════════════════════════════════════════════
@@ -4177,7 +4225,7 @@ function runMachine(m){
 
   if(!m.recipe)return;
   const rec=RECIPES[m.recipe]; if(!rec)return;
-  if(rec.unlock&&!G.research.done.includes(rec.unlock)){m.recipe=null;m.prog=0;return;}
+  if((rec.unlock&&!G.research.done.includes(rec.unlock))||!zoneRecipeOk(m.recipe)){m.recipe=null;m.prog=0;return;}
   const pm=perkMult();
   const powerImmune=(m.type==='stone_furnace'||m.type==='blast_furnace');
   const ratio=powerImmune?1:powerRatio();
@@ -5000,7 +5048,11 @@ function updateSelectBtn(){
 
 // Tabs that open a panel instead of the drawer
 const TAB_PANELS={craft:'craft',research:'research',goal:'rocket'};
+const EDIT_TOOLS=new Set(['multisel','demolish','rotate','move','blueprint']);
 function switchTab(tab){
+  closeResInfo(); // any tab or menu closes the manual mining popup
+  // Closing EDIT (or leaving it for another tab) drops back to Select, cancelling a half-done move or selection
+  if(activeTab==='tools'&&EDIT_TOOLS.has(activeTool))setTool('select');
   const drawer=document.getElementById('tabDrawer');
   if(activeTab===tab){
     // Toggle off, close drawer, clear active tab
@@ -5113,7 +5165,8 @@ function updateBuildHUD(){
     const dirLabels=['→','↓','←','↑'];
     rotBtn.textContent='↻ '+dirLabels[placeDir];
     rotBtn.style.display='';
-    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${def.name.toUpperCase()}</span>${costChips(def.cost,activeTool)}</span>`);
+    const pw=def.power>0?`<span class="cc">${uiIcon('power')}${def.power}kW</span>`:def.power<0?`<span class="cc ok">${uiIcon('power')}+${-def.power}kW</span>`:'';
+    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${def.name.toUpperCase()}</span>${costChips(def.cost,activeTool)}${pw}<button class="bc-info${buildInfoOpen?' on':''}" onclick="toggleBuildInfo()" title="Details">i</button></span>`);
     if(confirmBtn) confirmBtn.style.display='';
   } else {
     hud.classList.add('hidden');
@@ -5165,7 +5218,7 @@ function setTool(id){
   if(def?.unlock&&!G.research.done.includes(def.unlock)){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); return;
   }
-  activeTool=id; closeResInfo(); buildDrawer(); updateToolTip(); updateSelectBtn(); updateBuildHUD();
+  activeTool=id; buildInfoOpen=false; closeResInfo(); buildDrawer(); updateToolTip(); updateSelectBtn(); updateBuildHUD();
   if(def&&canvas){const ts=TILE*G.cam.zoom;hov={x:Math.floor((G.cam.x+canvas.clientWidth/2)/ts),y:Math.floor((G.cam.y+canvas.clientHeight*.45)/ts)};}
 }
 
@@ -5190,7 +5243,7 @@ function updateToolTip(){
     recipesHtml=`<div class="tt-recipes">
       <div class="tt-rlabel">RECIPES</div>`;
     // Compact: the first 3 unlocked recipes, the rest summarised
-    const avail=def.recipes.filter(rid=>RECIPES[rid]&&(!RECIPES[rid].unlock||G.research.done.includes(RECIPES[rid].unlock)));
+    const avail=def.recipes.filter(rid=>RECIPES[rid]&&zoneRecipeOk(rid)&&(!RECIPES[rid].unlock||G.research.done.includes(RECIPES[rid].unlock)));
     for(const rid of avail.slice(0,3)){
       const r=RECIPES[rid]; if(!r)continue;
       const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(' + ');
@@ -5230,11 +5283,11 @@ function updateToolTip(){
     ${def.power>0?`<div class="tt-cost">Power: <span>${def.power}kW</span></div>`:''}
     ${def.power<0?`<div class="tt-cost">Generates: <span>${Math.abs(def.power)}kW</span></div>`:''}
     ${recipesHtml}`;
-  el.classList.remove('hidden');
-  // Read-once info: it hides after a few seconds so it never sits over the cost bar and PLACE
-  clearTimeout(updateToolTip._t);
-  updateToolTip._t=setTimeout(()=>el.classList.add('hidden'),3500);
+  // Only on request (the ⓘ button in the cost bar above PLACE): it used to pop up on every pick and cover the map
+  el.classList.toggle('hidden',!buildInfoOpen);
 }
+let buildInfoOpen=false;
+function toggleBuildInfo(){buildInfoOpen=!buildInfoOpen;updateToolTip();updateBuildHUD();}
 
 // ═══════════════════════════════════════════════════
 //  PANELS
@@ -5245,6 +5298,7 @@ let inspectId=null;
 function togglePanel(id){
   if(openPanel===id){closePanel(id);return;}
   if(openPanel)closePanel(openPanel);
+  closeResInfo();
   openPanel=id;
   document.body.classList.add('sheet-open');
   document.getElementById('toolTip').classList.add('hidden');
@@ -5291,6 +5345,71 @@ function refreshOpenPanel(){
 }
 
 function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+
+// ── Rates per minute for the machine panel ──
+// Worked out from the same numbers the simulation uses: power, perks, tier, modules, smog and
+// life stage. A machine stopped for lack of power shows its full-speed rates instead.
+const TICKS_PER_MIN=60000/TICK_MS;
+function machineRates(m){
+  const def=MDEFS[m.type], R={out:{},in:{},notes:[]}; if(!def)return R;
+  const per=t=>TICKS_PER_MIN/Math.max(1,t);
+  const mods=m.modules||[];
+  const modSpeed=1+mods.filter(x=>x==='speed_module').length*0.25;
+  const modYield=1+mods.filter(x=>x==='prod_module').length*0.25;
+  const tierMult=m.tier===3?2:m.tier===2?1.5:1;
+  const pm=perkMult();
+  const smog=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
+  const immune=m.type==='stone_furnace'||m.type==='blast_furnace';
+  let ratio=immune?1:powerRatio();
+  if(ratio===0){ratio=1;if(def.power>0)R.notes.push('No power right now: these are full-speed rates');}
+  if(m.type==='burner'){
+    R.in.coal=per(BURNER_COAL_TICKS);
+    const miner=per(8);
+    R.notes.push(`One coal Miner (${fmtRate(miner)}/min) feeds ${Math.floor(miner/R.in.coal)} Burners`);
+    R.notes.push('Only burns while something is using power');
+  } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
+  else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
+  else if(m.type==='scrubber'){R.in.refined_fuel=per(32);R.notes.push('Only burns while there is smog to clean');}
+  else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);}
+  else if(m.type==='miner'){
+    if(!m.mineRes)R.notes.push('Place it on a deposit to mine');
+    else{
+      const resMult=m.mineRes==='radiant_dust'?0.5:1;
+      const t=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smog*resMult)));
+      R.out[m.mineRes]=per(t)*(1+Math.min(1,Math.max(0,pm.yield*tierMult*modYield-1)));
+    }
+  } else if(m.type==='oil_pump'){
+    if(m.mineRes==='oil')R.out.crude_oil=per(Math.max(2,Math.floor(8/(ratio*tierMult))));
+    else R.notes.push('Place it on an oil deposit');
+  } else if(def.pumps){
+    if(m.mineRes===def.pumps)R.out[def.pumps]=per(2)*tierMult;
+    else R.notes.push('Place it on its pool');
+  } else if(m.type==='inserter'||m.type==='long_inserter'){
+    R.notes.push(`Moves up to ${fmtRate(60000/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
+  } else if(m.recipe&&RECIPES[m.recipe]){
+    const rec=RECIPES[m.recipe];
+    const life=def.living?lifeStage(m).mult:1;
+    const c=per(Math.ceil(rec.time/Math.max(.01,ratio*pm.speed*tierMult*modSpeed*smog*life)));
+    for(const[k,n]of Object.entries(rec.in))R.in[k]=(R.in[k]||0)+n*c;
+    for(const[k,n]of Object.entries(rec.fluid||{}))R.in[k]=(R.in[k]||0)+n*c;
+    for(const[k,n]of Object.entries(rec.out))R.out[k]=(n+(modYield-1))*c; // a Productivity Module adds a chance of +1
+  } else if(def.recipes.length){R.notes.push('Pick a recipe to see its rates');}
+  if(def.living&&!m.withered){R.in.nutrient=(R.in.nutrient||0)+per(FEED_EVERY);R.notes.push('Nutrient Paste is eaten only while vitality is under 100%');}
+  return R;
+}
+function fmtRate(n){return n>=10?String(Math.round(n)):n>=1?n.toFixed(1).replace(/\.0$/,''):n.toFixed(2).replace(/0$/,'');}
+function ratesHtml(m){
+  const R=machineRates(m);
+  const fluid=k=>k==='brine'||k==='enzymes';
+  const row=(k,v)=>`<div class="rate-row">${iconHtml(k)}<span class="rate-n">${fmtRate(v)}</span><span class="rate-u">${fluid(k)?'units':''}/min</span><span class="rate-name">${ITEMS[k]?.name||k}</span></div>`;
+  const outs=Object.entries(R.out), ins=Object.entries(R.in);
+  if(!outs.length&&!ins.length&&!R.notes.length)return '';
+  let h=`<span class="sec-label" style="margin-top:10px">PER MINUTE</span><div class="rates">`;
+  if(outs.length)h+=`<div class="rate-h ok">MAKES</div>`+outs.map(([k,v])=>row(k,v)).join('');
+  if(ins.length)h+=`<div class="rate-h use">USES</div>`+ins.map(([k,v])=>row(k,v)).join('');
+  h+=R.notes.map(n=>`<div class="rate-note">${n}</div>`).join('');
+  return h+`</div>`;
+}
 
 // ── Inventory ─────────────────────────────────────
 function renderInvPanel(){
@@ -5342,7 +5461,7 @@ function renderCraftPanel(){
 
   // Recipe list, active recipe floats to top, then unlocked, then locked
   html+=`<span class="sec-label">RECIPES</span>`;
-  const sortedCrafts=[...HAND_CRAFTS].sort((a,b)=>{
+  const sortedCrafts=HAND_CRAFTS.filter(r=>zoneRecipeOk(r.id)).sort((a,b)=>{
     if(a.id===cs.recipeId) return -1;
     if(b.id===cs.recipeId) return 1;
     return 0;
@@ -5383,7 +5502,7 @@ function renderCraftPanel(){
 }
 
 function startCraft(id){
-  const r=HAND_CRAFTS.find(h=>h.id===id); if(!r)return;
+  const r=HAND_CRAFTS.find(h=>h.id===id); if(!r||!zoneRecipeOk(id))return;
   // Just check affordability for visual feedback, don't deduct yet
   if(!G.devFreeCraft){
     const canAfford=Object.entries(r.in).every(([k,v])=>(G.inv[k]||0)>=v);
@@ -5490,11 +5609,12 @@ function renderMachPanel(){
   if(def.power>0)html+=irow('Power',`${Math.round(def.power)}kW`);
   if(def.power<0)html+=irow('Generating',`${Math.abs(def.power)}kW`);
   html+=irow('Total produced',fmt(m.produced));
+  html+=ratesHtml(m);
   if((m.tier||1)>1) html+=irow('Tier',`<span style="color:${(m.tier||1)>=3?'var(--teal)':'var(--amber)'}">T${m.tier||1} (${m.tier===3?'2×':'1.5×'} speed/yield)</span>`);
-  if(m.type!=='chest'&&m.type!=='belt'&&m.type!=='inserter'&&m.type!=='generator'){
+  if(Object.keys(machineRates(m).out).length){ // measured over the last minute, next to the expected PER MINUTE figures
     const rate=itemsPerMin(m);
     const rateCol=rate===0?'var(--text3)':rate<2?'var(--amber)':'var(--green)';
-    html+=irow('Rate',`<span style="color:${rateCol}">${rate}/min</span>`);
+    html+=irow('Actual output',`<span style="color:${rateCol}">${rate}/min</span>`);
   }
   // Show active perk bonuses
   const pm=perkMult();
@@ -5590,7 +5710,7 @@ function renderMachPanel(){
     <div style="margin-bottom:8px">
       <div onclick="setRecipe(${m.id},'')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${!m.recipe?'var(--amber)':'var(--border)'};background:${!m.recipe?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer;font-size:var(--f5);color:${!m.recipe?'var(--amber)':'var(--text3)'}">- none -</div>`;
     for(const rid of def.recipes){
-      const r=RECIPES[rid]; if(!r)continue;
+      const r=RECIPES[rid]; if(!r||!zoneRecipeOk(rid))continue;
       const recUnlocked=!r.unlock||G.research.done.includes(r.unlock);
       if(!recUnlocked){
         const reqName=TECHS[r.unlock]?.name||r.unlock;
@@ -5731,7 +5851,7 @@ function fluidPanelRows(m,def,rec){
 }
 
 function irow(lbl,val){return `<div class="irow"><span class="lbl">${lbl}</span><span>${val}</span></div>`}
-function setRecipe(id,rid){const m=G.machines[id];if(!m)return;m.recipe=rid||null;m.prog=0;renderMachPanel();}
+function setRecipe(id,rid){const m=G.machines[id];if(!m)return;if(rid&&!zoneRecipeOk(rid))return;m.recipe=rid||null;m.prog=0;renderMachPanel();}
 function toggleM(id){const m=G.machines[id];if(!m)return;m.active=!m.active;renderMachPanel();}
 function rotateM(id){
   const m=G.machines[id];if(!m)return;
@@ -6731,7 +6851,7 @@ function checkAchievements(){
         const el=document.createElement('div');
         el.className='toast';
         el.style.cssText='border-color:#f5a623;color:#f5a623;background:#1a1400;min-width:160px;text-align:center';
-        el.innerHTML=`${ach.icon} ${ach.name}<br><span style="font-size:var(--f4);color:#999">${ach.desc}</span>`;
+        el.innerHTML=`${achIcon(ach)} ${ach.name}<br><span style="font-size:var(--f4);color:#999">${ach.desc}</span>`;
         c.appendChild(el); trimToasts();
         setTimeout(()=>el.remove(),3500);
         sfx('research');
@@ -6761,7 +6881,7 @@ function renderAchievePanel(){
     for(const a of catAchs){
       const done=earned.has(a.id);
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border:1px solid ${done?'var(--teal)':'var(--border)'};background:var(--bg3);margin-bottom:3px;opacity:${done?1:.5}">
-        <span style="font-size:14px;flex-shrink:0">${done?a.icon:'?'}</span>
+        <span style="font-size:14px;flex-shrink:0">${done?achIcon(a):'?'}</span>
         <div style="flex:1">
           <div style="font-size:var(--f5);color:${done?'var(--teal)':'var(--text3)'}">${done?a.name:'???'}</div>
           ${done?`<div style="font-size:var(--f4);color:var(--text3);margin-top:2px">${a.desc}</div>`:''}
@@ -6781,10 +6901,10 @@ function renderRecipesPanel(){
   for(const[rid,rec]of Object.entries(RECIPES)){
     const mid=rec.machine;
     if(!machineGroups[mid])machineGroups[mid]=[];
-    machineGroups[mid].push({id:rid,...rec});
+    if(zoneRecipeOk(rid))machineGroups[mid].push({id:rid,...rec});
   }
   // Also add hand crafts
-  machineGroups['hand']=HAND_CRAFTS.map(hc=>({id:hc.id,name:hc.name,machine:'hand',time:hc.clicks*0.5,in:hc.in,out:hc.out,unlock:hc.unlock}));
+  machineGroups['hand']=HAND_CRAFTS.filter(hc=>zoneRecipeOk(hc.id)).map(hc=>({id:hc.id,name:hc.name,machine:'hand',time:hc.clicks*0.5,in:hc.in,out:hc.out,unlock:hc.unlock}));
 
   const machOrder=['hand','stone_furnace','blast_furnace','electric_smelter','assembler','lab'];
   const machLabels={hand:'✋ Hand Craft',stone_furnace:'⚱️ Stone Furnace',blast_furnace:'🔥 Blast Furnace',electric_smelter:'🌩️ Electric Smelter',assembler:'🏗️ Assembler',lab:'🔬 Research Lab'};
@@ -6982,7 +7102,7 @@ function restartTutorial(){
 }
 
 // [[id]] → icon for that item or machine
-function richText(t){return t.replace(/\[\[(\w+)\]\]/g,(m0,id)=>iconHtml(id));}
+function richText(t){return pixEmoji(t.replace(/\[\[(\w+)\]\]/g,(m0,id)=>iconHtml(id)));}
 function tutTallyHtml(step){
   if(!step.tally)return '';
   const rows=typeof step.tally==='function'?step.tally()
@@ -7019,7 +7139,7 @@ function showTutHint(step,i,n){
   if(!el||!tx)return;
   setHtml(tx,`<span class="tut-step">STEP ${i+1}/${n}</span>${richText(step.text)}${tutTallyHtml(step)||tutCostHtml(step)}`
     +(step.final?`<button class="tut-go" onclick="finishTutorial()">GOT IT ▶</button>`:''));
-  const mini=document.getElementById('tutMini'); if(mini)mini.textContent=`📖 STEP ${i+1}/${n}`;
+  const mini=document.getElementById('tutMini'); if(mini)mini.innerHTML=`${uiIcon('recipes')} STEP ${i+1}/${n}`;
   el.classList.toggle('collapsed',tutCollapsed);
   el.classList.remove('hidden');
 }
@@ -7056,7 +7176,7 @@ function buyPerk(id,cost){
 function toast(msg,type=''){
   const c=document.getElementById('toasts');
   const el=document.createElement('div');
-  el.className=`toast ${type}`; el.textContent=msg;
+  el.className=`toast ${type}`; el.innerHTML=pixEmoji(escHtml(msg));
   c.appendChild(el); setTimeout(()=>el.remove(),2100);
   trimToasts();
 }
@@ -7067,6 +7187,7 @@ function trimToasts(){
 }
 const TITLE_UI={'🛟':'backup','🚀':'goal','🔒':'devlock','📲':'install','📥':'saves','📤':'saves','💾':'saves','💥':'demolish','✨':'stardust','⚡':'power','⚙️':'settings'};
 function showModal(title,body,foot){
+  if(G)closeResInfo();
   // A leading emoji in a modal title becomes its pixel icon
   const lead=Object.keys(TITLE_UI).find(e=>title.startsWith(e+' '));
   const mt=document.getElementById('mTitle');
