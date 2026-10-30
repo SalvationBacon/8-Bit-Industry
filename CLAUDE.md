@@ -9,8 +9,8 @@
 **Platform:** Mobile PWA (single HTML file)
 **Aesthetic:** Dark pixel art, Press Start 2P font, amber/teal accent palette
 **Tagline:** Start with nothing · Automate everything · Launch
-**Current build:** v1.2.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
-**Working file:** `index.html`, ~6,400 lines, single file, never split
+**Current build:** v1.3.0, all five zones: Ironfield → The Scar → The Deep → The Bloom → The Singularity, plus the Big Bang and Stardust prestige
+**Working file:** `index.html`, ~7,000 lines, single file, never split
 **Live URL:** https://salvationbacon.github.io/8-Bit-Industry/
 
 **Related docs**
@@ -26,7 +26,7 @@
 |---|---|
 | `index.html` | Full game + PWA meta tags + service worker registration |
 | `manifest.json` | App name, icons, theme #0d0d0d, standalone, orientation: any |
-| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v118` |
+| `sw.js` | Service worker: network-first HTML, cache-first assets. Current: `ebi-v119` |
 | `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | Icons (keep the hyphens) |
 | `README.md` | GitHub repo readme |
 | `CLAUDE.md` | This file |
@@ -133,6 +133,15 @@ Helpers: `zoneDef()`, `zoneHas(h)`, `nextZone()`, `rocketUnlocked()`, `rocketReq
 
 ---
 
+## Pixel-art textures
+
+All textures are procedural (`PIXEL SPRITES` section): `mkSpr(key,w,h,fn)` draws into a tiny offscreen canvas once and caches it. The pixel API is `P` pixel, `R` rect, `C` filled circle, `O` ring and `L` line. Draws are scaled with `imageSmoothingEnabled=false`.
+- `groundSpr(zone,v)` per-zone floor (`GROUND` palettes); `resSpr(res,v,frame)` deposits (`ORE_ART`, pools animate)
+- `machineSpr(type,frame,on)`: `MACHINE_ART[type](api,frame,on)` at 16px per tile (Singularity 80px). There are 4 frames while `machineWorking(m)`. `chassis()`, `gearArt()` and `fire()` are shared helpers
+- `beltSpr(frame)` tread, rotated by direction; `itemSpr(id)`: `ITEM_ART[id]=[shape,c1,c2,c3]` + `ITEM_SHAPES`; `stageSpr()` life-stage badges
+- **Every icon goes through `iconHtml(id,fallback)` (DOM) or `drawItem()` (canvas).** A new item needs an `ITEM_ART` entry; a new machine needs a `MACHINE_ART` function
+- `TEX_PIXEL` (saved in localStorage `ebi_tex`) switches to emoji: ☰ Settings → Textures
+
 ## Design System
 
 ```css
@@ -141,7 +150,7 @@ Helpers: `zoneDef()`, `zoneHas(h)`, `nextZone()`, `rocketUnlocked()`, `rocketReq
 --green:#4caf50  --red:#e53935  --blue:#42a5f5  --purple:#ab47bc
 --text:#e8e8e8  --text2:#999  --text3:#555   --font:'Press Start 2P', monospace
 ```
-Font sizes 4–8px (mobile ≤600px: `.pbody` zoom 1.5, `.mb` zoom 1.4).
+**Type scale:** never write fixed `font-size:Npx` for N 3–10. Use `var(--f3)`…`var(--f10)`, which grow on phones (`max-width:700px` or coarse pointer). No `zoom` hacks.
 
 ```js
 TILE=48  BASE_MAP_W=96  BASE_MAP_H=64  (MAP_W/MAP_H are `let`, per zone)  TICK_MS=250 (4 ticks/s)
@@ -152,6 +161,12 @@ Recipe `time` is in **ticks** (time:8 = 2s at base speed).
 ---
 
 ## Layout
+
+Portrait is the default. **Landscape phones** (`orientation:landscape and max-height:600px`) switch `#sGame` to a grid: the tab bar becomes a left rail, `#tabDrawer` a side column (2-column item grid), and panels take the right ~50%.
+- Safe areas: `viewport-fit=cover` + `--sat/--sab/--sal/--sar` on the HUD, tab bar and panels.
+- The canvas is high-DPI: the backing store is `CANVAS_DPR` (≤2) × CSS size, and `draw()` works in CSS pixels via `setTransform`. Use `canvas.clientWidth/Height` for layout math, never `canvas.width`.
+- `layoutOverlays()` (on resize / ResizeObserver on `#wrap`) publishes the map's edges as `--ct --cb --cl --cr`. The floating controls (`#buildHUD`, `#ghostBar`, `#multiselBar`, `#tutHint`, `#resInfo`, `#toasts`) position from these, so they never cover the drawer.
+- The tutorial is a floating card over the map and collapses to a pill (`toggleTutCollapse`). At most 3 toasts show (`trimToasts`).
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -182,14 +197,16 @@ Recipe `time` is in **ticks** (time:8 = 2s at base speed).
 - Machines with `noItems:true` (pipes, pumps, tanks, valves, Lumen Panels, Accumulators, Heat Sinks) refuse inserter deposits.
 - **Pass 1** runs every machine with negative power (generators), then `runAccumulators()`. **Pass 2** runs everything else. Then belts, `settleFluidNets()` and `tickLiving()`.
 - **Hard power cutoff:** `powerRatio()` is 0 or 1. Stone and blast furnaces are power-immune.
-- Speed multiplier = power × perks × tier × modules × smog efficiency × life stage.
+- Speed multiplier = power × perks × tier × modules × smog efficiency × life stage. Pumps (oil, brine, enzymes) also scale with tier.
+- Recipe progress bars use `m._dur` (the real cycle length), not `rec.time`.
+- Canvas animation uses the smooth clock `at = now/TICK_MS` inside `draw()`, never `G.tick` (which only steps 4×/s and speeds up at dev speed). Belt interpolation divides by `tickInterval()`; inserter timings use `insMs()`.
 
 ---
 
 ## Systems by zone
 
 ### Zone 2: Smog
-+0.5 per oil-pump output (×0.7 with Clean Burn); −0.1/tick natural decay; −`SCRUBBER_SMOG` (0.75) per powered, fuelled Scrubber every 4 ticks (one cancels ~3 pumps). Speed × `max(0.1,(100−smog)/100)`. Scar Notes are made from gears + coal (lab or hand), so Oil Extraction can be researched before any oil exists.
++0.5 per oil-pump output (×0.7 with Clean Burn); −0.1/tick natural decay; −`SCRUBBER_SMOG` (0.75) per powered, fuelled Scrubber every 4 ticks (one cancels ~3 pumps; it burns 1 refined fuel per 8s). Speed × `max(0.1,(100−smog)/100)`. Scar Notes are made from gears + coal (lab or hand), so Oil Extraction can be researched before any oil exists.
 
 ### Zone 3: Fluids & pressure (reused in Zones 4–5)
 - `fluidCap` machines (Pipe 10, Fluid Tank 200, Relief Valve 5) flood-fill into networks every tick (`buildFluidNets`). `fluidPort` machines attach to adjacent networks (`m._nets`).
@@ -205,7 +222,7 @@ Recipe `time` is in **ticks** (time:8 = 2s at base speed).
 - `living:true` machines start at `VIT_START` 40 vitality and lose `VIT_DECAY` 0.06/tick (×0.75 with Vital Growth). Every `FEED_EVERY` 20 ticks they eat 1 Nutrient Paste from `inBuf` (+12).
 - Stages: Sprout <30 ×0.5 · Mature ×1 · Bloom >80 ×1.5. At 0 a machine withers and stops.
 - **REPLANT** costs 5 biomass. The panel also has FEED. Nutrient Paste is hand-craftable (3 biomass) or made in an Assembler.
-- **Reactor** (3×3, −2,000 kW): burns 1 Luminite Rod per 480 ticks. Heat +0.5/tick running (×0.8 with Coolant Lines), −0.1 passive, −0.2 per adjacent Heat Sink. At 100 it SCRAMs for 240 ticks. Two sinks hold it stable.
+- **Reactor** (3×3, −2,000 kW): burns 1 Luminite Rod per 240 ticks (60s). Heat +0.5/tick running (×0.8 with Coolant Lines), −0.1 passive, −0.2 per adjacent Heat Sink. At 100 it SCRAMs for 240 ticks. Two sinks hold it stable.
 
 ### Zone 5: The Singularity & Big Bang
 - Merged map with every deposit type and all hazards. Expansion I/II (`onResearch` → `expandMap(32,16)`) grow it.
@@ -291,7 +308,9 @@ Techs carry `zone:n`, and the research panel shows the current zone's (Zone 5 sh
 - `applyPrestigeStart()` runs on `newGame()`, and `applyRememberedTools()` on each zone arrival.
 
 ## Tutorials & achievements
-- Zone 1: 13 steps (`TUTORIAL_STEPS`). Zones 2–5: 3 steps each in `ZONE_TUTORIALS`.
+- One engine, `TUTORIALS[1..5]` (17 / 10 / 10 / 10 / 8 steps). Steps are `{text, done(), tally?, final?}`; `[[id]]` in text renders an icon.
+- Already-satisfied steps are skipped, and the final goal step waits for GOT IT. Zone 1 state is `G.tutorial.step`, other zones `G.zoneTut`. ☰ Settings → RESTART TUTORIAL.
+- Zones 2–4 have hand-craftable starter science (Scar, Deep and Bloom Notes), so research can begin before a Lab.
 - 47 achievements (`ACHIEVEMENTS` + `checks` in `checkAchievements()`), including per-zone ones (Plumber, Kaboom, It's Alive, Critical Mass, Godmaker, Big Bang…).
 
 ## Other systems
@@ -324,6 +343,7 @@ Splitters (1×2, rotatable), tunnels (auto-link ≤5 tiles), inserter state mach
 
 ## Coding Conventions
 
+- **No em dashes or en dashes anywhere in the game** (the user asked). Use a colon, a full stop, a comma or a middle dot (·).
 - **Always ask before changing existing logic** (from the GDD). Bugs found along the way get reported. Fix them when they block the requested work, and say so.
 - Single `index.html`, vanilla JS, no libraries; all state in `G` via `defaultState()`.
 - New zone content: add items, recipes (append ids to the machine's `recipes`), `MDEFS` (with `PORTS` if it outputs items), `TECHS` (`zone:n`), the `ZONES` entry, deposits, `ZONE_TUTORIALS`, `ZONE_MILESTONES`, achievements and drawer category.
