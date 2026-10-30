@@ -247,8 +247,8 @@ body.sheet-open #tutMini{display:block}
 .is-chip .pxi,.is-chip img{width:16px;height:16px}
 .is-empty{font-size:var(--f4);color:var(--text3);white-space:nowrap}
 #buildCost{flex-basis:100%;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;align-items:center;font-size:var(--f5);color:var(--text);pointer-events:none}
-#buildCost .bc-info{pointer-events:auto;font-family:var(--font);font-size:var(--f5);width:26px;height:26px;min-width:0;min-height:0;border-radius:50%;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer;padding:0;flex-shrink:0}
-#buildCost .bc-info.on{background:var(--teal);color:#000}
+#buildCost .bc-info{pointer-events:auto;font-family:var(--font);font-size:var(--f5);width:24px;height:24px;min-width:0;min-height:0;border-radius:0;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;padding:0;flex-shrink:0;line-height:1;box-shadow:inset -2px -2px 0 rgba(0,0,0,.45)}
+#buildCost .bc-info.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.12);box-shadow:inset 2px 2px 0 rgba(0,0,0,.45)}
 #buildCost .cc .uico{width:12px;height:12px}
 #buildCost .bc-in{background:rgba(13,13,13,.92);border:1px solid var(--border2);padding:6px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 .dc.lock{display:block}
@@ -420,7 +420,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.8.5 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.8.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -582,7 +582,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.8.5';
+const VER      = '1.8.6';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
