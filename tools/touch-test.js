@@ -46,6 +46,39 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
   ok('tap_moves_ghost_not_place',await p.evaluate(([x,y])=>G.map[y][x].mid===null,[spot.tx,spot.ty]));
   await tapEl('#buildConfirmBtn');
   ok('place_button_builds',await p.evaluate(([x,y])=>G.map[y][x].mid!==null,[spot.tx,spot.ty]));
+  // belt line: tap to set the ghost, drag from it (right 4, down 2), PLACE builds 7 belts facing along the path
+  const cdp=await p.context().newCDPSession(p);
+  const tilePt=([tx,ty])=>p.evaluate(([tx,ty])=>{const r=document.getElementById('wrap').getBoundingClientRect();const ts=TILE*G.cam.zoom;return{x:r.left+tx*ts-G.cam.x+ts/2,y:r.top+ty*ts-G.cam.y+ts/2};},[tx,ty]);
+  const dragPath=async pts=>{let a=await tilePt(pts[0]); await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a]});
+    for(const q of pts.slice(1)){const b2=await tilePt(q); for(let k=1;k<=6;k++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x+(b2.x-a.x)*k/6,y:a.y+(b2.y-a.y)*k/6}]}); a=b2;}
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await p.waitForTimeout(250);};
+  const ls=await p.evaluate(()=>{setTool('belt'); const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
+    // a 5×3 patch with no machines (belts may sit on ore), every tile visible and not under a floating card
+    const x0=Math.ceil(G.cam.x/ts), y0=Math.ceil(G.cam.y/ts), x1=Math.floor((G.cam.x+r.width)/ts)-5, y1=Math.floor((G.cam.y+r.height)/ts)-3;
+    const clear=(x,y)=>{const t=G.map[y][x]; if(t.mid!==null)return false;
+      const e=document.elementFromPoint(r.left+x*ts-G.cam.x+ts/2,r.top+y*ts-G.cam.y+ts/2); return e&&e.tagName==='CANVAS';};
+    let tx=-1,ty=-1;
+    for(let y=y0;y<=y1&&tx<0;y++)for(let x=x0;x<=x1&&tx<0;x++){let free=true;for(let j=0;j<3&&free;j++)for(let i=0;i<5&&free;i++)if(!clear(x+i,y+j))free=false;if(free){tx=x;ty=y;}}
+    G.inv.iron_plate=50; return{tx,ty};});
+  await tapTile(ls.tx,ls.ty);
+  await dragPath([[ls.tx,ls.ty],[ls.tx+4,ls.ty],[ls.tx+4,ls.ty+2]]);
+  ok('belt_drag_draws_line',await p.evaluate(()=>line.path.length===7&&!line.drawing),await p.evaluate(()=>line.path.length));
+  const cam0=await p.evaluate(()=>G.cam.x);
+  await tapEl('#buildConfirmBtn');
+  const lr=await p.evaluate(([tx,ty])=>{const d=[];for(let x=tx;x<=tx+4;x++)d.push(G.machines[G.map[ty][x].mid]?.dir);d.push(G.machines[G.map[ty+1][tx+4].mid]?.dir,G.machines[G.map[ty+2][tx+4].mid]?.dir);return{d,camSame:true};},[ls.tx,ls.ty]);
+  ok('belt_line_places_facing_path',lr.d.join()==='0,0,0,0,1,1,1',lr);
+  ok('belt_line_no_pan',await p.evaluate(c=>G.cam.x===c,cam0));
+  await p.evaluate(()=>undoLast());
+  ok('belt_line_one_undo',await p.evaluate(([tx,ty])=>G.map[ty][tx].mid===null&&G.map[ty+2][tx+4].mid===null,[ls.tx,ls.ty]));
+  // a drag that starts away from the ghost still pans the map
+  const camA=await p.evaluate(()=>({x:G.cam.x,y:G.cam.y}));
+  { const r=await p.evaluate(()=>{const b=document.getElementById('wrap').getBoundingClientRect();return{x:b.left+b.width*.75,y:b.top+b.height*.45};});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[r]});
+    for(let k=1;k<=6;k++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:r.x-k*12,y:r.y-k*8}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await p.waitForTimeout(250); }
+  ok('drag_off_ghost_pans',await p.evaluate(a=>(G.cam.x!==a.x||G.cam.y!==a.y)&&line.path.length===0,camA),await p.evaluate(()=>({cam:G.cam,hov,len:line.path.length})));
+  await p.evaluate(a=>{G.cam.x=a.x;G.cam.y=a.y;},camA);
+  await p.evaluate(()=>setTool('select'));
   await tapEl('#tab-build'); // close drawer → select mode
   await tapTile(spot.tx,spot.ty);
   ok('tap_machine_opens_sheet',await p.evaluate(()=>openPanel==='machine'),await p.evaluate(()=>openPanel));

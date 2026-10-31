@@ -50,6 +50,21 @@ const r=await p.evaluate(async()=>{
   { let thrown=null; const li=Object.values(G.machines).find(m=>m.type==='long_inserter');
     try{ openMachinePanel(li); draw(); closePanel('machine'); setTool('long_inserter'); hov.x=20; hov.y=20; draw(); setTool('select'); }catch(e){thrown=e.message;}
     ok('long_inserter_reach_draws',!thrown&&typeof drawInsReach==='function',thrown); }
+  // ── belt lines: dragging back shortens, blocked tiles are skipped, running short stops the line
+  reset(); setTool('belt'); hov.x=30; hov.y=30; lineStart({x:30,y:30},0,0);
+  lineMove({x:36,y:30}); lineMove({x:36,y:33}); lineMove({x:36,y:31}); lineEnd();
+  ok('line_backtrack_shortens',line.path.length===8&&line.path[7].y===31,line.path);
+  put('chest',33,30); setTool('belt'); hov.x=30; hov.y=30; lineStart({x:30,y:30},0,0); lineMove({x:36,y:30}); lineEnd();
+  G.devFreeBuild=false; G.crafted.belt=2; G.inv.iron_plate=3;
+  const lnp=linePlan(); confirmPlace();
+  const lineBelts=Object.values(G.machines).filter(m=>m.type==='belt');
+  ok('line_skips_blocked_and_short',lnp.bad===1&&lnp.ok===5&&lineBelts.length===5&&G.crafted.belt===0&&G.inv.iron_plate===0&&G.map[30][36].mid===null,{lp:{ok:lnp.ok,short:lnp.short,bad:lnp.bad},n:lineBelts.length,crafted:G.crafted.belt,plate:G.inv.iron_plate});
+  undoLast();
+  ok('line_undo_refunds',Object.values(G.machines).filter(m=>m.type==='belt').length===0&&G.crafted.belt===2&&G.inv.iron_plate===3,{crafted:G.crafted.belt,plate:G.inv.iron_plate});
+  // pipes draw lines too (no direction needed), and the line follows a corner
+  G.devFreeBuild=true; G.research.done=Object.keys(TECHS); setTool('pipe'); hov.x=40; hov.y=40; lineStart({x:40,y:40},0,0); lineMove({x:42,y:42}); lineEnd(); confirmPlace();
+  ok('pipe_line',[[40,40],[41,40],[42,40],[42,41],[42,42]].every(([x,y])=>G.machines[G.map[y][x].mid]?.type==='pipe'),line.path);
+  setTool('select');
   // ── F: furnace fed iron + coal, output pulled to chest
   reset(); power(2,2);
   const io=put('chest',10,10); io.chestInv.iron_ore=40; put('inserter',11,10,0); const fu=put('stone_furnace',12,10); fu.recipe='fn_iron';
