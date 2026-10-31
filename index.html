@@ -56,6 +56,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #sTitle{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
 .title-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 50% 35% at 50% 55%,rgba(245,166,35,.07) 0%,transparent 70%)}
 #titleMute{position:absolute;top:calc(10px + var(--sat,0px));right:calc(10px + var(--sar,0px));z-index:2;width:44px;height:44px;font-size:20px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer}
+#titleSoundHint{position:absolute;top:calc(20px + var(--sat,0px));right:calc(62px + var(--sar,0px));z-index:2;font-size:var(--f4);color:var(--amber);background:rgba(0,0,0,.55);padding:6px 8px;border:1px solid rgba(245,166,35,.35);pointer-events:none;animation:flicker 2.4s infinite}
 #titleCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
 #titleCaption{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + var(--sab,0px));white-space:nowrap;padding:6px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.08);font-size:var(--f5);color:var(--amber);letter-spacing:3px;text-shadow:2px 2px 0 #000;pointer-events:none;transition:opacity .3s}
 #titleCaption:empty{display:none}
@@ -409,6 +410,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 <div id="sTitle" class="screen">
   <canvas id="titleCanvas"></canvas>
   <button id="titleMute" onclick="toggleTitleMusic()" title="Music">🔊</button>
+  <div id="titleSoundHint">TAP FOR SOUND</div>
   <div class="title-glow"></div>
   <div id="titleCaption"></div>
   <div class="title-card">
@@ -427,7 +429,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.7 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -592,7 +594,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.6';
+const VER      = '1.9.7';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -799,17 +801,33 @@ function titleMusic(){if(PREFS.music!==false&&!_music.running)musicStart();updat
 // a context created then stays 'suspended' for good (silent music and sound effects). Tap release, click
 // and key press do count, so resume there. Phones also suspend audio when the app is switched away, and
 // this wakes it again on the next tap.
-function unlockAudio(){
-  try{if(_ac&&_ac.state!=='running')_ac.resume().catch(()=>{});}catch(e){}
+function unlockAudio(e){
+  try{if(_ac&&_ac.state!=='running')_ac.resume().then(updateTitleMute).catch(()=>{});}catch(err){}
+  // a first tap on the speaker button is left to that button (it used to start the music, then mute it)
+  if(e&&e.target&&e.target.closest&&e.target.closest('#titleMute'))return;
   if(onTitle()&&!_music.running&&PREFS.music!==false)titleMusic();
+}
+// Play the title music straight away where the browser allows it (Chrome does for apps installed to the
+// home screen); otherwise the first tap starts it and the speaker shows TAP FOR SOUND until then
+function tryTitleAutoplay(){
+  if(PREFS.music===false)return;
+  try{const c=ac(); c.resume().then(()=>{if(c.state==='running'&&onTitle())titleMusic();updateTitleMute();}).catch(()=>{});}catch(e){}
+  updateTitleMute();
 }
 for(const ev of['pointerup','touchend','click','keydown'])document.addEventListener(ev,unlockAudio,{capture:true,passive:true});
 function toggleTitleMusic(){
+  try{if(_ac&&_ac.state!=='running')_ac.resume().catch(()=>{});}catch(e){}
+  // Music on but not actually playing (blocked or stopped): this tap starts it rather than muting
+  if(PREFS.music!==false&&!_music.running){musicStart();updateTitleMute();return;}
   PREFS.music=PREFS.music===false; savePrefs();
   if(PREFS.music)musicStart(); else musicStop();
   updateTitleMute();
 }
-function updateTitleMute(){const b=document.getElementById('titleMute');if(b)b.innerHTML=uiIcon(PREFS.music===false?'mute':'sound');}
+function updateTitleMute(){
+  const b=document.getElementById('titleMute');if(b)b.innerHTML=uiIcon(PREFS.music===false?'mute':'sound');
+  const h=document.getElementById('titleSoundHint');
+  if(h)h.classList.toggle('hidden',PREFS.music===false||(!!_ac&&_ac.state==='running'&&_music.running));
+}
 function toggleSfxMenu(){
   G.sfx=!G.sfx; saveGame();
   openSettings();
@@ -7895,7 +7913,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
   document.querySelectorAll('[data-ui]').forEach(e=>{e.innerHTML=uiIcon(e.dataset.ui);});
   watchEmoji();
-  buildTitleSlots(); startTitleScene(); updateInstallBtn(); updateTitleMute();
+  buildTitleSlots(); startTitleScene(); updateInstallBtn(); tryTitleAutoplay();
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
   document.addEventListener('contextmenu',e=>e.preventDefault());

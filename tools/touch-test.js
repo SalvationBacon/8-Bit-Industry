@@ -9,6 +9,10 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
   const R={}; const ok=(k,v,i)=>R[k]=v?'PASS':'FAIL '+JSON.stringify(i);
   const tapEl=async sel=>{const bb=await p.locator(sel).first().boundingBox(); if(!bb)return false; await p.touchscreen.tap(bb.x+bb.width/2,bb.y+bb.height/2); await p.waitForTimeout(250); return true;};
   const tapTile=async(tx,ty)=>{const pt=await p.evaluate(([tx,ty])=>{const r=document.getElementById('wrap').getBoundingClientRect();const ts=TILE*G.cam.zoom;return{x:r.left+tx*ts-G.cam.x+ts/2,y:r.top+ty*ts-G.cam.y+ts/2};},[tx,ty]); await p.touchscreen.tap(pt.x,pt.y); await p.waitForTimeout(250);};
+  // title screen: the first tap on the speaker must start the music, not mute it
+  ok('title_sound_hint',await p.evaluate(()=>!document.getElementById('titleSoundHint').classList.contains('hidden')));
+  await tapEl('#titleMute'); await p.waitForTimeout(300);
+  ok('title_speaker_starts_music',await p.evaluate(()=>_music.running&&PREFS.music!==false&&_ac.state==='running'),await p.evaluate(()=>({m:_music.running,p:PREFS.music,c:_ac&&_ac.state})));
   await tapEl('button:has-text("NEW GAME")'); await p.waitForTimeout(1200);
   ok('new_game',await p.evaluate(()=>!!G&&!document.getElementById('sGame').classList.contains('hidden')));
   // audio must actually be running after real taps (a context made on pointerdown stays suspended: silent game)
