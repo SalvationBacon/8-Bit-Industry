@@ -254,6 +254,21 @@ const r=await p.evaluate(async()=>{
     const ins=Object.values(G.machines).find(m=>m.type==='inserter');
     ok('inserter_after_reload',moved>=15&&(!ins._arm||ins._arm.stateStart<=T),{moved,arm:ins._arm});
     T=Math.max(T,T0); }
+  // ── inserters sharing one output take turns
+  { reset(); G.research.done=Object.keys(TECHS); power(2,2);
+    const n=c=>Object.values(c.chestInv).reduce((a,b)=>a+b,0);
+    const bf=put('blast_furnace',10,10,0); bf.recipe='bf_iron'; Object.keys(RECIPES.bf_iron.in).forEach(k=>bf.inBuf[k]=999);
+    put('inserter',12,10,0); const c1=put('chest',13,10); put('inserter',12,11,0); const c2=put('chest',13,11);
+    run(1200); ok('shared_output_alternates',Math.abs(n(c1)-n(c2))<=2&&n(c1)+n(c2)>=140,{top:n(c1),bottom:n(c2)});
+    // one side blocked (a dead-end belt fills up): the other inserter carries on with everything
+    reset(); power(2,2); const bf2=put('blast_furnace',10,20,0); bf2.recipe='bf_iron'; Object.keys(RECIPES.bf_iron.in).forEach(k=>bf2.inBuf[k]=999);
+    put('inserter',12,20,0); put('belt',13,20,0); put('inserter',12,21,0); const c3=put('chest',13,21);
+    run(600); const mid=n(c3); run(600);
+    ok('shared_output_blocked_side',n(c3)-mid>=60,{first:mid,second:n(c3)-mid});
+    // a chest feeding two inserters splits too
+    reset(); power(2,2); const src=put('chest',10,30); src.chestInv.coal=300;
+    put('inserter',11,30,0); const d1=put('chest',12,30); put('inserter',10,31,1); const d2=put('chest',10,32);
+    run(400); ok('shared_chest_alternates',Math.abs(n(d1)-n(d2))<=2&&n(d1)>20,{a:n(d1),b:n(d2)}); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});

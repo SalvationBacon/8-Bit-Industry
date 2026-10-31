@@ -429,7 +429,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.7 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.8 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -594,7 +594,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.7';
+const VER      = '1.9.8';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -4835,6 +4835,7 @@ function runBelts(){
 
   // Inserters every tick. (Every 4 ticks made each arm phase wait for the next check,
   // so a 1.7s swing took 4s and an inserter moved 1 item per 4s.)
+  buildTakers();
   for(const m of Object.values(G.machines)){
     if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
   }
@@ -4848,6 +4849,43 @@ const INS_GRAB_MS   = 800;
 const INS_DEPOSIT_MS= 80;
 const INS_RETURN_MS = 800;
 function insMs(ms){return ms/(G?.devTickSpeed||1);}
+
+// ── Shared outputs ──
+// Several inserters on one machine's output side (or one chest) take turns: each item goes to the ready
+// inserter that was served longest ago. Without this the first inserter in update order took every item
+// whenever the machine was slower than an arm swing, and the others got nothing.
+let INS_TAKERS={};
+function insSource(m){ // the chest or machine output this inserter takes from, or null (belts don't count)
+  const[dvx,dvy]=D_VEC[m.dir], r=m.type==='long_inserter'?2:1, t=G.map[m.y-dvy*r]?.[m.x-dvx*r];
+  if(!t||t.mid===null)return null;
+  const sm=G.machines[t.mid]; if(!sm||sm.type==='belt'||sm.type==='tunnel'||sm.type==='inserter'||sm.type==='long_inserter')return null;
+  return sm.type==='chest'||isOutputFacing(sm,-dvx,-dvy)?sm:null;
+}
+function buildTakers(){
+  INS_TAKERS={};
+  for(const m of Object.values(G.machines)){
+    if(m.type!=='inserter'&&m.type!=='long_inserter')continue;
+    const sm=insSource(m); if(sm)(INS_TAKERS[sm.id]||(INS_TAKERS[sm.id]=[])).push(m.id);
+  }
+}
+function insReady(m){ // idle, with somewhere to put an item (the same gate the idle step uses)
+  if(m._arm&&m._arm.state!=='idle')return false;
+  const[dvx,dvy]=D_VEC[m.dir], r=m.type==='long_inserter'?2:1, dst=G.map[m.y+dvy*r]?.[m.x+dvx*r];
+  if(!dst||dst.mid===null)return false;
+  const dm=G.machines[dst.mid]; if(!dm||MDEFS[dm.type]?.noItems)return false;
+  if(dm.type!=='belt'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return false;
+  return !((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4);
+}
+function myTurn(m,sm){
+  const ids=INS_TAKERS[sm.id]; if(!ids||ids.length<2)return true;
+  const served=sm._served||{}; let best=null,bestN=Infinity;
+  for(const id of ids){
+    const t=G.machines[id]; if(!t||(id!==m.id&&!insReady(t)))continue;
+    const n=served[id]??-1; if(n<bestN||(n===bestN&&id<best)){bestN=n;best=id;}
+  }
+  return best===m.id;
+}
+function markServed(sm,m){(sm._served||(sm._served={}))[m.id]=sm._serveN=(sm._serveN||0)+1;}
 
 // One tick can finish several phases (grab, drop, return, grab again); time left over
 // from a finished phase carries into the next, so the arm keeps its real 1.7s cycle
@@ -4887,10 +4925,12 @@ function stepInserter(m){
         const ready=src.items.filter(it=>it.prog>=0.9);
         if(ready.length>0){const it=ready[0];src.items.splice(src.items.indexOf(it),1);item=it.id;}
       } else if(sm&&sm.type==='chest'){
-        for(const[k,v]of Object.entries(sm.chestInv)){if(v>0){item=k;sm.chestInv[k]--;break;}}
+        const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0);
+        if(k&&myTurn(m,sm)){item=k;sm.chestInv[k]--;markServed(sm,m);}
       } else if(sm&&sm.type!=='belt'&&sm.type!=='inserter'){
         if(isOutputFacing(sm,-dvx,-dvy)){
-          for(const[k,v]of Object.entries(sm.outBuf)){if(v>0){item=k;sm.outBuf[k]--;break;}}
+          const k=Object.keys(sm.outBuf).find(k=>sm.outBuf[k]>0);
+          if(k&&myTurn(m,sm)){item=k;sm.outBuf[k]--;markServed(sm,m);}
         }
       }
     }
@@ -5463,6 +5503,8 @@ function machineRates(m){
     for(const[k,n]of Object.entries(rec.fluid||{}))R.in[k]=(R.in[k]||0)+n*c;
     for(const[k,n]of Object.entries(rec.out))R.out[k]=(n+(modYield-1))*c; // a Productivity Module adds a chance of +1
   } else if(def.recipes.length){R.notes.push('Pick a recipe to see its rates');}
+  const tk=(INS_TAKERS[m.id]||[]).length;
+  if(tk>1)R.notes.push(`Output shared by ${tk} inserters, taking turns`);
   if(def.living&&!m.withered){R.in.nutrient=(R.in.nutrient||0)+per(FEED_EVERY);R.notes.push('Nutrient Paste is eaten only while vitality is under 100%');}
   return R;
 }
@@ -7771,7 +7813,7 @@ function quitToTitle(){
 //  SAVE / LOAD
 // ═══════════════════════════════════════════════════
 // Transient per-tick links (fluid networks are circular) never go into saves
-const TRANSIENT_KEYS=new Set(['_net','_nets','_fluidStatus']);
+const TRANSIENT_KEYS=new Set(['_net','_nets','_fluidStatus','_served','_serveN']);
 function serializeG(){return JSON.stringify(G,(k,v)=>TRANSIENT_KEYS.has(k)?undefined:k==='map'&&v===G.map?packMap(v):v);}
 // Saves store the map as one character per tile (a full Zone 5 map was ~1MB as
 // objects, enough to hit phone storage limits). Machine tiles are rebuilt on load.
