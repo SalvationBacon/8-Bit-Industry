@@ -410,6 +410,45 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 #minePips{display:flex;gap:8px;justify-content:center;}
 .mine-pip{width:12px;height:12px;border-radius:50%;background:rgba(245,166,35,.2);border:1px solid var(--amberDim);transition:background .1s,border-color .1s;}
 .mine-pip.filled{background:var(--amber);border-color:var(--amber);}
+/* ── LANDSCAPE PHONES: compact chrome so the map gets most of a ~400px-tall screen ──
+   (comes last so it wins over the enlarged phone type scale above) */
+@media (orientation:landscape) and (max-height:600px){
+  :root{--f3:6px;--f4:6px;--f5:7px;--f6:7px;--f7:8px;--f8:9px;--f9:10px;--f10:11px;--hud-h:34px;--rail:52px}
+  #sGame{grid-template-columns:calc(var(--rail) + var(--sal)) auto minmax(0,1fr)}
+  .tab-btn{gap:3px;padding:4px 0;font-size:6px;letter-spacing:0}
+  .tab-btn .tab-icon{height:20px} .tab-icon .uico{width:20px;height:20px}
+  .tab-badge{top:3px;right:calc(50% - 16px)}
+  .hbtn{min-height:28px;font-size:12px}
+  .hud-zone{min-height:26px;padding:4px 8px}
+  .hres-icon .uico{width:13px;height:13px}
+  #hud #invStrip{position:static;flex:1 1 auto;min-width:0;height:28px;background:none;border:none;padding:0 4px;z-index:auto}
+  #hudRes{flex:0 0 auto}
+  .is-chip{padding:1px 5px;font-size:var(--f4)} .is-chip img{width:13px;height:13px}
+  #tutHint{top:calc(var(--ct) + 6px);max-width:min(400px,58vw);padding:6px 8px}
+  #tutText{line-height:1.7}
+  .tut-btn{min-height:28px;min-width:28px;padding:4px 6px}
+  #tabDrawer.open{width:min(186px,23vw)}
+  .dcat-btn{padding:6px 7px}
+  #drawerItems{gap:3px;padding:4px}
+  .ditem{min-height:50px;padding:3px 4px;gap:1px} .di img.ico{width:20px;height:20px}
+  .dc{max-width:84px} .cc img{width:11px;height:11px}
+  .spanel{width:min(330px,37vw)}
+  .ph{padding:6px 10px} .ph-title{font-size:var(--f7)}
+  .pbody{padding:8px;line-height:1.7}
+  .full-btn{min-height:34px;padding:6px 8px}
+  #buildHUD{gap:6px}
+  #buildHUD button{min-height:34px;min-width:60px;padding:6px 10px;font-size:var(--f6)}
+  #buildCost .bc-in{padding:4px 8px}
+  #ghostBar{padding:5px 8px;gap:5px} #ghostBar button{min-height:34px;padding:6px 10px;font-size:var(--f6)}
+  #ghostBar .gb-t{min-width:34px;padding:4px} #ghostBar .gb-t .uico{width:18px;height:18px}
+  #multiselBar{padding:4px 8px} .msel-btn{min-height:32px;padding:6px 8px}
+  #resInfo{width:min(300px,40vw)}
+  .modal{width:min(460px,72vw)}
+  .menu-tile{min-height:52px;padding:5px 3px;gap:4px} .mt-ic .uico{width:22px;height:22px}
+  .modal{width:min(560px,80vw)} .menu-grid{grid-template-columns:repeat(5,1fr);gap:4px}
+  .mh{padding:6px 10px} .mb{padding:8px 10px} .mf{padding:6px 10px} .menu-zone{padding:6px 8px;margin-bottom:6px}
+  .mf .btn{padding:6px 14px}
+}
 </style>
 </head>
 <body>
@@ -437,7 +476,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -602,7 +641,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.0';
+const VER      = '2.0.1';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2768,8 +2807,16 @@ function sizeCanvas(){
   layoutOverlays();
   if(G)clampCam();
 }
+// Landscape phones: the resource strip rides in the top bar's spare space instead of covering the map
+const LANDSCAPE_MQ=window.matchMedia('(orientation:landscape) and (max-height:600px)');
+function placeInvStrip(){
+  const st=document.getElementById('invStrip'), hud=document.getElementById('hud'); if(!st||!hud)return;
+  if(LANDSCAPE_MQ.matches){if(st.parentElement!==hud)hud.insertBefore(st,document.getElementById('btnSpeed'));}
+  else if(st.parentElement===hud)document.getElementById('sGame').insertBefore(st,document.getElementById('undoBtn')||document.getElementById('buildHUD'));
+}
 // Publish the map's edges as CSS variables for the floating controls
 function layoutOverlays(){
+  placeInvStrip();
   const w=document.getElementById('wrap'); if(!w)return;
   const r=w.getBoundingClientRect(), st=document.documentElement.style;
   st.setProperty('--ct',r.top+'px'); st.setProperty('--cb',Math.max(0,window.innerHeight-r.bottom)+'px');
