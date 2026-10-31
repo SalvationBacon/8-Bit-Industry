@@ -254,6 +254,44 @@ const r=await p.evaluate(async()=>{
     const ins=Object.values(G.machines).find(m=>m.type==='inserter');
     ok('inserter_after_reload',moved>=15&&(!ins._arm||ins._arm.stateStart<=T),{moved,arm:ins._arm});
     T=Math.max(T,T0); }
+  // ── inserters sharing one output take turns
+  { reset(); G.research.done=Object.keys(TECHS); power(2,2);
+    const n=c=>Object.values(c.chestInv).reduce((a,b)=>a+b,0);
+    const bf=put('blast_furnace',10,10,0); bf.recipe='bf_iron'; Object.keys(RECIPES.bf_iron.in).forEach(k=>bf.inBuf[k]=999);
+    put('inserter',12,10,0); const c1=put('chest',13,10); put('inserter',12,11,0); const c2=put('chest',13,11);
+    run(1200); ok('shared_output_alternates',Math.abs(n(c1)-n(c2))<=2&&n(c1)+n(c2)>=140,{top:n(c1),bottom:n(c2)});
+    // one side blocked (a dead-end belt fills up): the other inserter carries on with everything
+    reset(); power(2,2); const bf2=put('blast_furnace',10,20,0); bf2.recipe='bf_iron'; Object.keys(RECIPES.bf_iron.in).forEach(k=>bf2.inBuf[k]=999);
+    put('inserter',12,20,0); put('belt',13,20,0); put('inserter',12,21,0); const c3=put('chest',13,21);
+    run(600); const mid=n(c3); run(600);
+    ok('shared_output_blocked_side',n(c3)-mid>=60,{first:mid,second:n(c3)-mid});
+    // a chest feeding two inserters splits too
+    reset(); power(2,2); const src=put('chest',10,30); src.chestInv.coal=300;
+    put('inserter',11,30,0); const d1=put('chest',12,30); put('inserter',10,31,1); const d2=put('chest',10,32);
+    run(400); ok('shared_chest_alternates',Math.abs(n(d1)-n(d2))<=2&&n(d1)>20,{a:n(d1),b:n(d2)}); }
+  // ── achievements: new counters earn their awards, and the Stardust bonus is capped at the old maximum
+  { reset(); G.research.done=Object.keys(TECHS); power(2,2); G.achievements=[];
+    multiselState.clipboard=[{type:'chest',rx:0,ry:0,dir:0}]; setTool('multisel'); multiselStartPaste(); transformGhost('h'); multiselState.pasteAnchor={x:80,y:40}; ghostConfirm(); multiselClear(); setTool('select');
+    undoLast();
+    const bf=put('blast_furnace',80,44,0); bf.recipe='bf_iron'; put('inserter',82,44,0); put('chest',83,44); put('inserter',82,45,0); put('chest',83,45);
+    run(8); checkAchievements(); const has=id=>G.achievements.includes(id);
+    ok('achievements_new_counters',has('first_paste')&&has('first_flip')&&has('first_undo')&&has('shared_output'),G.achievements);
+    G.achievements=ACHIEVEMENTS.map(a=>a.id);
+    ok('achievement_dust_capped',achDust()===10+ACH_DUST_MAX&&ACHIEVEMENTS.length>=120,{dust:achDust(),n:ACHIEVEMENTS.length});
+    G.achievements=[]; }
+  // ── Factory Floor: open ground below every zone's ore fields
+  { const z0=G.zone; const res=[];
+    for(const z of [1,2,3,4,5]){ transitionToZone(z); closeModal(); clearInterval(tickId);
+      const clear=G.map.slice(G.floorY).every(row=>row.every(t=>!t.res&&t.type===T_FLOOR));
+      res.push(G.map.length===ZONES[z].mapSize[1]+FLOOR_ROWS&&MAP_H===G.map.length&&clear); }
+    ok('factory_floor_every_zone',res.every(Boolean),res);
+    // Zone 5 expansion adds deposits only in the ore band
+    expandMap(32,16); const clear5=G.map.slice(G.floorY).every(row=>row.every(t=>!t.res));
+    ok('factory_floor_expansion_clear',clear5&&MAP_W===ZONES[5].mapSize[0]+32,{clear5,w:MAP_W});
+    // an old save (no floor) gains one on load; its machines stay put
+    transitionToZone(1); closeModal(); clearInterval(tickId); G.devFreeBuild=true; placeDir=0; tryPlace('chest',30,30); closeModal();
+    G.map=G.map.slice(0,G.floorY); delete G.floorY; saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    ok('factory_floor_old_save',G.floorY===64&&G.map.length===64+FLOOR_ROWS&&G.machines[G.map[30][30].mid]?.type==='chest',{floorY:G.floorY,h:G.map.length}); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
