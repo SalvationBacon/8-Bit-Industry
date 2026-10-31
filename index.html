@@ -476,7 +476,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.2 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -641,7 +641,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.1';
+const VER      = '2.0.2';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2920,6 +2920,46 @@ function drawPorts(ctx, type, px, py, pw, ph, ts, dir){
   }
 }
 
+// Long Inserter reach: ghost blocks on the tile it takes from (teal) and the tile it drops on (amber),
+// joined by a dotted line over the tiles it reaches across. Shown while placing or moving one, or while
+// its machine panel is open. A block fills in when something already sits on that tile.
+function drawInsReach(type,x,y,dir,ts,cx,cy,now){
+  const r=type==='long_inserter'?2:1, [dvx,dvy]=D_VEC[dir], u=Math.max(1,Math.round(ts/16));
+  const pulse=.7+.3*Math.sin(now/260);
+  ctx.save();
+  // dotted reach line, from the pickup tile's centre to the drop tile's centre, skipping the inserter itself
+  ctx.globalAlpha=.55*pulse; ctx.fillStyle='#e8e8e8';
+  const d=Math.max(2,u*2), step=ts/4;
+  for(let k=-(r*4)+2;k<=r*4-2;k++){
+    if(Math.abs(k)<3)continue;
+    const ex=(x+.5)*ts+dvx*k*step-cx, ey=(y+.5)*ts+dvy*k*step-cy;
+    ctx.fillRect(Math.round(ex-d/2),Math.round(ey-d/2),d,d);
+  }
+  for(const[s,col,label]of[[-1,'#26c6a0','TAKE'],[1,'#f5a623','DROP']]){
+    const tx=x+dvx*r*s, ty=y+dvy*r*s;
+    if(tx<0||ty<0||tx>=MAP_W||ty>=MAP_H)continue;
+    const px=Math.round(tx*ts-cx), py=Math.round(ty*ts-cy), T=Math.round(ts);
+    const t=G.map[ty][tx], used=t.mid!==null;
+    ctx.globalAlpha=used?.3:.16; ctx.fillStyle=col; ctx.fillRect(px,py,T,T);
+    // pixel corner brackets
+    ctx.globalAlpha=pulse; const L=Math.max(3*u,Math.round(T*.3)), w=u*2;
+    ctx.fillRect(px,py,L,w); ctx.fillRect(px,py,w,L);
+    ctx.fillRect(px+T-L,py,L,w); ctx.fillRect(px+T-w,py,w,L);
+    ctx.fillRect(px,py+T-w,L,w); ctx.fillRect(px,py+T-L,w,L);
+    ctx.fillRect(px+T-L,py+T-w,L,w); ctx.fillRect(px+T-w,py+T-L,w,L);
+    if(ts>12){
+      const as=Math.floor(ts*.4); ctx.globalAlpha=.85;
+      ctx.drawImage(arrowSpr(dir,col),Math.floor(px+T/2-as/2),Math.floor(py+T/2-as/2-(ts>=40?ts*.08:0)),as,as);
+    }
+    if(ts>=40){
+      ctx.globalAlpha=.9; ctx.font=`${Math.max(6,Math.round(ts/9))}px 'Press Start 2P', monospace`;
+      ctx.textAlign='center'; ctx.textBaseline='alphabetic'; ctx.fillStyle=col;
+      ctx.fillText(label,px+T/2,py+T-w-Math.round(ts*.06));
+    }
+  }
+  ctx.restore();
+}
+
 function draw(){
   if(!ctx||!G)return;
   const W=canvas.width/CANVAS_DPR,H=canvas.height/CANVAS_DPR;
@@ -3344,6 +3384,9 @@ function draw(){
     }
   }
 
+  // Reach of the Long Inserter whose panel is open
+  if(openPanel==='machine'){const m=G.machines[inspectId]; if(m&&m.type==='long_inserter')drawInsReach(m.type,m.x,m.y,m.dir,ts,cx,cy,now);}
+
   // Placement preview
   if(activeTool==='move'&&moveState.active&&hov.x>=0){
     const m=G.machines[moveState.machineId];
@@ -3360,6 +3403,7 @@ function draw(){
         ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts,m.dir); ctx.globalAlpha=1;
       }
+      if(m.type==='long_inserter')drawInsReach(m.type,hov.x,hov.y,m.dir,ts,cx,cy,now);
     }
   } else if(activeTool!=='select'&&activeTool!=='demolish'&&activeTool!=='move'&&hov.x>=0){
     const def=MDEFS[activeTool];
@@ -3375,11 +3419,11 @@ function draw(){
       // Output port indicators on ghost
       if(ts>20) drawPorts(ctx,activeTool,px,py,mw*ts,mh*ts,ts,placeDir);
       // Direction arrow for directional machines
-      const dirMachines=['belt','inserter','tunnel','splitter'];
-      if(dirMachines.includes(activeTool)&&ts>12){
+      if(DIR_TYPES.has(activeTool)&&ts>12){
         const as=Math.floor(ts*.5);
         ctx.drawImage(arrowSpr(placeDir,ok?'#f5a623':'#e53935'),Math.floor(px+mw*ts/2-as/2),Math.floor(py+mh*ts/2-as/2),as,as);
       }
+      if(activeTool==='long_inserter')drawInsReach(activeTool,hov.x,hov.y,placeDir,ts,cx,cy,now);
     }
   }
 

@@ -46,6 +46,10 @@ const r=await p.evaluate(async()=>{
   // ── E: long inserter
   reset(); power(2,2); const src=put('chest',10,10); src.chestInv.iron_plate=20; put('long_inserter',12,10,0); const dst=put('chest',14,10);
   run(200); ok('z1_long_inserter',(dst.chestInv.iron_plate||0)>0,dst.chestInv);
+  // its reach ghosts draw while its panel is open and while placing one, without throwing
+  { let thrown=null; const li=Object.values(G.machines).find(m=>m.type==='long_inserter');
+    try{ openMachinePanel(li); draw(); closePanel('machine'); setTool('long_inserter'); hov.x=20; hov.y=20; draw(); setTool('select'); }catch(e){thrown=e.message;}
+    ok('long_inserter_reach_draws',!thrown&&typeof drawInsReach==='function',thrown); }
   // ── F: furnace fed iron + coal, output pulled to chest
   reset(); power(2,2);
   const io=put('chest',10,10); io.chestInv.iron_ore=40; put('inserter',11,10,0); const fu=put('stone_furnace',12,10); fu.recipe='fn_iron';
