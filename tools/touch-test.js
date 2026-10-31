@@ -44,7 +44,7 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
   // tabs
   for(const t of ['craft','research','goal']){await tapEl('#tab-'+t); ok('tab_'+t,await p.evaluate(()=>!!openPanel),await p.evaluate(()=>openPanel)); await tapEl('#tab-'+t);}
   // menu tile
-  await tapEl('#hud .hbtn:has-text("☰")'); await tapEl('.menu-tile:has-text("INVENTORY")');
+  await tapEl('#hud .hbtn[title="Menu"]'); await tapEl('.menu-tile:has-text("INVENTORY")');
   ok('menu_inventory',await p.evaluate(()=>openPanel==='inv'));
   await tapEl('#pInv .ph-x');
   // quit + continue, then mine again: taps must not double

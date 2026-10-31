@@ -194,6 +194,66 @@ const r=await p.evaluate(async()=>{
   { const z0=G.zone; const at=z=>{G.zone=z;return ['sci_scar','sci_deep','sci_bloom','nutrient','z2_sci_scar','z3_sci_deep','z4_sci_bloom','z5_sci_void','sci_red','fn_iron'].filter(zoneRecipeOk).join(',');};
     const r={1:at(1),2:at(2),4:at(4),5:at(5)}; G.zone=z0;
     ok('zone_notes_gated',r[1]==='sci_red,fn_iron'&&r[2]==='sci_scar,z2_sci_scar,sci_red,fn_iron'&&r[4]==='sci_bloom,nutrient,z4_sci_bloom,sci_red,fn_iron'&&r[5].split(',').length===10,r); }
+  // ── belt animation: an item is drawn every frame and never jumps, along straights, corners and a splitter
+  { reset(); G.research.done=Object.keys(TECHS);
+    for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
+    put('belt',16,44,0); put('splitter',17,44,0); for(let x=18;x<22;x++)put('belt',x,44,0); put('chest',22,44);
+    G.map[40][10].items=[{id:'eff_module',prog:0}];
+    G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5;
+    const pts=[]; const orig=drawItem; let frame=null;
+    window.drawItem=(c,id,x,y,sz)=>{if(id==='eff_module')frame.push([x,y]);};
+    let maxStep=0, missing=0, last=null, frames=0, still=0, maxStill=0;
+    for(let t=0;t<130;t++){ run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame=[]; draw(); frames++;
+        const inChest=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+        if(!frame.length){ if(!inChest)missing++; last=null; continue; }
+        const [x,y]=frame[0]; if(last){const d=Math.hypot(x-last[0],y-last[1])/(TILE*.5); maxStep=Math.max(maxStep,d); still=d<1e-6?still+1:0; maxStill=Math.max(maxStill,still);} last=[x,y]; }
+      T=t0; }
+    window.drawItem=orig;
+    const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+    ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
+  // ── rotate / flip a copied layout before pasting
+  { reset(); G.research.done=Object.keys(TECHS);
+    const L=[{type:'belt',rx:0,ry:0,dir:0},{type:'inserter',rx:1,ry:0,dir:0},{type:'assembler',rx:2,ry:0,dir:0,recipe:'mk_gear'},{type:'splitter',rx:4,ry:0,dir:0}];
+    const key=d=>JSON.stringify(d.map(e=>[e.type,e.rx,e.ry,e.dir]).sort());
+    const twiceH=flipLayout(flipLayout(L,'h'),'h'), twiceV=flipLayout(flipLayout(L,'v'),'v');
+    let r=L; for(let i=0;i<4;i++)r=rotateLayout(r);
+    ok('layout_flip_rotate_identity',key(twiceH)===key(L)&&key(twiceV)===key(L)&&key(r)===key(L),{h:key(twiceH),r:key(r)});
+    const fh=flipLayout(L,'h'), byT=t=>fh.find(e=>e.type===t);
+    ok('layout_flip_mirrors',byT('belt').rx===4&&byT('belt').dir===2&&byT('inserter').rx===3&&byT('inserter').dir===2&&byT('assembler').rx===1&&byT('splitter').rx===0&&byT('assembler').recipe==='mk_gear',fh);
+    const rot=rotateLayout(L), sp=rot.find(e=>e.type==='splitter');
+    ok('layout_rotate_turns',rot.find(e=>e.type==='belt').dir===1&&sp.dir===1&&rot.every(e=>e.rx>=0&&e.ry>=0),rot);
+    // paste the flipped layout for real
+    multiselState.clipboard=L.map(e=>({...e})); setTool('multisel'); multiselStartPaste(); transformGhost('h'); multiselState.pasteAnchor={x:40,y:40}; ghostConfirm();
+    const at=(x,y)=>G.machines[G.map[y][x].mid];
+    ok('layout_flip_paste',at(44,40)?.type==='belt'&&at(44,40).dir===2&&at(43,40)?.type==='inserter'&&at(43,40).dir===2&&at(41,40)?.type==='assembler'&&at(41,40).recipe==='mk_gear'&&at(40,40)?.type==='splitter',{b:at(44,40)?.type});
+    multiselClear(); setTool('select');
+    // a saved blueprint is never changed by flipping while placing it
+    G.blueprints=[{name:'t',data:L.map(e=>({...e}))}]; const before=key(G.blueprints[0].data);
+    startPasteBlueprint(0); transformGhost('rot'); transformGhost('v');
+    ok('layout_blueprint_untouched',key(G.blueprints[0].data)===before&&key(blueprintState.data)!==before,{});
+    ghostCancel(); setTool('select'); }
+  // ── every machine turns to all four directions, including the 1×2 Scrubber
+  { reset(); G.research.done=Object.keys(TECHS); const at=(x,y)=>G.map[y][x].mid;
+    const sc=put('scrubber',50,50,1); const flat=sc&&at(50,50)===sc.id&&at(51,50)===sc.id&&at(50,51)===null;
+    rotateM(sc.id); const up=at(50,50)===sc.id&&at(50,51)===sc.id&&at(51,50)===null&&sc.dir===2;
+    put('chest',51,50); rotateM(sc.id); const blocked=sc.dir===2&&at(51,50)!==sc.id;   // no room: stays upright
+    ok('scrubber_four_ways',flat&&up&&blocked,{flat,up,blocked});
+    // a layout with a Scrubber rotates cleanly: footprints never overlap once placed
+    const L=[{type:'scrubber',rx:0,ry:0,dir:0},{type:'chest',rx:1,ry:0,dir:0},{type:'chest',rx:1,ry:1,dir:0}];
+    let fits=true; for(let k=0,d=L;k<4;k++){d=rotateLayout(d); const cells=new Set(); for(const e of d){const[w,h]=machSize(e.type,e.dir);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const c=(e.rx+x)+','+(e.ry+y); if(cells.has(c))fits=false; cells.add(c);}}}
+    multiselState.clipboard=L.map(e=>({...e})); setTool('multisel'); multiselStartPaste(); transformGhost('rot'); multiselState.pasteAnchor={x:60,y:60}; ghostConfirm();
+    const s2=Object.values(G.machines).find(m=>m.type==='scrubber'&&m.x>=60);
+    ok('layout_rotate_scrubber',fits&&s2&&s2.dir===1&&machSize(s2)[0]===2,{fits,dir:s2?.dir});
+    multiselClear(); setTool('select'); }
+  // ── inserters keep working after a reload (their arm timers used the old page clock)
+  { reset(); power(2,2); const sA=put('chest',70,10); sA.chestInv.coal=500; put('inserter',71,10,0); const dA=put('chest',72,10);
+    run(60); saveGame(); const T0=T;
+    T=500; G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);   // a fresh page: the clock starts near zero
+    const d2=Object.values(G.machines).find(m=>m.type==='chest'&&m.x===72), before=d2.chestInv.coal||0;
+    run(120); const moved=(d2.chestInv.coal||0)-before;
+    const ins=Object.values(G.machines).find(m=>m.type==='inserter');
+    ok('inserter_after_reload',moved>=15&&(!ins._arm||ins._arm.stateStart<=T),{moved,arm:ins._arm});
+    T=Math.max(T,T0); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});

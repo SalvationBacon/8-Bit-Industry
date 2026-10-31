@@ -115,7 +115,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .tab-btn .tab-icon{font-size:22px;line-height:1;height:26px;display:flex;align-items:center}
 .uico{image-rendering:pixelated;display:inline-block;vertical-align:middle}
 .toast .uico,.toast .ico,#tutText .uico{width:16px;height:16px;vertical-align:-3px}
+img.pxe{width:max(16px,1.5em);height:max(16px,1.5em);vertical-align:-.3em}
 .tab-icon .uico{width:26px;height:26px}
+.ph-x .uico,.hbtn .uico{width:16px;height:16px}
+button .uico{vertical-align:-3px}
 .mt-ic .uico{width:32px;height:32px}
 .hres-icon .uico{width:16px;height:16px}
 .btn .uico,.ditem .di .uico{width:24px;height:24px}
@@ -286,6 +289,10 @@ body.sheet-open #tutMini{display:block}
 #buildCancelBtn{border:1px solid var(--border2);color:var(--text2)}
 #ghostBar{position:fixed;left:var(--cl);right:var(--cr);bottom:var(--cb);background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:8px 12px;display:flex;align-items:center;gap:8px;z-index:600}
 #ghostBar button{font-family:var(--font);font-size:var(--f7);padding:12px 18px;cursor:pointer;min-height:44px}
+#ghostBar{flex-wrap:wrap}
+#ghostBar .gb-t{padding:8px;min-width:44px;border:1px solid var(--border2);background:var(--bg3);box-shadow:inset -2px -2px 0 rgba(0,0,0,.45)}
+#ghostBar .gb-t:active{border-color:var(--amber)}
+#ghostBar .gb-t .uico{width:22px;height:22px}
 #multiselBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600}
 /* Tutorial: a floating card over the top of the map, collapsible to a pill */
 #tutHint{position:fixed;top:calc(var(--ct) + 40px);left:calc(var(--cl) + 8px);right:calc(var(--cr) + 8px);max-width:560px;margin:0 auto;z-index:150;
@@ -420,7 +427,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.8.7 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.5 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -478,7 +485,10 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 
 <!-- Ghost paste confirm bar, shown during blueprint holding and multisel pasting -->
 <div id="ghostBar" class="hidden">
-  <span style="font-size:var(--f6);color:var(--amber);flex:1" id="ghostBarLabel">Tap map to position, then confirm</span>
+ <span style="font-size:var(--f6);color:var(--amber);flex:1 1 100%" id="ghostBarLabel">Tap map to position, then confirm</span>
+  <button class="gb-t" onclick="transformGhost('rot')" title="Rotate the whole layout"><span data-ui="rotate"></span></button>
+  <button class="gb-t" onclick="transformGhost('h')" title="Flip left and right"><span data-ui="fliph"></span></button>
+  <button class="gb-t" onclick="transformGhost('v')" title="Flip up and down"><span data-ui="flipv"></span></button>
   <button onclick="ghostConfirm()" style="border:2px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);min-width:80px">✓ PLACE</button>
   <button onclick="ghostCancel()" style="border:1px solid var(--border2);background:transparent;color:var(--text2)">✗ CANCEL</button>
 </div>
@@ -582,7 +592,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.8.7';
+const VER      = '1.9.5';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2112,11 +2122,21 @@ function iconHtml(id,fallback){
   if(TEX_PIXEL){const s=anySpr(id); if(s)return `<img class="ico" src="${sprURL('ico:'+id,s)}" alt="">`;}
   return ITEMS[id]?.icon||MDEFS[id]?.icon||fallback||'·';
 }
+// Draw a machine sprite into its footprint. A non-square machine lying on its side (facing down or up)
+// is drawn turned a quarter, not stretched.
+function drawMachSpr(c,spr,type,dir,px,py,pw,ph){
+  const[sw,sh]=MDEFS[type].size;
+  if(sw!==sh&&(dir===D_DOWN||dir===D_UP)){
+    c.save(); c.translate(px+pw/2,py+ph/2); c.rotate(dir===D_DOWN?Math.PI/2:-Math.PI/2);
+    c.drawImage(spr,-ph/2,-pw/2,ph,pw); c.restore(); return;
+  }
+  c.drawImage(spr,Math.floor(px),Math.floor(py),Math.ceil(pw),Math.ceil(ph));
+}
 // Faint machine preview for ghosts (move / paste / blueprint)
-function drawGhostIcon(def,px,py,pw,ph){
+function drawGhostIcon(def,px,py,pw,ph,dir=0){
   const type=Object.keys(MDEFS).find(k=>MDEFS[k]===def);
   const s=TEX_PIXEL&&machineSpr(type,0,false);
-  if(s){ctx.drawImage(s,px,py,pw,ph);return;}
+  if(s){drawMachSpr(ctx,s,type,dir,px,py,pw,ph);return;}
   ctx.font=`${Math.floor(Math.min(pw,ph)*.35)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(def.icon,px+pw/2,py+ph/2);
 }
@@ -2260,6 +2280,28 @@ const UI_ART={
   up({R}){R(6,7,4,8,'#4caf50');for(let k=0;k<6;k++)R(7-k,1+k,2+k*2,1,k<2?'#a5d6a7':'#4caf50');},
   bloom({C,R,P}){R(7,9,2,6,'#3f9a3f');R(4,12,3,2,'#6ad86a');for(let i=0;i<5;i++){const t=i*Math.PI*2/5-Math.PI/2;C(Math.round(8+Math.cos(t)*3.3),Math.round(6+Math.sin(t)*3.3),2,'#f48fb1');}
     C(8,6,1,'#ffd600');P(7,5,'#fff3b0');},
+  // arrows (text arrows in labels and the direction arrow on tunnels)
+  ar(a){uiArrow(a,0);}, ad(a){uiArrow(a,1);}, al(a){uiArrow(a,2);}, au(a){uiArrow(a,3);},
+  // flip: a hollow and a solid triangle mirrored across a dashed axis
+  fliph(a){uiFlip(a,false);}, flipv(a){uiFlip(a,true);},
+  // settings, panels and labels
+  close({P}){for(let k=0;k<10;k++){P(3+k,3+k,'#cfcfcf');P(4+k,3+k,'#cfcfcf');P(12-k,3+k,'#cfcfcf');P(13-k,3+k,'#cfcfcf');}},
+  check({P}){const pts=[[2,8],[3,9],[4,10],[5,11],[6,12],[7,11],[8,10],[9,9],[10,8],[11,7],[12,6],[13,5],[14,4]];for(const[x,y]of pts){P(x,y,'#26c6a0');P(x,y-1,'#26c6a0');P(x,y+1,'#1a8a6a');}},
+  menu({R}){for(const y of[3,7,11]){R(2,y,12,2,'#cfcfcf');R(2,y,12,1,'#ffffff');}},
+  cave({R,P}){R(1,3,14,12,'#3a3a46');R(1,3,14,1,'#5a5a6a');for(let y=0;y<16;y++)for(let x=0;x<16;x++){if(((x-7.5)/5)**2+((y-15)/9)**2<=1)P(x,y,'#0a0a10');}
+    P(3,6,'#5a5a6a');P(12,5,'#5a5a6a');P(7,10,'#7fdbff');P(9,12,'#7fdbff');},
+  pause({R}){R(4,3,3,10,'#cfcfcf');R(9,3,3,10,'#cfcfcf');R(4,3,3,1,'#ffffff');R(9,3,3,1,'#ffffff');},
+  hand({R,P}){const sk='#f0c090',dk='#b07a50';R(4,7,8,7,sk);R(4,2,2,6,sk);R(6,1,2,7,sk);R(8,1,2,7,sk);R(10,2,2,6,sk);R(2,8,2,3,sk);R(3,10,1,2,sk);
+    for(const x of[6,8,10])P(x,6,dk);R(4,13,8,1,dk);},
+  clock({C,L,R}){C(8,9,6,'#e8e8e8');C(8,9,5,'#2a2a2a');L(8,9,8,5,'#f5a623');L(8,9,11,9,'#f5a623');R(7,1,2,2,'#cfcfcf');},
+  export({R}){R(2,11,12,3,'#7a7a7a');R(2,11,12,1,'#9a9a9a');R(7,4,2,7,'#26c6a0');for(let k=0;k<4;k++)R(7-k,1+k,2+k*2,1,'#26c6a0');},
+  import({R}){R(2,11,12,3,'#7a7a7a');R(2,11,12,1,'#9a9a9a');R(7,1,2,6,'#f5a623');for(let k=0;k<4;k++)R(4+k,6+k,8-k*2,1,'#f5a623');},
+  music({C,R}){C(5,12,2,'#26c6a0');C(11,10,2,'#26c6a0');R(6,3,1,9,'#26c6a0');R(12,1,1,9,'#26c6a0');R(6,2,7,2,'#8af0d0');},
+  film({R,P}){R(1,3,14,10,'#2a2a2a');for(let x=2;x<15;x+=3){P(x,4,'#e8e8e8');P(x,11,'#e8e8e8');}R(2,6,5,4,'#5a7aa8');R(9,6,5,4,'#5a7aa8');P(3,7,'#9ad8ff');P(10,7,'#9ad8ff');},
+  picture({R,P}){R(1,2,14,12,'#8a5a2c');R(2,3,12,10,'#42a5f5');for(let i=0;i<6;i++)R(3+i,12-i,12-i*2>0?2:1,i+1,'#3f9a3f');R(11,4,2,2,'#ffd600');R(2,11,12,2,'#3f9a3f');},
+  vibrate({R,P}){R(5,2,6,12,'#3a3a3a');R(6,3,4,9,'#26c6a0');R(7,13,2,1,'#7a7a7a');for(const[x,d]of[[2,1],[13,-1]])for(let y=4;y<12;y+=2){P(x,y,'#cfcfcf');P(x+d,y+1,'#cfcfcf');}},
+  file({R,P}){R(3,1,8,14,'#e8e8e8');R(11,4,2,11,'#e8e8e8');P(11,1,'#9a9a9a');R(11,2,1,2,'#9a9a9a');R(12,3,1,1,'#9a9a9a');for(let y=5;y<14;y+=2)R(5,y,6,1,'#9a9a9a');},
+  copy({R}){R(2,2,8,10,'#9a9a9a');R(3,3,6,8,'#cfcfcf');R(6,5,8,10,'#e8e8e8');R(6,5,8,1,'#ffffff');for(let y=8;y<14;y+=2)R(8,y,4,1,'#9a9a9a');},
   // title
   factory({R,P,C}){C(4,2,1,'#5e5e5e');C(11,3,1,'#4e4e4e');R(3,3,2,6,'#4a4a4a');R(3,5,2,1,'#e53935');R(10,4,2,5,'#4a4a4a');R(10,6,2,1,'#e53935');
     for(let k=0;k<3;k++)for(let i=0;i<5;i++){const h=Math.floor(i*.6);R(1+k*5+i,8-h,1,h+1,i===4?'#ffd27a':'#f5a623');}
@@ -2268,16 +2310,112 @@ const UI_ART={
     for(const[x,h]of[[11,4],[13,7]])for(let y=8-h/2;y<8+h/2;y++)P(x,Math.round(y),'#26c6a0');},
   mute({R,P}){R(2,6,3,4,'#7a7a7a');for(let k=0;k<4;k++)R(5+k,5-k,1,6+k*2,'#7a7a7a');for(let k=0;k<5;k++){P(10+k,6+k,'#e53935');P(14-k,6+k,'#e53935');}},
 };
+// Pixel arrow pointing right, turned to dir (0 right, 1 down, 2 left, 3 up)
+function uiArrow({P},dir,col='#f5a623'){
+  const px=[];for(let x=2;x<10;x++){px.push([x,7],[x,8]);}for(let k=0;k<5;k++)for(let y=3+k;y<13-k;y++)px.push([9+k,y]);
+  const t=([x,y])=>[[x,y],[15-y,x],[15-x,15-y],[y,15-x]][dir];
+  for(const q of px){const[x,y]=t(q);P(x,y,col);}
+}
+// Pipe segment: shell joined toward each neighbour in mask (bit 0 right, 1 down, 2 left, 3 up),
+// plus a separate fluid core drawn at a pressure-based opacity
+function pipeShellSpr(mask,hot){
+  return mkSpr(`pipes:${mask}:${hot?1:0}`,16,16,({R,P})=>{
+    const b=hot?'#a83232':'#3a3a3a', hi=hot?'#e57373':'#5a5a5a', dk=hot?'#5a1a1a':'#202020';
+    const arm=(x,y,w,h)=>{R(x,y,w,h,b);};
+    R(5,5,6,6,b);
+    if(mask&1)arm(10,5,6,6); if(mask&2)arm(5,10,6,6); if(mask&4)arm(0,5,6,6); if(mask&8)arm(5,0,6,6);
+    // light from the top left, flanges where a pipe meets the tile edge
+    const horiz=mask&5, vert=mask&10;
+    if(horiz||!vert){R(mask&4?0:5,5,(mask&1?16:11)-(mask&4?0:5),1,hi);R(mask&4?0:5,10,(mask&1?16:11)-(mask&4?0:5),1,dk);}
+    if(vert||!horiz){R(5,mask&8?0:5,1,(mask&2?16:11)-(mask&8?0:5),hi);R(10,mask&8?0:5,1,(mask&2?16:11)-(mask&8?0:5),dk);}
+    if(mask&1){R(14,4,1,8,hi);} if(mask&4){R(1,4,1,8,hi);} if(mask&2){R(4,14,8,1,hi);} if(mask&8){R(4,1,8,1,hi);}
+  });
+}
+function pipeCoreSpr(mask,col){
+  return mkSpr(`pipec:${mask}:${col}`,16,16,({R})=>{
+    R(7,7,2,2,col);
+    if(mask&1)R(9,7,7,2,col); if(mask&2)R(7,9,2,7,col); if(mask&4)R(0,7,7,2,col); if(mask&8)R(7,0,2,7,col);
+  });
+}
+// Tier badge: T2 amber, T3 teal, in 3×5 pixel digits
+function tierSpr(t){
+  return mkSpr(`tier:${t}`,9,7,({R,P})=>{
+    R(0,0,9,7,t>=3?'#26c6a0':'#f5a623'); R(0,6,9,1,t>=3?'#127a64':'#a86c08');
+    const ink='#141414', G={T:['111','010','010','010','010'],2:['111','001','111','100','111'],3:['111','001','111','001','111']};
+    const glyph=(g,ox)=>g.forEach((row,y)=>[...row].forEach((c,x)=>{if(c==='1')P(ox+x,1+y,ink);}));
+    glyph(G.T,1); glyph(G[t]||G[2],5);
+  });
+}
+// Draw an effect (rings, arcs) at sprite resolution (16px per tile), then scale it up without smoothing,
+// so it is built from the same chunky pixels as everything else. fn gets a context in screen units.
+const _pfx=document.createElement('canvas'), _pfxc=_pfx.getContext('2d');
+function pixelFx(target,x,y,w,h,ts,fn){
+  const k=16/ts, cw=Math.max(1,Math.ceil(w*k)), ch=Math.max(1,Math.ceil(h*k));
+  if(_pfx.width<cw||_pfx.height<ch){_pfx.width=Math.max(_pfx.width,cw);_pfx.height=Math.max(_pfx.height,ch);}
+  _pfxc.setTransform(1,0,0,1,0,0); _pfxc.clearRect(0,0,cw,ch);
+  _pfxc.setTransform(k,0,0,k,0,0); fn(_pfxc);
+  const sm=target.imageSmoothingEnabled; target.imageSmoothingEnabled=false;
+  target.drawImage(_pfx,0,0,cw,ch,Math.floor(x),Math.floor(y),cw/k,ch/k);
+  target.imageSmoothingEnabled=sm;
+}
+function uiFlip({P},vert){
+  const put=(x,y,c)=>vert?P(y,x,c):P(x,y,c);
+  for(let y=1;y<15;y+=2)put(7,y,'#7a7a7a'),put(8,y,'#7a7a7a');
+  for(let k=0;k<6;k++)for(let y=8-k;y<8+k;y++){
+    const xl=1+k, xr=14-k;                      // left points left, right points right
+    if(k===5||y===8-k||y===8+k-1)put(xl,y,'#26c6a0');
+    put(xr,y,'#f5a623');
+  }
+}
+function arrowSpr(dir,col){return mkSpr(`arr:${dir}:${col}`,16,16,a=>uiArrow(a,dir,col));}
 function uiSpr(name){const f=UI_ART[name];return f?mkSpr(`ui:${name}`,16,16,a=>f(a)):null;}
 // Emoji in tutorial text and toasts → pixel icons. 'ui:x' is a UI_ART icon; anything else an item/machine id
 const EMOJI_PIX={'⛏️':'ui:pick','⛏':'ui:pick','🔨':'ui:craft','🏗️':'ui:build','🏗':'ui:build','🔬':'ui:research','🚀':'ui:goal',
   '⚠️':'ui:warn','⚠':'ui:warn','🌫️':'ui:smog','💧':'ui:pressure','☀️':'ui:sun','🌑':'ui:moon','🌱':'ui:sprout','🥀':'ui:wilt',
   '🌡️':'ui:heat','📕':'sci_void','✨':'ui:stardust','🗺️':'ui:map','💥':'ui:demolish','☢️':'ui:rad','⭐':'ui:perks','🛠':'ui:dev',
   '⏩':'ui:fast','⚡':'ui:power','📦':'ui:inventory','🏆':'ui:achievements','💾':'ui:saves','🛟':'ui:backup','📖':'ui:recipes',
-  '📐':'ui:blueprint','📲':'ui:install','🔒':'ui:devlock','⚙️':'ui:settings','🌸':'ui:bloom','🌌':'singularity'};
-const EMOJI_RE=new RegExp(Object.keys(EMOJI_PIX).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'g');
+  '📐':'ui:blueprint','📲':'ui:install','🔒':'ui:devlock','⚙️':'ui:settings','🌸':'ui:bloom','🌌':'singularity',
+  '🕳':'ui:cave','⏸':'ui:pause','✋':'ui:hand','⏱':'ui:clock','📤':'ui:export','📥':'ui:import','⬇':'ui:import','⬆':'ui:up',
+  '🎵':'ui:music','🔉':'ui:sound','🔊':'ui:sound','🎞':'ui:film','🖼':'ui:picture','📳':'ui:vibrate','📄':'ui:file','📋':'ui:copy',
+  '✕':'ui:close','✗':'ui:close','✓':'ui:check','☰':'ui:menu','→':'ui:ar','↓':'ui:ad','←':'ui:al','↑':'ui:au','↻':'ui:rotate','✥':'ui:move','👆':'ui:select','⬚':'ui:multisel','💚':'circuit','🌿':'ui:sprout','🔋':'accumulator','🗒':'sci_red'};
+// Every item's and machine's old emoji icon maps to its sprite too, so any leftover text emoji has a pixel twin
+const noVS=e=>e.replace(/\uFE0F/g,'');
+let EMOJI_RE=null, EMOJI_N=null;
+function emojiTable(){
+  if(EMOJI_RE)return;
+  EMOJI_N={};
+  for(const[k,v]of Object.entries(EMOJI_PIX))EMOJI_N[noVS(k)]=v;
+  for(const tbl of[ITEMS,MDEFS])for(const[id,d]of Object.entries(tbl)){const e=d.icon&&noVS(d.icon);if(e&&!EMOJI_N[e]&&anySpr(id))EMOJI_N[e]=id;}
+  const keys=Object.keys(EMOJI_N).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\uFE0F?');
+  EMOJI_RE=new RegExp(keys.join('|'),'g');
+}
 function pixIcon(spec){return spec.startsWith('ui:')?uiIcon(spec.slice(3)):iconHtml(spec);}
-function pixEmoji(html){return html.replace(EMOJI_RE,e=>pixIcon(EMOJI_PIX[e]));}
+// Converted emoji scale with the text around them (a 28px zone badge gets a big icon, labels a small one)
+const pixEmojiIcon=spec=>pixIcon(spec).replace('class="','class="pxe ');
+// Swap emoji for pixel icons in an HTML string: text only, never inside a tag's attributes
+function pixEmoji(html){
+  emojiTable();
+  return String(html).replace(/(<[^>]*>)|([^<]+)/g,(m,tag,text)=>tag||text.replace(EMOJI_RE,e=>pixEmojiIcon(EMOJI_N[noVS(e)])));
+}
+// Catch-all: any emoji that reaches the page as text (static markup, textContent, older render code) is
+// converted in place, so the whole UI stays pixel art
+const PIX_SKIP=new Set(['SCRIPT','STYLE','TEXTAREA','INPUT','OPTION','TITLE']);
+function pixifyNode(root){
+  emojiTable();
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement&&!PIX_SKIP.has(n.parentElement.tagName)&&(EMOJI_RE.lastIndex=0,EMOJI_RE.test(n.nodeValue))?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT});
+  const hits=[];let n;while(n=w.nextNode())hits.push(n);
+  for(const t of hits){const sp=document.createElement('span');sp.innerHTML=pixEmoji(escHtml(t.nodeValue));t.replaceWith(...sp.childNodes);}
+}
+let pixObserver=null;
+function watchEmoji(){
+  if(pixObserver||!window.MutationObserver)return;
+  pixifyNode(document.body);
+  pixObserver=new MutationObserver(muts=>{for(const m of muts){
+    if(m.type==='characterData'){if(m.target.parentNode)pixifyNode(m.target.parentNode);}
+    else for(const a of m.addedNodes){if(a.nodeType===3){if(a.parentNode)pixifyNode(a.parentNode);}else if(a.nodeType===1)pixifyNode(a);}
+  }});
+  pixObserver.observe(document.body,{childList:true,subtree:true,characterData:true});
+}
 const escHtml=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // Achievement badges: a pixel icon per achievement
 const ACH_PIX={first_ore:'ui:pick',ore_100:'iron_ore',ore_1000:'ui:pick',first_miner:'miner',miners_5:'miner',first_machine:'ui:build',
@@ -2482,9 +2620,11 @@ function drawTitle(t){
     if(m.type==='inserter'){g.save();g.translate(px+ts/2,py+ts/2);g.rotate((m.dir+1)*Math.PI/2);g.drawImage(spr,-ts/2,-ts/2,ts,ts);g.restore();continue;}
     g.drawImage(spr,Math.floor(px),Math.floor(py),Math.ceil(w*ts),Math.ceil(h*ts));
     if(m.type==='singularity'){
-      const cx=px+w*ts/2, cy=py+h*ts/2, R=w*ts*.42, sp=(Math.sin(t/1600)+1)/2, rot=t/400*(1+sp*3);
-      g.lineWidth=Math.max(2,ts*.12); g.strokeStyle='#ab47bc'; g.beginPath(); g.arc(cx,cy,R,0,Math.PI*2); g.stroke();
-      for(let q=0;q<3;q++){g.strokeStyle=`rgba(179,136,255,${.4+.5*sp})`;g.lineWidth=Math.max(1.5,ts*.06);g.beginPath();g.arc(cx,cy,R*(.75-q*.2)*(1-sp*.3),rot+q*2.1,rot+q*2.1+Math.PI*.9);g.stroke();}
+      const W2=w*ts, cx=W2/2, cy=h*ts/2, R=W2*.42, sp=(Math.sin(t/1600)+1)/2, rot=t/400*(1+sp*3);
+      pixelFx(g,px,py,W2,h*ts,ts,c=>{
+        c.lineWidth=ts*.14; c.strokeStyle='#ab47bc'; c.beginPath(); c.arc(cx,cy,R,0,Math.PI*2); c.stroke();
+        for(let q=0;q<3;q++){c.strokeStyle=`rgba(179,136,255,${.4+.5*sp})`;c.lineWidth=ts*.08;c.beginPath();c.arc(cx,cy,R*(.75-q*.2)*(1-sp*.3),rot+q*2.1,rot+q*2.1+Math.PI*.9);c.stroke();}
+      });
     }
   }
   // zone atmosphere
@@ -2611,6 +2751,33 @@ function beltTurn(m){
   return a===b?0:a?1:3;
 }
 
+// Draw the items on one belt-like tile. Moving items interpolate smoothly and may run past the edge into
+// the next tile (the simulation hands them over with the leftover move). Items that cannot move on stop
+// just short of the edge and queue a quarter tile apart (even spacing across tiles) instead of piling onto one spot.
+// mode: 'belt' full tile · 'enter' tunnel mouth (sinks at the centre) · 'exit' rises from the centre
+function beltCanTake(tx,ty,dir){
+  const[dx,dy]=D_VEC[dir], t=G.map[ty+dy]?.[tx+dx]; if(!t||t.mid===null)return false;
+  const nm=G.machines[t.mid]; if(!nm)return false;
+  if(nm.type==='chest')return true;
+  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<4;
+}
+function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
+  const flow=mode==='enter'||beltCanTake(tx,ty,dir);
+  const items=[...tile.items].sort((a,b)=>b.prog-a.prog);
+  let lim=flow?1+spd:.875;
+  const[dx,dy]=D_VEC[dir], mx=tx*ts-cx+ts/2, my=ty*ts-cy+ts/2, sz=ts*.42;
+  for(const it of items){
+    let p=Math.max(flow?0:.125,Math.min(it.prog+spd*sub,lim));
+    if(!flow)lim=p-.25;                  // queued items sit a quarter tile apart, evenly across tile edges
+    if(mode==='enter'&&p>=.5)continue;   // gone underground
+    if(mode==='exit')p=.5+p*.5;          // surfaces at the centre
+    let ox,oy;
+    if(p<=1)[ox,oy]=beltItemPos(dir,turn,p);
+    else{[ox,oy]=beltItemPos(dir,turn,1);ox+=dx*(p-1);oy+=dy*(p-1);}
+    drawItem(ctx,it.id,mx+ox*ts,my+oy*ts,sz);
+  }
+}
+
 // Port layout per machine type:
 // Output side per machine type, inserters may NOT deposit into the output side
 const PORTS = {
@@ -2632,65 +2799,16 @@ const PORTS = {
 };
 
 function drawPorts(ctx, type, px, py, pw, ph, ts, dir){
-  const layout = PORTS[type];
-  if(!layout) return;
-  const sz = Math.max(4, Math.min(9, ts * .16));
-
-  const SIDES = ['top','right','bottom','left'];
-  function rotateSide(side, steps){
-    return SIDES[(SIDES.indexOf(side) + steps) % 4];
+  const layout=PORTS[type]; if(!layout)return;
+  const SIDES=['top','right','bottom','left'], DIR_OF={right:0,bottom:1,left:2,top:3};
+  const sz=Math.floor(Math.max(8,Math.min(16,ts*.3)));
+  for(const p of layout.outputs){
+    const side=SIDES[(SIDES.indexOf(p.side)+(dir||0))%4], d=DIR_OF[side], [nx,ny]=D_VEC[d];
+    const ex=side==='left'?px:side==='right'?px+pw:px+pw*p.pos;
+    const ey=side==='top'?py:side==='bottom'?py+ph:py+ph*p.pos;
+    // pixel arrow just inside the output edge, pointing out
+    ctx.drawImage(arrowSpr(d,'#f5a623'),Math.floor(ex-nx*sz/2-sz/2),Math.floor(ey-ny*sz/2-sz/2),sz,sz);
   }
-  const rot = dir || 0;
-
-  // Point on the machine border edge
-  function edgeXY(side, pos){
-    switch(side){
-      case 'top':    return [px + pw*pos, py];
-      case 'bottom': return [px + pw*pos, py + ph];
-      case 'left':   return [px,          py + ph*pos];
-      case 'right':  return [px + pw,     py + ph*pos];
-    }
-  }
-
-  function arrow(side, pos, isInput){
-    const rSide = rotateSide(side, rot);
-    const [ex, ey] = edgeXY(rSide, pos);
-
-    // Inward normal (pointing toward machine centre)
-    const nx = rSide==='right'?-1 : rSide==='left'?1  : 0;
-    const ny = rSide==='bottom'?-1: rSide==='top'?1   : 0;
-
-    // Perpendicular (along the edge)
-    const bx = rSide==='top'||rSide==='bottom' ? sz*.6 : 0;
-    const by = rSide==='left'||rSide==='right'  ? sz*.6 : 0;
-
-    let tip, baseL, baseR;
-    if(isInput){
-      // Input: base ON the border, tip points inward sz pixels
-      tip   = [ex + nx*sz,  ey + ny*sz];
-      baseL = [ex - bx,     ey - by];
-      baseR = [ex + bx,     ey + by];
-    } else {
-      // Output: base inset sz from border, tip points outward to the border
-      const bx2 = ex + nx*sz; const by2 = ey + ny*sz; // base centre (inset)
-      tip   = [ex,              ey];                   // tip at border
-      baseL = [bx2 - bx,       by2 - by];
-      baseR = [bx2 + bx,       by2 + by];
-    }
-
-    ctx.beginPath();
-    ctx.moveTo(tip[0], tip[1]);
-    ctx.lineTo(baseL[0], baseL[1]);
-    ctx.lineTo(baseR[0], baseR[1]);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,.4)';
-    ctx.lineWidth=.8;
-    ctx.stroke();
-  }
-
-  ctx.fillStyle='rgba(245,166,35,.9)';
-  for(const p of layout.outputs) arrow(p.side, p.pos, false);
 }
 
 function draw(){
@@ -2721,6 +2839,7 @@ function draw(){
       ctx.drawImage(resSpr(G.map[ty][tx].res,(tx*7+ty*13)&3,af),Math.floor(tx*ts-cx),Math.floor(ty*ts-cy),tss,tss);
     }
   }
+  const beltQ=[];
   for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
     const px=tx*ts-cx, py=ty*ts-cy;
     const tile=G.map[ty][tx];
@@ -2734,9 +2853,8 @@ function draw(){
       const totalW=(MINE_TAPS-1)*pipGap; const pipY=py+ts-pipR*2.2;
       for(let i=0;i<MINE_TAPS;i++){
         const pipX=px+ts/2-totalW/2+i*pipGap;
-        ctx.beginPath(); ctx.arc(pipX,pipY,pipR,0,Math.PI*2);
         ctx.fillStyle=i<mineTap.taps?'#f5a623':'rgba(245,166,35,.25)';
-        ctx.fill();
+        ctx.fillRect(Math.floor(pipX-pipR),Math.floor(pipY-pipR),Math.ceil(pipR*2),Math.ceil(pipR*2));
       }
     }
     // Demolish hover
@@ -2800,24 +2918,14 @@ function draw(){
           ctx.restore();
         }
 
-        // Items, prog-based position with sub-tick interpolation
-        if(tile.items.length>0){
-          const[dvx,dvy]=D_VEC[m.dir];
-          const beltSpeed2=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
-          const subTick=Math.min(1,(now-lastTickMs)/tickInterval());
-          ctx.save();
-          ctx.beginPath(); ctx.rect(px+2,py+2,ts-4,ts-4); ctx.clip();
-          for(let ii=0;ii<tile.items.length;ii++){
-            const it=tile.items[ii];
-            const smoothProg=Math.min(0.99, it.prog+beltSpeed2*subTick);
-            const[ox,oy]=beltItemPos(m.dir,turn,smoothProg);
-            drawItem(ctx,it.id,px+ts/2+ox*ts,py+ts/2+oy*ts,ts*.42);
-          }
-          ctx.restore();
-        }
+        if(tile.items.length)beltQ.push([tile,m,tx,ty,turn]);
       }
     }
   }
+  // Belt items: drawn after every belt tile so none are clipped at an edge or covered by the next belt
+  const bSpd=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
+  const bSub=Math.min(1,(now-lastTickMs)/tickInterval());
+  for(const[tile,m,tx,ty,turn]of beltQ)drawBeltItems(tile,m.dir,tx,ty,turn,ts,cx,cy,bSpd,bSub,'belt');
 
   // Multi-tile machines
   const drawn=new Set();
@@ -2825,7 +2933,7 @@ function draw(){
     if(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='splitter'||m.type==='tunnel'||m.type==='pipe')continue;
     if(drawn.has(+id))continue; drawn.add(+id);
     const def=MDEFS[m.type];
-    const[mw,mh]=def.size;
+    const[mw,mh]=machSize(m);
     const px=m.x*ts-cx, py=m.y*ts-cy;
     const pw=mw*ts, ph=mh*ts;
     if(px+pw<0||py+ph<0||px>W||py>H)continue;
@@ -2837,7 +2945,7 @@ function draw(){
 
     const sprM=TEX_PIXEL&&machineSpr(m.type,Math.floor(now/140),machineWorking(m));
     if(sprM){
-      ctx.drawImage(sprM,Math.floor(px),Math.floor(py),Math.ceil(pw),Math.ceil(ph));
+      drawMachSpr(ctx,sprM,m.type,m.dir,px,py,pw,ph);
     } else {
     ctx.fillStyle='#141414'; ctx.fillRect(px,py,pw,ph);
     ctx.strokeStyle=busy||isPowering?col:isStub?'#3a2a4a':'#252525';
@@ -2856,7 +2964,7 @@ function draw(){
       // Green pulsing "running" indicator
       if(ts>14){
         ctx.fillStyle='#4caf50'; ctx.globalAlpha=0.8+0.2*Math.sin(at*.4);
-        ctx.beginPath(); ctx.arc(px+pw-8,py+ph-8,4,0,Math.PI*2); ctx.fill();
+        ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+ph-12),8,8);
         ctx.globalAlpha=1;
       }
     }
@@ -2868,13 +2976,13 @@ function draw(){
         // Blinking red dot, no fuel
         const blink=Math.floor(at/4)%2===0;
         ctx.fillStyle=blink?'#e53935':'#8b0000';
-        ctx.beginPath(); ctx.arc(px+pw-8,py+ph-8,4,0,Math.PI*2); ctx.fill();
+        ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+ph-12),8,8);
         // "No fuel" label at high zoom
         if(ts>28){
           ctx.fillStyle='#e53935'; ctx.globalAlpha=0.9;
-          ctx.font=`${Math.max(7,Math.floor(ts*.11))}px sans-serif`;
+          ctx.font=`${Math.max(6,Math.floor(ts*.1))}px 'Press Start 2P', monospace`;
           ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText('NO COAL',px+pw/2,py+ph*.8);
+          ctx.fillText('NO COAL',Math.round(px+pw/2),Math.round(py+ph*.8));
           ctx.globalAlpha=1;
         }
       }
@@ -2919,7 +3027,7 @@ function draw(){
     }
     // No-recipe warning dot
     if(m.active&&def.recipes.length>0&&!m.recipe){
-      ctx.fillStyle='#f5a623'; ctx.beginPath(); ctx.arc(px+pw-8,py+8,4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#f5a623'; ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+4),8,8);
     }
     // Output buffer fill indicator
     if(ts>20){
@@ -2948,9 +3056,9 @@ function draw(){
         // Item count at high zoom
         if(ts>26&&total>0){
           ctx.fillStyle=pct>.8?'#ff8a80':'#ccc';
-          ctx.font=`${Math.max(7,Math.floor(ts*.14))}px sans-serif`;
+          ctx.font=`${Math.max(6,Math.floor(ts*.12))}px 'Press Start 2P', monospace`;
           ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText(`${total}/${CAP}`,px+pw/2,py+ph-14);
+          ctx.fillText(`${total}/${CAP}`,Math.round(px+pw/2),Math.round(py+ph-14));
         }
       }
     }
@@ -2964,7 +3072,7 @@ function draw(){
     // Fluid machines starved of pressure, blue blinking dot
     if(def.fluidPort&&m.active&&(m._fluidStatus==='lowpressure'||m._fluidStatus==='nopipe')&&ts>14){
       ctx.fillStyle=Math.floor(at/4)%2?'#42a5f5':'#0d3b4a';
-      ctx.beginPath(); ctx.arc(px+pw-8,py+ph-16,4,0,Math.PI*2); ctx.fill();
+      ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+ph-20),8,8);
     }
     // Living machines: vitality bar + stage badge; withered = grey
     if(def.living){
@@ -2983,18 +3091,20 @@ function draw(){
     }
     // Singularity: construction ring, then spinning arcs that tighten with sustain
     if(m.type==='singularity'&&ts>4){
-      const cxs=px+pw/2, cys=py+ph/2, R=Math.min(pw,ph)*.42;
+      const cxs=pw/2, cys=ph/2, R=Math.min(pw,ph)*.42;
       const built=Object.entries(SING_REQS).reduce((a,[id,n])=>a+Math.min(n,(m.built||{})[id]||0),0)/Object.values(SING_REQS).reduce((a,b)=>a+b,0);
-      ctx.lineWidth=Math.max(2,ts*.12);
-      ctx.strokeStyle='#2a1a3a'; ctx.beginPath(); ctx.arc(cxs,cys,R,0,Math.PI*2); ctx.stroke();
-      ctx.strokeStyle='#ab47bc'; ctx.beginPath(); ctx.arc(cxs,cys,R,-Math.PI/2,-Math.PI/2+Math.PI*2*built); ctx.stroke();
-      if(m.complete){
-        const sp=(m.sustain||0)/SING_SUSTAIN, rot=now/400*(1+sp*4);
-        for(let k=0;k<3;k++){
-          ctx.strokeStyle=`rgba(179,136,255,${.4+.5*sp})`; ctx.lineWidth=Math.max(1.5,ts*.06);
-          ctx.beginPath(); ctx.arc(cxs,cys,R*(.75-k*.2)*(1-sp*.3),rot+k*2.1,rot+k*2.1+Math.PI*.9); ctx.stroke();
+      pixelFx(ctx,px,py,pw,ph,ts,c=>{
+        c.lineWidth=ts*.14;
+        c.strokeStyle='#2a1a3a'; c.beginPath(); c.arc(cxs,cys,R,0,Math.PI*2); c.stroke();
+        c.strokeStyle='#ab47bc'; c.beginPath(); c.arc(cxs,cys,R,-Math.PI/2,-Math.PI/2+Math.PI*2*built); c.stroke();
+        if(m.complete){
+          const sp=(m.sustain||0)/SING_SUSTAIN, rot=now/400*(1+sp*4);
+          for(let k=0;k<3;k++){
+            c.strokeStyle=`rgba(179,136,255,${.4+.5*sp})`; c.lineWidth=ts*.08;
+            c.beginPath(); c.arc(cxs,cys,R*(.75-k*.2)*(1-sp*.3),rot+k*2.1,rot+k*2.1+Math.PI*.9); c.stroke();
+          }
         }
-      }
+      });
     }
     // Reactor heat bar + SCRAM flash
     if(m.type==='reactor'&&ts>14){
@@ -3011,27 +3121,13 @@ function draw(){
     }
     // Tier badge (T2 = amber, T3 = teal), top-left corner
     if((m.tier||1)>1&&ts>16){
-      const tierCol=(m.tier||1)>=3?'#26c6a0':'#f5a623';
-      ctx.fillStyle=tierCol;
-      ctx.beginPath(); ctx.arc(px+7,py+7,4,0,Math.PI*2); ctx.fill();
-      if(ts>24){
-        ctx.fillStyle='#000'; ctx.font=`${Math.floor(ts*.13)}px sans-serif`;
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('T'+(m.tier||1),px+7,py+7);
-      }
+      const u=Math.max(1,Math.round(ts/24)); // whole pixels per badge pixel
+      ctx.drawImage(tierSpr(m.tier||1),Math.floor(px+2),Math.floor(py+2),9*u,7*u);
     }
     // Module icons, bottom-right corner, one per installed module
     if(ts>16&&m.modules&&m.modules.length>0){
-      const MODULE_ICONS={speed_module:'🔵',prod_module:'🟢',eff_module:'🔴'};
-      const iconSz=Math.max(8,Math.floor(ts*.22));
-      ctx.font=`${iconSz}px serif`;
-      ctx.textAlign='right'; ctx.textBaseline='bottom';
-      ctx.globalAlpha=0.9;
-      for(let mi=0;mi<m.modules.length;mi++){
-        const icon=MODULE_ICONS[m.modules[mi]]||'🔷';
-        ctx.fillText(icon, px+pw-2, py+ph-2-mi*(iconSz+1));
-      }
-      ctx.globalAlpha=1;
+      const iconSz=Math.max(8,Math.floor(ts*.24));
+      m.modules.filter(Boolean).forEach((mod,mi)=>drawItem(ctx,mod,px+pw-2-iconSz/2,py+ph-2-iconSz/2-mi*(iconSz+1),iconSz));
     }
     // Input / output port arrows (only at reasonable zoom)
     if(ts>28) drawPorts(ctx,m.type,px,py,pw,ph,ts,m.dir);
@@ -3052,6 +3148,7 @@ function draw(){
     const destAngle=Math.atan2(dvy,dvx);
     const srcAngle=destAngle+Math.PI;
     const arm=m._arm||(m._arm={state:'idle',stateStart:now,item:null});
+    if(arm.stateStart>now)arm.stateStart=now;
     const elapsed=now-arm.stateStart;
     const insEase=t=>t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
     let curAngle=srcAngle;
@@ -3081,40 +3178,9 @@ function draw(){
     const px=m.x*ts-cx, py=m.y*ts-cy;
     const pw=mw*ts, ph=mh*ts;
     if(px+pw<0||py+ph<0||px>W||py>H)continue;
-
-    ctx.fillStyle='#141414'; ctx.fillRect(px,py,pw,ph);
-    ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=1.5;
-    ctx.strokeRect(px+1,py+1,pw-2,ph-2);
-
-    if(ts>12){
-      const[dvx,dvy]=D_VEC[m.dir];
-      // Secondary cell offset, perpendicular to flow direction
-      const PERP=[[0,1],[1,0],[0,1],[1,0]];
-      const[perpx,perpy]=PERP[m.dir];
-      const c1x=px+ts/2,            c1y=py+ts/2;
-      const c2x=px+perpx*ts+ts/2,   c2y=py+perpy*ts+ts/2;
-      const midX=(c1x+c2x)/2, midY=(c1y+c2y)/2;
-      const lw=Math.max(1.5,ts*.07);
-      const hl=Math.max(3,ts*.1);
-      const reach=ts*.4;
-      const inX=midX-dvx*reach, inY=midY-dvy*reach;
-      const oAX=c1x+dvx*reach, oAY=c1y+dvy*reach;
-      const oBX=c2x+dvx*reach, oBY=c2y+dvy*reach;
-
-      ctx.strokeStyle=MACH_COL.splitter; ctx.lineWidth=lw;
-      ctx.beginPath(); ctx.moveTo(inX,inY); ctx.lineTo(midX,midY); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(midX,midY); ctx.lineTo(oAX,oAY); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(midX,midY); ctx.lineTo(oBX,oBY); ctx.stroke();
-      splitterArrow(ctx,oAX,oAY,midX,midY,hl);
-      splitterArrow(ctx,oBX,oBY,midX,midY,hl);
-      splitterArrow(ctx,midX,midY,inX,inY,hl);
-
-      if(ts<20){
-        ctx.fillStyle=MACH_COL.splitter; ctx.font=`${Math.floor(ts*.45)}px sans-serif`;
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('÷',midX,midY);
-      }
-    }
+    // Pixel sprite drawn for flow to the right (two tiles stacked), turned to the splitter's direction
+    ctx.save(); ctx.translate(px+pw/2,py+ph/2); ctx.rotate(m.dir*Math.PI/2);
+    ctx.drawImage(machineSpr('splitter',Math.floor(at/2)&3,true),-ts/2,-ts,ts+.5,ts*2+.5); ctx.restore();
   }
 
   // Pipes, auto-connect to neighbouring pipes and fluid machines, core tinted by fluid
@@ -3123,32 +3189,22 @@ function draw(){
     const px=m.x*ts-cx, py=m.y*ts-cy;
     if(px+ts<0||py+ts<0||px>W||py>H)continue;
     const p=m._net?pressureOf(m._net)/100:0;
-    const fcol=FLUID_COL[m.fluid?.type]||'#444';
-    const thick=Math.max(3,ts*.34), core=Math.max(1.5,ts*.14);
-    const mx=px+ts/2, my=py+ts/2;
-    ctx.fillStyle='#121212'; ctx.fillRect(px,py,ts,ts);
-    const arms=[];
-    for(const[dx,dy]of D_VEC){
-      const t=G.map[m.y+dy]?.[m.x+dx]; if(!t||t.mid===null)continue;
-      const nd=MDEFS[G.machines[t.mid]?.type]; if(nd&&(nd.fluidCap||nd.fluidPort))arms.push([dx,dy]);
-    }
-    ctx.lineCap='butt';
-    ctx.strokeStyle=m.strain>0&&Math.floor(at/2)%2?'#e53935':'#2e2e2e'; ctx.lineWidth=thick;
-    for(const[dx,dy]of arms){ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(mx+dx*ts/2,my+dy*ts/2);ctx.stroke();}
-    ctx.fillStyle=ctx.strokeStyle; ctx.fillRect(mx-thick/2,my-thick/2,thick,thick);
-    ctx.strokeStyle=fcol; ctx.globalAlpha=.25+.75*p; ctx.lineWidth=core;
-    for(const[dx,dy]of arms){ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(mx+dx*ts/2,my+dy*ts/2);ctx.stroke();}
-    ctx.fillStyle=fcol; ctx.fillRect(mx-core/2,my-core/2,core,core);
-    ctx.globalAlpha=1;
+    let mask=0;
+    D_VEC.forEach(([dx,dy],i)=>{
+      const t=G.map[m.y+dy]?.[m.x+dx]; if(!t||t.mid===null)return;
+      const nd=MDEFS[G.machines[t.mid]?.type]; if(nd&&(nd.fluidCap||nd.fluidPort))mask|=1<<i;
+    });
+    const X=Math.floor(px), Y=Math.floor(py), S2=Math.ceil(ts)+1;
+    ctx.drawImage(pipeShellSpr(mask,m.strain>0&&Math.floor(at/2)%2),X,Y,S2,S2);
+    ctx.globalAlpha=.25+.75*p; ctx.drawImage(pipeCoreSpr(mask,FLUID_COL[m.fluid?.type]||'#555'),X,Y,S2,S2); ctx.globalAlpha=1;
   }
   // Pipe burst flashes
   for(let i=burstFx.length-1;i>=0;i--){
     const b=burstFx[i]; const age=(now-b.t)/700;
     if(age>1){burstFx.splice(i,1);continue;}
-    const bx=b.x*ts-cx+ts/2, by=b.y*ts-cy+ts/2;
-    ctx.beginPath(); ctx.arc(bx,by,ts*(.3+age*1.2),0,Math.PI*2);
-    ctx.fillStyle=`rgba(127,219,255,${(1-age)*.5})`; ctx.fill();
-    ctx.strokeStyle=`rgba(229,57,53,${1-age})`; ctx.lineWidth=2; ctx.stroke();
+    const rr=ts*(.3+age*1.2), bx=b.x*ts-cx+ts/2, by=b.y*ts-cy+ts/2;
+    pixelFx(ctx,bx-rr-2,by-rr-2,rr*2+4,rr*2+4,ts,c=>{c.beginPath();c.arc(rr+2,rr+2,rr,0,Math.PI*2);
+      c.fillStyle=`rgba(127,219,255,${(1-age)*.5})`;c.fill();c.strokeStyle=`rgba(229,57,53,${1-age})`;c.lineWidth=ts*.08;c.stroke();});
   }
 
   // Belt tunnels
@@ -3157,20 +3213,25 @@ function draw(){
     const px=m.x*ts-cx, py=m.y*ts-cy;
     if(px+ts<0||py+ts<0||px>W||py>H)continue;
     const linked=m.tunnelId!==null&&!!G.machines[m.tunnelId];
-    ctx.fillStyle='#0a0a14'; ctx.fillRect(px,py,ts,ts);
-    ctx.strokeStyle=linked?MACH_COL.tunnel:'#444'; ctx.lineWidth=1.5; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
-    // Portal circle
-    ctx.fillStyle=linked?'rgba(74,144,217,.4)':'rgba(100,100,100,.2)';
-    ctx.beginPath(); ctx.arc(px+ts/2,py+ts/2,ts*.3,0,Math.PI*2); ctx.fill();
-    if(linked){
-      ctx.strokeStyle=MACH_COL.tunnel; ctx.lineWidth=1; ctx.globalAlpha=.8;
-      ctx.beginPath(); ctx.arc(px+ts/2,py+ts/2,ts*.3,0,Math.PI*2); ctx.stroke();
-      ctx.globalAlpha=1;
-    }
+    // Pixel portal: swirls while linked, dim and still while waiting for its partner
+    if(!linked)ctx.globalAlpha=.55;
+    ctx.drawImage(machineSpr('tunnel',linked?Math.floor(at/2)&3:0,linked),Math.floor(px),Math.floor(py),Math.ceil(ts)+1,Math.ceil(ts)+1);
+    ctx.globalAlpha=1;
     if(ts>14){
-      ctx.fillStyle=linked?MACH_COL.tunnel:'#555'; ctx.font=`${Math.floor(ts*.28)}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(D_ARR[m.dir],px+ts/2,py+ts/2);
+      const as=Math.floor(ts*.34);
+      ctx.drawImage(arrowSpr(m.dir,linked?MACH_COL.tunnel:'#666'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);
+    }
+  }
+
+  // Items on splitter cells and at tunnel mouths, drawn over their sprites
+  for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
+    const tile=G.map[ty][tx]; if(!tile.items.length||tile.mid===null)continue;
+    const m=G.machines[tile.mid]; if(!m)continue;
+    if(m.type==='splitter')drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,'belt');
+    else if(m.type==='tunnel'){
+      const p=m.tunnelId!==null&&G.machines[m.tunnelId];
+      const isExit=p&&((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1])<0;
+      drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,isExit?'exit':'enter');
     }
   }
 
@@ -3188,7 +3249,7 @@ function draw(){
       if(ts>10){
         ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
+        ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts,m.dir); ctx.globalAlpha=1;
       }
     }
   } else if(activeTool!=='select'&&activeTool!=='demolish'&&activeTool!=='move'&&hov.x>=0){
@@ -3199,7 +3260,7 @@ function draw(){
       const ok=canPlace(activeTool,hov.x,hov.y);
       ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.14)';
       ctx.fillRect(px,py,mw*ts,mh*ts);
-      ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
+      ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts,placeDir); ctx.globalAlpha=1;
       ctx.strokeStyle=ok?'#f5a623':'#e53935';
       ctx.lineWidth=2; ctx.strokeRect(px,py,mw*ts,mh*ts);
       // Output port indicators on ghost
@@ -3207,26 +3268,8 @@ function draw(){
       // Direction arrow for directional machines
       const dirMachines=['belt','inserter','tunnel','splitter'];
       if(dirMachines.includes(activeTool)&&ts>12){
-        const cx2=px+mw*ts/2, cy2=py+mh*ts/2;
-        const arrowLen=Math.min(ts*.32,14);
-        const[dvx,dvy]=D_VEC[placeDir];
-        ctx.save();
-        ctx.strokeStyle=ok?'rgba(245,166,35,.9)':'rgba(229,57,53,.9)';
-        ctx.fillStyle=ok?'rgba(245,166,35,.9)':'rgba(229,57,53,.9)';
-        ctx.lineWidth=Math.max(1.5,ts*.04);
-        ctx.beginPath();
-        ctx.moveTo(cx2-dvx*arrowLen*.6, cy2-dvy*arrowLen*.6);
-        ctx.lineTo(cx2+dvx*arrowLen*.4, cy2+dvy*arrowLen*.4);
-        ctx.stroke();
-        // Arrowhead
-        const hx=cx2+dvx*arrowLen*.4, hy=cy2+dvy*arrowLen*.4;
-        const perp=arrowLen*.28;
-        ctx.beginPath();
-        ctx.moveTo(hx, hy);
-        ctx.lineTo(hx-dvx*perp*1.1+dvy*perp, hy-dvy*perp*1.1-dvx*perp);
-        ctx.lineTo(hx-dvx*perp*1.1-dvy*perp, hy-dvy*perp*1.1+dvx*perp);
-        ctx.closePath(); ctx.fill();
-        ctx.restore();
+        const as=Math.floor(ts*.5);
+        ctx.drawImage(arrowSpr(placeDir,ok?'#f5a623':'#e53935'),Math.floor(px+mw*ts/2-as/2),Math.floor(py+mh*ts/2-as/2),as,as);
       }
     }
   }
@@ -3260,7 +3303,7 @@ function draw(){
           if(ts>12){
             ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
             ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.globalAlpha=.4; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
+            ctx.globalAlpha=.4; drawGhostIcon(def,px,py,mw*ts,mh*ts,m.dir); ctx.globalAlpha=1;
           }
         }
       }
@@ -3272,14 +3315,10 @@ function draw(){
           const def=MDEFS[e.type]; if(!def)continue;
           const[mw,mh]=machSize(e.type,e.dir);
           const px=(gx+e.rx)*ts-cx, py=(gy+e.ry)*ts-cy;
-          const ok=canPlace(e.type,gx+e.rx,gy+e.ry);
+          const ok=canPlace(e.type,gx+e.rx,gy+e.ry,e.dir||0);
           ctx.fillStyle=ok?'rgba(245,166,35,.12)':'rgba(229,57,53,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
           ctx.strokeStyle=ok?'#f5a623':'#e53935'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
-          if(ts>12){
-            ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
-            ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
-          }
+          if(ts>12)drawGhostEntry(e,def,px,py,mw*ts,mh*ts,ts);
         }
       }
     }
@@ -3298,11 +3337,7 @@ function draw(){
         const px=( hov.x+e.rx)*ts-cx, py=(hov.y+e.ry)*ts-cy;
         ctx.fillStyle='rgba(38,198,160,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
         ctx.strokeStyle='#26c6a0'; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
-        if(ts>14){
-          ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
-        }
+        if(ts>14)drawGhostEntry(e,def,px,py,mw*ts,mh*ts,ts);
       }
     }
   }
@@ -3311,8 +3346,8 @@ function draw(){
   for(let i=ripples.length-1;i>=0;i--){
     const r=ripples[i]; const age=(now-r.t)/380;
     if(age>1){ripples.splice(i,1);continue;}
-    ctx.beginPath(); ctx.arc(r.px,r.py,Math.max(0,age*30),0,Math.PI*2);
-    ctx.strokeStyle=`rgba(245,166,35,${(1-age)*.8})`; ctx.lineWidth=1.5; ctx.stroke();
+    const rr=Math.max(1,age*30), u=Math.max(2,Math.round(ts/16)); // square pixel ripple
+    ctx.strokeStyle=`rgba(245,166,35,${(1-age)*.8})`; ctx.lineWidth=u; ctx.strokeRect(Math.round(r.px-rr),Math.round(r.py-rr),Math.round(rr*2),Math.round(rr*2));
   }
 
   // Big Bang white-out
@@ -3730,7 +3765,8 @@ function machSize(typeOrM, dir){
   const type = typeof typeOrM==='string' ? typeOrM : typeOrM.type;
   const d = dir !== undefined ? dir : (typeof typeOrM==='object' ? (typeOrM.dir||0) : 0);
   const[mw,mh]=MDEFS[type].size;
-  if(type==='splitter'&&(d===D_DOWN||d===D_UP)) return [mh,mw]; // swap → [2,1]
+  // Every non-square machine (Splitter, Scrubber) lies on its side when facing down or up
+  if(mw!==mh&&(d===D_DOWN||d===D_UP)) return [mh,mw];
   return [mw,mh];
 }
 
@@ -4647,6 +4683,8 @@ function runAccumulators(){
   }
 }
 
+const BELT_DONE=1-1e-6;
+const carryProg=p=>Math.max(0,Math.min(.5,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
   const beltSpeed=(G.research.done.includes('logistics')?.15:.1)*pm.belt;
@@ -4656,7 +4694,9 @@ function runBelts(){
     const tile=G.map[ty][tx]; if(tile.mid===null)continue;
     const m=G.machines[tile.mid]; if(!m)continue;
     if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
-    for(const it of tile.items)it.prog=Math.min(1,it.prog+beltSpeed);
+    // No clamp at 1: the overshoot carries into the next tile (BELT_DONE absorbs float error, 10×0.1 < 1),
+    // so each tile takes exactly its time and items never freeze at the edge for a tick
+    for(const it of tile.items)it.prog=Math.min(1+beltSpeed,it.prog+beltSpeed);
   }
 
   // Transfer completed items
@@ -4676,15 +4716,15 @@ function runBelts(){
             // ENTRANCE, teleport arrived items to exit tile
             const exTile=G.map[partner.y][partner.x];
             const room=Math.max(0,4-exTile.items.length); // exit holds 4 like a belt; the rest wait
-            const arr=tile.items.filter(it=>it.prog>=1).slice(0,room);
+            const arr=tile.items.filter(it=>it.prog>=BELT_DONE).slice(0,room);
             if(arr.length){
               tile.items=tile.items.filter(it=>!arr.includes(it));
-              for(const it of arr){it.prog=0;exTile.items.push(it);}
+              for(const it of arr){it.prog=carryProg(it.prog);exTile.items.push(it);}
             }
             continue;
           }
           // EXIT, pass forward; back-pressure if blocked (so inserter can grab)
-          const arr=tile.items.filter(it=>it.prog>=1);
+          const arr=tile.items.filter(it=>it.prog>=BELT_DONE);
           if(!arr.length)continue;
           const nx=tx+dvx,ny=ty+dvy;
           tile.items=tile.items.filter(it=>it.prog<1);
@@ -4697,7 +4737,7 @@ function runBelts(){
             if(next.mid!==null){
               const nm=G.machines[next.mid];
               if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
-                it.prog=0;next.items.push(it);
+                it.prog=carryProg(it.prog);next.items.push(it);
               } else {it.prog=0.99;tile.items.push(it);}
             } else {it.prog=0.99;tile.items.push(it);}
           }
@@ -4708,14 +4748,14 @@ function runBelts(){
       continue;
     }
 
-    const arrived=tile.items.filter(it=>it.prog>=1);
+    const arrived=tile.items.filter(it=>it.prog>=BELT_DONE);
     if(!arrived.length)continue;
     tile.items=tile.items.filter(it=>it.prog<1);
     const[dvx,dvy]=D_VEC[m.dir];
 
     // Splitter: 1×2, second cell always at (m.x, m.y+1)
     if(m.type==='splitter'){
-      if(tx!==m.x||ty!==m.y)continue; // only origin tile routes
+      // Both cells route (the second cell used to drop its items: anything fed into it vanished)
       // Secondary cell is perpendicular to flow direction
       const PERP=[[0,1],[1,0],[0,1],[1,0]]; // perpendicular offset per dir
       const[px,py]=PERP[m.dir];
@@ -4732,7 +4772,7 @@ function runBelts(){
           const nt=G.map[dest.y][dest.x]; if(nt.mid===null)continue;
           const nm=G.machines[nt.mid];
           if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&nt.items.length<4){
-            it.prog=0; nt.items.push(it); placed=true; break;
+            it.prog=carryProg(it.prog); nt.items.push(it); placed=true; break;
           }
         }
         if(!placed){it.prog=0.99; tile.items.push(it);}
@@ -4751,9 +4791,9 @@ function runBelts(){
       if(next.mid!==null){
         const nm=G.machines[next.mid];
         if((nm.type==='belt'||nm.type==='splitter')&&next.items.length<4){
-          it.prog=0;next.items.push(it);
+          it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='tunnel'){
-          it.prog=0;next.items.push(it);
+          it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='chest'){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else {
@@ -4803,6 +4843,7 @@ function stepInserter(m){
 
   if(!m._arm) m._arm={state:'idle',stateStart:now,item:null};
   const arm=m._arm;
+  if(arm.stateStart>now)arm.stateStart=now; // never wait on a timestamp from another page load
 
   if(arm.state==='idle'){
     if(dst.mid===null)return;
@@ -4897,7 +4938,7 @@ function isOutputSide(){ return true; }
 function isInputSide(){ return true; }
 function sideVec(side){ return side==='right'?[1,0]:side==='left'?[-1,0]:side==='bottom'?[0,1]:[0,-1]; }
 function outputTile(m,side){
-  const[mw,mh]=MDEFS[m.type].size;
+  const[mw,mh]=machSize(m);
   switch(side){
     case 'right':  return [m.x+mw, m.y+Math.floor(mh/2)];
     case 'left':   return [m.x-1,  m.y+Math.floor(mh/2)];
@@ -4927,6 +4968,7 @@ const HUD_ITEMS=['iron_ore','iron_plate','copper_plate','iron_gear','circuit','s
 // identical rewrites cost layout and battery, and reset scroll and focus)
 function setHtml(el,html){
   if(!el)return;
+  html=pixEmoji(html);
   if(el._html===html&&el.firstChild===el._first)return;
   el.innerHTML=html; el._html=html; el._first=el.firstChild;
 }
@@ -5735,7 +5777,7 @@ function renderMachPanel(){
   const canRotate=(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='tunnel'||m.type==='splitter');
   const rotBtn2=canRotate?`<button class="full-btn teal" style="flex:1" onclick="rotateM(${m.id})">&#x21BB; ${D_ARR[m.dir]}</button>`:'';
   html+=`<div style="display:flex;gap:4px;margin-bottom:5px">
-    <button class="full-btn teal" style="flex:1" onclick="moveSingleMachine(${m.id})">&#x2715; MOVE</button>
+    <button class="full-btn teal" style="flex:1" onclick="moveSingleMachine(${m.id})">✥ MOVE</button>
     ${rotBtn2}
   </div>
   <button class="full-btn red" onclick="tryRemove(${m.x},${m.y});togglePanel('machine')" style="margin-bottom:5px">&#x1F4A5; DEMOLISH</button>`;
@@ -5802,8 +5844,7 @@ function renderMachPanel(){
   // Controls
   html+=`<div style="display:flex;gap:6px;margin-top:6px">
     <button class="mini-btn" style="flex:1;color:var(--text2);border-color:var(--border2)" onclick="toggleM(${m.id})">${m.active?'PAUSE':'RESUME'}</button>
-    <button class="mini-btn red" style="flex:1" onclick="tryRemove(${m.x},${m.y})">REMOVE</button>
-  </div>`;
+  </div>`; // DEMOLISH (with the MOVE row above) is the only remove button
 
   setHtml(el,html);
 }
@@ -5857,27 +5898,20 @@ function rotateM(id){
   const m=G.machines[id];if(!m)return;
   const was=posSnap(m);
   unlinkTunnel(m); // re-linked below in the new direction
-  // Splitter rotation, clear old secondary tile, rotate, register new secondary tile
-  if(m.type==='splitter'){
-    const PERP=[[0,1],[1,0],[0,1],[1,0]];
-    const[opx,opy]=PERP[m.dir];
-    // Clear old secondary tile
-    G.map[m.y+opy][m.x+opx].mid=null;
-    // Rotate
-    m.dir=(m.dir+1)%4;
-    const[npx,npy]=PERP[m.dir];
-    // Check new secondary tile is free (and in bounds)
-    const nx2=m.x+npx, ny2=m.y+npy;
-    if(nx2<0||ny2<0||nx2>=MAP_W||ny2>=MAP_H||G.map[ny2][nx2].mid!==null){
-      // Can't rotate, revert
-      m.dir=(m.dir+3)%4;
-      G.map[m.y+opy][m.x+opx].mid=m.id;
-      toast('No room to rotate splitter','wrn'); sfx('error'); return;
+  // A non-square machine changes footprint when it turns: free its tiles, check the new ones, claim them
+  const[ow,oh]=machSize(m), nd=(m.dir+1)%4, [nw,nh]=machSize(m.type,nd);
+  if(ow!==nw||oh!==nh){
+    const cells=(w,h)=>{const c=[];for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)c.push([m.x+dx,m.y+dy]);return c;};
+    for(const[x,y]of cells(ow,oh))G.map[y][x].mid=null;
+    const fits=cells(nw,nh).every(([x,y])=>x>=0&&y>=0&&x<MAP_W&&y<MAP_H&&G.map[y][x].mid===null&&terrainOk(m.type,G.map[y][x]));
+    if(!fits){
+      for(const[x,y]of cells(ow,oh))G.map[y][x].mid=m.id;
+      toast(`No room to rotate the ${MDEFS[m.type].name}`,'wrn'); sfx('error'); return;
     }
-    G.map[ny2][nx2].mid=m.id;
+    m.dir=nd; for(const[x,y]of cells(nw,nh))G.map[y][x].mid=m.id;
     undoRec({op:'pos',list:[was]});
     renderMachPanel(); saveGame();
-    toast(`Splitter: ${D_ARR[m.dir]}`,'ok'); sfx('place'); return;
+    toast(`${MDEFS[m.type].name}: ${D_ARR[m.dir]}`,'ok'); sfx('place'); return;
   }
   m.dir=(m.dir+1)%4;
   undoRec({op:'pos',list:[was]});
@@ -5978,6 +6012,35 @@ function startPasteBlueprint(idx){
   const lbl=document.getElementById('ghostBarLabel');
   if(lbl) lbl.textContent=`${b.data.length} machine${b.data.length!==1?'s':''}, position then ✓ PLACE`;
   document.getElementById('ghostBar')?.classList.remove('hidden');
+}
+// ── Rotate / flip a copied layout or blueprint before placing ──
+// Every machine moves to its mirrored or rotated spot and its direction turns with it (belts, inserters,
+// outputs), so a flipped line still works. Returns new entries: saved blueprints are never changed.
+function layoutBounds(data){let W=0,H=0;for(const e of data){const[w,h]=machSize(e.type,e.dir||0);W=Math.max(W,e.rx+w);H=Math.max(H,e.ry+h);}return[W,H];}
+function flipLayout(data,axis){
+  const[W,H]=layoutBounds(data);
+  return data.map(e=>{const d=e.dir||0,[w,h]=machSize(e.type,d),n={...e,dir:d};
+    if(axis==='h'){n.rx=W-e.rx-w; if(d===0||d===2)n.dir=2-d;}   // right ↔ left
+    else{n.ry=H-e.ry-h; if(d===1||d===3)n.dir=4-d;}            // down ↔ up
+    return n;});
+}
+function rotateLayout(data){ // 90° clockwise
+  const[,H]=layoutBounds(data);
+  return data.map(e=>{const d=e.dir||0,[,h]=machSize(e.type,d);return{...e,dir:(d+1)%4,rx:H-e.ry-h,ry:e.rx};});
+}
+function transformGhost(kind){
+  const f=d=>kind==='rot'?rotateLayout(d):flipLayout(d,kind);
+  if(blueprintState.mode==='holding')blueprintState.data=f(blueprintState.data);
+  else if(multiselState.mode==='pasting')multiselState.clipboard=f(multiselState.clipboard);
+  else return;
+  sfx('tap');
+}
+// Ghost of one layout entry: faint sprite plus which way it faces, so a flip is visible before placing
+const DIR_TYPES=new Set(['belt','inserter','long_inserter','splitter','tunnel']);
+function drawGhostEntry(e,def,px,py,pw,ph,ts){
+  ctx.globalAlpha=.5; drawGhostIcon(def,px,py,pw,ph,e.dir||0); ctx.globalAlpha=1;
+  if(DIR_TYPES.has(e.type)){const as=Math.floor(Math.min(pw,ph)*.5);ctx.drawImage(arrowSpr(e.dir||0,'#f5a623'),Math.floor(px+pw/2-as/2),Math.floor(py+ph/2-as/2),as,as);}
+  else if(ts>20)drawPorts(ctx,e.type,px,py,pw,ph,ts,e.dir||0);
 }
 function pasteBlueprintAt(data,x,y){
   const canPlace2=stampFits(data,x,y);
@@ -6711,8 +6774,7 @@ function resumeAllMachines(){
 }
 function selectMachineById(id){
   const m=G.machines[id]; if(!m)return;
-  const def=MDEFS[m.type];
-  const[mw,mh]=def.size;
+  const[mw,mh]=machSize(m);
   const ts=TILE*G.cam.zoom;
   G.cam.x=(m.x+mw/2)*ts - canvas.clientWidth/2;
   G.cam.y=(m.y+mh/2)*ts - canvas.clientHeight/2;
@@ -7193,8 +7255,8 @@ function showModal(title,body,foot){
   const mt=document.getElementById('mTitle');
   if(lead){mt.innerHTML=uiIcon(TITLE_UI[lead])+' ';mt.appendChild(document.createTextNode(title.slice(lead.length+1)));}
   else mt.textContent=title;
-  document.getElementById('mBody').innerHTML=body;
-  document.getElementById('mFoot').innerHTML=foot||'';
+  document.getElementById('mBody').innerHTML=pixEmoji(body);
+  document.getElementById('mFoot').innerHTML=pixEmoji(foot||'');
   document.getElementById('mOverlay').classList.remove('hidden');
 }
 function closeModal(){document.getElementById('mOverlay').classList.add('hidden')}
@@ -7712,7 +7774,20 @@ function unpackMap(pk,machines){
 }
 
 // Key renames between versions, called by both load paths
+// Inserter arms time their swings with performance.now(), which restarts near zero on every page
+// load. Saved timestamps from the last session sat far in the future, so arms spun and never finished
+// a swing. On load: an arm holding an item finishes the swing and delivers it; an empty arm goes idle.
+function resetArmClocks(){
+  const now=performance.now();
+  for(const m of Object.values(G.machines||{})){
+    if(m.lastTransferMs)m.lastTransferMs=0;
+    if(!m._arm)continue;
+    if(m._arm.item)m._arm={state:'depositing',stateStart:now-insMs(INS_DEPOSIT_MS),item:m._arm.item};
+    else delete m._arm;
+  }
+}
 function migrateSave(){
+  resetArmClocks();
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
@@ -7810,6 +7885,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
   document.querySelectorAll('[data-ui]').forEach(e=>{e.innerHTML=uiIcon(e.dataset.ui);});
+  watchEmoji();
   buildTitleSlots(); startTitleScene(); updateInstallBtn(); updateTitleMute();
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
