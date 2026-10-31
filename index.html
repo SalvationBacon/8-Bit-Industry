@@ -476,7 +476,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.1 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.4 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -641,7 +641,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.1';
+const VER      = '2.0.4';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1636,14 +1636,22 @@ const DEPOSITS_Z5=[
 // Zone 5 grows: new rows/columns on the right and bottom get fresh deposits
 // ── Factory Floor ──
 // Below every zone's ore fields: FLOOR_ROWS rows of open ground with no deposits, for big builds.
-// G.floorY is the first floor row (the map is the ore fields above it).
-const FLOOR_ROWS=64;
+// G.floorY is the first floor row (the map is the ore fields above it). It looks like the rest of the ground.
+const FLOOR_ROWS=32;
 const FLOOR_NOTE=`<br><br><span style="color:var(--text3)">Scroll down past the ore fields: the <span style="color:var(--amber)">Factory Floor</span> below is open ground for big builds.</span>`;
 function addFactoryFloor(map){
   const w=map[0].length;
   for(let k=0;k<FLOOR_ROWS;k++)map.push(Array.from({length:w},()=>({type:T_FLOOR,res:null,mid:null,items:[]})));
   MAP_H=map.length; MAP_W=w;
   return map;
+}
+// Saves from v2.0.0 to v2.0.2 had a 64-row floor: drop the empty rows past the new size (never a row in use)
+function trimFactoryFloor(){
+  if(!G.map||G.floorY===undefined)return;
+  const grown=G.zone===5?16*['expansion_1','expansion_2'].filter(t=>G.research?.done?.includes(t)).length:0;
+  const want=G.floorY+FLOOR_ROWS+grown;
+  while(G.map.length>want&&G.map[G.map.length-1].every(t=>t.mid===null&&!t.res&&!t.items.length))G.map.pop();
+  MAP_H=G.map.length;
 }
 function expandMap(dw,dh){
   const oldW=MAP_W, oldH=MAP_H, nw=oldW+dw, nh=oldH+dh;
@@ -1773,19 +1781,6 @@ function groundSpr(zone,v){
     }
     // soft tile seam so the grid still reads
     R(0,15,16,1,shade(p.base,-.25)); R(15,0,1,16,shade(p.base,-.25));
-  });
-}
-
-// Factory Floor plating: the zone's ground colour, paved in slabs with bolts; the first row gets a hazard stripe
-function floorSpr(zone,v,edge){
-  return mkSpr(`fl${zone}:${v}:${edge?1:0}`,16,16,({P,R})=>{
-    const p=GROUND[zone]||GROUND[1], base=shade(p.base,.16), dk=shade(p.base,-.2), hi=shade(p.base,.3);
-    R(0,0,16,16,base);
-    for(let y=0;y<16;y++)for(let x=0;x<16;x++){const n=hash2(x,y,v*13+zone+7);if(n<.08)P(x,y,shade(base,-.08));else if(n>.95)P(x,y,shade(base,.08));}
-    R(0,15,16,1,dk); R(15,0,1,16,dk); R(0,0,16,1,hi); R(0,0,1,16,hi);   // slab edges
-    R(7,0,1,15,shade(base,-.1));                                       // half-slab seam
-    for(const[x,y]of[[2,2],[13,2],[2,13],[13,13]])P(x,y,v&1?hi:dk);    // bolts
-    if(edge)for(let x=0;x<16;x++){const c=((x>>1)&1)?'#f5a623':'#1a1a1a';P(x,0,c);P(x,1,c);P((x+1)%16,2,c);}
   });
 }
 
@@ -2778,8 +2773,7 @@ function groundChunk(cx,cy){
   for(let y=0;y<CHUNK;y++)for(let x=0;x<CHUNK;x++){
     const tx=cx*CHUNK+x, ty=cy*CHUNK+y; if(tx>=MAP_W||ty>=MAP_H)continue;
     const tile=G.map[ty][tx], v=(tx*7+ty*13)&3, res=tile.type===T_RESOURCE?tile.res:null;
-    const fl=G.floorY!==undefined&&ty>=G.floorY;
-    g.drawImage(res?resSpr(res,v,0):fl?floorSpr(G.zone,v,ty===G.floorY):groundSpr(G.zone,v),x*16,y*16);
+    g.drawImage(res?resSpr(res,v,0):groundSpr(G.zone,v),x*16,y*16);
     if(res&&ANIM_RES.has(res))anim.push(tx,ty);
   }
   ch={cv,anim};
@@ -2917,6 +2911,72 @@ function drawPorts(ctx, type, px, py, pw, ph, ts, dir){
     const ey=side==='top'?py:side==='bottom'?py+ph:py+ph*p.pos;
     // pixel arrow just inside the output edge, pointing out
     ctx.drawImage(arrowSpr(d,'#f5a623'),Math.floor(ex-nx*sz/2-sz/2),Math.floor(ey-ny*sz/2-sz/2),sz,sz);
+  }
+}
+
+// Long Inserter reach: ghost blocks on the tile it takes from (teal) and the tile it drops on (amber),
+// joined by a dotted line over the tiles it reaches across. Shown while placing or moving one, or while
+// its machine panel is open. A block fills in when something already sits on that tile.
+function drawInsReach(type,x,y,dir,ts,cx,cy,now){
+  const r=type==='long_inserter'?2:1, [dvx,dvy]=D_VEC[dir], u=Math.max(1,Math.round(ts/16));
+  const pulse=.7+.3*Math.sin(now/260);
+  ctx.save();
+  // dotted reach line, from the pickup tile's centre to the drop tile's centre, skipping the inserter itself
+  ctx.globalAlpha=.55*pulse; ctx.fillStyle='#e8e8e8';
+  const d=Math.max(2,u*2), step=ts/4;
+  for(let k=-(r*4)+2;k<=r*4-2;k++){
+    if(Math.abs(k)<3)continue;
+    const ex=(x+.5)*ts+dvx*k*step-cx, ey=(y+.5)*ts+dvy*k*step-cy;
+    ctx.fillRect(Math.round(ex-d/2),Math.round(ey-d/2),d,d);
+  }
+  for(const[s,col,label]of[[-1,'#26c6a0','TAKE'],[1,'#f5a623','DROP']]){
+    const tx=x+dvx*r*s, ty=y+dvy*r*s;
+    if(tx<0||ty<0||tx>=MAP_W||ty>=MAP_H)continue;
+    const px=Math.round(tx*ts-cx), py=Math.round(ty*ts-cy), T=Math.round(ts);
+    const t=G.map[ty][tx], used=t.mid!==null;
+    ctx.globalAlpha=used?.3:.16; ctx.fillStyle=col; ctx.fillRect(px,py,T,T);
+    // pixel corner brackets
+    ctx.globalAlpha=pulse; const L=Math.max(3*u,Math.round(T*.3)), w=u*2;
+    ctx.fillRect(px,py,L,w); ctx.fillRect(px,py,w,L);
+    ctx.fillRect(px+T-L,py,L,w); ctx.fillRect(px+T-w,py,w,L);
+    ctx.fillRect(px,py+T-w,L,w); ctx.fillRect(px,py+T-L,w,L);
+    ctx.fillRect(px+T-L,py+T-w,L,w); ctx.fillRect(px+T-w,py+T-L,w,L);
+    if(ts>12){
+      const as=Math.floor(ts*.4); ctx.globalAlpha=.85;
+      ctx.drawImage(arrowSpr(dir,col),Math.floor(px+T/2-as/2),Math.floor(py+T/2-as/2-(ts>=40?ts*.08:0)),as,as);
+    }
+    if(ts>=40){
+      ctx.globalAlpha=.9; ctx.font=`${Math.max(6,Math.round(ts/9))}px 'Press Start 2P', monospace`;
+      ctx.textAlign='center'; ctx.textBaseline='alphabetic'; ctx.fillStyle=col;
+      ctx.fillText(label,px+T/2,py+T-w-Math.round(ts*.06));
+    }
+  }
+  ctx.restore();
+}
+
+// A drawn belt or pipe line: ghosts in amber where they will be built, red where blocked or unaffordable
+function drawLineGhost(def,ts,cx,cy){
+  const plan=linePlan(), isBelt=activeTool==='belt';
+  for(const t of plan.tiles){
+    const px=t.x*ts-cx, py=t.y*ts-cy;
+    if(px+ts<0||py+ts<0||px>canvas.clientWidth||py>canvas.clientHeight)continue;
+    const ok=t.state==='ok';
+    ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.16)'; ctx.fillRect(px,py,ts,ts);
+    if(t.state!=='bad'){
+      ctx.globalAlpha=ok?.55:.3; drawGhostIcon(def,px,py,ts,ts,t.dir); ctx.globalAlpha=1;
+      if(isBelt&&ts>12){const as=Math.floor(ts*.45);ctx.drawImage(arrowSpr(t.dir,ok?'#f5a623':'#e53935'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);}
+    }
+    ctx.strokeStyle=ok?'#f5a623':'#e53935'; ctx.lineWidth=1.5; ctx.strokeRect(px+.75,py+.75,ts-1.5,ts-1.5);
+  }
+  // how many get built, in a badge just past the end of the line
+  const end=plan.tiles[plan.tiles.length-1], n=plan.ok;
+  if(end&&ts>16){
+    const fs=Math.max(7,Math.round(ts/5)), label=String(n), w=label.length*fs+fs*.8, [vx,vy]=D_VEC[end.dir];
+    const bx=Math.round((end.x+vx+.5)*ts-cx-w/2), by=Math.round((end.y+vy+.5)*ts-cy-fs*.8);
+    ctx.fillStyle='rgba(13,13,13,.85)'; ctx.fillRect(bx,by,Math.round(w),Math.round(fs*1.6));
+    ctx.fillStyle=plan.short||plan.bad?'#e53935':'#f5a623';
+    ctx.font=`${fs}px 'Press Start 2P', monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label,bx+w/2,by+fs*.85);
   }
 }
 
@@ -3344,6 +3404,9 @@ function draw(){
     }
   }
 
+  // Reach of the Long Inserter whose panel is open
+  if(openPanel==='machine'){const m=G.machines[inspectId]; if(m&&m.type==='long_inserter')drawInsReach(m.type,m.x,m.y,m.dir,ts,cx,cy,now);}
+
   // Placement preview
   if(activeTool==='move'&&moveState.active&&hov.x>=0){
     const m=G.machines[moveState.machineId];
@@ -3360,7 +3423,10 @@ function draw(){
         ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts,m.dir); ctx.globalAlpha=1;
       }
+      if(m.type==='long_inserter')drawInsReach(m.type,hov.x,hov.y,m.dir,ts,cx,cy,now);
     }
+  } else if(lineActive()&&MDEFS[activeTool]){
+    drawLineGhost(MDEFS[activeTool],ts,cx,cy);
   } else if(activeTool!=='select'&&activeTool!=='demolish'&&activeTool!=='move'&&hov.x>=0){
     const def=MDEFS[activeTool];
     if(def){
@@ -3375,11 +3441,11 @@ function draw(){
       // Output port indicators on ghost
       if(ts>20) drawPorts(ctx,activeTool,px,py,mw*ts,mh*ts,ts,placeDir);
       // Direction arrow for directional machines
-      const dirMachines=['belt','inserter','tunnel','splitter'];
-      if(dirMachines.includes(activeTool)&&ts>12){
+      if(DIR_TYPES.has(activeTool)&&ts>12){
         const as=Math.floor(ts*.5);
         ctx.drawImage(arrowSpr(placeDir,ok?'#f5a623':'#e53935'),Math.floor(px+mw*ts/2-as/2),Math.floor(py+mh*ts/2-as/2),as,as);
       }
+      if(activeTool==='long_inserter')drawInsReach(activeTool,hov.x,hov.y,placeDir,ts,cx,cy,now);
     }
   }
 
@@ -3518,6 +3584,104 @@ function clampCam(){
   G.cam.y=Math.max(0,Math.min(my||0,G.cam.y));
 }
 
+// ── Belt and pipe lines ──
+// With the Belt or Pipe tool, press on the ghost and drag: the line follows your finger tile by tile
+// (drag back over it to shorten it). Each belt faces the next tile, ✓ PLACE builds the whole line
+// and one undo takes it all back. Near the edge of the map view the camera scrolls along.
+const LINE_TOOLS=new Set(['belt','pipe']);
+const LINE_MAX=200;
+let line={path:[],drawing:false,pt:null,bot:0};
+function lineActive(){return LINE_TOOLS.has(activeTool)&&line.path.length>1;}
+function lineClear(){line.path=[];line.drawing=false;line.pt=null;}
+function lineStart(tile,sx,sy){
+  if(!LINE_TOOLS.has(activeTool)||tile.x<0||tile.y<0||tile.x>=MAP_W||tile.y>=MAP_H)return false;
+  const p=line.path, end=p.length>1?p[p.length-1]:null;
+  const onGhost=tile.x===hov.x&&tile.y===hov.y, onEnd=end&&tile.x===end.x&&tile.y===end.y;
+  if(!onGhost&&!onEnd)return false;
+  if(!onEnd)line.path=[{x:tile.x,y:tile.y}];
+  line.drawing=true; line.pt={x:sx,y:sy};
+  // the build bar covers the bottom of the map view: scroll from its top edge instead
+  const hud=document.getElementById('buildHUD'), wr=wrapRect();
+  line.bot=canvas.clientHeight;
+  if(hud&&!hud.classList.contains('hidden'))line.bot=Math.min(line.bot,hud.getBoundingClientRect().top-wr.top);
+  requestAnimationFrame(lineEdgeLoop);
+  return true;
+}
+function lineMove(tile){
+  const p=line.path; if(!p.length)return;
+  tile={x:Math.max(0,Math.min(MAP_W-1,tile.x)),y:Math.max(0,Math.min(MAP_H-1,tile.y))};
+  for(let k=0;k<400;k++){
+    const last=p[p.length-1]; if(last.x===tile.x&&last.y===tile.y)break;
+    const dx=tile.x-last.x, dy=tile.y-last.y, prev=p[p.length-2];
+    // keep going the way the line already runs, then turn: a jump across tiles makes an L, not a staircase
+    const alongX=prev?(prev.y===last.y?dx!==0:dy===0):Math.abs(dx)>=Math.abs(dy);
+    const step=alongX?{x:last.x+Math.sign(dx),y:last.y}:{x:last.x,y:last.y+Math.sign(dy)};
+    const i=p.findIndex(q=>q.x===step.x&&q.y===step.y);
+    if(i>=0)p.length=i+1; else if(p.length<LINE_MAX)p.push(step); else break;
+  }
+  const end=p[p.length-1]; hov={x:end.x,y:end.y};
+  updateBuildHUD();
+}
+function lineEnd(){
+  line.drawing=false; line.pt=null;
+  if(line.path.length<2)line.path=[];
+  else haptic('tap');
+  updateBuildHUD();
+}
+function lineEdgeLoop(){
+  if(!line.drawing||!line.pt||!G)return;
+  const m=44, sp=Math.max(4,TILE*G.cam.zoom/6), {x,y}=line.pt;
+  const vx=x<m?-sp:x>canvas.clientWidth-m?sp:0, vy=y<m?-sp:y>line.bot-m?sp:0;
+  if(vx||vy){G.cam.x+=vx;G.cam.y+=vy;clampCam();lineMove(scrToTile(x,y));}
+  requestAnimationFrame(lineEdgeLoop);
+}
+function lineDir(i){
+  const p=line.path, a=i<p.length-1?p[i]:p[i-1], b=i<p.length-1?p[i+1]:p[i];
+  if(!a||!b)return placeDir;
+  return D_VEC.findIndex(([vx,vy])=>vx===b.x-a.x&&vy===b.y-a.y);
+}
+// What ✓ PLACE would do with each tile: 'ok' (built), 'short' (not enough materials), 'bad' (blocked, skipped)
+function linePlan(){
+  const type=activeTool, def=MDEFS[type];
+  let budget=Infinity;
+  if(!G.devFreeBuild){
+    budget=G.crafted[type]||0; let afford=Infinity;
+    for(const[k,n]of Object.entries(def.cost))afford=Math.min(afford,Math.floor((G.inv[k]||0)/n));
+    budget+=afford;
+  }
+  const tiles=line.path.map((q,i)=>{
+    const dir=lineDir(i);
+    let state='bad';
+    if(canPlace(type,q.x,q.y,dir)){state=budget>0?'ok':'short'; if(budget>0)budget--;}
+    return {x:q.x,y:q.y,dir,state};
+  });
+  const count=st=>tiles.filter(t=>t.state===st).length;
+  return {tiles,ok:count('ok'),short:count('short'),bad:count('bad')};
+}
+function placeLine(){
+  const type=activeTool, def=MDEFS[type]; if(!def)return;
+  if(def.unlock&&!G.research.done.includes(def.unlock)){toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn');sfx('error');return;}
+  const plan=linePlan();
+  if(!plan.ok){toast(plan.short?`Need ${Object.entries(def.cost).map(([k,n])=>`${n}× ${ITEMS[k]?.name||k}`).join(', ')} per ${def.name}`:'Cannot place here','bad');sfx('error');return;}
+  let placed=0;
+  undoBegin();
+  for(const t of plan.tiles){
+    if(t.state!=='ok'||!canPlace(type,t.x,t.y,t.dir))continue; // pipes: an earlier piece may have joined two fluids
+    let src='inv';
+    if(G.devFreeBuild)src='free';
+    else if((G.crafted[type]||0)>0){G.crafted[type]--;src='crafted';}
+    else for(const[k,n]of Object.entries(def.cost))G.inv[k]-=n;
+    stampMachine({type,dir:t.dir},t.x,t.y,src); placed++;
+  }
+  undoEnd();
+  const end=line.path[line.path.length-1];
+  placeDir=lineDir(line.path.length-1);
+  lineClear(); hov={x:end.x,y:end.y};
+  const left=plan.tiles.length-placed;
+  toast(`Placed ${placed} ${def.name}${placed>1?'s':''}${left?` · ${left} skipped`:''}`,placed?'ok':'wrn');
+  updateHUD(); saveGame(); sfx('place'); buildDrawer(); updateBuildHUD();
+}
+
 let inputReady=false;
 function setupInput(){
   if(inputReady)return; // startGame runs on every new game / load; listeners must attach once
@@ -3526,7 +3690,7 @@ function setupInput(){
   let lastTouch=0;
   const isTouch=()=>Date.now()-lastTouch<500;
 
-  el.addEventListener('mousedown', e=>{if(!isTouch())onDown(e.clientX,e.clientY);});
+  el.addEventListener('mousedown', e=>{if(!isTouch())onDown(e.clientX,e.clientY,e.button);});
   el.addEventListener('mousemove', e=>{if(!isTouch())onMov(e.clientX,e.clientY);});
   el.addEventListener('mouseup',   e=>{if(!isTouch())onUp(e.clientX,e.clientY);});
   el.addEventListener('wheel',     e=>{e.preventDefault();const r=wrapRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY>0?.88:1.14);},{passive:false});
@@ -3536,18 +3700,27 @@ function setupInput(){
   document.addEventListener('contextmenu',e=>e.preventDefault());
 }
 
-function onDown(cx,cy){
-  drag={on:true,sx:cx,sy:cy,cx:G.cam.x,cy:G.cam.y,moved:false};
+function onDown(cx,cy,btn){
   closeResInfo();
+  const r=wrapRect();
+  if(!btn&&lineStart(scrToTile(cx-r.left,cy-r.top),cx-r.left,cy-r.top)){drag={on:false,moved:false};return;} // right-drag still pans
+  drag={on:true,sx:cx,sy:cy,cx:G.cam.x,cy:G.cam.y,moved:false};
 }
 function onMov(cx,cy){
-  const r=wrapRect(); hov=scrToTile(cx-r.left,cy-r.top);
+  const r=wrapRect();
+  if(line.drawing){line.pt={x:cx-r.left,y:cy-r.top};lineMove(scrToTile(cx-r.left,cy-r.top));return;}
+  if(!lineActive())hov=scrToTile(cx-r.left,cy-r.top);
   if(!drag.on)return;
   const dx=cx-drag.sx,dy=cy-drag.sy;
   if(Math.abs(dx)>8||Math.abs(dy)>8){drag.moved=true;}
   G.cam.x=drag.cx-dx; G.cam.y=drag.cy-dy; clampCam();
 }
 function onUp(cx,cy){
+  if(line.drawing){ // a press that never left the ghost tile is still a tap
+    const tap=line.path.length<2; lineEnd();
+    if(tap){const r=wrapRect();handleTap(scrToTile(cx-r.left,cy-r.top),false);}
+    return;
+  }
   if(!drag.on)return; drag.on=false;
   if(!drag.moved){const r=wrapRect();handleTap(scrToTile(cx-r.left,cy-r.top),false);}
 }
@@ -3556,18 +3729,23 @@ function tdist(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].client
 function onTouchStart(e){
   touchT=Date.now();
   if(e.touches.length===1){
-    const t=e.touches[0];
-    drag={on:true,sx:t.clientX,sy:t.clientY,cx:G.cam.x,cy:G.cam.y,moved:false};
+    const t=e.touches[0], r=wrapRect();
     pinch.on=false;
+    if(lineStart(scrToTile(t.clientX-r.left,t.clientY-r.top),t.clientX-r.left,t.clientY-r.top)){drag={on:false,moved:false};return;}
+    drag={on:true,sx:t.clientX,sy:t.clientY,cx:G.cam.x,cy:G.cam.y,moved:false};
   }
-  else if(e.touches.length===2){drag.on=false;pinch={on:true,d:tdist(e.touches)};}
+  else if(e.touches.length===2){if(line.drawing)lineEnd();drag.on=false;pinch={on:true,d:tdist(e.touches)};}
 }
 function onTouchMove(e){
+  if(e.touches.length===1&&line.drawing){
+    const t=e.touches[0], r=wrapRect();
+    line.pt={x:t.clientX-r.left,y:t.clientY-r.top}; lineMove(scrToTile(line.pt.x,line.pt.y)); return;
+  }
   if(e.touches.length===1&&drag.on){
     const t=e.touches[0]; const dx=t.clientX-drag.sx,dy=t.clientY-drag.sy;
     if(Math.abs(dx)>8||Math.abs(dy)>8){drag.moved=true;}
     G.cam.x=drag.cx-dx; G.cam.y=drag.cy-dy; clampCam();
-    const r=wrapRect(); hov=scrToTile(t.clientX-r.left,t.clientY-r.top);
+    const r=wrapRect(); if(!lineActive())hov=scrToTile(t.clientX-r.left,t.clientY-r.top);
   } else if(e.touches.length===2&&pinch.on){
     const nd=tdist(e.touches); const r=wrapRect();
     const mx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left;
@@ -3580,6 +3758,10 @@ function onTouchMove(e){
   }
 }
 function onTouchEnd(e){
+  if(line.drawing){ // a press that never left the ghost tile falls through as a tap
+    const tap=line.path.length<2; lineEnd();
+    if(!tap){drag.on=false;pinch.on=false;return;}
+  }
   // Pinch momentum, ease out zoom velocity
   if(pinch.on&&Math.abs(pinch.vel)>0.08){
     let vel=pinch.vel;
@@ -3606,6 +3788,7 @@ function handleTap(tile,isLong){
   const{x,y}=tile;
   if(x<0||y<0||x>=MAP_W||y>=MAP_H)return;
   const t=G.map[y][x];
+  if(lineActive())lineClear(); // tapping elsewhere drops the drawn line and moves the ghost
   hov={x,y}; // touch taps never fire mousemove, so the build ghost must follow the tap itself
 
   if(activeTool==='demolish'){
@@ -4011,7 +4194,7 @@ function stampFits(data,x,y){
   return data.every(e=>MDEFS[e.type]&&canPlace(e.type,x+e.rx,y+e.ry,e.dir));
 }
 // Create one machine from a layout entry: tiles, extraction, tunnels, stats
-function stampMachine(e,x,y){
+function stampMachine(e,x,y,src){
   const def=MDEFS[e.type]; if(!def||def.stub)return null;
   const m=mkMachine(e.type,x,y,e.dir);
   if(e.recipe!==undefined)m.recipe=e.recipe;
@@ -4021,7 +4204,7 @@ function stampMachine(e,x,y){
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)G.map[y+dy][x+dx].mid=m.id;
   refreshMineRes(m); linkTunnel(m);
   G.stats.placed++;
-  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':'inv',tier:m.tier});
+  undoRec({op:'place',id:m.id,src:src||(G.devFreeBuild?'free':'inv'),tier:m.tier});
   return m;
 }
 
@@ -5329,17 +5512,23 @@ function buildDrawerItems(cats,safeCatIdx){
 }
 
 function cycleDir(){
+  if(lineActive()){ // with a line drawn, the button flips which way it runs
+    line.path.reverse(); const end=line.path[line.path.length-1]; hov={x:end.x,y:end.y};
+    sfx('place'); updateBuildHUD(); return;
+  }
   placeDir=(placeDir+1)%4;
   buildDrawer();
   updateBuildHUD();
 }
 
 function cancelBuild(){
+  if(lineActive()){lineClear();updateBuildHUD();return;} // first cancel drops the line, the next leaves build mode
   hudSelect();
   updateBuildHUD();
 }
 
 function confirmPlace(){
+  if(lineActive()){placeLine();return;}
   if(hov.x<0||hov.y<0)return;
   if(!canPlace(activeTool,hov.x,hov.y)){toast('Cannot place here','bad');sfx('error');return;}
   tryPlace(activeTool,hov.x,hov.y);
@@ -5355,10 +5544,18 @@ function updateBuildHUD(){
   if(inBuild){
     hud.classList.remove('hidden');
     const dirLabels=['→','↓','←','↑'];
-    rotBtn.textContent='↻ '+dirLabels[placeDir];
+    const ln=lineActive();
+    rotBtn.textContent=ln?'⇆ FLIP':'↻ '+dirLabels[placeDir];
     rotBtn.style.display='';
     const pw=def.power>0?`<span class="cc">${uiIcon('power')}${def.power}kW</span>`:def.power<0?`<span class="cc ok">${uiIcon('power')}+${-def.power}kW</span>`:'';
-    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${def.name.toUpperCase()}</span>${costChips(def.cost,activeTool)}${pw}<button class="bc-info${buildInfoOpen?' on':''}" onclick="toggleBuildInfo()" title="Details">i</button></span>`);
+    let name=def.name.toUpperCase(), chips=costChips(def.cost,activeTool);
+    if(ln){ // a drawn line: how many get built and what they cost in total
+      const plan=linePlan(), n=plan.ok+plan.short, ready=Math.min(n,G.crafted[activeTool]||0);
+      const cost={}; for(const[k,c]of Object.entries(def.cost))cost[k]=c*(n-ready);
+      name+=` ×${n}`;
+      chips=(ready?`<span class="cc ok">✓ ${ready} READY</span>`:'')+(n>ready||!ready?costChips(cost):'')+(plan.bad?`<span class="cc bad">${plan.bad} BLOCKED</span>`:'');
+    }
+    setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${name}</span>${chips}${pw}<button class="bc-info${buildInfoOpen?' on':''}" onclick="toggleBuildInfo()" title="Details">i</button></span>`);
     if(confirmBtn) confirmBtn.style.display='';
   } else {
     hud.classList.add('hidden');
@@ -5374,6 +5571,11 @@ function setDrawerCat(idx){
 }
 
 function setTool(id){
+  lineClear();
+  if(LINE_TOOLS.has(id)){
+    let seen=true; try{seen=!!localStorage.getItem('ebi_lineHint');localStorage.setItem('ebi_lineHint','1');}catch(e){}
+    if(!seen)setTimeout(()=>toast('Drag from the ghost to draw a line','ok'),400);
+  }
   // If switching away from multisel, clear selection (but preserve clipboard)
   if(activeTool==='multisel'&&id!=='multisel'){
     multiselState.mode='idle'; multiselState.ids=[];
@@ -8135,6 +8337,7 @@ function migrateSave(){
   resetArmClocks();
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
+  trimFactoryFloor();
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }

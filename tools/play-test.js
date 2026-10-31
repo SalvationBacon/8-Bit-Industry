@@ -46,6 +46,25 @@ const r=await p.evaluate(async()=>{
   // ── E: long inserter
   reset(); power(2,2); const src=put('chest',10,10); src.chestInv.iron_plate=20; put('long_inserter',12,10,0); const dst=put('chest',14,10);
   run(200); ok('z1_long_inserter',(dst.chestInv.iron_plate||0)>0,dst.chestInv);
+  // its reach ghosts draw while its panel is open and while placing one, without throwing
+  { let thrown=null; const li=Object.values(G.machines).find(m=>m.type==='long_inserter');
+    try{ openMachinePanel(li); draw(); closePanel('machine'); setTool('long_inserter'); hov.x=20; hov.y=20; draw(); setTool('select'); }catch(e){thrown=e.message;}
+    ok('long_inserter_reach_draws',!thrown&&typeof drawInsReach==='function',thrown); }
+  // ── belt lines: dragging back shortens, blocked tiles are skipped, running short stops the line
+  reset(); setTool('belt'); hov.x=30; hov.y=30; lineStart({x:30,y:30},0,0);
+  lineMove({x:36,y:30}); lineMove({x:36,y:33}); lineMove({x:36,y:31}); lineEnd();
+  ok('line_backtrack_shortens',line.path.length===8&&line.path[7].y===31,line.path);
+  put('chest',33,30); setTool('belt'); hov.x=30; hov.y=30; lineStart({x:30,y:30},0,0); lineMove({x:36,y:30}); lineEnd();
+  G.devFreeBuild=false; G.crafted.belt=2; G.inv.iron_plate=3;
+  const lnp=linePlan(); confirmPlace();
+  const lineBelts=Object.values(G.machines).filter(m=>m.type==='belt');
+  ok('line_skips_blocked_and_short',lnp.bad===1&&lnp.ok===5&&lineBelts.length===5&&G.crafted.belt===0&&G.inv.iron_plate===0&&G.map[30][36].mid===null,{lp:{ok:lnp.ok,short:lnp.short,bad:lnp.bad},n:lineBelts.length,crafted:G.crafted.belt,plate:G.inv.iron_plate});
+  undoLast();
+  ok('line_undo_refunds',Object.values(G.machines).filter(m=>m.type==='belt').length===0&&G.crafted.belt===2&&G.inv.iron_plate===3,{crafted:G.crafted.belt,plate:G.inv.iron_plate});
+  // pipes draw lines too (no direction needed), and the line follows a corner
+  G.devFreeBuild=true; G.research.done=Object.keys(TECHS); setTool('pipe'); hov.x=40; hov.y=40; lineStart({x:40,y:40},0,0); lineMove({x:42,y:42}); lineEnd(); confirmPlace();
+  ok('pipe_line',[[40,40],[41,40],[42,40],[42,41],[42,42]].every(([x,y])=>G.machines[G.map[y][x].mid]?.type==='pipe'),line.path);
+  setTool('select');
   // ── F: furnace fed iron + coal, output pulled to chest
   reset(); power(2,2);
   const io=put('chest',10,10); io.chestInv.iron_ore=40; put('inserter',11,10,0); const fu=put('stone_furnace',12,10); fu.recipe='fn_iron';
@@ -291,7 +310,13 @@ const r=await p.evaluate(async()=>{
     // an old save (no floor) gains one on load; its machines stay put
     transitionToZone(1); closeModal(); clearInterval(tickId); G.devFreeBuild=true; placeDir=0; tryPlace('chest',30,30); closeModal();
     G.map=G.map.slice(0,G.floorY); delete G.floorY; saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
-    ok('factory_floor_old_save',G.floorY===64&&G.map.length===64+FLOOR_ROWS&&G.machines[G.map[30][30].mid]?.type==='chest',{floorY:G.floorY,h:G.map.length}); }
+    ok('factory_floor_old_save',G.floorY===64&&G.map.length===64+FLOOR_ROWS&&G.machines[G.map[30][30].mid]?.type==='chest',{floorY:G.floorY,h:G.map.length});
+    // a v2.0.2 save had 64 floor rows: empty rows past the new size go, rows in use stay
+    const deep=()=>{for(let k=0;k<64-FLOOR_ROWS;k++)G.map.push(Array.from({length:MAP_W},()=>({type:T_FLOOR,res:null,mid:null,items:[]})));MAP_H=G.map.length;};
+    deep(); saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const h1=G.map.length;
+    deep(); tryPlace('chest',5,G.floorY+40); closeModal(); saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    ok('factory_floor_trims_old_64',h1===64+FLOOR_ROWS&&FLOOR_ROWS===32&&G.map.length===64+41&&MAP_H===G.map.length&&G.machines[G.map[64+40][5].mid]?.type==='chest',{h1,h2:G.map.length}); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
