@@ -427,7 +427,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.5 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -592,7 +592,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.5';
+const VER      = '1.9.6';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -795,7 +795,15 @@ function setMusicVol(v){
 // Title screen music: browsers only allow audio after a tap, so it starts on the first one
 function onTitle(){const t=document.getElementById('sTitle');return !!t&&!t.classList.contains('hidden');}
 function titleMusic(){if(PREFS.music!==false&&!_music.running)musicStart();updateTitleMute();}
-document.addEventListener('pointerdown',()=>{if(onTitle()&&!_music.running&&PREFS.music!==false)titleMusic();},true);
+// Browsers only let audio start on a user activation, and the start of a touch (pointerdown) is not one:
+// a context created then stays 'suspended' for good (silent music and sound effects). Tap release, click
+// and key press do count, so resume there. Phones also suspend audio when the app is switched away, and
+// this wakes it again on the next tap.
+function unlockAudio(){
+  try{if(_ac&&_ac.state!=='running')_ac.resume().catch(()=>{});}catch(e){}
+  if(onTitle()&&!_music.running&&PREFS.music!==false)titleMusic();
+}
+for(const ev of['pointerup','touchend','click','keydown'])document.addEventListener(ev,unlockAudio,{capture:true,passive:true});
 function toggleTitleMusic(){
   PREFS.music=PREFS.music===false; savePrefs();
   if(PREFS.music)musicStart(); else musicStop();
@@ -814,6 +822,7 @@ document.addEventListener('visibilitychange',()=>{
     musicStop();
     if(G&&tickId)saveGame();
   } else {
+    try{if(_ac&&_ac.state!=='running')_ac.resume().catch(()=>{});}catch(e){}
     if(onTitle())titleMusic();
     else if(G&&G.music&&_music&&!_music.running) musicStart();
   }
