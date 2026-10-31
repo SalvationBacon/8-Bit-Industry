@@ -336,6 +336,14 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 .ii img.ico{width:22px;height:22px}
 #resInfoIcon img.ico{width:30px;height:30px}
 .tut-step{display:inline-block;color:var(--bg);background:var(--amber);padding:1px 4px;margin-right:6px;font-size:.9em}
+.ach-cat{display:flex;justify-content:space-between;width:100%;font-family:var(--font);font-size:var(--f5);color:var(--text2);letter-spacing:1px;background:var(--bg3);border:1px solid var(--border2);padding:10px 8px;margin:6px 0 4px;cursor:pointer;text-align:left}
+.ach-cat.full{color:var(--teal);border-color:var(--tealDim)}
+.ach-row{display:flex;align-items:center;gap:8px;padding:7px;border:1px solid var(--border);background:var(--bg3);margin-bottom:3px}
+.ach-row.done{border-color:var(--teal)}
+.ach-ic{width:22px;flex-shrink:0;text-align:center;color:var(--text3)} .ach-ic img{width:20px;height:20px}
+.ach-dim{opacity:.3;filter:grayscale(1)}
+.ach-nm{font-size:var(--f5);color:var(--text2)} .ach-row.done .ach-nm{color:var(--teal)}
+.ach-ds{font-size:var(--f4);color:var(--text3);margin-top:2px;line-height:1.6}
 .rates{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
 .rate-h{font-size:var(--f5);letter-spacing:1px;margin-top:4px}.rate-h.ok{color:var(--teal)}.rate-h.use{color:var(--amber)}
 .rate-row{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--text)}
@@ -429,7 +437,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.8 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.9 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -594,7 +602,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.8';
+const VER      = '1.9.9';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2404,7 +2412,7 @@ const EMOJI_PIX={'⛏️':'ui:pick','⛏':'ui:pick','🔨':'ui:craft','🏗️':
   '📐':'ui:blueprint','📲':'ui:install','🔒':'ui:devlock','⚙️':'ui:settings','🌸':'ui:bloom','🌌':'singularity',
   '🕳':'ui:cave','⏸':'ui:pause','✋':'ui:hand','⏱':'ui:clock','📤':'ui:export','📥':'ui:import','⬇':'ui:import','⬆':'ui:up',
   '🎵':'ui:music','🔉':'ui:sound','🔊':'ui:sound','🎞':'ui:film','🖼':'ui:picture','📳':'ui:vibrate','📄':'ui:file','📋':'ui:copy',
-  '✕':'ui:close','✗':'ui:close','✓':'ui:check','☰':'ui:menu','→':'ui:ar','↓':'ui:ad','←':'ui:al','↑':'ui:au','↻':'ui:rotate','✥':'ui:move','👆':'ui:select','⬚':'ui:multisel','💚':'circuit','🌿':'ui:sprout','🔋':'accumulator','🗒':'sci_red'};
+  '✕':'ui:close','✗':'ui:close','✓':'ui:check','☰':'ui:menu','→':'ui:ar','↓':'ui:ad','←':'ui:al','↑':'ui:au','▸':'ui:ar','▾':'ui:ad','↻':'ui:rotate','✥':'ui:move','👆':'ui:select','⬚':'ui:multisel','💚':'circuit','🌿':'ui:sprout','🔋':'accumulator','🗒':'sci_red'};
 // Every item's and machine's old emoji icon maps to its sprite too, so any leftover text emoji has a pixel twin
 const noVS=e=>e.replace(/\uFE0F/g,'');
 let EMOJI_RE=null, EMOJI_N=null;
@@ -2454,7 +2462,7 @@ const ACH_PIX={first_ore:'ui:pick',ore_100:'iron_ore',ore_1000:'ui:pick',first_m
   first_rod:'fuel_rod',deep_escape:'r_drill',full_bloom:'ui:bloom',first_wither:'ui:wilt',reactor_on:'reactor',first_scram:'ui:heat',
   bloom_escape:'r_biohull',void_walker:'ui:stardust',sing_built:'singularity',big_bang:'ui:demolish',
   first_splitter:'splitter',logistics_research:'belt'};
-function achIcon(a){const sp=ACH_PIX[a.id];const h=sp&&pixIcon(sp);return h&&!/^[^<]*$/.test(h)?h:pixEmoji(a.icon);}
+function achIcon(a){const sp=a.px||ACH_PIX[a.id];const h=sp&&pixIcon(sp);return h&&!/^[^<]*$/.test(h)?h:pixEmoji(a.icon);}
 function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cls}" src="${sprURL('ui:'+name,s)}" alt="">`:'';}
 
 // ═══════════════════════════════════════════════════
@@ -3920,6 +3928,7 @@ function undoLast(){
   } finally {undoBusy=false;}
   undoStack.pop(); updateUndoBtn();
   updateHUD(); saveGame(); sfx('remove');
+  G.stats.undos=(G.stats.undos||0)+1;
   toast('↶ Undone','ok');
 }
 
@@ -4616,7 +4625,7 @@ let bigBangAt=0;
 function triggerBigBang(){
   if(G.bigBang)return;
   G.bigBang=true;
-  const dust=10+Math.floor((G.achievements||[]).length/2);
+  const dust=achDust();
   PRESTIGE.stardust+=dust; PRESTIGE.total+=dust; PRESTIGE.bangs++; savePrestige();
   bigBangAt=performance.now();
   saveGame(); sfx('launch'); checkAchievements();
@@ -4625,7 +4634,7 @@ function triggerBigBang(){
       <div style="font-size:30px;margin-bottom:10px">💥</div>
       The Singularity holds for sixty seconds.<br>Then everything, every belt, every world, collapses to a point.<br><br>
       <span style="color:var(--purple);font-size:var(--f7)">A NEW UNIVERSE BEGINS</span><br><br>
-      <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(10 + 1 per 2 achievements)</span><br>
+      <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(10 + 1 per 2 achievements, up to +${ACH_DUST_MAX})</span><br>
       <span style="color:var(--text3);font-size:var(--f5)">Big Bangs: ${PRESTIGE.bangs} · Stardust is permanent across runs</span>
     </div>`,
     `<button class="btn btn-sm" onclick="openStardustShop()">✨ SHOP</button>
@@ -5653,6 +5662,7 @@ function hammerClick(){
       for(const[item,need]of Object.entries(r.in)) G.inv[item]-=need;
     }
     for(const[item,n]of Object.entries(r.out)) G.inv[item]=(G.inv[item]||0)+n;
+    G.stats.crafts=(G.stats.crafts||0)+1;
     const outStr=Object.entries(r.out).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ');
     sfx('craft'); toast(`Crafted: ${outStr}`,'ok');
     updateHUD();
@@ -6102,6 +6112,7 @@ function transformGhost(kind){
   if(blueprintState.mode==='holding')blueprintState.data=f(blueprintState.data);
   else if(multiselState.mode==='pasting')multiselState.clipboard=f(multiselState.clipboard);
   else return;
+  G.stats.flips=(G.stats.flips||0)+1;
   sfx('tap');
 }
 // Ghost of one layout entry: faint sprite plus which way it faces, so a flip is visible before placing
@@ -6121,6 +6132,7 @@ function pasteBlueprintAt(data,x,y){
   blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
   document.getElementById('ghostBar')?.classList.add('hidden');
   updateHUD(); saveGame(); sfx('place');
+  G.stats.pastes=(G.stats.pastes||0)+1;
   toast(`Placed ${data.length} machine${data.length!==1?'s':''}!`,'ok');
 }
 function deleteBlueprint(idx){
@@ -6815,6 +6827,7 @@ function ghostConfirm(){
     undoBegin(); for(const e of data)stampMachine(e,x+e.rx,y+e.ry); undoEnd();
     ms.pasteAnchor=null; // clear anchor so ghost follows cursor again for next paste
     updateHUD(); saveGame(); sfx('place');
+    G.stats.pastes=(G.stats.pastes||0)+1;
     toast(`Pasted ${data.length} machine${data.length!==1?'s':''}!`,'ok');
     const lbl=document.getElementById('ghostBarLabel');
     if(lbl) lbl.textContent=`${data.length} machine${data.length!==1?'s':''}, tap map to position, ✓ PLACE to stamp`;
@@ -6856,117 +6869,308 @@ function selectMachineById(id){
 //  ACHIEVEMENTS
 // ═══════════════════════════════════════════════════
 const ACHIEVEMENTS=[
-  // Mining
-  {id:'first_ore',    cat:'Mining',      icon:'⛏️', name:'First Strike',       desc:'Mine your first ore'},
-  {id:'ore_100',      cat:'Mining',      icon:'⛏️', name:'Getting Serious',    desc:'Mine 100 ore total'},
-  {id:'ore_1000',     cat:'Mining',      icon:'⛏️', name:'Industrial Miner',   desc:'Mine 1,000 ore total'},
-  {id:'first_miner',  cat:'Mining',      icon:'⛏️', name:'Automation Begins',  desc:'Place your first Miner'},
-  {id:'miners_5',     cat:'Mining',      icon:'⛏️', name:'Mining Operation',   desc:'Have 5 miners running'},
-  // Production
-  {id:'first_machine',cat:'Production',  icon:'🏗️', name:'Builder',            desc:'Place your first machine'},
-  {id:'first_belt',   cat:'Production',  icon:'➡️', name:'On the Belt',        desc:'Place your first belt'},
-  {id:'first_insert', cat:'Production',  icon:'🦾', name:'Hands-Free',         desc:'Place your first inserter'},
-  {id:'first_circuit',cat:'Production',  icon:'📟', name:'Circuit Breaker',    desc:'Produce your first Circuit Board'},
-  {id:'first_steel',  cat:'Production',  icon:'⬜', name:'Steel Worker',       desc:'Produce your first Steel Plate'},
-  {id:'machines_10',  cat:'Production',  icon:'🏗️', name:'Factory Floor',      desc:'Have 10 machines placed'},
-  {id:'machines_25',  cat:'Production',  icon:'🏗️', name:'Full Production',    desc:'Have 25 machines placed'},
-  // Power
-  {id:'first_power',  cat:'Power',       icon:'⚡', name:'Spark of Life',      desc:'Get your first power grid running'},
-  {id:'power_60',     cat:'Power',       icon:'⚡', name:'Generator Online',   desc:'Produce 60kW or more'},
-  {id:'power_120',    cat:'Power',       icon:'⚡', name:'Power Plant',        desc:'Produce 120kW or more'},
-  // Research
-  {id:'first_notes',  cat:'Research',    icon:'🗒️', name:'Field Researcher',   desc:'Produce your first Field Notes'},
-  {id:'first_diagrams',cat:'Research',   icon:'📋', name:'Going Technical',    desc:'Produce your first Circuit Diagrams'},
-  {id:'automation',   cat:'Research',    icon:'⚙️', name:'Automated',          desc:'Unlock Basic Automation'},
-  {id:'all_research', cat:'Research',    icon:'🔬', name:'Scholar',            desc:'Complete all research'},
-  // Logistics
-  {id:'first_chest',  cat:'Logistics',   icon:'📦', name:'Safe Storage',       desc:'Place your first chest'},
-  {id:'first_splitter',cat:'Logistics',  icon:'⑂',  name:'Fork in the Road',   desc:'Place your first splitter'},
-  {id:'first_tunnel', cat:'Logistics',   icon:'⏬', name:'Underground',        desc:'Place your first belt tunnel'},
-  {id:'first_generator',cat:'Power',     icon:'⚡', name:'Power Surge',        desc:'Place a Generator'},
-  {id:'first_blueprint',cat:'Production',icon:'📐', name:'Master Planner',     desc:'Save your first blueprint'},
-  {id:'logistics_research',cat:'Research',icon:'➡️',name:'Logistics Master',   desc:'Unlock Advanced Logistics'},
-  {id:'first_schematic',cat:'Research',  icon:'📘', name:'Advanced Scholar',   desc:'Produce your first Adv. Schematic'},
-  {id:'machines_50',  cat:'Production',  icon:'🏭', name:'Mega Factory',       desc:'Have 50 machines placed'},
-  {id:'power_240',    cat:'Power',       icon:'⚡', name:'Power Grid',         desc:'Produce 240kW or more'},
-  {id:'first_module', cat:'Production',  icon:'🔵', name:'Optimiser',          desc:'Install your first module'},
-  {id:'first_upgrade',cat:'Production',  icon:'⬆️', name:'Tier Up',            desc:'Upgrade a machine to T2'},
-  // Rocket
-  {id:'first_steel_r', cat:'Rocket',     icon:'🔩', name:'Steel Dreams',       desc:'Produce steel for the first time'},
-  {id:'rocket_part',  cat:'Rocket',      icon:'🛸', name:'Parts in Motion',    desc:'Craft any rocket component'},
-  {id:'launch',       cat:'Rocket',      icon:'🚀', name:'Liftoff',            desc:'Launch your first rocket'},
-  // Zones
-  {id:'scar_escape',  cat:'Zones',       icon:'💥', name:'Out of the Scar',    desc:'Relaunch from The Scar'},
-  {id:'first_pipe',   cat:'Zones',       icon:'🔗', name:'Plumber',            desc:'Place your first pipe'},
-  {id:'first_burst',  cat:'Zones',       icon:'💥', name:'Kaboom',             desc:'Burst a pipe'},
-  {id:'first_rod',    cat:'Zones',       icon:'🟩', name:'Crystal Fuel',       desc:'Press a Lattice Fuel Rod'},
-  {id:'deep_escape',  cat:'Zones',       icon:'🕳️', name:'Deep Escape',        desc:'Drill out of The Deep'},
-  {id:'first_living', cat:'Zones',       icon:'🌱', name:'It\'s Alive',        desc:'Place a living machine'},
-  {id:'full_bloom',   cat:'Zones',       icon:'🌸', name:'Full Bloom',         desc:'Grow a living machine to Bloom stage'},
-  {id:'first_wither', cat:'Zones',       icon:'🥀', name:'Wilted',             desc:'Let a living machine wither'},
-  {id:'reactor_on',   cat:'Zones',       icon:'☢️', name:'Critical Mass',      desc:'Run a Nuclear Reactor'},
-  {id:'first_scram',  cat:'Zones',       icon:'🌡️', name:'Meltdown Averted',   desc:'Trigger a reactor SCRAM'},
-  {id:'bloom_escape', cat:'Zones',       icon:'🌟', name:'Bloom Escape',       desc:'Launch from The Bloom'},
-  {id:'void_walker',  cat:'Zones',       icon:'🌌', name:'Void Walker',        desc:'Reach The Singularity'},
-  {id:'sing_built',   cat:'Zones',       icon:'🌀', name:'Godmaker',           desc:'Complete the Singularity'},
-  {id:'big_bang',     cat:'Zones',       icon:'💥', name:'Big Bang',           desc:'Break the universe'},
+  {id:'first_ore',cat:'Getting Started',px:'ui:pick',name:'First Strike',desc:'Mine your first ore'},
+  {id:'first_machine',cat:'Getting Started',px:'ui:build',name:'Builder',desc:'Place your first machine'},
+  {id:'first_power',cat:'Getting Started',px:'ui:power',name:'Spark of Life',desc:'Get your first power grid running'},
+  {id:'first_miner',cat:'Getting Started',px:'miner',name:'Automation Begins',desc:'Place your first Miner'},
+  {id:'first_notes',cat:'Getting Started',px:'sci_red',name:'Field Researcher',desc:'Produce your first Field Notes'},
+  {id:'hand_25',cat:'Getting Started',px:'ui:hand',name:'Handy',desc:'Hand-craft 25 times in one zone'},
+  {id:'ore_100',cat:'Ironfield',px:'iron_ore',name:'Getting Serious',desc:'Mine 100 ore by hand'},
+  {id:'ore_1000',cat:'Ironfield',px:'ui:pick',name:'Industrial Miner',desc:'Mine 1,000 ore by hand'},
+  {id:'miners_5',cat:'Ironfield',px:'miner',name:'Mining Operation',desc:'Have 5 Miners running'},
+  {id:'miners_15',cat:'Ironfield',px:'miner',name:'Strip Mine',desc:'Have 15 Miners running'},
+  {id:'iron_500',cat:'Ironfield',px:'iron_plate',name:'Iron Age',desc:'Hold 500 Iron Plates'},
+  {id:'copper_100',cat:'Ironfield',px:'copper_plate',name:'Copper Country',desc:'Hold 100 Copper Plates'},
+  {id:'gears_100',cat:'Ironfield',px:'iron_gear',name:'Gear Head',desc:'Hold 100 Iron Gears'},
+  {id:'first_circuit',cat:'Ironfield',px:'circuit',name:'Circuit Breaker',desc:'Produce your first Circuit Board'},
+  {id:'circuits_50',cat:'Ironfield',px:'circuit',name:'Board Meeting',desc:'Hold 50 Circuit Boards'},
+  {id:'first_steel',cat:'Ironfield',px:'steel_plate',name:'Steel Worker',desc:'Produce your first Steel Plate'},
+  {id:'steel_100',cat:'Ironfield',px:'steel_plate',name:'Forged',desc:'Hold 100 Steel Plates'},
+  {id:'furnaces_10',cat:'Ironfield',px:'stone_furnace',name:'Smeltery',desc:'Have 10 furnaces of any kind'},
+  {id:'assemblers_5',cat:'Ironfield',px:'assembler',name:'Assembly Line',desc:'Have 5 Assemblers'},
+  {id:'labs_3',cat:'Ironfield',px:'lab',name:'Think Tank',desc:'Have 3 Research Labs'},
+  {id:'first_diagrams',cat:'Ironfield',px:'sci_green',name:'Going Technical',desc:'Produce your first Circuit Diagrams'},
+  {id:'first_schematic',cat:'Ironfield',px:'sci_blue',name:'Advanced Scholar',desc:'Produce your first Adv. Schematic'},
+  {id:'automation',cat:'Ironfield',px:'iron_gear',name:'Automated',desc:'Unlock Basic Automation'},
+  {id:'logistics_research',cat:'Ironfield',px:'belt',name:'Logistics Master',desc:'Unlock Advanced Logistics'},
+  {id:'z1_research',cat:'Ironfield',px:'ui:research',name:'Ironfield Scholar',desc:'Complete every Ironfield research'},
+  {id:'first_steel_r',cat:'Ironfield',px:'blast_furnace',name:'Steel Dreams',desc:'Produce steel for the first time'},
+  {id:'rocket_part',cat:'Ironfield',px:'r_chassis',name:'Parts in Motion',desc:'Craft any rocket component'},
+  {id:'launch',cat:'Ironfield',px:'ui:goal',name:'Liftoff',desc:'Launch your first rocket'},
+  {id:'z1_fast',cat:'Ironfield',px:'ui:clock',name:'Express Launch',desc:'Launch from Ironfield within 45 minutes'},
+  {id:'first_oil',cat:'The Scar',px:'oil_pump',name:'Black Gold',desc:'Place an Oil Pump'},
+  {id:'oil_6',cat:'The Scar',px:'oil_pump',name:'Oil Baron',desc:'Have 6 Oil Pumps'},
+  {id:'first_crack',cat:'The Scar',px:'raw_fuel',name:'Cracked',desc:'Crack crude oil into Raw Fuel'},
+  {id:'plastic_50',cat:'The Scar',px:'plastic',name:'Plastic Fantastic',desc:'Hold 50 Plastic'},
+  {id:'refined_50',cat:'The Scar',px:'refined_fuel',name:'Refined Taste',desc:'Hold 50 Refined Fuel'},
+  {id:'first_scrubber',cat:'The Scar',px:'scrubber',name:'Clear the Air',desc:'Place a Scrubber'},
+  {id:'combustion_3',cat:'The Scar',px:'combustion_gen',name:'Combustion Engine',desc:'Have 3 Combustion Generators'},
+  {id:'smog_75',cat:'The Scar',px:'ui:smog',name:'Choking Hazard',desc:'Let the smog reach 75%',secret:true},
+  {id:'smog_clear',cat:'The Scar',px:'ui:smog',name:'Breathe Easy',desc:'Run 4+ Oil Pumps with smog under 10%'},
+  {id:'scar_notes_50',cat:'The Scar',px:'sci_scar',name:'Ruin Reader',desc:'Hold 50 Scar Notes'},
+  {id:'scar_research',cat:'The Scar',px:'ui:research',name:'Scar Scholar',desc:'Complete every Scar research'},
+  {id:'scar_escape',cat:'The Scar',px:'r_hull',name:'Out of the Scar',desc:'Relaunch from The Scar'},
+  {id:'first_pipe',cat:'The Deep',px:'pipe',name:'Plumber',desc:'Place your first pipe'},
+  {id:'first_brine',cat:'The Deep',px:'brine_pump',name:'Salt of the Earth',desc:'Place a Brine Pump'},
+  {id:'first_tank',cat:'The Deep',px:'fluid_tank',name:'Holding Pressure',desc:'Place a Fluid Tank'},
+  {id:'pipes_50',cat:'The Deep',px:'pipe',name:'Plumbing Empire',desc:'Have 50 pipes'},
+  {id:'first_valve',cat:'The Deep',px:'relief_valve',name:'Release Valve',desc:'Place a Relief Valve'},
+  {id:'pressure_90',cat:'The Deep',px:'ui:pressure',name:'Under Pressure',desc:'Push a pipe network to 90% pressure'},
+  {id:'first_burst',cat:'The Deep',px:'ui:demolish',name:'Kaboom',desc:'Burst a pipe',secret:true},
+  {id:'first_lumen',cat:'The Deep',px:'lumen_panel',name:'Glow Up',desc:'Place a Lumen Panel'},
+  {id:'lumen_6',cat:'The Deep',px:'lumen_panel',name:'Cave Farm',desc:'Have 6 Lumen Panels'},
+  {id:'acc_full',cat:'The Deep',px:'accumulator',name:'Fully Charged',desc:'Fill an Accumulator'},
+  {id:'night_power',cat:'The Deep',px:'ui:moon',name:'Lights in the Dark',desc:'Keep everything powered through the dark tide'},
+  {id:'silicon_50',cat:'The Deep',px:'silicon',name:'Silicon Valley',desc:'Hold 50 Silicon'},
+  {id:'first_rod',cat:'The Deep',px:'fuel_rod',name:'Crystal Fuel',desc:'Press a Lattice Fuel Rod'},
+  {id:'rods_10',cat:'The Deep',px:'fuel_rod',name:'Rod Stock',desc:'Hold 10 Lattice Fuel Rods'},
+  {id:'deep_research',cat:'The Deep',px:'ui:research',name:'Deep Scholar',desc:'Complete every Deep research'},
+  {id:'deep_escape',cat:'The Deep',px:'r_drill',name:'Deep Escape',desc:'Drill out of The Deep'},
+  {id:'steady_escape',cat:'The Deep',px:'ui:check',name:'Steady Hands',desc:'Escape The Deep without a single burst'},
+  {id:'first_enzyme',cat:'The Bloom',px:'enzyme_pump',name:'Enzymatic',desc:'Place an Enzyme Pump'},
+  {id:'first_living',cat:'The Bloom',px:'ui:sprout',name:'It\'s Alive',desc:'Place a living machine'},
+  {id:'living_5',cat:'The Bloom',px:'algae_vat',name:'Garden',desc:'Have 5 living machines'},
+  {id:'living_10',cat:'The Bloom',px:'bioreactor',name:'Greenhouse',desc:'Have 10 living machines'},
+  {id:'full_bloom',cat:'The Bloom',px:'ui:bloom',name:'Full Bloom',desc:'Grow a living machine to Bloom'},
+  {id:'bloom_3',cat:'The Bloom',px:'ui:bloom',name:'In Full Flower',desc:'Have 3 machines in Bloom at once'},
+  {id:'paste_50',cat:'The Bloom',px:'nutrient',name:'Well Fed',desc:'Hold 50 Nutrient Paste'},
+  {id:'first_wither',cat:'The Bloom',px:'ui:wilt',name:'Wilted',desc:'Let a living machine wither',secret:true},
+  {id:'reactor_on',cat:'The Bloom',px:'reactor',name:'Critical Mass',desc:'Run a Nuclear Reactor'},
+  {id:'reactor_2',cat:'The Bloom',px:'reactor',name:'Twin Cores',desc:'Run 2 reactors at once'},
+  {id:'reactor_hot',cat:'The Bloom',px:'ui:heat',name:'Running Hot',desc:'Run a reactor above 90% heat',secret:true},
+  {id:'first_scram',cat:'The Bloom',px:'ui:heat',name:'Meltdown Averted',desc:'Trigger a reactor SCRAM',secret:true},
+  {id:'power_mw',cat:'The Bloom',px:'ui:power',name:'Megawatt',desc:'Produce 1 MW'},
+  {id:'hyperfuel_6',cat:'The Bloom',px:'hyperfuel',name:'Liquid Sunshine',desc:'Hold 6 Bio-Hyperfuel'},
+  {id:'bloom_research',cat:'The Bloom',px:'ui:research',name:'Bloom Scholar',desc:'Complete every Bloom research'},
+  {id:'bloom_escape',cat:'The Bloom',px:'r_biohull',name:'Bloom Escape',desc:'Launch from The Bloom'},
+  {id:'green_escape',cat:'The Bloom',px:'ui:sprout',name:'Green Thumb',desc:'Leave The Bloom with nothing withered'},
+  {id:'cool_escape',cat:'The Bloom',px:'heat_sink',name:'Cool Head',desc:'Leave The Bloom without a SCRAM'},
+  {id:'void_walker',cat:'The Singularity',px:'ui:stardust',name:'Void Walker',desc:'Reach The Singularity'},
+  {id:'expand_1',cat:'The Singularity',px:'ui:map',name:'Bigger World',desc:'Research Expansion I'},
+  {id:'expand_2',cat:'The Singularity',px:'ui:map',name:'Bigger Still',desc:'Research Expansion II'},
+  {id:'void_10',cat:'The Singularity',px:'sci_void',name:'Void Data',desc:'Hold 10 Void Data'},
+  {id:'components_all',cat:'The Singularity',px:'grav_lens',name:'All Together',desc:'Hold one of each Singularity component'},
+  {id:'sing_placed',cat:'The Singularity',px:'singularity',name:'The Foundation',desc:'Place the Singularity'},
+  {id:'sing_half',cat:'The Singularity',px:'singularity',name:'Halfway There',desc:'Build the Singularity past halfway'},
+  {id:'power_5mw',cat:'The Singularity',px:'ui:power',name:'Five Megawatts',desc:'Produce 5 MW'},
+  {id:'sing_built',cat:'The Singularity',px:'singularity',name:'Godmaker',desc:'Complete the Singularity'},
+  {id:'big_bang',cat:'The Singularity',px:'ui:demolish',name:'Big Bang',desc:'Break the universe'},
+  {id:'bangs_2',cat:'The Singularity',px:'ui:stardust',name:'Again and Again',desc:'Trigger a second Big Bang'},
+  {id:'bangs_5',cat:'The Singularity',px:'ui:stardust',name:'Eternal Return',desc:'Trigger five Big Bangs'},
+  {id:'first_belt',cat:'Logistics',px:'belt',name:'On the Belt',desc:'Place your first belt'},
+  {id:'belts_50',cat:'Logistics',px:'belt',name:'Conveyor Craze',desc:'Have 50 belts'},
+  {id:'belts_200',cat:'Logistics',px:'belt',name:'Belt Highway',desc:'Have 200 belts'},
+  {id:'first_insert',cat:'Logistics',px:'inserter',name:'Hands-Free',desc:'Place your first inserter'},
+  {id:'inserters_20',cat:'Logistics',px:'inserter',name:'Many Hands',desc:'Have 20 inserters'},
+  {id:'long_ins',cat:'Logistics',px:'long_inserter',name:'Long Reach',desc:'Place a Long Inserter'},
+  {id:'first_chest',cat:'Logistics',px:'chest',name:'Safe Storage',desc:'Place your first chest'},
+  {id:'chest_full',cat:'Logistics',px:'chest',name:'Hoarder',desc:'Fill a chest to the brim'},
+  {id:'first_splitter',cat:'Logistics',px:'splitter',name:'Fork in the Road',desc:'Place your first splitter'},
+  {id:'splitters_5',cat:'Logistics',px:'splitter',name:'Sorting Office',desc:'Have 5 splitters'},
+  {id:'first_tunnel',cat:'Logistics',px:'tunnel',name:'Underground',desc:'Place your first belt tunnel'},
+  {id:'tunnels_3',cat:'Logistics',px:'tunnel',name:'Tunnel Vision',desc:'Link 3 tunnel pairs'},
+  {id:'shared_output',cat:'Logistics',px:'inserter',name:'Share and Share Alike',desc:'Have 2 inserters sharing one output'},
+  {id:'first_generator',cat:'Power',px:'generator',name:'Power Surge',desc:'Place a Generator'},
+  {id:'burners_3',cat:'Power',px:'burner',name:'Three Fires',desc:'Run 3 Burners at once'},
+  {id:'generators_4',cat:'Power',px:'generator',name:'Power Station',desc:'Have 4 Generators'},
+  {id:'power_60',cat:'Power',px:'ui:power',name:'Generator Online',desc:'Produce 60 kW'},
+  {id:'power_120',cat:'Power',px:'ui:power',name:'Power Plant',desc:'Produce 120 kW'},
+  {id:'power_240',cat:'Power',px:'ui:power',name:'Power Grid',desc:'Produce 240 kW'},
+  {id:'power_500',cat:'Power',px:'ui:power',name:'Half a Megawatt',desc:'Produce 500 kW'},
+  {id:'brownout',cat:'Power',px:'ui:warn',name:'Brownout',desc:'Ask for more power than you make',secret:true},
+  {id:'machines_10',cat:'Engineering',px:'ui:build',name:'Factory Floor',desc:'Have 10 machines placed'},
+  {id:'machines_25',cat:'Engineering',px:'ui:build',name:'Full Production',desc:'Have 25 machines placed'},
+  {id:'machines_50',cat:'Engineering',px:'ui:factory',name:'Mega Factory',desc:'Have 50 machines placed'},
+  {id:'machines_100',cat:'Engineering',px:'ui:factory',name:'Industrial Empire',desc:'Have 100 machines placed'},
+  {id:'first_upgrade',cat:'Engineering',px:'ui:up',name:'Tier Up',desc:'Upgrade a machine to T2'},
+  {id:'t2_5',cat:'Engineering',px:'ui:up',name:'Upgrader',desc:'Have 5 machines at T2 or higher'},
+  {id:'t3',cat:'Engineering',px:'ui:up',name:'Top Tier',desc:'Upgrade a machine to T3'},
+  {id:'first_module',cat:'Engineering',px:'speed_module',name:'Optimiser',desc:'Install your first module'},
+  {id:'modules_5',cat:'Engineering',px:'prod_module',name:'Fully Modded',desc:'Have 5 modules installed'},
+  {id:'first_blueprint',cat:'Engineering',px:'ui:blueprint',name:'Master Planner',desc:'Save your first blueprint'},
+  {id:'blueprints_4',cat:'Engineering',px:'ui:blueprint',name:'Library',desc:'Save 4 blueprints'},
+  {id:'first_paste',cat:'Engineering',px:'ui:copy',name:'Copy That',desc:'Paste a copied layout or blueprint'},
+  {id:'first_flip',cat:'Engineering',px:'ui:fliph',name:'Mirror Image',desc:'Flip or rotate a layout before placing'},
+  {id:'first_undo',cat:'Engineering',px:'ui:undo',name:'Take Backsies',desc:'Undo a build action'},
+  {id:'prod_1000',cat:'Engineering',px:'ui:factory',name:'Productive',desc:'Make 1,000 items with machines in one zone'},
+  {id:'prod_10000',cat:'Engineering',px:'ui:factory',name:'Mass Production',desc:'Make 10,000 items with machines in one zone'},
+  {id:'hand_250',cat:'Engineering',px:'ui:hand',name:'Artisan',desc:'Hand-craft 250 times in one zone'},
+  {id:'all_research',cat:'Mastery',px:'ui:research',name:'Scholar',desc:'Complete every research'},
+  {id:'milestones_all',cat:'Mastery',px:'ui:perks',name:'Overachiever',desc:'Meet all three milestones of a zone'},
+  {id:'perk_first',cat:'Mastery',px:'ui:perks',name:'Perk Up',desc:'Buy your first perk'},
+  {id:'perks_6',cat:'Mastery',px:'ui:perks',name:'Specialist',desc:'Own 6 perks'},
+  {id:'stardust_buy',cat:'Mastery',px:'ui:stardust',name:'Starry Eyed',desc:'Buy a Stardust upgrade'},
+  {id:'theme_set',cat:'Mastery',px:'ui:picture',name:'Fresh Coat',desc:'Wear a Stardust theme'},
 ];
+// Awards panel order; the zone you're in opens by default
+const ACH_CATS=['Getting Started','Ironfield','The Scar','The Deep','The Bloom','The Singularity','Logistics','Power','Engineering','Mastery'];
 
+// Big Bang reward: 10 + 1 per 2 achievements earned this run, capped at the old maximum (47 achievements
+// paid up to +23), so the many new achievements don't let one Big Bang buy out the Stardust shop
+const ACH_DUST_MAX=23;
+function achDust(){
+  const ids=new Set(ACHIEVEMENTS.map(a=>a.id)), n=(G.achievements||[]).filter(id=>ids.has(id)).length;
+  return 10+Math.min(ACH_DUST_MAX,Math.floor(n/2));
+}
 function checkAchievements(){
   if(!G.achievements)G.achievements=[];
   const earned=new Set(G.achievements);
   const machines=Object.values(G.machines);
   const totalOre=(G.inv.iron_ore||0)+(G.inv.copper_ore||0)+(G.inv.coal||0)+(G.inv.stone||0)+G.stats.taps;
 
+  const cnt={}; for(const m of machines)cnt[m.type]=(cnt[m.type]||0)+1;
+  const inv=k=>G.inv[k]||0, done=t=>G.research.done.includes(t), z=G.zone;
+  const zoneDone=n=>zoneTechs(n).every(([id])=>done(id));
+  const living=machines.filter(m=>MDEFS[m.type]?.living&&!m.withered);
+  const runningReactors=machines.filter(m=>m.type==='reactor'&&(m.inBuf.lum_rod||0)>0&&!(m.scram>0));
+  const produced=machines.reduce((a,m)=>a+(m.produced||0),0);
+  const furnaces=(cnt.stone_furnace||0)+(cnt.blast_furnace||0)+(cnt.electric_smelter||0);
+  const sing=machines.find(m=>m.type==='singularity');
+  const singFrac=sing?Object.entries(SING_REQS).reduce((a,[id,n])=>a+Math.min(n,(sing.built||{})[id]||0),0)/Object.values(SING_REQS).reduce((a,b)=>a+b,0):0;
+  const launchedFrom=n=>G.stats.launched===true&&z===n;
   const checks={
+    // getting started
     first_ore:    ()=>(G.stats.mined||0)>=1,
+    first_machine:()=>G.stats.placed>=1,
+    first_power:  ()=>G.power.out>0,
+    first_miner:  ()=>cnt.miner>0,
+    first_notes:  ()=>inv('sci_red')>=1,
+    hand_25:      ()=>(G.stats.crafts||0)>=25,
+    // ironfield
     ore_100:      ()=>(G.stats.mined||0)>=100,
     ore_1000:     ()=>(G.stats.mined||0)>=1000,
-    first_miner:  ()=>machines.some(m=>m.type==='miner'),
     miners_5:     ()=>machines.filter(m=>m.type==='miner'&&m.active).length>=5,
-    first_machine:()=>G.stats.placed>=1,
-    first_belt:   ()=>machines.some(m=>m.type==='belt'),
-    first_insert: ()=>machines.some(m=>m.type==='inserter'),
-    first_circuit:()=>(G.inv.circuit||0)>=1,
-    first_steel:  ()=>(G.inv.steel_plate||0)>=1,
-    machines_10:  ()=>machines.length>=10,
-    machines_25:  ()=>machines.length>=25,
-    first_power:  ()=>G.power.out>0,
+    miners_15:    ()=>machines.filter(m=>m.type==='miner'&&m.active).length>=15,
+    iron_500:     ()=>inv('iron_plate')>=500,
+    copper_100:   ()=>inv('copper_plate')>=100,
+    gears_100:    ()=>inv('iron_gear')>=100,
+    first_circuit:()=>inv('circuit')>=1,
+    circuits_50:  ()=>inv('circuit')>=50,
+    first_steel:  ()=>inv('steel_plate')>=1,
+    steel_100:    ()=>inv('steel_plate')>=100,
+    furnaces_10:  ()=>furnaces>=10,
+    assemblers_5: ()=>(cnt.assembler||0)>=5,
+    labs_3:       ()=>(cnt.lab||0)>=3,
+    first_diagrams:()=>inv('sci_green')>=1,
+    first_schematic:()=>inv('sci_blue')>=1,
+    automation:   ()=>done('automation'),
+    logistics_research:()=>done('logistics'),
+    z1_research:  ()=>zoneDone(1),
+    first_steel_r:()=>inv('steel_plate')>=1,
+    rocket_part:  ()=>ROCKET_PARTS.some(p=>inv(p.id)>=1),
+    launch:       ()=>G.stats.launched===true,
+    z1_fast:      ()=>launchedFrom(1)&&G.tick<=45*60*4,
+    // the scar
+    first_oil:    ()=>cnt.oil_pump>0,
+    oil_6:        ()=>(cnt.oil_pump||0)>=6,
+    first_crack:  ()=>inv('raw_fuel')>=1,
+    plastic_50:   ()=>inv('plastic')>=50,
+    refined_50:   ()=>inv('refined_fuel')>=50,
+    first_scrubber:()=>cnt.scrubber>0,
+    combustion_3: ()=>(cnt.combustion_gen||0)>=3,
+    smog_75:      ()=>zoneHas('smog')&&(G.smog||0)>=75,
+    smog_clear:   ()=>zoneHas('smog')&&(cnt.oil_pump||0)>=4&&(G.smog||0)<10&&G.tick>2400,
+    scar_notes_50:()=>inv('sci_scar')>=50,
+    scar_research:()=>zoneDone(2),
+    scar_escape:  ()=>!!G.perks?.awarded?.[2],
+    // the deep
+    first_pipe:   ()=>cnt.pipe>0,
+    first_brine:  ()=>cnt.brine_pump>0,
+    first_tank:   ()=>cnt.fluid_tank>0,
+    pipes_50:     ()=>(cnt.pipe||0)>=50,
+    first_valve:  ()=>cnt.relief_valve>0,
+    pressure_90:  ()=>{const n=zoneHas('pressure')&&worstNet();return !!n&&pressureOf(n)>=90;},
+    first_burst:  ()=>(G.stats.bursts||0)>0,
+    first_lumen:  ()=>cnt.lumen_panel>0,
+    lumen_6:      ()=>(cnt.lumen_panel||0)>=6,
+    acc_full:     ()=>machines.some(m=>m.type==='accumulator'&&(m.charge||0)>=ACC_CAP),
+    night_power:  ()=>zoneHas('glow')&&!glowBright()&&G.power.in>=20&&powerRatio()===1&&(cnt.accumulator||0)>0,
+    silicon_50:   ()=>inv('silicon')>=50,
+    first_rod:    ()=>inv('fuel_rod')>=1,
+    rods_10:      ()=>inv('fuel_rod')>=10,
+    deep_research:()=>zoneDone(3),
+    deep_escape:  ()=>!!G.perks?.awarded?.[3],
+    steady_escape:()=>launchedFrom(3)&&!(G.stats.bursts>0),
+    // the bloom
+    first_enzyme: ()=>cnt.enzyme_pump>0,
+    first_living: ()=>machines.some(m=>MDEFS[m.type]?.living),
+    living_5:     ()=>living.length>=5,
+    living_10:    ()=>living.length>=10,
+    full_bloom:   ()=>living.some(m=>(m.vit||0)>80),
+    bloom_3:      ()=>living.filter(m=>(m.vit||0)>80).length>=3,
+    paste_50:     ()=>inv('nutrient')>=50,
+    first_wither: ()=>(G.stats.withered||0)>0,
+    reactor_on:   ()=>runningReactors.length>=1,
+    reactor_2:    ()=>runningReactors.length>=2,
+    reactor_hot:  ()=>runningReactors.some(m=>(m.heat||0)>90),
+    first_scram:  ()=>(G.stats.scrams||0)>0,
+    power_mw:     ()=>G.power.out>=1000,
+    hyperfuel_6:  ()=>inv('hyperfuel')>=6,
+    bloom_research:()=>zoneDone(4),
+    bloom_escape: ()=>!!G.perks?.awarded?.[4],
+    green_escape: ()=>launchedFrom(4)&&!(G.stats.withered>0),
+    cool_escape:  ()=>launchedFrom(4)&&!(G.stats.scrams>0),
+    // the singularity
+    void_walker:  ()=>z===5,
+    expand_1:     ()=>done('expansion_1'),
+    expand_2:     ()=>done('expansion_2'),
+    void_10:      ()=>inv('sci_void')>=10,
+    components_all:()=>Object.keys(SING_REQS).every(id=>inv(id)>=1),
+    sing_placed:  ()=>!!sing,
+    sing_half:    ()=>singFrac>.5,
+    power_5mw:    ()=>G.power.out>=5000,
+    sing_built:   ()=>!!sing&&sing.complete,
+    big_bang:     ()=>!!G.bigBang,
+    bangs_2:      ()=>(PRESTIGE.bangs||0)>=2,
+    bangs_5:      ()=>(PRESTIGE.bangs||0)>=5,
+    // logistics
+    first_belt:   ()=>cnt.belt>0,
+    belts_50:     ()=>(cnt.belt||0)>=50,
+    belts_200:    ()=>(cnt.belt||0)>=200,
+    first_insert: ()=>cnt.inserter>0,
+    inserters_20: ()=>(cnt.inserter||0)+(cnt.long_inserter||0)>=20,
+    long_ins:     ()=>cnt.long_inserter>0,
+    first_chest:  ()=>cnt.chest>0,
+    chest_full:   ()=>machines.some(m=>m.type==='chest'&&Object.values(m.chestInv).reduce((a,b)=>a+b,0)>=200),
+    first_splitter:()=>cnt.splitter>0,
+    splitters_5:  ()=>(cnt.splitter||0)>=5,
+    first_tunnel: ()=>cnt.tunnel>0,
+    tunnels_3:    ()=>machines.filter(m=>m.type==='tunnel'&&m.tunnelId!==null).length>=6,
+    shared_output:()=>Object.values(INS_TAKERS).some(a=>a.length>=2),
+    // power
+    first_generator:()=>cnt.generator>0,
+    burners_3:    ()=>machines.filter(m=>m.type==='burner'&&(m.inBuf.coal||0)>0).length>=3,
+    generators_4: ()=>(cnt.generator||0)>=4,
     power_60:     ()=>G.power.out>=60,
     power_120:    ()=>G.power.out>=120,
-    first_notes:  ()=>(G.inv.sci_red||0)>=1,
-    first_diagrams:()=>(G.inv.sci_green||0)>=1,
-    first_schematics:()=>(G.inv.sci_blue||0)>=1,
-    automation:   ()=>G.research.done.includes('automation'),
-    all_research: ()=>Object.keys(TECHS).every(id=>G.research.done.includes(id)),
-    first_steel_r:()=>(G.inv.steel_plate||0)>=1,
-    rocket_part:  ()=>ROCKET_PARTS.some(p=>(G.inv[p.id]||0)>=1),
-    launch:       ()=>G.stats.launched===true,
-    first_chest:  ()=>machines.some(m=>m.type==='chest'),
-    first_splitter:()=>machines.some(m=>m.type==='splitter'),
-    first_tunnel: ()=>machines.some(m=>m.type==='tunnel'),
-    first_generator:()=>machines.some(m=>m.type==='generator'),
-    first_blueprint:()=>(G.blueprints||[]).length>=1,
-    logistics_research:()=>G.research.done.includes('logistics'),
-    first_schematic:()=>(G.inv.sci_blue||0)>=1,
-    machines_50:  ()=>machines.length>=50,
     power_240:    ()=>G.power.out>=240,
-    first_module: ()=>machines.some(m=>(m.modules||[]).length>0),
+    power_500:    ()=>G.power.out>=500,
+    brownout:     ()=>G.power.out>0&&G.power.in>G.power.out,
+    // engineering
+    machines_10:  ()=>machines.length>=10,
+    machines_25:  ()=>machines.length>=25,
+    machines_50:  ()=>machines.length>=50,
+    machines_100: ()=>machines.length>=100,
     first_upgrade:()=>machines.some(m=>(m.tier||1)>=2),
-    scar_escape:  ()=>!!G.perks?.awarded?.[2],
-    first_pipe:   ()=>machines.some(m=>m.type==='pipe'),
-    first_burst:  ()=>(G.stats.bursts||0)>0,
-    first_rod:    ()=>(G.inv.fuel_rod||0)>=1,
-    deep_escape:  ()=>!!G.perks?.awarded?.[3],
-    first_living: ()=>machines.some(m=>MDEFS[m.type]?.living),
-    full_bloom:   ()=>machines.some(m=>MDEFS[m.type]?.living&&!m.withered&&(m.vit||0)>80),
-    first_wither: ()=>(G.stats.withered||0)>0,
-    reactor_on:   ()=>machines.some(m=>m.type==='reactor'&&(m.inBuf.lum_rod||0)>0&&!(m.scram>0)),
-    first_scram:  ()=>(G.stats.scrams||0)>0,
-    bloom_escape: ()=>!!G.perks?.awarded?.[4],
-    void_walker:  ()=>G.zone===5,
-    sing_built:   ()=>machines.some(m=>m.type==='singularity'&&m.complete),
-    big_bang:     ()=>!!G.bigBang,
+    t2_5:         ()=>machines.filter(m=>(m.tier||1)>=2).length>=5,
+    t3:           ()=>machines.some(m=>(m.tier||1)>=3),
+    first_module: ()=>machines.some(m=>(m.modules||[]).filter(Boolean).length>0),
+    modules_5:    ()=>machines.reduce((a,m)=>a+(m.modules||[]).filter(Boolean).length,0)>=5,
+    first_blueprint:()=>(G.blueprints||[]).length>=1,
+    blueprints_4: ()=>(G.blueprints||[]).length>=4,
+    first_paste:  ()=>(G.stats.pastes||0)>=1,
+    first_flip:   ()=>(G.stats.flips||0)>=1,
+    first_undo:   ()=>(G.stats.undos||0)>=1,
+    prod_1000:    ()=>produced>=1000,
+    prod_10000:   ()=>produced>=10000,
+    hand_250:     ()=>(G.stats.crafts||0)>=250,
+    // mastery
+    all_research: ()=>Object.keys(TECHS).every(id=>done(id)),
+    milestones_all:()=>z<5&&(ZONE_MILESTONES[z]||[]).every(ms=>ms.done()),
+    perk_first:   ()=>Object.keys(G.perks?.spent||{}).length>=1,
+    perks_6:      ()=>Object.keys(G.perks?.spent||{}).length>=6,
+    stardust_buy: ()=>Object.keys(PRESTIGE.owned||{}).some(k=>!k.startsWith('theme_')),
+    theme_set:    ()=>(PRESTIGE.theme||'default')!=='default',
   };
 
   let anyNew=false;
@@ -6992,35 +7196,33 @@ function checkAchievements(){
   if(anyNew)saveGame();
 }
 
+let achOpen=null; // categories open in the Awards panel (starts with the current zone's)
+function toggleAchCat(i){achOpen.has(i)?achOpen.delete(i):achOpen.add(i);renderAchievePanel();}
 function renderAchievePanel(){
   const el=document.getElementById('pAchieveBody'); if(!el)return;
   const earned=new Set(G.achievements||[]);
-  const total=ACHIEVEMENTS.length;
-  const count=earned.size;
-  const cats=[...new Set(ACHIEVEMENTS.map(a=>a.cat))];
-
+  const total=ACHIEVEMENTS.length, count=ACHIEVEMENTS.filter(a=>earned.has(a.id)).length;
+  if(!achOpen)achOpen=new Set([ACH_CATS.indexOf(['','Ironfield','The Scar','The Deep','The Bloom','The Singularity'][G.zone])]);
   let html=`<div class="card" style="margin-bottom:10px">
     <div style="font-size:var(--f5);color:var(--text3);margin-bottom:4px">PROGRESS</div>
     <div style="font-size:var(--f9);color:var(--amber)">${count} / ${total}</div>
     <div class="prog-wrap" style="margin-top:5px"><div class="prog-fill amber" style="width:${Math.round(count/total*100)}%"></div></div>
+    <div style="font-size:var(--f4);color:var(--text3);margin-top:6px;line-height:1.8">Big Bang bonus so far: +${achDust()-10} Stardust</div>
   </div>`;
-
-  for(const cat of cats){
-    const catAchs=ACHIEVEMENTS.filter(a=>a.cat===cat);
-    const catEarned=catAchs.filter(a=>earned.has(a.id)).length;
-    html+=`<div style="font-size:var(--f5);color:var(--text3);letter-spacing:2px;margin:10px 0 5px">── ${cat.toUpperCase()} (${catEarned}/${catAchs.length}) ──</div>`;
-    for(const a of catAchs){
-      const done=earned.has(a.id);
-      html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;border:1px solid ${done?'var(--teal)':'var(--border)'};background:var(--bg3);margin-bottom:3px;opacity:${done?1:.5}">
-        <span style="font-size:14px;flex-shrink:0">${done?achIcon(a):'?'}</span>
-        <div style="flex:1">
-          <div style="font-size:var(--f5);color:${done?'var(--teal)':'var(--text3)'}">${done?a.name:'???'}</div>
-          ${done?`<div style="font-size:var(--f4);color:var(--text3);margin-top:2px">${a.desc}</div>`:''}
-        </div>
+  ACH_CATS.forEach((cat,i)=>{
+    const list=ACHIEVEMENTS.filter(a=>a.cat===cat); if(!list.length)return;
+    const got=list.filter(a=>earned.has(a.id)).length, open=achOpen.has(i), full=got===list.length;
+    html+=`<button class="ach-cat${full?' full':''}" onclick="toggleAchCat(${i})"><span>${open?'▾':'▸'} ${cat.toUpperCase()}</span><span>${got}/${list.length}</span></button>`;
+    if(!open)return;
+    for(const a of list){
+      const done=earned.has(a.id), hide=!done&&a.secret;
+      html+=`<div class="ach-row${done?' done':''}">
+        <span class="ach-ic">${done?achIcon(a):hide?'?':`<span class="ach-dim">${achIcon(a)}</span>`}</span>
+        <div style="flex:1"><div class="ach-nm">${hide?'???':a.name}</div><div class="ach-ds">${hide?'Secret: keep playing':a.desc}</div></div>
         ${done?'<span style="color:var(--teal);font-size:var(--f9)">✓</span>':''}
       </div>`;
     }
-  }
+  });
   setHtml(el,html);
 }
 

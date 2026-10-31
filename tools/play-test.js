@@ -269,6 +269,16 @@ const r=await p.evaluate(async()=>{
     reset(); power(2,2); const src=put('chest',10,30); src.chestInv.coal=300;
     put('inserter',11,30,0); const d1=put('chest',12,30); put('inserter',10,31,1); const d2=put('chest',10,32);
     run(400); ok('shared_chest_alternates',Math.abs(n(d1)-n(d2))<=2&&n(d1)>20,{a:n(d1),b:n(d2)}); }
+  // ── achievements: new counters earn their awards, and the Stardust bonus is capped at the old maximum
+  { reset(); G.research.done=Object.keys(TECHS); power(2,2); G.achievements=[];
+    multiselState.clipboard=[{type:'chest',rx:0,ry:0,dir:0}]; setTool('multisel'); multiselStartPaste(); transformGhost('h'); multiselState.pasteAnchor={x:80,y:40}; ghostConfirm(); multiselClear(); setTool('select');
+    undoLast();
+    const bf=put('blast_furnace',80,44,0); bf.recipe='bf_iron'; put('inserter',82,44,0); put('chest',83,44); put('inserter',82,45,0); put('chest',83,45);
+    run(8); checkAchievements(); const has=id=>G.achievements.includes(id);
+    ok('achievements_new_counters',has('first_paste')&&has('first_flip')&&has('first_undo')&&has('shared_output'),G.achievements);
+    G.achievements=ACHIEVEMENTS.map(a=>a.id);
+    ok('achievement_dust_capped',achDust()===10+ACH_DUST_MAX&&ACHIEVEMENTS.length>=120,{dust:achDust(),n:ACHIEVEMENTS.length});
+    G.achievements=[]; }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
