@@ -427,7 +427,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.3 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.4 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -592,7 +592,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.3';
+const VER      = '1.9.4';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2122,11 +2122,21 @@ function iconHtml(id,fallback){
   if(TEX_PIXEL){const s=anySpr(id); if(s)return `<img class="ico" src="${sprURL('ico:'+id,s)}" alt="">`;}
   return ITEMS[id]?.icon||MDEFS[id]?.icon||fallback||'·';
 }
+// Draw a machine sprite into its footprint. A non-square machine lying on its side (facing down or up)
+// is drawn turned a quarter, not stretched.
+function drawMachSpr(c,spr,type,dir,px,py,pw,ph){
+  const[sw,sh]=MDEFS[type].size;
+  if(sw!==sh&&(dir===D_DOWN||dir===D_UP)){
+    c.save(); c.translate(px+pw/2,py+ph/2); c.rotate(dir===D_DOWN?Math.PI/2:-Math.PI/2);
+    c.drawImage(spr,-ph/2,-pw/2,ph,pw); c.restore(); return;
+  }
+  c.drawImage(spr,Math.floor(px),Math.floor(py),Math.ceil(pw),Math.ceil(ph));
+}
 // Faint machine preview for ghosts (move / paste / blueprint)
-function drawGhostIcon(def,px,py,pw,ph){
+function drawGhostIcon(def,px,py,pw,ph,dir=0){
   const type=Object.keys(MDEFS).find(k=>MDEFS[k]===def);
   const s=TEX_PIXEL&&machineSpr(type,0,false);
-  if(s){ctx.drawImage(s,px,py,pw,ph);return;}
+  if(s){drawMachSpr(ctx,s,type,dir,px,py,pw,ph);return;}
   ctx.font=`${Math.floor(Math.min(pw,ph)*.35)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(def.icon,px+pw/2,py+ph/2);
 }
@@ -2923,7 +2933,7 @@ function draw(){
     if(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='splitter'||m.type==='tunnel'||m.type==='pipe')continue;
     if(drawn.has(+id))continue; drawn.add(+id);
     const def=MDEFS[m.type];
-    const[mw,mh]=def.size;
+    const[mw,mh]=machSize(m);
     const px=m.x*ts-cx, py=m.y*ts-cy;
     const pw=mw*ts, ph=mh*ts;
     if(px+pw<0||py+ph<0||px>W||py>H)continue;
@@ -2935,7 +2945,7 @@ function draw(){
 
     const sprM=TEX_PIXEL&&machineSpr(m.type,Math.floor(now/140),machineWorking(m));
     if(sprM){
-      ctx.drawImage(sprM,Math.floor(px),Math.floor(py),Math.ceil(pw),Math.ceil(ph));
+      drawMachSpr(ctx,sprM,m.type,m.dir,px,py,pw,ph);
     } else {
     ctx.fillStyle='#141414'; ctx.fillRect(px,py,pw,ph);
     ctx.strokeStyle=busy||isPowering?col:isStub?'#3a2a4a':'#252525';
@@ -3238,7 +3248,7 @@ function draw(){
       if(ts>10){
         ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
+        ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts,m.dir); ctx.globalAlpha=1;
       }
     }
   } else if(activeTool!=='select'&&activeTool!=='demolish'&&activeTool!=='move'&&hov.x>=0){
@@ -3249,7 +3259,7 @@ function draw(){
       const ok=canPlace(activeTool,hov.x,hov.y);
       ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.14)';
       ctx.fillRect(px,py,mw*ts,mh*ts);
-      ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
+      ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts,placeDir); ctx.globalAlpha=1;
       ctx.strokeStyle=ok?'#f5a623':'#e53935';
       ctx.lineWidth=2; ctx.strokeRect(px,py,mw*ts,mh*ts);
       // Output port indicators on ghost
@@ -3292,7 +3302,7 @@ function draw(){
           if(ts>12){
             ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
             ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.globalAlpha=.4; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
+            ctx.globalAlpha=.4; drawGhostIcon(def,px,py,mw*ts,mh*ts,m.dir); ctx.globalAlpha=1;
           }
         }
       }
@@ -3754,7 +3764,8 @@ function machSize(typeOrM, dir){
   const type = typeof typeOrM==='string' ? typeOrM : typeOrM.type;
   const d = dir !== undefined ? dir : (typeof typeOrM==='object' ? (typeOrM.dir||0) : 0);
   const[mw,mh]=MDEFS[type].size;
-  if(type==='splitter'&&(d===D_DOWN||d===D_UP)) return [mh,mw]; // swap → [2,1]
+  // Every non-square machine (Splitter, Scrubber) lies on its side when facing down or up
+  if(mw!==mh&&(d===D_DOWN||d===D_UP)) return [mh,mw];
   return [mw,mh];
 }
 
@@ -4925,7 +4936,7 @@ function isOutputSide(){ return true; }
 function isInputSide(){ return true; }
 function sideVec(side){ return side==='right'?[1,0]:side==='left'?[-1,0]:side==='bottom'?[0,1]:[0,-1]; }
 function outputTile(m,side){
-  const[mw,mh]=MDEFS[m.type].size;
+  const[mw,mh]=machSize(m);
   switch(side){
     case 'right':  return [m.x+mw, m.y+Math.floor(mh/2)];
     case 'left':   return [m.x-1,  m.y+Math.floor(mh/2)];
@@ -5885,27 +5896,20 @@ function rotateM(id){
   const m=G.machines[id];if(!m)return;
   const was=posSnap(m);
   unlinkTunnel(m); // re-linked below in the new direction
-  // Splitter rotation, clear old secondary tile, rotate, register new secondary tile
-  if(m.type==='splitter'){
-    const PERP=[[0,1],[1,0],[0,1],[1,0]];
-    const[opx,opy]=PERP[m.dir];
-    // Clear old secondary tile
-    G.map[m.y+opy][m.x+opx].mid=null;
-    // Rotate
-    m.dir=(m.dir+1)%4;
-    const[npx,npy]=PERP[m.dir];
-    // Check new secondary tile is free (and in bounds)
-    const nx2=m.x+npx, ny2=m.y+npy;
-    if(nx2<0||ny2<0||nx2>=MAP_W||ny2>=MAP_H||G.map[ny2][nx2].mid!==null){
-      // Can't rotate, revert
-      m.dir=(m.dir+3)%4;
-      G.map[m.y+opy][m.x+opx].mid=m.id;
-      toast('No room to rotate splitter','wrn'); sfx('error'); return;
+  // A non-square machine changes footprint when it turns: free its tiles, check the new ones, claim them
+  const[ow,oh]=machSize(m), nd=(m.dir+1)%4, [nw,nh]=machSize(m.type,nd);
+  if(ow!==nw||oh!==nh){
+    const cells=(w,h)=>{const c=[];for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)c.push([m.x+dx,m.y+dy]);return c;};
+    for(const[x,y]of cells(ow,oh))G.map[y][x].mid=null;
+    const fits=cells(nw,nh).every(([x,y])=>x>=0&&y>=0&&x<MAP_W&&y<MAP_H&&G.map[y][x].mid===null&&terrainOk(m.type,G.map[y][x]));
+    if(!fits){
+      for(const[x,y]of cells(ow,oh))G.map[y][x].mid=m.id;
+      toast(`No room to rotate the ${MDEFS[m.type].name}`,'wrn'); sfx('error'); return;
     }
-    G.map[ny2][nx2].mid=m.id;
+    m.dir=nd; for(const[x,y]of cells(nw,nh))G.map[y][x].mid=m.id;
     undoRec({op:'pos',list:[was]});
     renderMachPanel(); saveGame();
-    toast(`Splitter: ${D_ARR[m.dir]}`,'ok'); sfx('place'); return;
+    toast(`${MDEFS[m.type].name}: ${D_ARR[m.dir]}`,'ok'); sfx('place'); return;
   }
   m.dir=(m.dir+1)%4;
   undoRec({op:'pos',list:[was]});
@@ -6032,7 +6036,7 @@ function transformGhost(kind){
 // Ghost of one layout entry: faint sprite plus which way it faces, so a flip is visible before placing
 const DIR_TYPES=new Set(['belt','inserter','long_inserter','splitter','tunnel']);
 function drawGhostEntry(e,def,px,py,pw,ph,ts){
-  ctx.globalAlpha=.5; drawGhostIcon(def,px,py,pw,ph); ctx.globalAlpha=1;
+  ctx.globalAlpha=.5; drawGhostIcon(def,px,py,pw,ph,e.dir||0); ctx.globalAlpha=1;
   if(DIR_TYPES.has(e.type)){const as=Math.floor(Math.min(pw,ph)*.5);ctx.drawImage(arrowSpr(e.dir||0,'#f5a623'),Math.floor(px+pw/2-as/2),Math.floor(py+ph/2-as/2),as,as);}
   else if(ts>20)drawPorts(ctx,e.type,px,py,pw,ph,ts,e.dir||0);
 }
@@ -6768,8 +6772,7 @@ function resumeAllMachines(){
 }
 function selectMachineById(id){
   const m=G.machines[id]; if(!m)return;
-  const def=MDEFS[m.type];
-  const[mw,mh]=def.size;
+  const[mw,mh]=machSize(m);
   const ts=TILE*G.cam.zoom;
   G.cam.x=(m.x+mw/2)*ts - canvas.clientWidth/2;
   G.cam.y=(m.y+mh/2)*ts - canvas.clientHeight/2;

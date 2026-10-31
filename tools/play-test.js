@@ -232,6 +232,19 @@ const r=await p.evaluate(async()=>{
     startPasteBlueprint(0); transformGhost('rot'); transformGhost('v');
     ok('layout_blueprint_untouched',key(G.blueprints[0].data)===before&&key(blueprintState.data)!==before,{});
     ghostCancel(); setTool('select'); }
+  // ── every machine turns to all four directions, including the 1×2 Scrubber
+  { reset(); G.research.done=Object.keys(TECHS); const at=(x,y)=>G.map[y][x].mid;
+    const sc=put('scrubber',50,50,1); const flat=sc&&at(50,50)===sc.id&&at(51,50)===sc.id&&at(50,51)===null;
+    rotateM(sc.id); const up=at(50,50)===sc.id&&at(50,51)===sc.id&&at(51,50)===null&&sc.dir===2;
+    put('chest',51,50); rotateM(sc.id); const blocked=sc.dir===2&&at(51,50)!==sc.id;   // no room: stays upright
+    ok('scrubber_four_ways',flat&&up&&blocked,{flat,up,blocked});
+    // a layout with a Scrubber rotates cleanly: footprints never overlap once placed
+    const L=[{type:'scrubber',rx:0,ry:0,dir:0},{type:'chest',rx:1,ry:0,dir:0},{type:'chest',rx:1,ry:1,dir:0}];
+    let fits=true; for(let k=0,d=L;k<4;k++){d=rotateLayout(d); const cells=new Set(); for(const e of d){const[w,h]=machSize(e.type,e.dir);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const c=(e.rx+x)+','+(e.ry+y); if(cells.has(c))fits=false; cells.add(c);}}}
+    multiselState.clipboard=L.map(e=>({...e})); setTool('multisel'); multiselStartPaste(); transformGhost('rot'); multiselState.pasteAnchor={x:60,y:60}; ghostConfirm();
+    const s2=Object.values(G.machines).find(m=>m.type==='scrubber'&&m.x>=60);
+    ok('layout_rotate_scrubber',fits&&s2&&s2.dir===1&&machSize(s2)[0]===2,{fits,dir:s2?.dir});
+    multiselClear(); setTool('select'); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
