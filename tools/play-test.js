@@ -211,6 +211,27 @@ const r=await p.evaluate(async()=>{
     window.drawItem=orig;
     const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
     ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
+  // ── rotate / flip a copied layout before pasting
+  { reset(); G.research.done=Object.keys(TECHS);
+    const L=[{type:'belt',rx:0,ry:0,dir:0},{type:'inserter',rx:1,ry:0,dir:0},{type:'assembler',rx:2,ry:0,dir:0,recipe:'mk_gear'},{type:'splitter',rx:4,ry:0,dir:0}];
+    const key=d=>JSON.stringify(d.map(e=>[e.type,e.rx,e.ry,e.dir]).sort());
+    const twiceH=flipLayout(flipLayout(L,'h'),'h'), twiceV=flipLayout(flipLayout(L,'v'),'v');
+    let r=L; for(let i=0;i<4;i++)r=rotateLayout(r);
+    ok('layout_flip_rotate_identity',key(twiceH)===key(L)&&key(twiceV)===key(L)&&key(r)===key(L),{h:key(twiceH),r:key(r)});
+    const fh=flipLayout(L,'h'), byT=t=>fh.find(e=>e.type===t);
+    ok('layout_flip_mirrors',byT('belt').rx===4&&byT('belt').dir===2&&byT('inserter').rx===3&&byT('inserter').dir===2&&byT('assembler').rx===1&&byT('splitter').rx===0&&byT('assembler').recipe==='mk_gear',fh);
+    const rot=rotateLayout(L), sp=rot.find(e=>e.type==='splitter');
+    ok('layout_rotate_turns',rot.find(e=>e.type==='belt').dir===1&&sp.dir===1&&rot.every(e=>e.rx>=0&&e.ry>=0),rot);
+    // paste the flipped layout for real
+    multiselState.clipboard=L.map(e=>({...e})); setTool('multisel'); multiselStartPaste(); transformGhost('h'); multiselState.pasteAnchor={x:40,y:40}; ghostConfirm();
+    const at=(x,y)=>G.machines[G.map[y][x].mid];
+    ok('layout_flip_paste',at(44,40)?.type==='belt'&&at(44,40).dir===2&&at(43,40)?.type==='inserter'&&at(43,40).dir===2&&at(41,40)?.type==='assembler'&&at(41,40).recipe==='mk_gear'&&at(40,40)?.type==='splitter',{b:at(44,40)?.type});
+    multiselClear(); setTool('select');
+    // a saved blueprint is never changed by flipping while placing it
+    G.blueprints=[{name:'t',data:L.map(e=>({...e}))}]; const before=key(G.blueprints[0].data);
+    startPasteBlueprint(0); transformGhost('rot'); transformGhost('v');
+    ok('layout_blueprint_untouched',key(G.blueprints[0].data)===before&&key(blueprintState.data)!==before,{});
+    ghostCancel(); setTool('select'); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});

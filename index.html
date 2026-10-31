@@ -289,6 +289,10 @@ body.sheet-open #tutMini{display:block}
 #buildCancelBtn{border:1px solid var(--border2);color:var(--text2)}
 #ghostBar{position:fixed;left:var(--cl);right:var(--cr);bottom:var(--cb);background:rgba(15,15,15,.97);border-top:2px solid var(--amber);padding:8px 12px;display:flex;align-items:center;gap:8px;z-index:600}
 #ghostBar button{font-family:var(--font);font-size:var(--f7);padding:12px 18px;cursor:pointer;min-height:44px}
+#ghostBar{flex-wrap:wrap}
+#ghostBar .gb-t{padding:8px;min-width:44px;border:1px solid var(--border2);background:var(--bg3);box-shadow:inset -2px -2px 0 rgba(0,0,0,.45)}
+#ghostBar .gb-t:active{border-color:var(--amber)}
+#ghostBar .gb-t .uico{width:22px;height:22px}
 #multiselBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600}
 /* Tutorial: a floating card over the top of the map, collapsible to a pill */
 #tutHint{position:fixed;top:calc(var(--ct) + 40px);left:calc(var(--cl) + 8px);right:calc(var(--cr) + 8px);max-width:560px;margin:0 auto;z-index:150;
@@ -423,7 +427,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.2 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.3 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -481,7 +485,10 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 
 <!-- Ghost paste confirm bar, shown during blueprint holding and multisel pasting -->
 <div id="ghostBar" class="hidden">
-  <span style="font-size:var(--f6);color:var(--amber);flex:1" id="ghostBarLabel">Tap map to position, then confirm</span>
+ <span style="font-size:var(--f6);color:var(--amber);flex:1 1 100%" id="ghostBarLabel">Tap map to position, then confirm</span>
+  <button class="gb-t" onclick="transformGhost('rot')" title="Rotate the whole layout"><span data-ui="rotate"></span></button>
+  <button class="gb-t" onclick="transformGhost('h')" title="Flip left and right"><span data-ui="fliph"></span></button>
+  <button class="gb-t" onclick="transformGhost('v')" title="Flip up and down"><span data-ui="flipv"></span></button>
   <button onclick="ghostConfirm()" style="border:2px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);min-width:80px">✓ PLACE</button>
   <button onclick="ghostCancel()" style="border:1px solid var(--border2);background:transparent;color:var(--text2)">✗ CANCEL</button>
 </div>
@@ -585,7 +592,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.2';
+const VER      = '1.9.3';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2265,6 +2272,8 @@ const UI_ART={
     C(8,6,1,'#ffd600');P(7,5,'#fff3b0');},
   // arrows (text arrows in labels and the direction arrow on tunnels)
   ar(a){uiArrow(a,0);}, ad(a){uiArrow(a,1);}, al(a){uiArrow(a,2);}, au(a){uiArrow(a,3);},
+  // flip: a hollow and a solid triangle mirrored across a dashed axis
+  fliph(a){uiFlip(a,false);}, flipv(a){uiFlip(a,true);},
   // settings, panels and labels
   close({P}){for(let k=0;k<10;k++){P(3+k,3+k,'#cfcfcf');P(4+k,3+k,'#cfcfcf');P(12-k,3+k,'#cfcfcf');P(13-k,3+k,'#cfcfcf');}},
   check({P}){const pts=[[2,8],[3,9],[4,10],[5,11],[6,12],[7,11],[8,10],[9,9],[10,8],[11,7],[12,6],[13,5],[14,4]];for(const[x,y]of pts){P(x,y,'#26c6a0');P(x,y-1,'#26c6a0');P(x,y+1,'#1a8a6a');}},
@@ -2339,6 +2348,15 @@ function pixelFx(target,x,y,w,h,ts,fn){
   target.drawImage(_pfx,0,0,cw,ch,Math.floor(x),Math.floor(y),cw/k,ch/k);
   target.imageSmoothingEnabled=sm;
 }
+function uiFlip({P},vert){
+  const put=(x,y,c)=>vert?P(y,x,c):P(x,y,c);
+  for(let y=1;y<15;y+=2)put(7,y,'#7a7a7a'),put(8,y,'#7a7a7a');
+  for(let k=0;k<6;k++)for(let y=8-k;y<8+k;y++){
+    const xl=1+k, xr=14-k;                      // left points left, right points right
+    if(k===5||y===8-k||y===8+k-1)put(xl,y,'#26c6a0');
+    put(xr,y,'#f5a623');
+  }
+}
 function arrowSpr(dir,col){return mkSpr(`arr:${dir}:${col}`,16,16,a=>uiArrow(a,dir,col));}
 function uiSpr(name){const f=UI_ART[name];return f?mkSpr(`ui:${name}`,16,16,a=>f(a)):null;}
 // Emoji in tutorial text and toasts → pixel icons. 'ui:x' is a UI_ART icon; anything else an item/machine id
@@ -2349,7 +2367,7 @@ const EMOJI_PIX={'⛏️':'ui:pick','⛏':'ui:pick','🔨':'ui:craft','🏗️':
   '📐':'ui:blueprint','📲':'ui:install','🔒':'ui:devlock','⚙️':'ui:settings','🌸':'ui:bloom','🌌':'singularity',
   '🕳':'ui:cave','⏸':'ui:pause','✋':'ui:hand','⏱':'ui:clock','📤':'ui:export','📥':'ui:import','⬇':'ui:import','⬆':'ui:up',
   '🎵':'ui:music','🔉':'ui:sound','🔊':'ui:sound','🎞':'ui:film','🖼':'ui:picture','📳':'ui:vibrate','📄':'ui:file','📋':'ui:copy',
-  '✕':'ui:close','✓':'ui:check','☰':'ui:menu','→':'ui:ar','↓':'ui:ad','←':'ui:al','↑':'ui:au','↻':'ui:rotate','✥':'ui:move','👆':'ui:select','⬚':'ui:multisel','💚':'circuit','🌿':'ui:sprout','🔋':'accumulator','🗒':'sci_red'};
+  '✕':'ui:close','✗':'ui:close','✓':'ui:check','☰':'ui:menu','→':'ui:ar','↓':'ui:ad','←':'ui:al','↑':'ui:au','↻':'ui:rotate','✥':'ui:move','👆':'ui:select','⬚':'ui:multisel','💚':'circuit','🌿':'ui:sprout','🔋':'accumulator','🗒':'sci_red'};
 // Every item's and machine's old emoji icon maps to its sprite too, so any leftover text emoji has a pixel twin
 const noVS=e=>e.replace(/\uFE0F/g,'');
 let EMOJI_RE=null, EMOJI_N=null;
@@ -3286,14 +3304,10 @@ function draw(){
           const def=MDEFS[e.type]; if(!def)continue;
           const[mw,mh]=machSize(e.type,e.dir);
           const px=(gx+e.rx)*ts-cx, py=(gy+e.ry)*ts-cy;
-          const ok=canPlace(e.type,gx+e.rx,gy+e.ry);
+          const ok=canPlace(e.type,gx+e.rx,gy+e.ry,e.dir||0);
           ctx.fillStyle=ok?'rgba(245,166,35,.12)':'rgba(229,57,53,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
           ctx.strokeStyle=ok?'#f5a623':'#e53935'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
-          if(ts>12){
-            ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
-            ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
-          }
+          if(ts>12)drawGhostEntry(e,def,px,py,mw*ts,mh*ts,ts);
         }
       }
     }
@@ -3312,11 +3326,7 @@ function draw(){
         const px=( hov.x+e.rx)*ts-cx, py=(hov.y+e.ry)*ts-cy;
         ctx.fillStyle='rgba(38,198,160,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
         ctx.strokeStyle='#26c6a0'; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
-        if(ts>14){
-          ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.globalAlpha=.5; drawGhostIcon(def,px,py,mw*ts,mh*ts); ctx.globalAlpha=1;
-        }
+        if(ts>14)drawGhostEntry(e,def,px,py,mw*ts,mh*ts,ts);
       }
     }
   }
@@ -5996,6 +6006,35 @@ function startPasteBlueprint(idx){
   const lbl=document.getElementById('ghostBarLabel');
   if(lbl) lbl.textContent=`${b.data.length} machine${b.data.length!==1?'s':''}, position then ✓ PLACE`;
   document.getElementById('ghostBar')?.classList.remove('hidden');
+}
+// ── Rotate / flip a copied layout or blueprint before placing ──
+// Every machine moves to its mirrored or rotated spot and its direction turns with it (belts, inserters,
+// outputs), so a flipped line still works. Returns new entries: saved blueprints are never changed.
+function layoutBounds(data){let W=0,H=0;for(const e of data){const[w,h]=machSize(e.type,e.dir||0);W=Math.max(W,e.rx+w);H=Math.max(H,e.ry+h);}return[W,H];}
+function flipLayout(data,axis){
+  const[W,H]=layoutBounds(data);
+  return data.map(e=>{const d=e.dir||0,[w,h]=machSize(e.type,d),n={...e,dir:d};
+    if(axis==='h'){n.rx=W-e.rx-w; if(d===0||d===2)n.dir=2-d;}   // right ↔ left
+    else{n.ry=H-e.ry-h; if(d===1||d===3)n.dir=4-d;}            // down ↔ up
+    return n;});
+}
+function rotateLayout(data){ // 90° clockwise
+  const[,H]=layoutBounds(data);
+  return data.map(e=>{const d=e.dir||0,[,h]=machSize(e.type,d);return{...e,dir:(d+1)%4,rx:H-e.ry-h,ry:e.rx};});
+}
+function transformGhost(kind){
+  const f=d=>kind==='rot'?rotateLayout(d):flipLayout(d,kind);
+  if(blueprintState.mode==='holding')blueprintState.data=f(blueprintState.data);
+  else if(multiselState.mode==='pasting')multiselState.clipboard=f(multiselState.clipboard);
+  else return;
+  sfx('tap');
+}
+// Ghost of one layout entry: faint sprite plus which way it faces, so a flip is visible before placing
+const DIR_TYPES=new Set(['belt','inserter','long_inserter','splitter','tunnel']);
+function drawGhostEntry(e,def,px,py,pw,ph,ts){
+  ctx.globalAlpha=.5; drawGhostIcon(def,px,py,pw,ph); ctx.globalAlpha=1;
+  if(DIR_TYPES.has(e.type)){const as=Math.floor(Math.min(pw,ph)*.5);ctx.drawImage(arrowSpr(e.dir||0,'#f5a623'),Math.floor(px+pw/2-as/2),Math.floor(py+ph/2-as/2),as,as);}
+  else if(ts>20)drawPorts(ctx,e.type,px,py,pw,ph,ts,e.dir||0);
 }
 function pasteBlueprintAt(data,x,y){
   const canPlace2=stampFits(data,x,y);
