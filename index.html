@@ -437,7 +437,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.9 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.0 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -602,7 +602,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.9';
+const VER      = '2.0.0';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1595,9 +1595,22 @@ const DEPOSITS_Z5=[
   ['luminite',5,6,4,5],['luminite',4,5,3,4],['luminite',4,5,3,4],['enzymes',5,6,4,5],['enzymes',4,6,4,4],
 ];
 // Zone 5 grows: new rows/columns on the right and bottom get fresh deposits
+// ── Factory Floor ──
+// Below every zone's ore fields: FLOOR_ROWS rows of open ground with no deposits, for big builds.
+// G.floorY is the first floor row (the map is the ore fields above it).
+const FLOOR_ROWS=64;
+const FLOOR_NOTE=`<br><br><span style="color:var(--text3)">Scroll down past the ore fields: the <span style="color:var(--amber)">Factory Floor</span> below is open ground for big builds.</span>`;
+function addFactoryFloor(map){
+  const w=map[0].length;
+  for(let k=0;k<FLOOR_ROWS;k++)map.push(Array.from({length:w},()=>({type:T_FLOOR,res:null,mid:null,items:[]})));
+  MAP_H=map.length; MAP_W=w;
+  return map;
+}
 function expandMap(dw,dh){
   const oldW=MAP_W, oldH=MAP_H, nw=oldW+dw, nh=oldH+dh;
-  const fresh=buildZoneMap(DEPOSITS_Z5,G.tick+0x9e37,nw,nh,(x,y,w,h)=>x+w>oldW||y+h>oldH);
+  // fresh deposits only in the new columns of the ore fields; the floor stays clear (new rows are more floor)
+  const top=G.floorY??oldH;
+  const fresh=buildZoneMap(DEPOSITS_Z5,G.tick+0x9e37,nw,nh,(x,y,w,h)=>x+w>oldW&&y+h<=top);
   for(let y=0;y<nh;y++){
     if(!G.map[y])G.map[y]=[];
     for(let x=0;x<nw;x++) if(y>=oldH||x>=oldW) G.map[y][x]=fresh[y][x];
@@ -1630,7 +1643,7 @@ function defaultState(){
     },
     // Crafted-but-not-yet-placed machine pool
     crafted:{},
-    map:buildMap(),
+    map:addFactoryFloor(buildMap()), floorY:BASE_MAP_H,
     machines:{}, nextId:1,
     power:{out:0,in:0},
     research:{done:[]},
@@ -1721,6 +1734,19 @@ function groundSpr(zone,v){
     }
     // soft tile seam so the grid still reads
     R(0,15,16,1,shade(p.base,-.25)); R(15,0,1,16,shade(p.base,-.25));
+  });
+}
+
+// Factory Floor plating: the zone's ground colour, paved in slabs with bolts; the first row gets a hazard stripe
+function floorSpr(zone,v,edge){
+  return mkSpr(`fl${zone}:${v}:${edge?1:0}`,16,16,({P,R})=>{
+    const p=GROUND[zone]||GROUND[1], base=shade(p.base,.16), dk=shade(p.base,-.2), hi=shade(p.base,.3);
+    R(0,0,16,16,base);
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++){const n=hash2(x,y,v*13+zone+7);if(n<.08)P(x,y,shade(base,-.08));else if(n>.95)P(x,y,shade(base,.08));}
+    R(0,15,16,1,dk); R(15,0,1,16,dk); R(0,0,16,1,hi); R(0,0,1,16,hi);   // slab edges
+    R(7,0,1,15,shade(base,-.1));                                       // half-slab seam
+    for(const[x,y]of[[2,2],[13,2],[2,13],[13,13]])P(x,y,v&1?hi:dk);    // bolts
+    if(edge)for(let x=0;x<16;x++){const c=((x>>1)&1)?'#f5a623':'#1a1a1a';P(x,0,c);P(x,1,c);P((x+1)%16,2,c);}
   });
 }
 
@@ -2713,7 +2739,8 @@ function groundChunk(cx,cy){
   for(let y=0;y<CHUNK;y++)for(let x=0;x<CHUNK;x++){
     const tx=cx*CHUNK+x, ty=cy*CHUNK+y; if(tx>=MAP_W||ty>=MAP_H)continue;
     const tile=G.map[ty][tx], v=(tx*7+ty*13)&3, res=tile.type===T_RESOURCE?tile.res:null;
-    g.drawImage(res?resSpr(res,v,0):groundSpr(G.zone,v),x*16,y*16);
+    const fl=G.floorY!==undefined&&ty>=G.floorY;
+    g.drawImage(res?resSpr(res,v,0):fl?floorSpr(G.zone,v,ty===G.floorY):groundSpr(G.zone,v),x*16,y*16);
     if(res&&ANIM_RES.has(res))anim.push(tx,ty);
   }
   ch={cv,anim};
@@ -6434,7 +6461,7 @@ function transitionToZone(n){
   const quickStart=applyQuickStart();
   applyRememberedTools();
   [MAP_W,MAP_H]=zd.mapSize;
-  G.map=zd.buildMap();
+  G.map=addFactoryFloor(zd.buildMap()); G.floorY=zd.mapSize[1];
   if(zd.onArrive)zd.onArrive();
   saveGame();
   initCanvas(); buildToolbar(); updateHUD(); updateRocketBtn();
@@ -6447,7 +6474,7 @@ function transitionToZone(n){
   showModal(zd.arrivalTitle,
     `<div style="text-align:center;font-size:var(--f6);color:var(--text2);line-height:2.5">
       <div style="font-size:28px;margin-bottom:10px">${zd.icon}</div>
-      ${zd.arrivalHtml}
+      ${zd.arrivalHtml}${FLOOR_NOTE}
       ${quickStart?'<br><span style="color:var(--teal);font-size:var(--f5)">⭐ Quick Start: +50 of each basic resource salvaged</span>':''}
     </div>`,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
@@ -8060,6 +8087,7 @@ function resetArmClocks(){
 function migrateSave(){
   resetArmClocks();
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
+  if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }
@@ -8103,6 +8131,7 @@ function newGame(){
 
 function startGame(isNew){
   stopTitleScene(); clearUndo();
+  if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
@@ -8143,7 +8172,7 @@ function startGame(isNew){
     if(G.zone===1){G.tutorial={step:0};G.zoneTut=undefined;}
     const zd=zoneDef();
     setTimeout(()=>showModal(zd.arrivalTitle,
-      `<div style="font-size:var(--f6);color:var(--text2);line-height:2.4">${zd.arrivalHtml}</div>`,
+      `<div style="font-size:var(--f6);color:var(--text2);line-height:2.4">${zd.arrivalHtml}${FLOOR_NOTE}</div>`,
       `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
     ),700);
   }

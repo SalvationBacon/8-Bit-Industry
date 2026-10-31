@@ -279,6 +279,19 @@ const r=await p.evaluate(async()=>{
     G.achievements=ACHIEVEMENTS.map(a=>a.id);
     ok('achievement_dust_capped',achDust()===10+ACH_DUST_MAX&&ACHIEVEMENTS.length>=120,{dust:achDust(),n:ACHIEVEMENTS.length});
     G.achievements=[]; }
+  // ── Factory Floor: open ground below every zone's ore fields
+  { const z0=G.zone; const res=[];
+    for(const z of [1,2,3,4,5]){ transitionToZone(z); closeModal(); clearInterval(tickId);
+      const clear=G.map.slice(G.floorY).every(row=>row.every(t=>!t.res&&t.type===T_FLOOR));
+      res.push(G.map.length===ZONES[z].mapSize[1]+FLOOR_ROWS&&MAP_H===G.map.length&&clear); }
+    ok('factory_floor_every_zone',res.every(Boolean),res);
+    // Zone 5 expansion adds deposits only in the ore band
+    expandMap(32,16); const clear5=G.map.slice(G.floorY).every(row=>row.every(t=>!t.res));
+    ok('factory_floor_expansion_clear',clear5&&MAP_W===ZONES[5].mapSize[0]+32,{clear5,w:MAP_W});
+    // an old save (no floor) gains one on load; its machines stay put
+    transitionToZone(1); closeModal(); clearInterval(tickId); G.devFreeBuild=true; placeDir=0; tryPlace('chest',30,30); closeModal();
+    G.map=G.map.slice(0,G.floorY); delete G.floorY; saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    ok('factory_floor_old_save',G.floorY===64&&G.map.length===64+FLOOR_ROWS&&G.machines[G.map[30][30].mid]?.type==='chest',{floorY:G.floorY,h:G.map.length}); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
