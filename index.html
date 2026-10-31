@@ -427,7 +427,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v1.9.4 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v1.9.5 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -592,7 +592,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '1.9.4';
+const VER      = '1.9.5';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -3148,6 +3148,7 @@ function draw(){
     const destAngle=Math.atan2(dvy,dvx);
     const srcAngle=destAngle+Math.PI;
     const arm=m._arm||(m._arm={state:'idle',stateStart:now,item:null});
+    if(arm.stateStart>now)arm.stateStart=now;
     const elapsed=now-arm.stateStart;
     const insEase=t=>t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
     let curAngle=srcAngle;
@@ -4842,6 +4843,7 @@ function stepInserter(m){
 
   if(!m._arm) m._arm={state:'idle',stateStart:now,item:null};
   const arm=m._arm;
+  if(arm.stateStart>now)arm.stateStart=now; // never wait on a timestamp from another page load
 
   if(arm.state==='idle'){
     if(dst.mid===null)return;
@@ -7772,7 +7774,20 @@ function unpackMap(pk,machines){
 }
 
 // Key renames between versions, called by both load paths
+// Inserter arms time their swings with performance.now(), which restarts near zero on every page
+// load. Saved timestamps from the last session sat far in the future, so arms spun and never finished
+// a swing. On load: an arm holding an item finishes the swing and delivers it; an empty arm goes idle.
+function resetArmClocks(){
+  const now=performance.now();
+  for(const m of Object.values(G.machines||{})){
+    if(m.lastTransferMs)m.lastTransferMs=0;
+    if(!m._arm)continue;
+    if(m._arm.item)m._arm={state:'depositing',stateStart:now-insMs(INS_DEPOSIT_MS),item:m._arm.item};
+    else delete m._arm;
+  }
+}
 function migrateSave(){
+  resetArmClocks();
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;

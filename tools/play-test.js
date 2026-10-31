@@ -245,6 +245,15 @@ const r=await p.evaluate(async()=>{
     const s2=Object.values(G.machines).find(m=>m.type==='scrubber'&&m.x>=60);
     ok('layout_rotate_scrubber',fits&&s2&&s2.dir===1&&machSize(s2)[0]===2,{fits,dir:s2?.dir});
     multiselClear(); setTool('select'); }
+  // ── inserters keep working after a reload (their arm timers used the old page clock)
+  { reset(); power(2,2); const sA=put('chest',70,10); sA.chestInv.coal=500; put('inserter',71,10,0); const dA=put('chest',72,10);
+    run(60); saveGame(); const T0=T;
+    T=500; G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);   // a fresh page: the clock starts near zero
+    const d2=Object.values(G.machines).find(m=>m.type==='chest'&&m.x===72), before=d2.chestInv.coal||0;
+    run(120); const moved=(d2.chestInv.coal||0)-before;
+    const ins=Object.values(G.machines).find(m=>m.type==='inserter');
+    ok('inserter_after_reload',moved>=15&&(!ins._arm||ins._arm.stateStart<=T),{moved,arm:ins._arm});
+    T=Math.max(T,T0); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});
