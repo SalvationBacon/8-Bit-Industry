@@ -310,7 +310,13 @@ const r=await p.evaluate(async()=>{
     // an old save (no floor) gains one on load; its machines stay put
     transitionToZone(1); closeModal(); clearInterval(tickId); G.devFreeBuild=true; placeDir=0; tryPlace('chest',30,30); closeModal();
     G.map=G.map.slice(0,G.floorY); delete G.floorY; saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
-    ok('factory_floor_old_save',G.floorY===64&&G.map.length===64+FLOOR_ROWS&&G.machines[G.map[30][30].mid]?.type==='chest',{floorY:G.floorY,h:G.map.length}); }
+    ok('factory_floor_old_save',G.floorY===64&&G.map.length===64+FLOOR_ROWS&&G.machines[G.map[30][30].mid]?.type==='chest',{floorY:G.floorY,h:G.map.length});
+    // a v2.0.2 save had 64 floor rows: empty rows past the new size go, rows in use stay
+    const deep=()=>{for(let k=0;k<64-FLOOR_ROWS;k++)G.map.push(Array.from({length:MAP_W},()=>({type:T_FLOOR,res:null,mid:null,items:[]})));MAP_H=G.map.length;};
+    deep(); saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const h1=G.map.length;
+    deep(); tryPlace('chest',5,G.floorY+40); closeModal(); saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    ok('factory_floor_trims_old_64',h1===64+FLOOR_ROWS&&FLOOR_ROWS===32&&G.map.length===64+41&&MAP_H===G.map.length&&G.machines[G.map[64+40][5].mid]?.type==='chest',{h1,h2:G.map.length}); }
   // ── belt corners: a belt fed only from the side curves; fed from behind stays straight
   reset(); const k1=put('belt',10,20,0), k2=put('belt',11,20,1), k3=put('belt',11,21,1);
   ok('belt_corner_detect',beltTurn(k2)===3&&beltTurn(k3)===0&&beltTurn(k1)===0,{k2:beltTurn(k2),k3:beltTurn(k3)});

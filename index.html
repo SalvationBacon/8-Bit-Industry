@@ -476,7 +476,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.3 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.4 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -641,7 +641,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.3';
+const VER      = '2.0.4';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1636,14 +1636,22 @@ const DEPOSITS_Z5=[
 // Zone 5 grows: new rows/columns on the right and bottom get fresh deposits
 // ── Factory Floor ──
 // Below every zone's ore fields: FLOOR_ROWS rows of open ground with no deposits, for big builds.
-// G.floorY is the first floor row (the map is the ore fields above it).
-const FLOOR_ROWS=64;
+// G.floorY is the first floor row (the map is the ore fields above it). It looks like the rest of the ground.
+const FLOOR_ROWS=32;
 const FLOOR_NOTE=`<br><br><span style="color:var(--text3)">Scroll down past the ore fields: the <span style="color:var(--amber)">Factory Floor</span> below is open ground for big builds.</span>`;
 function addFactoryFloor(map){
   const w=map[0].length;
   for(let k=0;k<FLOOR_ROWS;k++)map.push(Array.from({length:w},()=>({type:T_FLOOR,res:null,mid:null,items:[]})));
   MAP_H=map.length; MAP_W=w;
   return map;
+}
+// Saves from v2.0.0 to v2.0.2 had a 64-row floor: drop the empty rows past the new size (never a row in use)
+function trimFactoryFloor(){
+  if(!G.map||G.floorY===undefined)return;
+  const grown=G.zone===5?16*['expansion_1','expansion_2'].filter(t=>G.research?.done?.includes(t)).length:0;
+  const want=G.floorY+FLOOR_ROWS+grown;
+  while(G.map.length>want&&G.map[G.map.length-1].every(t=>t.mid===null&&!t.res&&!t.items.length))G.map.pop();
+  MAP_H=G.map.length;
 }
 function expandMap(dw,dh){
   const oldW=MAP_W, oldH=MAP_H, nw=oldW+dw, nh=oldH+dh;
@@ -1773,19 +1781,6 @@ function groundSpr(zone,v){
     }
     // soft tile seam so the grid still reads
     R(0,15,16,1,shade(p.base,-.25)); R(15,0,1,16,shade(p.base,-.25));
-  });
-}
-
-// Factory Floor plating: the zone's ground colour, paved in slabs with bolts; the first row gets a hazard stripe
-function floorSpr(zone,v,edge){
-  return mkSpr(`fl${zone}:${v}:${edge?1:0}`,16,16,({P,R})=>{
-    const p=GROUND[zone]||GROUND[1], base=shade(p.base,.16), dk=shade(p.base,-.2), hi=shade(p.base,.3);
-    R(0,0,16,16,base);
-    for(let y=0;y<16;y++)for(let x=0;x<16;x++){const n=hash2(x,y,v*13+zone+7);if(n<.08)P(x,y,shade(base,-.08));else if(n>.95)P(x,y,shade(base,.08));}
-    R(0,15,16,1,dk); R(15,0,1,16,dk); R(0,0,16,1,hi); R(0,0,1,16,hi);   // slab edges
-    R(7,0,1,15,shade(base,-.1));                                       // half-slab seam
-    for(const[x,y]of[[2,2],[13,2],[2,13],[13,13]])P(x,y,v&1?hi:dk);    // bolts
-    if(edge)for(let x=0;x<16;x++){const c=((x>>1)&1)?'#f5a623':'#1a1a1a';P(x,0,c);P(x,1,c);P((x+1)%16,2,c);}
   });
 }
 
@@ -2778,8 +2773,7 @@ function groundChunk(cx,cy){
   for(let y=0;y<CHUNK;y++)for(let x=0;x<CHUNK;x++){
     const tx=cx*CHUNK+x, ty=cy*CHUNK+y; if(tx>=MAP_W||ty>=MAP_H)continue;
     const tile=G.map[ty][tx], v=(tx*7+ty*13)&3, res=tile.type===T_RESOURCE?tile.res:null;
-    const fl=G.floorY!==undefined&&ty>=G.floorY;
-    g.drawImage(res?resSpr(res,v,0):fl?floorSpr(G.zone,v,ty===G.floorY):groundSpr(G.zone,v),x*16,y*16);
+    g.drawImage(res?resSpr(res,v,0):groundSpr(G.zone,v),x*16,y*16);
     if(res&&ANIM_RES.has(res))anim.push(tx,ty);
   }
   ch={cv,anim};
@@ -8343,6 +8337,7 @@ function migrateSave(){
   resetArmClocks();
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
+  trimFactoryFloor();
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }
