@@ -377,6 +377,16 @@ const r=await p.evaluate(async()=>{
     openMachinePanel(c2); const html=document.getElementById('pMachBody').innerHTML; closePanel('machine');
     ok('two_outputs_two_arrows',beltOK&&insOK&&html.includes('RIGHT ARROW')&&html.includes('BOTTOM ARROW'),
       {right:right.chestInv,down:down.chestInv,ri:ri.chestInv,bi:bi.chestInv}); }
+  // ── smog: a pump + cracker + refinery raise it, a fuelled Scrubber brings it down, and panel rates hold still
+  { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=0;
+    res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);
+    const ck=put('cracker',20,40); ck.recipe='z2_crack'; const rf=put('refinery',24,40); rf.recipe='z2_refine';
+    const feed=()=>{ck.inBuf.crude_oil=50;rf.inBuf.raw_fuel=50;ck.outBuf={};rf.outBuf={};};
+    for(let t=0;t<240;t++){feed();run(1);} const rose=G.smog;
+    const r0=JSON.stringify(machineRates(ck).out); G.smog=60; const r60=JSON.stringify(machineRates(ck).out); const note=machineRates(ck).notes.join(' ');
+    const sc=put('scrubber',30,40); for(let t=0;t<480;t++){feed();sc.inBuf.refined_fuel=50;run(1);} const fell=G.smog;
+    G.zone=z0;
+    ok('smog_rises_and_scrubs',rose>=25&&fell<60&&r0===r60&&note.includes('Smog is slowing it')&&note.includes('smog/min'),{rose:+rose.toFixed(1),fell:+fell.toFixed(1),r0,r60}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};

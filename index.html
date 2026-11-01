@@ -487,7 +487,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.14 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.15 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -655,10 +655,28 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.14';
+const VER      = '2.0.15';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
-const SCRUBBER_SMOG = 0.75;
+// ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
+const SMOG_PER={oil_pump:20,cracker:15,refinery:15,combustion_gen:20};
+const SMOG_DECAY_MIN=6;       // clears by itself this much per minute
+const SCRUBBER_SMOG_MIN=60;   // each powered, fuelled Scrubber
+const SCRUBBER_FUEL_TICKS=16; // a Scrubber burns 1 refined fuel per 4s (15/min)
+function machineSmog(m){ // smog/min this machine makes when working
+  const base=SMOG_PER[m.type]; if(!base)return 0;
+  const sp=m.type==='oil_pump'?MINER_TIER_SPEED[m.tier||1]||1:m.type==='combustion_gen'?1:MACHINE_TIER_SPEED[m.tier||1]||1;
+  return base*sp*(G.perks?.spent?.smog1?0.7:1);
+}
+function smogBudget(){ // what is making and clearing smog right now, per minute
+  let make=0, clear=SMOG_DECAY_MIN, makers=0, scrubbers=0;
+  for(const m of Object.values(G.machines)){
+    if(SMOG_PER[m.type]&&machineWorking(m)){make+=machineSmog(m);makers++;}
+    if(m.type==='scrubber'&&(m.inBuf.refined_fuel||0)>0&&powerRatio()>0){clear+=SCRUBBER_SMOG_MIN;scrubbers++;}
+  }
+  return {make,clear,makers,scrubbers};
+}
+function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(100,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1));} // Clean Burn: -30%
 
 const T_FLOOR    = 0;
 const T_RESOURCE = 1;
@@ -4466,7 +4484,7 @@ function gameTick(){
   // Smog tick, natural decay + clamp
   if(zoneHas('smog')){
     if(G.smog===undefined)G.smog=0;
-    G.smog=Math.max(0,Math.min(100,G.smog-0.1));
+    G.smog=Math.max(0,Math.min(100,G.smog-SMOG_DECAY_MIN/TICKS_PER_MIN));
   }
 
   if(G.tick%4===0){checkAchievements();tickTutorial();}
@@ -4556,7 +4574,7 @@ function runMachine(m){
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
       const hasPowerConsumers=Object.values(G.machines).some(mm=>mm.active&&MDEFS[mm.type]?.power>0&&mm.type!=='combustion_gen'&&mm.type!=='burner'&&mm.type!=='generator');
-      if(G.tick%32===0&&hasPowerConsumers) m.inBuf.refined_fuel--;
+      if(G.tick%32===0&&hasPowerConsumers){m.inBuf.refined_fuel--; addSmog(SMOG_PER.combustion_gen*32/TICKS_PER_MIN);}
     }
     return;
   }
@@ -4571,8 +4589,7 @@ function runMachine(m){
       m.outBuf.crude_oil=(m.outBuf.crude_oil||0)+1;
       m.produced++;
       recordOutput(m,1);
-      // Generate smog: 0.25 per barrel (twice the barrels of the old 30/min pump, the same smog per minute)
-      if(zoneHas('smog')){G.smog=Math.min(100,(G.smog||0)+OIL_SMOG*(G.perks?.spent?.smog1?0.7:1));}
+      addSmog(SMOG_PER.oil_pump/(TICKS_PER_MIN/MINE_TICKS)); // 20/min at 60 barrels/min
     }
     return;
   }
@@ -4592,8 +4609,8 @@ function runMachine(m){
     if(powerRatio()===0)return;
     const hasFuel=(m.inBuf.refined_fuel||0)>0;
     if(hasFuel&&(G.smog||0)>0){
-      G.smog=Math.max(0,(G.smog||0)-SCRUBBER_SMOG);
-      if(G.tick%32===0) m.inBuf.refined_fuel--;
+      G.smog=Math.max(0,(G.smog||0)-SCRUBBER_SMOG_MIN/(TICKS_PER_MIN/4));
+      if(G.tick%SCRUBBER_FUEL_TICKS===0) m.inBuf.refined_fuel--;
     }
     return;
   }
@@ -4642,6 +4659,7 @@ function runMachine(m){
       const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
       if(bufTotal>=50)return;
       m.prog=0;
+      if(SMOG_PER[m.type])addSmog(SMOG_PER[m.type]*rec.time/TICKS_PER_MIN); // a Cracker or Refinery: 15/min at T1
       for(const[item,n]of Object.entries(rec.out)){
         // prod module: chance of bonus output
         const bonus=modYield>1&&Math.random()<(modYield-1)?1:0;
@@ -5212,7 +5230,6 @@ const INS_DEPOSIT_MS= 80;
 const INS_RETURN_MS = 460;
 const INS_TIER_SPEED={1:1,2:2,3:4.5};
 const MINE_TICKS=4;          // a T1 Miner or Oil Pump makes 1 item per 4 ticks (60/min)
-const OIL_SMOG=0.25;         // smog per barrel of crude
 const MINER_TIER_SPEED={1:1,2:2,3:4};
 // Furnaces, smelters, assemblers and labs speed up by tier the same way: a T2 machine does the work of two T1s.
 // Recipe times are whole seconds picked so every input and output is a clean rate (a Stone Furnace takes 30 ore/min,
@@ -5935,7 +5952,8 @@ function machineRates(m){
   const modYield=1+mods.filter(x=>x==='prod_module').length*0.25;
   const tierMult=MACHINE_TIER_SPEED[m.tier||1]||1;
   const pm=perkMult();
-  const smog=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
+  // Rates are shown at full speed so they hold still; smog's slowdown (it changes every tick) gets its own line
+  const smogNow=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1, smog=1;
   const immune=m.type==='stone_furnace'||m.type==='blast_furnace';
   let ratio=immune?1:powerRatio();
   if(ratio===0){ratio=1;if(def.power>0)R.notes.push('No power right now: these are full-speed rates');}
@@ -5946,7 +5964,7 @@ function machineRates(m){
     R.notes.push('Only burns while something is using power');
   } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
   else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
-  else if(m.type==='scrubber'){R.in.refined_fuel=per(32);R.notes.push('Only burns while there is smog to clean');}
+  else if(m.type==='scrubber'){R.in.refined_fuel=per(SCRUBBER_FUEL_TICKS);R.notes.push(`Clears ${SCRUBBER_SMOG_MIN} smog/min while it has fuel, power and smog to clean`);}
   else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);}
   else if(m.type==='miner'){
     if(!m.mineRes)R.notes.push('Place it on a deposit to mine');
@@ -5974,6 +5992,8 @@ function machineRates(m){
   } else if(def.recipes.length){R.notes.push('Pick a recipe to see its rates');}
   const tk=Math.max(0,...Object.entries(INS_TAKERS).filter(([k])=>k==m.id||k.startsWith(m.id+':')).map(([,v])=>v.length));
   if(tk>1)R.notes.push(`Output shared by ${tk} inserters, taking turns`);
+  if(zoneHas('smog')&&SMOG_PER[m.type])R.notes.push(`Makes ${fmtRate(machineSmog(m))} smog/min while working`);
+  if(smogNow<1&&!immune&&m.type!=='scrubber'&&(Object.keys(R.out).length||m.type==='miner'))R.notes.push(`Smog is slowing it to ${Math.round(smogNow*100)}% right now`);
   if(def.living&&!m.withered){R.in.nutrient=(R.in.nutrient||0)+per(FEED_EVERY);R.notes.push('Nutrient Paste is eaten only while vitality is under 100%');}
   return R;
 }
@@ -6870,6 +6890,7 @@ function hazardPanelHtml(){
     html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">
       <div style="font-size:var(--f5);color:var(--text3);margin-bottom:4px">🌫️ SMOG: ${Math.round(G.smog||0)}%, efficiency: ${Math.round((100-(G.smog||0)))}%</div>
       <div class="prog-wrap"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
+      ${(()=>{const b=smogBudget(), net=b.make-b.clear; return `<div style="font-size:var(--f4);color:var(--text3);margin-top:4px;line-height:1.8">+${fmtRate(b.make)}/min from ${b.makers} machine${b.makers===1?'':'s'} · −${fmtRate(b.clear)}/min from ${b.scrubbers} scrubber${b.scrubbers===1?'':'s'} and clearing<br><span style="color:${net>0?'var(--red)':'var(--green)'}">${net>0?`Rising ${fmtRate(net)}/min: add a Scrubber (clears ${SCRUBBER_SMOG_MIN}/min)`:'Falling or steady'}</span></div>`;})()}
     </div>`;
   }
   if(zoneHas('pressure')){
@@ -7883,7 +7904,7 @@ const TUTORIALS={
      done:()=>made('refinery')},
     {text:'⚠️ Pumps make smog (🌫️ in the top bar). Smog slows every machine. Make [[sci_smog]] Smog Data and research Smog Control.',
      done:()=>researched('smog_control')},
-    {text:'Build a [[scrubber]] Scrubber and feed it refined fuel. One scrubber cancels about 3 oil pumps.',
+    {text:'Build a [[scrubber]] Scrubber and feed it refined fuel. Pumps, Crackers and Refineries all make smog: one Scrubber clears a pump with its Cracker and Refinery. GOAL shows what is rising.',
      done:()=>machinesOf('scrubber').some(m=>(m.inBuf.refined_fuel||0)>0)},
     {text:'Goal: research Rocket Repair, build the 6 kinds of repair part and stock 100 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
      final:true},
