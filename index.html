@@ -1208,6 +1208,7 @@ const ITEMS = {
   lithium:      {name:'Lithium',        icon:'⚪', cat:'processed'},
   re_oxide:     {name:'Rare Earth Oxide', icon:'🟧', cat:'processed', desc:'Refined rare earth. A Separator makes it from 2 Rare Earth Ore plus 4 brine piped in (needs Pressure Control).', uses:['Magnet (Assembler, with 2 iron plates)','Pressure Hull (rocket part)']},
   magnet:       {name:'Magnet',         icon:'🧲', cat:'parts'},
+  gasket:       {name:'Gasket',         icon:'⭕', cat:'parts', desc:'A rubber seal for Relief Valves. A valve wears one out every 60 units it vents; with none left it jams shut.'},
   battery:      {name:'Battery',        icon:'🪫', cat:'parts'},
   lattice_core: {name:'Lattice Core',   icon:'💠', cat:'parts'},
   fuel_rod:     {name:'Lattice Fuel Rod',icon:'🟩', cat:'rocket3'},
@@ -1299,6 +1300,7 @@ const RECIPES = {
   z3_lithium: {name:'Lithium',           machine:'electric_smelter', time:8, in:{lithium_salt:1},             out:{lithium:1},     unlock:'energy_storage'},
   z3_evap:    {name:'Evaporate Brine',   machine:'evaporator', time:8,  in:{}, fluid:{brine:4},                out:{lithium_salt:1},unlock:'fluid_handling'},
   z3_separate:{name:'Separate Rare Earth',machine:'separator', time:8, in:{rare_earth:2}, fluid:{brine:4},     out:{re_oxide:1},    unlock:'pressure_control'},
+  mk_gasket:  {name:'Gasket',            machine:'assembler', time:8,  in:{iron_plate:1,stone:1},             out:{gasket:2},      unlock:'pressure_control'},
   z3_magnet:  {name:'Magnet',            machine:'assembler', time:8,  in:{re_oxide:1,iron_plate:2},          out:{magnet:1},      unlock:'pressure_control'},
   z3_battery: {name:'Battery',           machine:'assembler', time:8, in:{lithium:2,copper_plate:1,steel_plate:1}, out:{battery:1}, unlock:'energy_storage'},
   z3_core:    {name:'Lattice Core',      machine:'assembler', time:16, in:{silicon:3,magnet:1},               out:{lattice_core:1},unlock:'lattice_fuel'},
@@ -1341,7 +1343,7 @@ const MDEFS = {
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter, needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter, 2× speed'},
   electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed, runs on power. 4× a Stone Furnace: 120 ore in, 60 plates out per minute. Makes propellant.'},
-  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill','z4_paste','z4_composite','z4_rod','z4_biohull','z4_bionav','z4_core','z5_lens','z5_casing','z5_engine','z5_mind'], desc:'Crafts parts and components'},
+  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','mk_gasket','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill','z4_paste','z4_composite','z4_rod','z4_biohull','z4_bionav','z4_core','z5_lens','z5_casing','z5_engine','z5_mind'], desc:'Crafts parts and components'},
   lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat','z4_sci_bloom','z4_sci_growth','z4_sci_synth','z5_sci_void'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
@@ -1361,7 +1363,7 @@ const MDEFS = {
   pipe:           {name:'Pipe',             icon:'🔗', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:'fluid_handling', recipes:[], fluidCap:10, noItems:true, desc:'Carries fluid. Connects to neighbouring pipes and fluid machines'},
   brine_pump:     {name:'Brine Pump',       icon:'⛲', size:[2,2], power:8,   cost:{iron_plate:10,iron_gear:4,circuit:2},            unlock:'fluid_handling', recipes:[], fluidPort:true, pumps:'brine', noItems:true, desc:'Pumps lithium brine from a brine pool into connected pipes'},
   fluid_tank:     {name:'Fluid Tank',       icon:'🥫', size:[2,2], power:0,   cost:{iron_plate:12,steel_plate:4},                    unlock:'fluid_handling', recipes:[], fluidCap:200, noItems:true, desc:'Adds 200 fluid capacity to its pipe network'},
-  relief_valve:   {name:'Relief Valve',     icon:'🚿', size:[1,1], power:0,   cost:{iron_plate:4,iron_gear:2},                       unlock:'pressure_control', recipes:[], fluidCap:5, noItems:true, desc:'Vents fluid when its network goes above 80% pressure'},
+  relief_valve:   {name:'Relief Valve',     icon:'🚿', size:[1,1], power:0,   cost:{iron_plate:4,iron_gear:2},                       unlock:'pressure_control', recipes:[], fluidCap:5, accepts:['gasket'], bufCap:10, desc:'Vents fluid above 80% pressure, up to 60 a minute. Wears out a Gasket every 60 units vented: load them by hand or with an inserter'},
   evaporator:     {name:'Evaporator',       icon:'♨️', size:[2,2], power:14,  cost:{iron_plate:12,iron_gear:6,circuit:3},            unlock:'fluid_handling', recipes:['z3_evap'], fluidPort:true, desc:'Evaporates brine into lithium salt'},
   separator:      {name:'Separator',        icon:'🌀', size:[2,2], power:16,  cost:{iron_plate:14,circuit:4,steel_plate:4},          unlock:'pressure_control', recipes:['z3_separate'], fluidPort:true, desc:'Separates rare earth ore using brine'},
   rod_press:      {name:'Rod Press',        icon:'🧰', size:[2,2], power:24,  cost:{steel_plate:10,circuit:6,magnet:4},              unlock:'lattice_fuel', recipes:['z3_rod'], fluidPort:true, desc:'Presses lattice fuel rods. Needs 60%+ pipe pressure'},
@@ -1384,6 +1386,7 @@ const MDEFS = {
 // unlock = research id required (null = always available)
 const HAND_CRAFTS = [
   {id:'iron_plate',   name:'Iron Plate',   icon:'🔘', in:{iron_ore:2},                         out:{iron_plate:1},   clicks:5,  unlock:null,           desc:'Smelt iron ore by hand'},
+  {id:'gasket',       name:'Gasket',       icon:'⭕', in:{iron_plate:1,stone:1},             out:{gasket:2},       clicks:6,  unlock:'pressure_control', desc:'Seals for Relief Valves'},
   {id:'copper_plate', name:'Copper Plate', icon:'🟠', in:{copper_ore:2},                        out:{copper_plate:1}, clicks:5,  unlock:null,           desc:'Smelt copper ore by hand'},
   {id:'iron_gear',    name:'Iron Gear',    icon:'⚙️', in:{iron_plate:2},                        out:{iron_gear:1},    clicks:10, unlock:null,           desc:'Shape iron plates into gears'},
   {id:'copper_wire',  name:'Copper Wire',  icon:'〰️', in:{copper_plate:1},                      out:{copper_wire:2},  clicks:8,  unlock:null,           desc:'Draw copper into wire'},
@@ -2287,7 +2290,7 @@ function machineWorking(m){
   if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
   if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
   if(m.type==='fluid_tank')return (m.fluid?.amt||0)>0.5;
-  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT;
+  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT&&!valveJammed(m);
   if(m.type==='accumulator')return (m.charge||0)>1;
   if(m.type==='chest')return Object.values(m.chestInv).some(v=>v>0);
   if(m.type==='heat_sink')return machineNeighbors(m).some(n=>n.type==='reactor'&&machineWorking(n));
@@ -2365,7 +2368,7 @@ const ITEM_ART={
   engine:['engine','#6a7280','#a8b0bc','#2a2e34'],
   speed_module:['module','#42a5f5','#ffffff','#1a3a5a','arrow'], prod_module:['module','#4caf50','#ffffff','#1a4a1a','plus'],
   eff_module:['module','#e53935','#ffffff','#5a1a1a','drop'],
-  magnet:['magnet','#e53935','#d0dae6','#5a1414'], battery:['battery','#4a4a3a','#ffd600','#1a1a10'],
+  magnet:['magnet','#e53935','#d0dae6','#5a1414'], gasket:['gasket','#3a3f46','#7a828c','#16191c'], battery:['battery','#4a4a3a','#ffd600','#1a1a10'],
   lattice_core:['core','#2ac8a0','#c0fff0','#0e5a48'], bio_composite:['weave','#7a8a4a','#c0d08a','#3a4020'],
   lum_rod:['tube','#2ac8a0','#e0fff8','#0e5a48'],
   // science: one book shape, each with its own cover emblem
@@ -2400,6 +2403,7 @@ const BOOK_EMBLEMS=[ // 4×4 cover marks, '#' = lit
   ['.##.','#..#','#..#','.##.'],
 ];
 const ITEM_SHAPES_2={
+  gasket({O,P},c,h,d){O(6,6,5,d);O(6,6,4,c);O(6,6,3,c);P(4,3,h);P(3,4,h);P(5,2,h);for(const[x,y]of[[6,1],[11,6],[6,11],[1,6]])P(x,y,'#d0d4da');},
   lumps({C,P},c,h,d){C(4,7,2,c);C(8,8,2,c);C(6,4,2,c);P(3,6,h);P(7,7,h);P(5,3,h);P(6,3,h);P(5,9,d);P(9,10,d);},
   cobble({R},c,h,d){R(1,7,5,3,c);R(6,7,5,3,shade(c,.12));R(3,4,6,3,shade(c,-.05));R(1,7,5,1,h);R(6,7,5,1,h);R(3,4,6,1,h);R(1,10,10,1,d);R(6,7,1,3,d);},
   geode({C,P},c,h,d){C(6,6,5,d);C(6,6,4,c);C(6,6,2,h);P(5,5,'#ffffff');P(7,7,shade(h,.4));P(2,4,shade(c,.3));},
@@ -3251,6 +3255,10 @@ const PORTS = {
   evaporator:      { outputs:[{side:'right',pos:.5}] },
   separator:       { outputs:[{side:'right',pos:.5}] },
   rod_press:       { outputs:[{side:'right',pos:.5}] },
+  algae_vat:       { outputs:[{side:'right',pos:.5}] }, // the Bloom's living machines had no output side until v2.0.17
+  bioreactor:      { outputs:[{side:'right',pos:.5}] },
+  spore_incubator: { outputs:[{side:'right',pos:.5}] },
+  hyper_synth:     { outputs:[{side:'right',pos:.5}] },
   generator:       { outputs:[] },
   burner:          { outputs:[] },
   chest:           { outputs:[{side:'bottom',pos:.5}] },
@@ -3600,6 +3608,12 @@ function draw(){
       ctx.fillStyle=Math.floor(at/4)%2?'#42a5f5':'#0d3b4a';
       ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+ph-20),8,8);
     }
+    // Relief Valve: a gasket-wear bar, and a red blinking frame when it is jammed
+    if(m.type==='relief_valve'&&ts>12){
+      const seal=m.seal===undefined?VALVE_SEAL:m.seal, spare=m.inBuf.gasket||0;
+      if(valveJammed(m)){ctx.strokeStyle=Math.floor(at/3)%2?'#e53935':'#5a1414';ctx.lineWidth=Math.max(2,ts/16);ctx.strokeRect(px+2,py+2,pw-4,ph-4);}
+      else{ctx.fillStyle='#111';ctx.fillRect(px+3,py+ph-6,pw-6,3);ctx.fillStyle=spare?'#26c6a0':seal<15?'#e53935':'#f5a623';ctx.fillRect(px+3,py+ph-6,(pw-6)*seal/VALVE_SEAL,3);}
+    }
     // Living machines: vitality bar + stage badge; withered = grey
     if(def.living){
       const st=lifeStage(m);
@@ -3728,7 +3742,7 @@ function draw(){
   }
   // Pipe burst flashes
   for(let i=burstFx.length-1;i>=0;i--){
-    const b=burstFx[i]; const age=(now-b.t)/700;
+    const b=burstFx[i]; if(b.t>now)b.t=now; const age=(now-b.t)/700; // a page-clock time from before a clock reset never runs backwards
     if(age>1){burstFx.splice(i,1);continue;}
     const rr=ts*(.3+age*1.2), bx=b.x*ts-cx+ts/2, by=b.y*ts-cy+ts/2;
     pixelFx(ctx,bx-rr-2,by-rr-2,rr*2+4,rr*2+4,ts,c=>{c.beginPath();c.arc(rr+2,rr+2,rr,0,Math.PI*2);
@@ -4996,7 +5010,11 @@ function consumeInputs(m,rec){
 //  one fluid; pressure = amount / capacity. Pumps push in, fluidPort machines
 //  draw out at recipe start. ≥90% with inflow builds strain → a pipe bursts.
 // ═══════════════════════════════════════════════════
-const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80, VALVE_VENT=0.75;
+const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80;
+// Relief Valves (v2.0.17): each vents at most VALVE_VENT a tick (60 a minute, half of what a T1 pump pushes), and a
+// Gasket seals VALVE_SEAL units of venting. A valve comes with one fitted; with none left in its buffer it jams shut.
+const VALVE_VENT=0.25, VALVE_SEAL=60;
+function valveJammed(m){return (m.seal===undefined?VALVE_SEAL:m.seal)<=0&&!(m.inBuf.gasket>0);}
 function burstStrain(){return BURST_STRAIN*(G.perks?.spent?.pressure1?1.5:1);}
 const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP',enzymes:'🧪 NEEDS ENZYME PUMP'};
 let FLUID_NETS=[];
@@ -5078,9 +5096,18 @@ function consumeFluid(m,rec){
 function settleFluidNets(){
   for(const net of FLUID_NETS){
     if(!net.members.length)continue;
-    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active).length;
-    if(valves&&pressureOf(net)>RELIEF_AT)
-      net.amt=Math.max(net.cap*RELIEF_AT/100,net.amt-valves*VALVE_VENT);
+    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active);
+    let excess=net.amt-net.cap*RELIEF_AT/100;
+    for(const v of valves){
+      if(v.seal===undefined)v.seal=VALVE_SEAL; // a new valve comes with one gasket fitted
+      if(excess<=0)continue;
+      if(v.seal<=0){
+        if((v.inBuf.gasket||0)>0){v.inBuf.gasket--;v.seal+=VALVE_SEAL;}
+        else{ if(!v._jamWarned){v._jamWarned=true;toast('Relief Valve jammed: out of Gaskets','bad');} continue; }
+      }
+      const d=Math.min(VALVE_VENT,excess,v.seal);
+      v.seal-=d; excess-=d; net.amt-=d; v._jamWarned=false;
+    }
     // Strain builds while pumps push into an over-pressured network (pumps push every
     // other tick, so +2 per push ≈ +1/tick), holds between pushes, eases off below 90%
     if(pressureOf(net)>=OVER_PRESSURE){if(net.inflow>0)net.strain+=2;}
@@ -5636,22 +5663,24 @@ function stepInserter(m){
     // Waiting for room before even grabbing lost most of a swing per item (a T1 chain ran at 34/min, not 60)
 
     let item=null;
+    const acc=MDEFS[dm.type]?.accepts, want=k=>!acc||acc.includes(k);
+    if(acc&&(dm.inBuf[acc[0]]||0)>=(MDEFS[dm.type].bufCap||50))return; // full: wait
     if(src.mid!==null){
       const sm=G.machines[src.mid];
       if(sm&&beltLike(sm.type)){ // belts, tunnel mouths and splitters
         // take the front item anywhere on the tile: a T3 belt moves over half a tile per tick, so waiting for an item
         // in the last tenth of the tile missed most of them and starved machines along a fast belt.
         // On a splitter it takes only items the splitter has handed to its side (not ones still coming in)
-        let pool=src.items;
-        if(sm.type==='splitter'){const mine=src===G.map[sm.y][sm.x]?0:1; pool=src.items.filter(i=>i.side===mine);}
+        let pool=src.items.filter(i=>want(i.id));
+        if(sm.type==='splitter'){const mine=src===G.map[sm.y][sm.x]?0:1; pool=pool.filter(i=>i.side===mine);}
         if(pool.length){const it=pool.reduce((a,b)=>b.prog>a.prog?b:a);src.items.splice(src.items.indexOf(it),1);item=it.id;}
       } else if(sm&&sm.type==='chest'){
-        const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0);
+        const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0&&want(k));
         if(k&&myTurn(m,sm)){item=k;sm.chestInv[k]--;markServed(sm,m);}
       } else if(sm&&sm.type!=='belt'&&sm.type!=='inserter'){
         const port=outputPortFacing(sm,-dvx,-dvy);
         if(port>=0){ // only what this arrow puts out
-          const k=Object.keys(sm.outBuf).find(k=>sm.outBuf[k]>0&&portTakes(sm,port,k));
+          const k=Object.keys(sm.outBuf).find(k=>sm.outBuf[k]>0&&portTakes(sm,port,k)&&want(k));
           if(k&&myTurn(m,sm)){item=k;sm.outBuf[k]--;markServed(sm,m);}
         }
       }
@@ -5678,7 +5707,7 @@ function stepInserter(m){
         if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
-        if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
+        if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else {
         returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
@@ -5692,7 +5721,7 @@ function stepInserter(m){
       const dm=G.machines[dst.mid]; let deposited=false;
       if(dm&&beltLike(dm.type)&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
       else if(dm&&dm.type==='chest'){const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
-      else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
     } else {
       returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
@@ -6280,6 +6309,7 @@ function machineRates(m){
     R.notes.push('Only burns while something is using power');
   } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
   else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
+  else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${RELIEF_AT}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
   else if(m.type==='scrubber'){R.in.refined_fuel=per(SCRUBBER_FUEL_TICKS);R.notes.push(`Clears ${SCRUBBER_SMOG_MIN} smog/min while it has fuel, power and smog to clean`);}
   else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);}
   else if(m.type==='miner'){
@@ -6778,6 +6808,14 @@ function fluidPanelRows(m,def,rec){
     html+=irow('Cooling',`${sinks} heat sink${sinks!==1?'s':''} (${sinks>=2?'stable':'needs '+(2-sinks)+' more'})`);
     html+=irow('Fuel',`🔦 ${m.inBuf.lum_rod||0} rods · 1 rod / ${ROD_TICKS*TICK_MS/1000}s`);
   }
+  if(m.type==='relief_valve'){
+    const seal=m.seal===undefined?VALVE_SEAL:m.seal, jam=valveJammed(m), hot=m._net&&pressureOf(m._net)>RELIEF_AT;
+    html+=irow('Gasket',jam?`<span style="color:var(--red)">✗ Worn out: valve jammed shut</span>`:`<span style="color:${seal<15?'var(--amber)':'var(--teal)'}">${Math.round(seal/VALVE_SEAL*100)}% left</span>`);
+    html+=irow('Spares',`${iconHtml('gasket')} ${m.inBuf.gasket||0} / ${MDEFS.relief_valve.bufCap}`);
+    html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':'No (below 80%)');
+    html+=`<button class="full-btn teal" style="margin:4px 0" onclick="loadGaskets(${m.id})">LOAD GASKETS (have ${G.inv.gasket||0})</button>
+      <div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Each Gasket seals 60 units of venting. An inserter can keep it stocked.</div>`;
+  }
   if(m.type==='accumulator')html+=irow('Charge',`${Math.round((m.charge||0)/ACC_CAP*100)}% (${Math.round(m.charge||0)}/${ACC_CAP} kJ)`);
   if(m.type==='lumen_panel')html+=irow('Glow tide',glowBright()?`<span style="color:var(--amber)">☀️ Bright, ${glowSecsLeft()}s left</span>`:`<span style="color:var(--text3)">🌑 Dim, ${glowSecsLeft()}s left</span>`);
   return html;
@@ -7038,6 +7076,13 @@ function ejectBuf(id){
   updateHUD(); renderMachPanel();
 }
 
+function loadGaskets(id){
+  const m=G.machines[id]; if(!m)return;
+  const n=Math.min(G.inv.gasket||0,MDEFS.relief_valve.bufCap-(m.inBuf.gasket||0));
+  if(n<=0){toast((G.inv.gasket||0)?'Valve is full':'No Gaskets: craft them by hand or in an Assembler','wrn');sfx('error');return;}
+  G.inv.gasket-=n; m.inBuf.gasket=(m.inBuf.gasket||0)+n; m._jamWarned=false;
+  sfx('craft'); toast(`Loaded ${n} Gasket${n>1?'s':''}`,'ok'); updateHUD(); renderMachPanel();
+}
 function feedCoal(id,amount){
   const m=G.machines[id]; if(!m)return;
   const have=G.inv.coal||0;
@@ -8397,6 +8442,7 @@ function rbOtherUses(id){ // uses outside recipes
   const fuel={coal:['burner','generator','stone_furnace','blast_furnace'],refined_fuel:['combustion_gen','scrubber'],lum_rod:['reactor'],nutrient:Object.keys(MDEFS).filter(t=>MDEFS[t].living)}[id];
   if(fuel){const ok=fuel.filter(t=>DRAWER_DEFS.build.some(c=>c.items.some(i=>i.id===t&&(!i.zones||i.zones.includes(G.zone)))));
     if(ok.length)out.push(`${id==='nutrient'?'Food for':'Fuel for'} ${ok.map(t=>rbChip(t)).join('')}`);}
+  if(id==='gasket')out.push(`Keeps ${rbChip('relief_valve')} venting: 1 per ${VALVE_SEAL} units vented`);
   const builds=Object.keys(MDEFS).filter(t=>MDEFS[t].cost?.[id]&&drawerCats('build').some(c=>c.items.some(i=>i.id===t)));
   if(builds.length)out.push(`Builds ${builds.map(t=>rbChip(t,MDEFS[t].cost[id])).join('')}`);
   const techs=Object.entries(TECHS).filter(([tid,t])=>t.cost?.[id]&&!G.research.done.includes(tid));
@@ -8599,7 +8645,7 @@ const TUTORIALS={
      done:()=>hasM('lumen_panel')},
     {text:'The glow dims for 1 minute in every 4 🌑. Research Energy Storage and add [[accumulator]] Accumulators to bank power.',
      done:()=>hasM('accumulator')},
-    {text:'Research Pressure Control for [[relief_valve]] Relief Valves (vent above 80%) and the [[separator]] Separator.',
+    {text:'Research Pressure Control for [[relief_valve]] Relief Valves and the [[separator]] Separator. A valve vents above 80% (half a pump each) and wears out [[gasket]] Gaskets, so keep it stocked.',
      done:()=>researched('pressure_control')},
     {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build the 5 kinds of escape part, then launch from 🚀 GOAL.',
      final:true},
@@ -9306,6 +9352,7 @@ function migrateSave(){
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
   tidyBeltItems();
+  for(const m of Object.values(G.machines||{}))if(m.type==='relief_valve'&&m.seal===undefined){m.seal=VALVE_SEAL;m.inBuf.gasket=Math.max(m.inBuf.gasket||0,4);G._gaskets=true;}
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }
@@ -9350,6 +9397,7 @@ function newGame(){
 function startGame(isNew){
   stopTitleScene(); clearUndo();
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
+  if(G._gaskets){delete G._gaskets;setTimeout(()=>toast('New: Relief Valves wear out Gaskets. Yours have 4 spares each: tap a valve to see','wrn'),2600);}
   if(G._tidied){const n=G._tidied;delete G._tidied;setTimeout(()=>toast(`Belts respaced: ${fmt(n)} items went to your inventory`,'ok'),2200);}
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');

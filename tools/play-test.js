@@ -461,6 +461,29 @@ const r=await p.evaluate(async()=>{
     for(const [z,t] of Object.entries(TUTORIALS))for(const st of t.steps){const m=st.text.match(/BUILD → (\w[\w ]*?) → \[\[(\w+)\]\]/); if(!m)continue;
       G.zone=+z; const g=drawerCats('build').find(c=>c.label===m[1]); if(!g||!g.items.some(i=>i.id===m[2]))bad.push(m[0]);}
     G.zone=z0; ok('tutorial_menu_names',!bad.length,bad); }
+  // ── relief valves vent half a T1 pump each and wear out gaskets; jammed valves let pressure build
+  { const z0=G.zone;
+    const net=(valves,spares)=>{ reset(); G.zone=3; G.research.done=Object.keys(TECHS); power(2,2); G.stats.bursts=0;
+      res(10,40,2,2,'brine'); put('brine_pump',10,40); for(let x=12;x<22;x++)put('pipe',x,40);
+      const vs=[]; for(let i=0;i<valves;i++){const v=put('relief_valve',12+i*3,41); v.inBuf.gasket=spares; vs.push(v);}
+      return vs; };
+    let vs=net(1,10); run(240*3); const one=G.stats.bursts;
+    vs=net(2,10); run(240*3); const two=G.stats.bursts, used=20-vs.reduce((a,v)=>a+(v.inBuf.gasket||0),0);
+    vs=net(2,0); run(240*4); const dry=G.stats.bursts, jam=vs.every(v=>valveJammed(v));
+    // an inserter feeds a valve only gaskets, and stops at its 10
+    reset(); G.zone=3; G.research.done=Object.keys(TECHS); power(2,2);
+    const c=put('chest',30,30); c.chestInv.coal=20; c.chestInv.gasket=30; put('inserter',31,30,0); const v=put('relief_valve',32,30);
+    run(240); const fed=v.inBuf.gasket||0, noCoal=!v.inBuf.coal&&c.chestInv.coal===20;
+    G.zone=z0;
+    ok('valve_gaskets',one>0&&two===0&&used>0&&dry>0&&jam&&fed===10&&noCoal,{one,two,used,dry,jam,fed,noCoal}); }
+  // ── every machine that makes items has an output side; an Algae Vat's algae goes onto a belt and into an inserter
+  { const missing=Object.keys(MDEFS).filter(t=>MDEFS[t].recipes?.length&&!PORTS[t]);
+    const z0=G.zone; reset(); G.zone=4; G.research.done=Object.keys(TECHS); power(2,2);
+    const av=put('algae_vat',20,40); av.recipe='z4_algae'; av.outBuf.algae=6; av.vit=60;
+    for(let x=22;x<26;x++)put('belt',x,40,0); const ch=put('chest',26,40);
+    const av2=put('algae_vat',20,44); av2.outBuf.algae=6; put('inserter',22,44,0); const ch2=put('chest',23,44);
+    run(120); G.zone=z0;
+    ok('living_machines_output',!missing.length&&(ch.chestInv.algae||0)>=4&&(ch2.chestInv.algae||0)>=4,{missing,belt:ch.chestInv,ins:ch2.chestInv}); }
   // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
     res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);
