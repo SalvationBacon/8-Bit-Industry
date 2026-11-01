@@ -428,6 +428,14 @@ const r=await p.evaluate(async()=>{
     const zonesOk=[1,2,3,4,5].every(z=>per[z]>=3)&&per.title>=2;
     const ctxGame=musicCtx();
     ok('music_playlists',zonesOk&&!bad.length&&lens.every(l=>l>=90&&l<=240)&&hook&&varies&&ctxGame===G.zone,{per,bad,lens,hook,varies,ctxGame}); }
+  // ── build menu: grouped by job; every machine appears once, and only in the zones it belongs to
+  { const z0=G.zone, all=DRAWER_DEFS.build.flatMap(c=>c.items.map(i=>i.id)), dupes=all.filter((x,i)=>all.indexOf(x)!==i);
+    const missing=Object.keys(MDEFS).filter(t=>!MDEFS[t].stub&&!all.includes(t));
+    const at={}; for(const z of[1,2,3,4,5]){G.zone=z; at[z]=Object.fromEntries(drawerCats('build').map(c=>[c.label,c.items.map(i=>i.id)]));}
+    G.zone=z0;
+    const okZ=!at[1].Pipes&&!at[1]['Clean Air']&&at[1].Power.join()==='burner,generator'&&at[2].Power.includes('combustion_gen')&&at[2]['Clean Air']
+      &&at[3].Power.includes('lumen_panel')&&at[4].Power.includes('reactor')&&!at[4].Refining&&at[5].Mining.length===4;
+    ok('build_menu_groups',!dupes.length&&!missing.length&&okZ,{dupes,missing,z1:Object.keys(at[1]),z2:at[2].Power}); }
   // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
     res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);

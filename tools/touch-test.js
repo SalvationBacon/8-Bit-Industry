@@ -38,6 +38,7 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
   await p.evaluate(()=>{G.inv.iron_plate=50;});
   await tapEl('#tab-build');
   ok('drawer_open',await p.evaluate(()=>document.getElementById('tabDrawer').classList.contains('open')));
+  await tapEl('.dcat-btn:has-text("Handling")'); // the Chest lives with the inserters
   await p.locator('.ditem:has-text("Chest")').scrollIntoViewIfNeeded(); await tapEl('.ditem:has-text("Chest")');
   ok('tool_chest',await p.evaluate(()=>activeTool==='chest'),await p.evaluate(()=>activeTool));
   const spot=await p.evaluate(o=>{const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;

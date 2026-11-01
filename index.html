@@ -1402,55 +1402,63 @@ const MACHINE_BUILDS = [
 //  TAB / DRAWER DEFINITIONS
 // ═══════════════════════════════════════════════════
 const DRAWER_DEFS = {
+  // Grouped by what a machine does. An item with zones:[...] only shows in those zones; a group with nothing
+  // for this zone is hidden. Locked machines still show, with the research they need.
   build: [
-    {label:'Logistics', items:[
+    {label:'Belts', items:[
       {id:'belt',name:'Belt',icon:'➡️'},
       {id:'splitter',name:'Splitter',icon:'⑂'},
       {id:'tunnel',name:'Tunnel',icon:'⏬'},
+    ]},
+    {label:'Handling', items:[
       {id:'inserter',name:'Inserter',icon:'🦾'},
       {id:'long_inserter',name:'Long Ins.',icon:'🦿'},
       {id:'chest',name:'Chest',icon:'📦'},
     ]},
-    {label:'Extract', items:[
+    {label:'Mining', items:[
       {id:'miner',name:'Miner',icon:'⛏️'},
-      {id:'burner',name:'Burner',icon:'🪵'},
-      {id:'generator',name:'Generator',icon:'⚡'},
+      {id:'oil_pump',name:'Oil Pump',icon:'🛢️',zones:[2,5]},
+      {id:'brine_pump',name:'Brine Pump',icon:'⛲',zones:[3,4,5]},
+      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶',zones:[4,5]},
     ]},
-    {label:'Processing', items:[
+    {label:'Smelting', items:[
       {id:'stone_furnace',name:'Furnace',icon:'⚱️'},
       {id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},
       {id:'electric_smelter',name:'Elec. Smelt.',icon:'🌩️'},
+    ]},
+    {label:'Production', items:[
       {id:'assembler',name:'Assembler',icon:'🏗️'},
       {id:'lab',name:'Lab',icon:'🔬'},
     ]},
-    {label:'Oil', zones:[2,5], unlock:'oil_extraction', items:[
-      {id:'oil_pump',name:'Oil Pump',icon:'🛢️'},
-      {id:'cracker',name:'Cracker',icon:'⚗️'},
-      {id:'refinery',name:'Refinery',icon:'🏭'},
-      {id:'combustion_gen',name:'Comb. Gen.',icon:'🔆'},
-      {id:'scrubber',name:'Scrubber',icon:'🌿'},
+    {label:'Power', items:[
+      {id:'burner',name:'Burner',icon:'🪵'},
+      {id:'generator',name:'Generator',icon:'⚡'},
+      {id:'combustion_gen',name:'Comb. Gen.',icon:'🔆',zones:[2,5]},
+      {id:'lumen_panel',name:'Lumen',icon:'💡',zones:[3,5]},
+      {id:'accumulator',name:'Accum.',icon:'🔋',zones:[3,5]},
+      {id:'reactor',name:'Reactor',icon:'☢️',zones:[4,5]},
+      {id:'heat_sink',name:'Heat Sink',icon:'❄️',zones:[4,5]},
     ]},
-    {label:'Fluids', zones:[3,4,5], items:[
-      {id:'pipe',name:'Pipe',icon:'🔗'},
-      {id:'brine_pump',name:'Brine Pump',icon:'⛲'},
-      {id:'fluid_tank',name:'Tank',icon:'🥫'},
-      {id:'relief_valve',name:'Valve',icon:'🚿'},
+    {label:'Pipes', items:[
+      {id:'pipe',name:'Pipe',icon:'🔗',zones:[3,4,5]},
+      {id:'fluid_tank',name:'Tank',icon:'🥫',zones:[3,4,5]},
+      {id:'relief_valve',name:'Valve',icon:'🚿',zones:[3,4,5]},
     ]},
-    {label:'Deep', zones:[3,5], items:[
-      {id:'evaporator',name:'Evaporator',icon:'♨️'},
-      {id:'separator',name:'Separator',icon:'🌀'},
-      {id:'rod_press',name:'Rod Press',icon:'🧰'},
-      {id:'lumen_panel',name:'Lumen',icon:'💡'},
-      {id:'accumulator',name:'Accum.',icon:'🔋'},
+    {label:'Refining', items:[
+      {id:'cracker',name:'Cracker',icon:'⚗️',zones:[2,5]},
+      {id:'refinery',name:'Refinery',icon:'🏭',zones:[2,5]},
+      {id:'evaporator',name:'Evaporator',icon:'♨️',zones:[3,5]},
+      {id:'separator',name:'Separator',icon:'🌀',zones:[3,5]},
+      {id:'rod_press',name:'Rod Press',icon:'🧰',zones:[3,5]},
     ]},
-    {label:'Bloom', zones:[4,5], items:[
-      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶'},
-      {id:'algae_vat',name:'Algae Vat',icon:'🌊'},
-      {id:'bioreactor',name:'Bioreactor',icon:'🦠'},
-      {id:'spore_incubator',name:'Incubator',icon:'🏺'},
-      {id:'hyper_synth',name:'Hyper Synth',icon:'🧬'},
-      {id:'reactor',name:'Reactor',icon:'☢️'},
-      {id:'heat_sink',name:'Heat Sink',icon:'❄️'},
+    {label:'Biology', items:[
+      {id:'algae_vat',name:'Algae Vat',icon:'🌊',zones:[4,5]},
+      {id:'bioreactor',name:'Bioreactor',icon:'🦠',zones:[4,5]},
+      {id:'spore_incubator',name:'Incubator',icon:'🏺',zones:[4,5]},
+      {id:'hyper_synth',name:'Hyper Synth',icon:'🧬',zones:[4,5]},
+    ]},
+    {label:'Clean Air', items:[
+      {id:'scrubber',name:'Scrubber',icon:'🌿',zones:[2,5]},
     ]},
     {label:'Singularity', zones:[5], unlock:'singularity', items:[
       {id:'singularity',name:'Singularity',icon:'🌌'},
@@ -5927,12 +5935,15 @@ function switchTab(tab){
   }
 }
 
+// The drawer groups for this zone: zone-only machines show in their zones, empty groups are hidden
+function drawerCats(tab){
+  return (DRAWER_DEFS[tab]||[]).filter(c=>(!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)))
+    .map(c=>({...c,items:c.items.filter(i=>!i.zones||i.zones.includes(G.zone))})).filter(c=>c.items.length);
+}
 function buildDrawer(){
   const tab=activeTab;
   if(tab!=='build'&&tab!=='tools') return;
-  // Zone-specific categories only show in their zones, once their tech is researched
-  let cats=(DRAWER_DEFS[tab]||[]).filter(c=>
-    (!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)));
+  let cats=drawerCats(tab);
   const catIdx=activeDrawerCat[tab]||0;
   const safeCatIdx=Math.min(catIdx,cats.length-1);
 
@@ -5942,6 +5953,9 @@ function buildDrawer(){
     const catsHtml=cats.map((c,i)=>`<button class="dcat-btn${i===safeCatIdx?' active':''}" onclick="setDrawerCat(${i})">${c.label}</button>`).join('');
     if(catsEl._html===catsHtml&&catsEl.querySelector('.dcat-btn'))return buildDrawerItems(cats,safeCatIdx);
     catsEl.innerHTML=catsHtml; catsEl._html=catsHtml;
+    // keep the selected group in view (Zone 5 has eleven, more than fit across a phone)
+    const act=catsEl.querySelector('.dcat-btn.active');
+    if(act){const l=act.offsetLeft, r=l+act.offsetWidth; if(l<catsEl.scrollLeft)catsEl.scrollLeft=l-8; else if(r>catsEl.scrollLeft+catsEl.clientWidth)catsEl.scrollLeft=r-catsEl.clientWidth+8;}
     // One-time hint: pulse the second category tab to show it's tappable
     if(!localStorage.getItem('ebi_drawerHintSeen')&&cats.length>1){
       const hint=document.createElement('span');
@@ -7830,8 +7844,7 @@ function renderSmogPanel(){
 // ── Power panel: tap the power gauge. Every generator and consumer, and what to add ──
 const GEN_FUEL={burner:['coal',BURNER_COAL_TICKS],generator:['coal',16],combustion_gen:['refined_fuel',32],reactor:['lum_rod',ROD_TICKS]};
 function buildableHere(t){
-  const cat=DRAWER_DEFS.build.find(c=>c.items.some(i=>i.id===t)); if(!cat)return false;
-  if(cat.zones&&!cat.zones.includes(G.zone))return false;
+  const cat=drawerCats('build').find(c=>c.items.some(i=>i.id===t)); if(!cat)return false;
   const done=u=>!u||G.research.done.includes(u);
   return done(cat.unlock)&&done(MDEFS[t].unlock);
 }
