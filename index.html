@@ -243,6 +243,7 @@ body.sheet-open #tutMini{display:block}
 .cc{display:inline-flex;align-items:center;gap:2px;font-size:var(--f4);white-space:nowrap}
 .cc.ok{color:var(--teal)} .cc.bad{color:#ff6b6b}
 .cc .pxi,.cc img{width:14px;height:14px}
+#upgradeBar .ub-cost{display:inline-flex;gap:6px;flex-wrap:wrap}
 #invStrip{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);height:34px;display:flex;align-items:center;gap:4px;padding:0 6px;overflow-x:auto;scrollbar-width:none;background:rgba(10,10,10,.88);border-bottom:1px solid var(--border2);z-index:140;cursor:pointer}
 #invStrip::-webkit-scrollbar{display:none}
 .is-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid transparent;background:var(--bg3);flex-shrink:0;font-size:var(--f5);color:var(--text)}
@@ -295,6 +296,14 @@ body.sheet-open #tutMini{display:block}
 #ghostBar .gb-t:active{border-color:var(--amber)}
 #ghostBar .gb-t .uico{width:22px;height:22px}
 #multiselBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid #42a5f5;padding:6px 10px;z-index:600}
+#upgradeBar{position:fixed;top:var(--ct);left:var(--cl);right:var(--cr);background:rgba(15,15,15,.97);border-bottom:2px solid var(--green);padding:6px 10px;z-index:600}
+#upgradeBar .ub-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#upgradeBar .ub-t{font-size:var(--f6);color:var(--green);flex:1 1 auto;min-width:90px;line-height:1.7}
+#upgradeBar .ub-chips{display:flex;gap:4px;flex-wrap:wrap;flex:1 1 100%}
+.ub-chip{font-family:var(--font);font-size:var(--f5);padding:4px 6px;border:1px solid var(--green);background:rgba(76,175,80,.12);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+.ub-chip.off{border-color:var(--border2);background:transparent;color:var(--text3);opacity:.6}
+.msel-btn.green{border-color:var(--green);color:var(--green)}
+.msel-btn.dim{color:var(--text2)}
 /* Tutorial: a floating card over the top of the map, collapsible to a pill */
 #tutHint{position:fixed;top:calc(var(--ct) + 40px);left:calc(var(--cl) + 8px);right:calc(var(--cr) + 8px);max-width:560px;margin:0 auto;z-index:150;
   background:rgba(22,15,4,.95);border:1px solid var(--amber);box-shadow:0 4px 18px rgba(0,0,0,.6);padding:8px 10px;display:flex;gap:8px;align-items:flex-start}
@@ -441,7 +450,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   #buildCost .bc-in{padding:4px 8px}
   #ghostBar{padding:5px 8px;gap:5px} #ghostBar button{min-height:34px;padding:6px 10px;font-size:var(--f6)}
   #ghostBar .gb-t{min-width:34px;padding:4px} #ghostBar .gb-t .uico{width:18px;height:18px}
-  #multiselBar{padding:4px 8px} .msel-btn{min-height:32px;padding:6px 8px}
+  #multiselBar,#upgradeBar{padding:4px 8px} .msel-btn{min-height:32px;padding:6px 8px}
   #resInfo{width:min(300px,40vw)}
   .modal{width:min(460px,72vw)}
   .menu-tile{min-height:52px;padding:5px 3px;gap:4px} .mt-ic .uico{width:22px;height:22px}
@@ -476,7 +485,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.4 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -531,6 +540,9 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <button onclick="multiselClear()"      class="msel-btn dim"              >✕ CLEAR</button>
   </div>
 </div>
+
+<!-- Upgrade tool bar: pick an area, then upgrade everything in it one tier -->
+<div id="upgradeBar" class="hidden"></div>
 
 <!-- Ghost paste confirm bar, shown during blueprint holding and multisel pasting -->
 <div id="ghostBar" class="hidden">
@@ -641,7 +653,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.4';
+const VER      = '2.0.6';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1217,6 +1229,7 @@ const DRAWER_DEFS = {
       {id:'undo',name:'Undo',icon:'↶',noMachine:true,action:'undoLast()'},
       {id:'select',name:'Select',icon:'👆',noMachine:true},
       {id:'multisel',name:'Multi-Sel',icon:'⬚',noMachine:true},
+      {id:'upgrade',name:'Upgrade',icon:'⬆',noMachine:true},
       {id:'demolish',name:'Demolish',icon:'💥',noMachine:true},
       {id:'rotate',name:'Rotate',icon:'↻',noMachine:true},
       {id:'move',name:'Move',icon:'✥',noMachine:true},
@@ -2012,20 +2025,22 @@ function machineSpr(type,frame,on){
   return mkSpr(`m:${type}:${fr}:${on?1:0}`,sw,sh,a=>art(a,fr,on));
 }
 // Belt tread: drawn facing right, rotated at draw time; 4 frames scroll the ridges
-function beltSpr(fr){
-  return mkSpr(`belt:${fr}`,16,16,({R,P})=>{
+function beltSpr(fr,tier=1){
+  const stud=BELT_TIER_COL[tier]||BELT_TIER_COL[1], rail=tier>1?shade(stud,-.45):'#5a5a5a';
+  return mkSpr(`belt:${fr}:${tier}`,16,16,({R,P})=>{
     R(0,0,16,16,'#1a1a1a'); R(0,2,16,12,'#2b2b2b');
     for(let x=0;x<16;x++){if((x+fr)%4===0)R(x,3,1,10,'#3c3c3c');}
-    R(0,1,16,1,'#5a5a5a'); R(0,14,16,1,'#5a5a5a'); R(0,0,16,1,'#0e0e0e'); R(0,15,16,1,'#0e0e0e');
-    for(let x=2;x<16;x+=8){P(x+fr*2%8,1,'#f5a623');}
+    R(0,1,16,1,rail); R(0,14,16,1,rail); R(0,0,16,1,'#0e0e0e'); R(0,15,16,1,'#0e0e0e');
+    for(let x=2;x<16;x+=8){P(x+fr*2%8,1,stud);if(tier>1)P(x+fr*2%8,14,stud);}
   });
 }
 
 // Belt corner, drawn for a belt facing right. turn 1: fed from the top; turn 3: fed from the bottom.
 // Each pixel takes the straight tread's colour by its radius (across the belt) and angle (along it),
 // so rails, ridges and the amber studs line up with the straight belts on both sides.
-function beltCornerSpr(fr,turn){
-  return mkSpr(`beltc:${turn}:${fr}`,16,16,({P})=>{
+function beltCornerSpr(fr,turn,tier=1){
+  const stud=BELT_TIER_COL[tier]||BELT_TIER_COL[1], rail=tier>1?shade(stud,-.45):'#5a5a5a';
+  return mkSpr(`beltc:${turn}:${fr}:${tier}`,16,16,({P})=>{
     const cy=turn===1?0:16;
     for(let y=0;y<16;y++)for(let x=0;x<16;x++){
       const dx=x+.5-16, dy=y+.5-cy, r=Math.hypot(dx,dy); if(r>=16)continue;
@@ -2034,8 +2049,8 @@ function beltCornerSpr(fr,turn){
       const yv=turn===1?Math.floor(r):15-Math.floor(r);
       let c='#2b2b2b';
       if(yv===0||yv===15)c='#0e0e0e';
-      else if(yv===1)c=((along-2-fr*2)%8+8)%8===0?'#f5a623':'#5a5a5a';
-      else if(yv===14)c='#5a5a5a';
+      else if(yv===1)c=((along-2-fr*2)%8+8)%8===0?stud:rail;
+      else if(yv===14)c=tier>1&&((along-2-fr*2)%8+8)%8===0?stud:rail;
       else if(yv>=3&&yv<=12&&(along+fr)%4===0)c='#3c3c3c';
       P(x,y,c);
     }
@@ -3045,11 +3060,10 @@ function draw(){
 
         if(TEX_PIXEL){
           // Tread scrolls at the real belt speed
-          const bs=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
-          const fr=Math.floor(at*bs*16)&3;
+          const tier=m.tier||1, fr=Math.floor(at*beltBaseSpeed()*beltTierMult(m)*16)&3;
           turn=beltTurn(m);
           ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
-          ctx.drawImage(turn?beltCornerSpr(fr,turn):beltSpr(fr),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
+          ctx.drawImage(turn?beltCornerSpr(fr,turn,tier):beltSpr(fr,tier),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
         } else {
         // Full dark surface
         ctx.fillStyle=BELT_BG; ctx.fillRect(px,py,ts,ts);
@@ -3092,9 +3106,9 @@ function draw(){
     }
   }
   // Belt items: drawn after every belt tile so none are clipped at an edge or covered by the next belt
-  const bSpd=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
+  const bSpd=beltBaseSpeed();
   const bSub=Math.min(1,(now-lastTickMs)/tickInterval());
-  for(const[tile,m,tx,ty,turn]of beltQ)drawBeltItems(tile,m.dir,tx,ty,turn,ts,cx,cy,bSpd,bSub,'belt');
+  for(const[tile,m,tx,ty,turn]of beltQ)drawBeltItems(tile,m.dir,tx,ty,turn,ts,cx,cy,bSpd*beltTierMult(m),bSub,'belt');
 
   // Multi-tile machines
   const drawn=new Set();
@@ -3321,15 +3335,16 @@ function draw(){
     const elapsed=now-arm.stateStart;
     const insEase=t=>t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
     let curAngle=srcAngle;
-    if(arm.state==='grabbing')curAngle=srcAngle+(destAngle-srcAngle)*insEase(Math.min(1,elapsed/insMs(INS_GRAB_MS)));
+    if(arm.state==='grabbing')curAngle=srcAngle+(destAngle-srcAngle)*insEase(Math.min(1,elapsed/insMs(INS_GRAB_MS,m)));
     else if(arm.state==='depositing'||arm.state==='waiting')curAngle=destAngle;
-    else if(arm.state==='returning')curAngle=destAngle+(srcAngle-destAngle)*insEase(Math.min(1,elapsed/insMs(INS_RETURN_MS)));
+    else if(arm.state==='returning')curAngle=destAngle+(srcAngle-destAngle)*insEase(Math.min(1,elapsed/insMs(INS_RETURN_MS,m)));
     const bcx=px+ts/2, bcy=py+ts/2;
     drawInsArm(ctx,isLong,arm.state==='waiting'?2:arm.item?1:0,bcx,bcy,curAngle,sc);
     if(arm.item&&ts>18){
       const reach=(INS_ARM_LEN[m.type]-.5)*sc;
       drawItem(ctx,arm.item,bcx+Math.cos(curAngle)*reach,bcy+Math.sin(curAngle)*reach,ts*.3);
     }
+    if((m.tier||1)>1&&ts>16){const u=Math.max(1,Math.round(ts/24));ctx.drawImage(tierSpr(m.tier),Math.floor(px+2),Math.floor(py+2),9*u,7*u);}
   }
 
   // Splitters, 1×2, draws a Y-split lane sprite
@@ -3350,6 +3365,7 @@ function draw(){
     // Pixel sprite drawn for flow to the right (two tiles stacked), turned to the splitter's direction
     ctx.save(); ctx.translate(px+pw/2,py+ph/2); ctx.rotate(m.dir*Math.PI/2);
     ctx.drawImage(machineSpr('splitter',Math.floor(at/2)&3,true),-ts/2,-ts,ts+.5,ts*2+.5); ctx.restore();
+    if((m.tier||1)>1&&ts>16){const u=Math.max(1,Math.round(ts/24));ctx.drawImage(tierSpr(m.tier),Math.floor(px+2),Math.floor(py+2),9*u,7*u);}
   }
 
   // Pipes, auto-connect to neighbouring pipes and fluid machines, core tinted by fluid
@@ -3390,17 +3406,18 @@ function draw(){
       const as=Math.floor(ts*.34);
       ctx.drawImage(arrowSpr(m.dir,linked?MACH_COL.tunnel:'#666'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);
     }
+    if((m.tier||1)>1&&ts>16){const u=Math.max(1,Math.round(ts/24));ctx.drawImage(tierSpr(m.tier),Math.floor(px+2),Math.floor(py+2),9*u,7*u);}
   }
 
   // Items on splitter cells and at tunnel mouths, drawn over their sprites
   for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
     const tile=G.map[ty][tx]; if(!tile.items.length||tile.mid===null)continue;
     const m=G.machines[tile.mid]; if(!m)continue;
-    if(m.type==='splitter')drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,'belt');
+    if(m.type==='splitter')drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd*beltTierMult(m),bSub,'belt');
     else if(m.type==='tunnel'){
       const p=m.tunnelId!==null&&G.machines[m.tunnelId];
       const isExit=p&&((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1])<0;
-      drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,isExit?'exit':'enter');
+      drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd*beltTierMult(m),bSub,isExit?'exit':'enter');
     }
   }
 
@@ -3498,6 +3515,25 @@ function draw(){
       }
     }
   }
+  if(activeTool==='upgrade'){
+    const us=upgState, gx2=us.mode==='selecting'?hov.x:us.x2, gy2=us.mode==='selecting'?hov.y:us.y2;
+    if(us.mode!=='idle'&&gx2>=0){
+      const px1=Math.min(us.x1,gx2)*ts-cx, py1=Math.min(us.y1,gy2)*ts-cy;
+      const pw=(Math.abs(gx2-us.x1)+1)*ts, ph=(Math.abs(gy2-us.y1)+1)*ts;
+      ctx.fillStyle='rgba(76,175,80,.08)'; ctx.fillRect(px1,py1,pw,ph);
+      ctx.strokeStyle='#4caf50'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.strokeRect(px1,py1,pw,ph); ctx.setLineDash([]);
+    }
+    if(us.mode==='selected'){
+      const will=new Set(upgPlan().list.map(m=>m.id));
+      for(const id of us.ids){
+        const m=G.machines[id]; if(!m)continue;
+        const[mw,mh]=machSize(m), px=m.x*ts-cx, py=m.y*ts-cy, on=will.has(id);
+        ctx.fillStyle=on?'rgba(76,175,80,.2)':'rgba(0,0,0,.35)'; ctx.fillRect(px,py,mw*ts,mh*ts);
+        ctx.strokeStyle=on?'#4caf50':'#555'; ctx.lineWidth=2; ctx.strokeRect(px+1,py+1,mw*ts-2,mh*ts-2);
+        if(on&&ts>14){const as=Math.floor(Math.min(mw,mh)*ts*.4);ctx.drawImage(arrowSpr(3,'#4caf50'),Math.floor(px+mw*ts-as-2),Math.floor(py+mh*ts-as-2),as,as);}
+      }
+    }
+  }
   if(activeTool==='blueprint'){
     const bp=blueprintState;
     if(bp.mode==='selecting'){
@@ -3588,6 +3624,7 @@ function clampCam(){
 // With the Belt or Pipe tool, press on the ghost and drag: the line follows your finger tile by tile
 // (drag back over it to shorten it). Each belt faces the next tile, ✓ PLACE builds the whole line
 // and one undo takes it all back. Near the edge of the map view the camera scrolls along.
+UI_ART.upgrade=UI_ART.up; // the EDIT tab's Upgrade tool
 const LINE_TOOLS=new Set(['belt','pipe']);
 const LINE_MAX=200;
 let line={path:[],drawing:false,pt:null,bot:0};
@@ -3854,6 +3891,20 @@ function handleTap(tile,isLong){
     }
     return;
   }
+  if(activeTool==='upgrade'){
+    const us=upgState;
+    if(us.mode!=='selecting'){us.x1=x;us.y1=y;us.x2=x;us.y2=y;us.mode='selecting';us.ids=[];}
+    else{
+      us.x2=x; us.y2=y;
+      const ids=new Set();
+      for(let ty=Math.min(us.y1,y);ty<=Math.max(us.y1,y);ty++)for(let tx=Math.min(us.x1,x);tx<=Math.max(us.x1,x);tx++){
+        const mid=G.map[ty][tx].mid; if(mid!==null&&TIER_TYPES.includes(G.machines[mid]?.type))ids.add(mid);
+      }
+      us.ids=[...ids]; us.mode=us.ids.length?'selected':'idle';
+      if(!us.ids.length){toast('No upgradable machines there','wrn');sfx('error');}
+    }
+    updateUpgradeBar(); return;
+  }
   if(activeTool==='multisel'){
     const ms=multiselState;
     if(ms.mode==='idle'){
@@ -3960,7 +4011,7 @@ function handleTap(tile,isLong){
     return;
   }
   // Tapping a bare resource tile with any non-building tool opens mine popup
-  const noMachineTools=['select','demolish','rotate','move','multisel','blueprint'];
+  const noMachineTools=['select','demolish','rotate','move','multisel','upgrade','blueprint'];
   if(t.type===T_RESOURCE&&t.mid===null&&noMachineTools.includes(activeTool)){
     openResInfo(t.res,x,y); return;
   }
@@ -4402,7 +4453,7 @@ function gameTick(){
   const nowMs=performance.now();
   // Skipped while a finger/button is down: rebuilding a panel mid-tap swaps the
   // button under the finger and the tap is silently lost
-  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();if(MDEFS[activeTool])updateBuildHUD();}
+  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();if(MDEFS[activeTool])updateBuildHUD();if(activeTool==='upgrade')updateUpgradeBar();}
   if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
@@ -4989,7 +5040,8 @@ function runBelts(){
     if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
     // No clamp at 1: the overshoot carries into the next tile (BELT_DONE absorbs float error, 10×0.1 < 1),
     // so each tile takes exactly its time and items never freeze at the edge for a tick
-    for(const it of tile.items)it.prog=Math.min(1+beltSpeed,it.prog+beltSpeed);
+    const sp=beltSpeed*beltTierMult(m);
+    for(const it of tile.items)it.prog=Math.min(1+sp,it.prog+sp);
   }
 
   // Transfer completed items
@@ -5114,7 +5166,14 @@ const BURNER_COAL_TICKS=24;
 const INS_GRAB_MS   = 800;
 const INS_DEPOSIT_MS= 80;
 const INS_RETURN_MS = 800;
-function insMs(ms){return ms/(G?.devTickSpeed||1);}
+// Upgraded inserters swing faster: T2 2.5×, T3 4× (a T2/T3 Miner outruns a T1 arm)
+const INS_TIER_SPEED={1:1,2:2.5,3:4};
+// Upgraded belts, splitters and tunnels carry items faster: T2 1.5×, T3 2×. Studs and rails show the tier
+const BELT_TIER_SPEED={1:1,2:1.5,3:2};
+const BELT_TIER_COL={1:'#f5a623',2:'#e53935',3:'#42a5f5'};
+function beltBaseSpeed(){return (G.research.done.includes('logistics')?.15:.1)*perkMult().belt;} // tiles per tick
+function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
+function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?INS_TIER_SPEED[m.tier||1]||1:1);}
 
 // ── Shared outputs ──
 // Several inserters on one machine's output side (or one chest) take turns: each item goes to the ready
@@ -5205,10 +5264,10 @@ function stepInserter(m){
     m.lastTransfer=G.tick;
 
   } else if(arm.state==='grabbing'){
-    if(now-arm.stateStart>=insMs(INS_GRAB_MS)){arm.state='depositing';arm.stateStart+=insMs(INS_GRAB_MS);}
+    if(now-arm.stateStart>=insMs(INS_GRAB_MS,m)){arm.state='depositing';arm.stateStart+=insMs(INS_GRAB_MS,m);}
 
   } else if(arm.state==='depositing'){
-    if(now-arm.stateStart<insMs(INS_DEPOSIT_MS))return;
+    if(now-arm.stateStart<insMs(INS_DEPOSIT_MS,m))return;
     if(dst.mid!==null){
       const dm=G.machines[dst.mid];
       if(dm&&(dm.type==='belt'||dm.type==='tunnel')){
@@ -5240,7 +5299,7 @@ function stepInserter(m){
     }
 
   } else if(arm.state==='returning'){
-    if(now-arm.stateStart>=insMs(INS_RETURN_MS)){arm.state='idle';arm.stateStart+=insMs(INS_RETURN_MS);}
+    if(now-arm.stateStart>=insMs(INS_RETURN_MS,m)){arm.state='idle';arm.stateStart+=insMs(INS_RETURN_MS,m);}
   }
 }
 
@@ -5423,7 +5482,7 @@ function updateSelectBtn(){
 
 // Tabs that open a panel instead of the drawer
 const TAB_PANELS={craft:'craft',research:'research',goal:'rocket'};
-const EDIT_TOOLS=new Set(['multisel','demolish','rotate','move','blueprint']);
+const EDIT_TOOLS=new Set(['multisel','upgrade','demolish','rotate','move','blueprint']);
 function switchTab(tab){
   closeResInfo(); // any tab or menu closes the manual mining popup
   // Closing EDIT (or leaving it for another tab) drops back to Select, cancelling a half-done move or selection
@@ -5572,6 +5631,7 @@ function setDrawerCat(idx){
 
 function setTool(id){
   lineClear();
+  if(activeTool==='upgrade'&&id!=='upgrade')upgClear();
   if(LINE_TOOLS.has(id)){
     let seen=true; try{seen=!!localStorage.getItem('ebi_lineHint');localStorage.setItem('ebi_lineHint','1');}catch(e){}
     if(!seen)setTimeout(()=>toast('Drag from the ghost to draw a line','ok'),400);
@@ -5613,6 +5673,7 @@ function setTool(id){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); return;
   }
   activeTool=id; buildInfoOpen=false; closeResInfo(); buildDrawer(); updateToolTip(); updateSelectBtn(); updateBuildHUD();
+  if(id==='upgrade'){upgState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[],off:new Set()};updateUpgradeBar();}
   if(def&&canvas){const ts=TILE*G.cam.zoom;hov={x:Math.floor((G.cam.x+canvas.clientWidth/2)/ts),y:Math.floor((G.cam.y+canvas.clientHeight*.45)/ts)};}
 }
 
@@ -5778,8 +5839,10 @@ function machineRates(m){
   } else if(def.pumps){
     if(m.mineRes===def.pumps)R.out[def.pumps]=per(2)*tierMult;
     else R.notes.push('Place it on its pool');
+  } else if(BELT_TYPES.includes(m.type)){
+    R.notes.push(`Carries items at ${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s`);
   } else if(m.type==='inserter'||m.type==='long_inserter'){
-    R.notes.push(`Moves up to ${fmtRate(60000/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
+    R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
   } else if(m.recipe&&RECIPES[m.recipe]){
     const rec=RECIPES[m.recipe];
     const life=def.living?lifeStage(m).mult:1;
@@ -6007,7 +6070,7 @@ function renderMachPanel(){
   if(def.power<0)html+=irow('Generating',`${Math.abs(def.power)}kW`);
   html+=irow('Total produced',fmt(m.produced));
   html+=ratesHtml(m);
-  if((m.tier||1)>1) html+=irow('Tier',`<span style="color:${(m.tier||1)>=3?'var(--teal)':'var(--amber)'}">T${m.tier||1} (${m.tier===3?'2×':'1.5×'} speed/yield)</span>`);
+  if((m.tier||1)>1) html+=irow('Tier',`<span style="color:${(m.tier||1)>=3?'var(--teal)':'var(--amber)'}">T${m.tier||1} (${tierBonus(m.type,m.tier||1)})</span>`);
   if(Object.keys(machineRates(m).out).length){ // measured over the last minute, next to the expected PER MINUTE figures
     const rate=itemsPerMin(m);
     const rateCol=rate===0?'var(--text3)':rate<2?'var(--amber)':'var(--green)';
@@ -6138,13 +6201,12 @@ function renderMachPanel(){
   <button class="full-btn red" onclick="tryRemove(${m.x},${m.y});togglePanel('machine')" style="margin-bottom:5px">&#x1F4A5; DEMOLISH</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
-  const UPGRADEABLE=['miner','blast_furnace','electric_smelter','assembler','lab'];
   const MODULE_DEFS={
     speed_module:{name:'Speed Module', icon:'🔵', desc:'+25% speed'},
     prod_module: {name:'Prod. Module', icon:'🟢', desc:'+25% yield'},
     eff_module:  {name:'Eff. Module',  icon:'🔴', desc:'-30% power'},
   };
-  if(UPGRADEABLE.includes(m.type)){
+  if(MODULE_TYPES.includes(m.type)){
     const tier=m.tier||1;
     const slots=tier-1; // T1=0, T2=1, T3=2
     if(slots>0){
@@ -6174,12 +6236,11 @@ function renderMachPanel(){
   }
 
   // Tier upgrade
-  if(UPGRADEABLE.includes(m.type)){
+  if(TIER_TYPES.includes(m.type)){
     const tier=m.tier||1;
-    const TIER_BONUS={2:'1.5× speed & yield',3:'2× speed & yield'};
     if(tier<3){
       const nextTier=tier+1;
-      const cost=TIER_COSTS[nextTier];
+      const cost=tierCost(m.type,nextTier);
       const canAfford=Object.entries(cost).every(([k,v])=>(G.inv[k]||0)>=v);
       const costStr=Object.entries(cost).map(([k,v])=>{
         const have=G.inv[k]||0;
@@ -6187,7 +6248,7 @@ function renderMachPanel(){
         return `${v}× ${ITEMS[k]?.name||k} <span style="color:${col}">(${have})</span>`;
       }).join(', ');
       html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:7px;margin-top:6px">
-        <div style="font-size:var(--f5);color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier}: ${TIER_BONUS[nextTier]}</div>
+        <div style="font-size:var(--f5);color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier}: ${tierBonus(m.type,nextTier)}</div>
         <div style="font-size:var(--f4);color:var(--text3);margin-bottom:5px">${costStr}</div>
         <button class="mini-btn ${canAfford?'teal':'dim'}" onclick="upgradeMachine(${m.id})" ${canAfford?'':'disabled'}>⬆ UPGRADE</button>
       </div>`;
@@ -6276,17 +6337,36 @@ function rotateM(id){
   toast(`Direction: ${D_ARR[m.dir]}`,'ok');
 }
 
-// Tier upgrade costs, paid per step (T1→T2, then T2→T3)
+// Tier upgrade costs, paid per step (T1→T2, then T2→T3). Inserters are cheap: you upgrade lots of them.
 const TIER_COSTS={
   2:{iron_plate:10,iron_gear:5,circuit:2},
   3:{steel_plate:8,circuit:6,engine:2},
 };
+const INS_TIER_COSTS={
+  2:{iron_gear:2,circuit:1},
+  3:{steel_plate:1,circuit:2},
+};
+const BELT_TIER_COSTS={ // per belt tile, splitter or tunnel
+  2:{iron_gear:1},
+  3:{steel_plate:1},
+};
+// Machines that take tier upgrades; module slots are only for the production machines
+const MODULE_TYPES=['miner','blast_furnace','electric_smelter','assembler','lab'];
+const BELT_TYPES=['belt','splitter','tunnel'];
+const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES];
+const isInserter=t=>t==='inserter'||t==='long_inserter';
+function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:TIER_COSTS)[tier];}
+function tierBonus(type,tier){
+  if(isInserter(type))return `${INS_TIER_SPEED[tier]}× swing speed`;
+  if(BELT_TYPES.includes(type))return `${BELT_TIER_SPEED[tier]}× belt speed`;
+  return tier===3?'2× speed & yield':'1.5× speed & yield';
+}
 function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
 // Everything a machine is worth: build cost, each upgrade step up to its tier, installed modules.
 // Demolish refunds this; paste, blueprints and undo rebuilds charge it.
 function machineWorth(type,tier,modules){
   const t=addCost({},MDEFS[type]?.cost||{});
-  for(let k=2;k<=Math.min(3,tier||1);k++)addCost(t,TIER_COSTS[k]);
+  for(let k=2;k<=Math.min(3,tier||1);k++)addCost(t,tierCost(type,k));
   for(const mod of modules||[])if(mod)t[mod]=(t[mod]||0)+1;
   return t;
 }
@@ -6294,7 +6374,7 @@ function upgradeMachine(id){
   const m=G.machines[id]; if(!m)return;
   const tier=m.tier||1; if(tier>=3)return;
   const nextTier=tier+1;
-  const cost=TIER_COSTS[nextTier];
+  const cost=tierCost(m.type,nextTier);
   for(const[item,need]of Object.entries(cost)){
     if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');return;}
   }
@@ -7055,6 +7135,51 @@ function multiselClear(){
   document.getElementById('ghostBar')?.classList.add('hidden');
   setTool('select');
 }
+// ── Upgrade tool ──
+// EDIT → Upgrade: tap two corners to pick an area, then ⬆ UPGRADE raises everything in it one tier
+// (Miners, furnaces, assemblers, labs, inserters). Chips filter by machine type.
+let upgState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[],off:new Set()};
+function upgPlan(){
+  const list=upgState.ids.map(id=>G.machines[id]).filter(m=>m&&TIER_TYPES.includes(m.type)&&(m.tier||1)<3&&!upgState.off.has(m.type));
+  const cost={}; for(const m of list)addCost(cost,tierCost(m.type,(m.tier||1)+1));
+  return {list,cost};
+}
+function updateUpgradeBar(){
+  const bar=document.getElementById('upgradeBar'); if(!bar)return;
+  if(activeTool!=='upgrade'){bar.classList.add('hidden');return;}
+  bar.classList.remove('hidden');
+  const us=upgState, close=`<button class="msel-btn dim" onclick="setTool('select')">✕ DONE</button>`;
+  if(us.mode!=='selected'){
+    setHtml(bar,`<div class="ub-row"><span class="ub-t">⬆ UPGRADE: ${us.mode==='selecting'?'now tap the opposite corner':'tap one corner of the area'}</span>${close}</div>`);
+    return;
+  }
+  const all=us.ids.map(id=>G.machines[id]).filter(Boolean), types={};
+  for(const m of all){const t=types[m.type]||(types[m.type]={n:0,max:0});t.n++;if((m.tier||1)>=3)t.max++;}
+  const chips=Object.entries(types).map(([t,c])=>`<button class="ub-chip${us.off.has(t)?' off':''}" onclick="upgToggle('${t}')" title="${MDEFS[t].name}">${iconHtml(t)}×${c.n-c.max}${c.max?`<span style="color:var(--teal)">+${c.max} MAX</span>`:''}</button>`).join('');
+  const {list,cost}=upgPlan(), ok=G.devFreeBuild||Object.entries(cost).every(([k,n])=>(G.inv[k]||0)>=n);
+  setHtml(bar,`<div class="ub-row"><span class="ub-t">${list.length?`${list.length} to upgrade`:'Nothing left to upgrade'}</span>
+    ${list.length?`<span class="ub-cost">${G.devFreeBuild?'<span class="cc ok">FREE</span>':costChips(cost)}</span>`:''}
+    <button class="msel-btn ${list.length&&ok?'green':'dim'}" onclick="upgradeSelected()" ${list.length?'':'disabled'}>⬆ UPGRADE</button>${close}
+    <div class="ub-chips">${chips}</div></div>`);
+}
+function upgToggle(t){const o=upgState.off;o.has(t)?o.delete(t):o.add(t);updateUpgradeBar();}
+function upgradeSelected(){
+  const {list}=upgPlan(); if(!list.length)return;
+  let done=0, short=0;
+  for(const m of list){
+    const c=tierCost(m.type,(m.tier||1)+1);
+    if(!G.devFreeBuild){
+      if(!Object.entries(c).every(([k,n])=>(G.inv[k]||0)>=n)){short++;continue;}
+      for(const[k,n]of Object.entries(c))G.inv[k]-=n;
+    }
+    m.tier=(m.tier||1)+1; done++;
+  }
+  if(done){sfx('research');saveGame();}else sfx('error');
+  toast(done?`Upgraded ${done} machine${done>1?'s':''}${short?` · ${short} need more materials`:''}`:'Not enough materials',done?'ok':'bad');
+  updateHUD(); updateUpgradeBar();
+}
+function upgClear(){upgState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[],off:new Set()};document.getElementById('upgradeBar')?.classList.add('hidden');}
+
 function multiselCopy(){
   const ms=multiselState; if(!ms.ids.length)return;
   const machines=ms.ids.map(id=>G.machines[id]).filter(Boolean);
@@ -8329,7 +8454,7 @@ function resetArmClocks(){
   for(const m of Object.values(G.machines||{})){
     if(m.lastTransferMs)m.lastTransferMs=0;
     if(!m._arm)continue;
-    if(m._arm.item)m._arm={state:'depositing',stateStart:now-insMs(INS_DEPOSIT_MS),item:m._arm.item};
+    if(m._arm.item)m._arm={state:'depositing',stateStart:now-insMs(INS_DEPOSIT_MS,m),item:m._arm.item};
     else delete m._arm;
   }
 }
