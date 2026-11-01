@@ -387,6 +387,32 @@ const r=await p.evaluate(async()=>{
     const sc=put('scrubber',30,40); for(let t=0;t<480;t++){feed();sc.inBuf.refined_fuel=50;run(1);} const fell=G.smog;
     G.zone=z0;
     ok('smog_rises_and_scrubs',rose>=25&&fell<60&&r0===r60&&note.includes('Smog is slowing it')&&note.includes('smog/min'),{rose:+rose.toFixed(1),fell:+fell.toFixed(1),r0,r60}); }
+  // ── power panel: tap the gauge; generators, consumers, idle ones, and what to build
+  { reset(); G.research.done=Object.keys(TECHS).filter(k=>!TECHS[k].zone||TECHS[k].zone<=1);
+    const g1=put('generator',2,2); g1.inBuf.coal=50; const g2=put('generator',2,5);   // one fuelled, one empty
+    for(let i=0;i<6;i++){const a=put('assembler',10+i*3,10); a.recipe='mk_gear';}
+    run(2); updateHUD(); document.querySelector('#hudRes [aria-label="Power details"]')?.click(); const opened=openPanel==='power';
+    const r1=powerReport(), h1=document.getElementById('pPowerBody').innerText;
+    g2.inBuf.coal=50; run(2); refreshOpenPanel(); const r2=powerReport(), h2=document.getElementById('pPowerBody').innerText;
+    closePanel('power');
+    ok('power_panel',opened&&r1.supply===60&&Math.abs(r1.demand-72*perkMult().power)<1e-9&&h1.includes('SHORT')&&h1.includes('idle: 1 no fuel')&&h1.includes('FIND IDLE GENERATORS (1)')
+      &&h1.includes('enough')&&h1.includes('Assembler')&&r2.supply===120&&h2.includes('Running')&&h2.includes('Burning')&&h2.includes('30 coal'),
+      {opened,s1:r1.supply,d1:r1.demand,s2:r2.supply,h1:h1.slice(0,500)}); }
+  // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
+  { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
+    res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);
+    const ck=put('cracker',20,40); ck.recipe='z2_crack'; const rf=put('refinery',24,40); rf.recipe='z2_refine'; put('refinery',28,40);
+    const feed=()=>{ck.inBuf.crude_oil=50;rf.inBuf.raw_fuel=50;ck.outBuf={};rf.outBuf={};};
+    for(let t=0;t<8;t++){feed();run(1);}
+    updateHUD(); document.querySelector('#hudRes [aria-label="Smog details"]')?.click(); const opened=openPanel==='smog';
+    const rep=smogReport(); const h1=document.getElementById('pSmogBody').innerText;
+    const sc=put('scrubber',34,40); feed(); run(1); refreshOpenPanel(); const h2=document.getElementById('pSmogBody').innerText;
+    sc.inBuf.refined_fuel=50; feed(); run(1); refreshOpenPanel(); const h3=document.getElementById('pSmogBody').innerText;
+    findMachines(String(sc.id)); const found=openPanel==='machine'&&inspectId===sc.id; closePanel('machine');
+    G.zone=z0; G.smog=0;
+    ok('smog_panel',opened&&Math.abs(rep.make-50)<1e-9&&rep.needNow===1&&rep.needMax===1&&h1.includes('Add 1 Scrubber')&&h1.includes('idle: 1 waiting for input')
+      &&h2.includes('1 out of refined fuel')&&h2.includes('FIND IDLE SCRUBBERS (1)')&&h3.includes('Enough')&&h3.includes('1 cleaning')&&found,
+      {opened,make:rep.make,need:rep.needNow,found,h1:h1.slice(0,400)}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};

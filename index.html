@@ -99,6 +99,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .zone-tab.locked{opacity:.35}
 #hudRes{display:flex;gap:4px;align-items:center;padding:0 4px;flex-shrink:0}
 .hres{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.hres-tap{cursor:pointer;border:1px solid var(--border2);padding:2px 4px;margin:-3px 0}
+.hres-tap:active{background:var(--bg3)}
 .hres-icon{font-size:14px;line-height:1}
 .hres-val{color:var(--amber);font-size:var(--f8);min-width:32px}
 /* Slim HUD icon buttons */
@@ -487,7 +489,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.15 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.16 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -600,6 +602,16 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   <div class="pbody" id="pStatsBody"></div>
 </div>
 
+<div id="pPower" class="spanel">
+  <div class="ph"><span class="ph-title"><span data-ui="power"></span>POWER</span><button class="ph-x" onclick="togglePanel('power')">✕</button></div>
+  <div class="pbody" id="pPowerBody"></div>
+</div>
+
+<div id="pSmog" class="spanel">
+  <div class="ph"><span class="ph-title"><span data-ui="smog"></span>SMOG</span><button class="ph-x" onclick="togglePanel('smog')">✕</button></div>
+  <div class="pbody" id="pSmogBody"></div>
+</div>
+
 <div id="pAchieve" class="spanel">
   <div class="ph"><span class="ph-title"><span data-ui="achievements"></span>ACHIEVEMENTS</span><button class="ph-x" onclick="togglePanel('achieve')">✕</button></div>
   <div class="pbody" id="pAchieveBody"></div>
@@ -655,7 +667,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.15';
+const VER      = '2.0.16';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -5529,7 +5541,7 @@ function updateHUD(){
   const free=G.power.out-G.power.in;
   const hasConsumers=G.power.in>0;
   const pwrLabel=hasConsumers?(free>=0?`+${fmtKW(free)}`:`-${fmtKW(-free)}`):fmtKW(G.power.out);
-  let html=`<div class="hres"><span class="hres-icon">${uiIcon('power')}</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
+  let html=`<div class="hres hres-tap" onclick="togglePanel('power')" role="button" aria-label="Power details"><span class="hres-icon">${uiIcon('power')}</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   html+=hudHazardsHtml();
   setHtml(el,html);
   updateInvStrip();
@@ -5538,10 +5550,10 @@ function updateHUD(){
 // Zone hazard gauges shown next to power in the HUD
 function hudHazardsHtml(){
   let html='';
-  const gauge=(icon,val,col)=>`<div class="hres" style="margin-left:4px"><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
+  const gauge=(icon,val,col,tap)=>`<div class="hres${tap?' hres-tap':''}" style="margin-left:4px"${tap?` onclick="${tap}" role="button" aria-label="Smog details"`:''}><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
   if(zoneHas('smog')){
     const smog=Math.round(G.smog||0);
-    html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)');
+    html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)',"togglePanel('smog')");
   }
   if(zoneHas('pressure')){
     const n=worstNet();
@@ -5905,6 +5917,8 @@ function togglePanel(id){
   if(id==='perks')   renderPerksPanel();
   if(id==='dev')     renderDevPanel();
   if(id==='stats')   renderStatsPanel();
+  if(id==='smog')    renderSmogPanel();
+  if(id==='power')   renderPowerPanel();
   if(id==='achieve') renderAchievePanel();
   if(id==='blueprint') renderBlueprintPanel();
   if(id==='recipes') renderRecipesPanel();
@@ -5933,6 +5947,8 @@ function refreshOpenPanel(){
   if(openPanel==='rocket')  renderRocketPanel();
   if(openPanel==='dev')     renderDevPanel();
   if(openPanel==='stats')   renderStatsPanel();
+  if(openPanel==='smog')    renderSmogPanel();
+  if(openPanel==='power')   renderPowerPanel();
   if(openPanel==='achieve') renderAchievePanel();
   if(openPanel==='blueprint') renderBlueprintPanel();
   if(openPanel==='recipes') renderRecipesPanel();
@@ -6890,7 +6906,8 @@ function hazardPanelHtml(){
     html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">
       <div style="font-size:var(--f5);color:var(--text3);margin-bottom:4px">🌫️ SMOG: ${Math.round(G.smog||0)}%, efficiency: ${Math.round((100-(G.smog||0)))}%</div>
       <div class="prog-wrap"><div class="prog-fill amber" style="width:${Math.round(G.smog||0)}%"></div></div>
-      ${(()=>{const b=smogBudget(), net=b.make-b.clear; return `<div style="font-size:var(--f4);color:var(--text3);margin-top:4px;line-height:1.8">+${fmtRate(b.make)}/min from ${b.makers} machine${b.makers===1?'':'s'} · −${fmtRate(b.clear)}/min from ${b.scrubbers} scrubber${b.scrubbers===1?'':'s'} and clearing<br><span style="color:${net>0?'var(--red)':'var(--green)'}">${net>0?`Rising ${fmtRate(net)}/min: add a Scrubber (clears ${SCRUBBER_SMOG_MIN}/min)`:'Falling or steady'}</span></div>`;})()}
+      ${(()=>{const b=smogBudget(), net=b.make-b.clear; return `<div style="font-size:var(--f4);color:var(--text3);margin-top:4px;line-height:1.8">+${fmtRate(b.make)}/min from ${b.makers} machine${b.makers===1?'':'s'} · -${fmtRate(b.clear)}/min from ${b.scrubbers} scrubber${b.scrubbers===1?'':'s'} and clearing<br><span style="color:${net>0?'var(--red)':'var(--green)'}">${net>0?`Rising ${fmtRate(net)}/min: add a Scrubber (clears ${SCRUBBER_SMOG_MIN}/min)`:'Falling or steady'}</span></div>`;})()}
+      <button class="mini-btn teal" style="width:100%;margin-top:6px" onclick="togglePanel('smog')">SMOG DETAILS</button>
     </div>`;
   }
   if(zoneHas('pressure')){
@@ -7426,9 +7443,247 @@ function selectMachineById(id){
   G.cam.x=(m.x+mw/2)*ts - canvas.clientWidth/2;
   G.cam.y=(m.y+mh/2)*ts - canvas.clientHeight/2;
   clampCam();
-  closePanel('stats');
+  if(openPanel)closePanel(openPanel);
   openMachinePanel(m);
 }
+
+// ── Smog panel: tap the smog gauge. Every source, every Scrubber, and what to add ──
+function smogReport(){
+  const ms=Object.values(G.machines), pr=powerRatio()>0, smog=G.smog||0;
+  const groups={}, scr={running:0,standby:0,nofuel:0,nopower:0,paused:0,list:[],idle:[]};
+  let make=0, makeMax=0;
+  for(const m of ms){
+    if(SMOG_PER[m.type]){
+      const g=groups[m.type]||(groups[m.type]={type:m.type,total:0,working:0,rate:0,max:0,idle:{},ids:[]});
+      const each=machineSmog(m); g.total++; g.ids.push(m.id); g.max+=each; makeMax+=each;
+      if(machineWorking(m)){g.working++;g.rate+=each;make+=each;}
+      else {const r=smogIdleReason(m); g.idle[r]=(g.idle[r]||0)+1;}
+    }
+    if(m.type==='scrubber'){
+      scr.list.push(m.id);
+      const st=!m.active?'paused':!(m.inBuf.refined_fuel>0)?'nofuel':!pr?'nopower':smog>0?'running':'standby';
+      scr[st]++; if(st!=='running'&&st!=='standby')scr.idle.push(m.id);
+    }
+  }
+  const clear=SMOG_DECAY_MIN+SCRUBBER_SMOG_MIN*(scr.running+scr.standby);
+  const need=n=>Math.ceil(Math.max(0,n-SMOG_DECAY_MIN)/SCRUBBER_SMOG_MIN);
+  return {smog,groups:Object.values(groups),scr,make,makeMax,clear,net:make-clear,needNow:need(make),needMax:need(makeMax)};
+}
+function smogIdleReason(m){
+  if(!m.active)return 'paused';
+  if(m.type==='combustion_gen')return 'no fuel';
+  if((MDEFS[m.type].power||0)>0&&powerRatio()===0)return 'no power';
+  if(m.type==='oil_pump')return m.mineRes?'output full':'no oil';
+  if(!m.recipe)return 'no recipe';
+  if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50)return 'output full';
+  return 'waiting for input';
+}
+function fmtMins(min){
+  if(min<1)return `${Math.max(1,Math.round(min*60))}s`;
+  if(min<60)return `${Math.floor(min)}m ${String(Math.round((min%1)*60)).padStart(2,'0')}s`;
+  return `${Math.round(min/60*10)/10}h`;
+}
+let findMachN={};
+function findMachines(ids){ // cycle the camera through a list of machines
+  const list=String(ids).split(',').filter(id=>G.machines[id]); if(!list.length)return;
+  const k=list.join(','), i=(findMachN[k]||0)%list.length; findMachN[k]=i+1;
+  selectMachineById(+list[i]);
+}
+function renderSmogPanel(){
+  const el=document.getElementById('pSmogBody'); if(!el)return;
+  if(!zoneHas('smog')){setHtml(el,'<div class="card" style="font-size:var(--f5);color:var(--text3);line-height:1.8">There is no smog in this zone.</div>');return;}
+  const r=smogReport(), pct=Math.round(r.smog), eff=Math.round(Math.max(0.1,(100-r.smog)/100)*100);
+  const col=pct>70?'var(--red)':pct>40?'var(--amber)':'var(--teal)';
+  const rate=n=>fmtRate(Math.abs(n));
+  const small='font-size:var(--f4);color:var(--text3)';
+  let trend;
+  if(r.net>0.001)trend=pct>=100?`<span style="color:var(--red)">At 100%: machines run at 10%</span>`:`<span style="color:var(--red)">Rising ${rate(r.net)}/min · 100% in ${fmtMins((100-r.smog)/r.net)}</span>`;
+  else if(r.smog>0.05)trend=`<span style="color:var(--green)">Falling ${rate(r.net)}/min · clear in ${fmtMins(r.smog/-r.net)}</span>`;
+  else trend=`<span style="color:var(--green)">Clear air</span>`;
+  let html=`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <span style="font-size:var(--f10);color:${col}">${pct}%</span>
+      <span style="font-size:var(--f5);color:var(--text2)">Machines at <span style="color:${eff<100?'var(--amber)':'var(--green)'}">${eff}%</span> speed</span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill amber" style="width:${pct}%"></div></div>
+    <div style="font-size:var(--f5);margin-top:6px;line-height:1.8">${trend}</div>
+    <div style="${small};line-height:1.8">Smog slows every Miner, Pump and machine by the same share. Scrubbers clear it.</div>
+  </div>`;
+  // Sources
+  html+=`<div class="card"><span class="sec-label">MAKING SMOG</span>`;
+  if(!r.groups.length)html+=`<div style="${small};line-height:1.8">Nothing here makes smog yet. Oil Pumps, Crackers, Refineries and Combustion Gens do.</div>`;
+  for(const g of r.groups.sort((a,b)=>b.rate-a.rate||b.total-a.total)){
+    const idle=Object.entries(g.idle).map(([k,n])=>`${n} ${k}`).join(' · ');
+    html+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:var(--f5);color:var(--text2)">${iconHtml(g.type)} ${MDEFS[g.type].name} <span style="color:var(--text3)">×${g.total}</span></div>
+        <div style="${small};margin-top:3px;line-height:1.6">${g.working} working · ${fmtRate(SMOG_PER[g.type])}/min each at T1${idle?`<br>idle: ${idle}`:''}</div>
+      </div>
+      <span style="font-size:var(--f6);color:${g.rate>0?'var(--red)':'var(--text3)'}">+${fmtRate(g.rate)}</span>
+      <button class="mini-btn" style="min-height:28px;padding:4px 6px;color:var(--text2)" onclick="findMachines('${g.ids.join(',')}')">FIND</button>
+    </div>`;
+  }
+  if(r.groups.length)html+=irow('Total now',`<span style="color:var(--red)">+${fmtRate(r.make)}/min</span>`)
+    +(r.makeMax>r.make+0.001?`<div style="${small};line-height:1.6">+${fmtRate(r.makeMax)}/min with all of them working</div>`:'');
+  if(G.perks?.spent?.smog1)html+=`<div style="${small};margin-top:4px">Clean Burn perk: sources make 30% less (included)</div>`;
+  html+=`</div>`;
+  // Clearing
+  const s=r.scr, active=s.running+s.standby;
+  html+=`<div class="card"><span class="sec-label">CLEARING SMOG</span>
+    ${irow('Clears by itself',`<span style="color:var(--green)">-${SMOG_DECAY_MIN}/min</span>`)}
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <div style="flex:1;font-size:var(--f5);color:var(--text2)">${iconHtml('scrubber')} Scrubbers <span style="color:var(--text3)">×${s.list.length}</span></div>
+      <span style="font-size:var(--f6);color:${active?'var(--green)':'var(--text3)'}">-${fmtRate(active*SCRUBBER_SMOG_MIN)}</span>
+      ${s.list.length?`<button class="mini-btn" style="min-height:28px;padding:4px 6px;color:var(--text2)" onclick="findMachines('${s.list.join(',')}')">FIND</button>`:''}
+    </div>
+    <div style="${small};line-height:1.8">
+      ${s.running?`<span style="color:var(--green)">${s.running} cleaning</span> · `:''}${s.standby?`${s.standby} ready (no smog to clean) · `:''}${fmtRate(SCRUBBER_SMOG_MIN)}/min each<br>
+      ${s.nofuel?`<span style="color:var(--red)">${s.nofuel} out of refined fuel</span><br>`:''}${s.nopower?`<span style="color:var(--red)">${s.nopower} without power</span><br>`:''}${s.paused?`${s.paused} paused<br>`:''}
+      Each burns ${fmtRate(TICKS_PER_MIN/SCRUBBER_FUEL_TICKS)} refined fuel/min while cleaning
+    </div>
+    ${s.idle.length?`<button class="mini-btn amber" style="width:100%;margin-top:6px" onclick="findMachines('${s.idle.join(',')}')">FIND IDLE SCRUBBERS (${s.idle.length})</button>`:''}
+    <div style="margin-top:8px">${irow('Total',`<span style="color:var(--green)">-${fmtRate(r.clear)}/min</span>`)}</div>
+  </div>`;
+  // Advice
+  const netCol=r.net>0.001?'var(--red)':'var(--green)';
+  const add=Math.max(0,r.needNow-active), addMax=Math.max(0,r.needMax-active);
+  const fuel=Math.max(r.needMax,active)*TICKS_PER_MIN/SCRUBBER_FUEL_TICKS;
+  let advice;
+  if(add>0)advice=`<span style="color:var(--red)">Add ${add} Scrubber${add===1?'':'s'}</span>${s.idle.length?` or get the ${s.idle.length} idle one${s.idle.length===1?'':'s'} running`:''} to stop smog rising.`;
+  else if(addMax>0)advice=`<span style="color:var(--amber)">Enough for now.</span> With every source working you would need ${addMax} more.`;
+  else if(r.makeMax>0)advice=`<span style="color:var(--green)">Enough Scrubbers</span> for everything you have built.`;
+  else advice=`Nothing to clear yet.`;
+  html+=`<div class="card"><span class="sec-label">BALANCE</span>
+    ${irow('Net',`<span style="color:${netCol}">${r.net>0.001?'+':r.net<-0.001?'-':''}${rate(r.net)}/min</span>`)}
+    ${irow('Scrubbers needed',`<span style="color:var(--amber)">${r.needNow}</span> now · <span style="color:var(--amber)">${r.needMax}</span> at full`)}
+    ${irow('Scrubbers running',`<span style="color:${active>=r.needNow?'var(--green)':'var(--red)'}">${active}</span>`)}
+    <div style="font-size:var(--f5);color:var(--text2);line-height:1.8;margin-top:4px">${advice}</div>
+    ${fuel>0?`<div style="${small};line-height:1.8;margin-top:4px">${Math.max(r.needMax,active)} Scrubber${Math.max(r.needMax,active)===1?'':'s'} burn${Math.max(r.needMax,active)===1?'s':''} up to ${fmtRate(fuel)} refined fuel/min. One Refinery at T1 makes ${fmtRate(refineryFuelMin())}/min.</div>`:''}
+  </div>`;
+  setHtml(el,html);
+}
+// ── Power panel: tap the power gauge. Every generator and consumer, and what to add ──
+const GEN_FUEL={burner:['coal',BURNER_COAL_TICKS],generator:['coal',16],combustion_gen:['refined_fuel',32],reactor:['lum_rod',ROD_TICKS]};
+function buildableHere(t){
+  const cat=DRAWER_DEFS.build.find(c=>c.items.some(i=>i.id===t)); if(!cat)return false;
+  if(cat.zones&&!cat.zones.includes(G.zone))return false;
+  const done=u=>!u||G.research.done.includes(u);
+  return done(cat.unlock)&&done(MDEFS[t].unlock);
+}
+function machineDraw(m){ // kW this machine asks for, the same sum as gameTick's pre-pass
+  const def=MDEFS[m.type];
+  if(!m.active||m.withered||!def||def.power<=0||m.type==='stone_furnace'||m.type==='blast_furnace')return 0;
+  return def.power*perkMult().power*((m.modules||[]).some(x=>x==='eff_module')?0.7:1);
+}
+function genState(m){ // 'on', or why a generator gives nothing
+  if(!m.active)return 'paused';
+  if(m.type==='lumen_panel')return glowBright()?'on':'dark';
+  if(m.type==='reactor'&&m.scram>0)return 'SCRAM';
+  const f=GEN_FUEL[m.type]; if(f&&!((m.inBuf[f[0]]||0)>0))return 'no fuel';
+  return 'on';
+}
+function powerReport(){
+  const gens={}, cons={}, acc={n:0,stored:0,list:[]};
+  let supply=0, supplyMax=0, demand=0, idleGen=[], lowFuel=[];
+  const fuel={};
+  for(const m of Object.values(G.machines)){
+    const def=MDEFS[m.type]; if(!def)continue;
+    if(def.power<0){
+      const kw=-def.power, st=genState(m);
+      const g=gens[m.type]||(gens[m.type]={type:m.type,total:0,on:0,kw,now:0,idle:{},ids:[]});
+      g.total++; g.ids.push(m.id); supplyMax+=kw;
+      if(st==='on'){g.on++;g.now+=kw;supply+=kw;
+        const f=GEN_FUEL[m.type]; if(f){fuel[f[0]]=(fuel[f[0]]||0)+TICKS_PER_MIN/f[1]; if((m.inBuf[f[0]]||0)<5)lowFuel.push(m.id);}}
+      else {g.idle[st]=(g.idle[st]||0)+1; if(st!=='dark')idleGen.push(m.id);}
+    } else if(m.type==='accumulator'){acc.n++;acc.stored+=m.charge||0;acc.list.push(m.id);}
+    else if(def.power>0&&m.type!=='stone_furnace'&&m.type!=='blast_furnace'){
+      const d=machineDraw(m);
+      const c=cons[m.type]||(cons[m.type]={type:m.type,total:0,on:0,kw:0,each:def.power,ids:[]});
+      c.total++; c.ids.push(m.id); if(d>0){c.on++;c.kw+=d;demand+=d;}
+    }
+  }
+  const sing=G.zone===5&&singularity();
+  if(sing&&sing.complete&&!G.bigBang){demand+=SING_POWER;const c=cons.singularity||(cons.singularity={type:'singularity',total:1,on:1,kw:0,each:SING_POWER,ids:[sing.id]});c.kw+=SING_POWER;}
+  return {gens:Object.values(gens),cons:Object.values(cons),acc,supply,supplyMax,demand,idleGen,lowFuel,fuel};
+}
+function renderPowerPanel(){
+  const el=document.getElementById('pPowerBody'); if(!el)return;
+  const r=powerReport(), free=r.supply-r.demand, short=r.demand>0&&free<0;
+  const covering=short&&r.acc.stored>=-free*TICK_MS/1000;
+  const small='font-size:var(--f4);color:var(--text3)';
+  const load=r.supply>0?Math.round(r.demand/r.supply*100):r.demand>0?999:0;
+  const col=short?(covering?'var(--amber)':'var(--red)'):load>80?'var(--amber)':'var(--green)';
+  let status;
+  if(!r.demand&&!r.supply)status=`<span style="color:var(--text3)">Nothing makes or uses power yet.</span>`;
+  else if(!r.demand)status=`<span style="color:var(--green)">No machines need power right now.</span>`;
+  else if(!short)status=`<span style="color:${col}">Running · ${load}% load · ${fmtKW(free)} spare</span>`;
+  else if(covering)status=`<span style="color:var(--amber)">Accumulators covering ${fmtKW(-free)} · about ${fmtMins(r.acc.stored/(-free)/60)} left</span>`;
+  else status=`<span style="color:var(--red)">SHORT ${fmtKW(-free)}: every powered machine has stopped.</span><br><span style="${small}">Power is all or nothing: below demand, nothing electric runs.</span>`;
+  let html=`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <span style="font-size:var(--f10);color:${col}">${r.demand?`${free>=0?'+':'-'}${fmtKW(Math.abs(free))}`:fmtKW(r.supply)}</span>
+      <span style="font-size:var(--f5);color:var(--text2)">${fmtKW(r.supply)} made · ${fmtKW(r.demand)} used</span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill ${short?'amber':'green'}" style="width:${Math.min(100,load)}%"></div></div>
+    <div style="font-size:var(--f5);margin-top:6px;line-height:1.8">${status}</div>
+  </div>`;
+  const findBtn=ids=>`<button class="mini-btn" style="min-height:28px;padding:4px 6px;color:var(--text2)" onclick="findMachines('${ids.join(',')}')">FIND</button>`;
+  // Generators
+  html+=`<div class="card"><span class="sec-label">MAKING POWER</span>`;
+  if(!r.gens.length)html+=`<div style="${small};line-height:1.8">No generators yet. Build a Burner and feed it coal.</div>`;
+  for(const g of r.gens.sort((a,b)=>b.now-a.now||b.total-a.total)){
+    const idle=Object.entries(g.idle).map(([k,n])=>`${n} ${k}`).join(' · ');
+    const f=GEN_FUEL[g.type];
+    html+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:var(--f5);color:var(--text2)">${iconHtml(g.type)} ${MDEFS[g.type].name} <span style="color:var(--text3)">×${g.total}</span></div>
+        <div style="${small};margin-top:3px;line-height:1.6">${g.on} running · ${fmtKW(g.kw)} each${f?` · ${fmtRate(TICKS_PER_MIN/f[1])} ${ITEMS[f[0]].name.toLowerCase()}/min each`:g.type==='lumen_panel'?' · glow tide only':''}${idle?`<br><span style="color:var(--red)">idle: ${idle}</span>`:''}</div>
+      </div>
+      <span style="font-size:var(--f6);color:${g.now?'var(--green)':'var(--text3)'}">${fmtKW(g.now)}</span>
+      ${findBtn(g.ids)}
+    </div>`;
+  }
+  const fuelTxt=Object.entries(r.fuel).map(([k,v])=>`${iconHtml(k)} ${fmtRate(v)} ${ITEMS[k].name.toLowerCase()}`).join(' · ');
+  if(fuelTxt)html+=`<div style="${small};line-height:1.8">Burning ${fuelTxt} per minute</div>`;
+  if(r.idleGen.length)html+=`<button class="mini-btn amber" style="width:100%;margin-top:6px" onclick="findMachines('${r.idleGen.join(',')}')">FIND IDLE GENERATORS (${r.idleGen.length})</button>`;
+  if(r.lowFuel.length)html+=`<button class="mini-btn" style="width:100%;margin-top:6px;color:var(--text2)" onclick="findMachines('${r.lowFuel.join(',')}')">LOW ON FUEL (${r.lowFuel.length})</button>`;
+  if(r.acc.n)html+=`<div style="margin-top:8px">${irow(`${iconHtml('accumulator')} Accumulators ×${r.acc.n}`,`<span style="color:var(--teal)">${Math.round(r.acc.stored)} / ${r.acc.n*ACC_CAP} kJ</span>`)}</div>`;
+  html+=`<div style="margin-top:6px">${irow('Total',`<span style="color:var(--green)">${fmtKW(r.supply)}</span>${r.supplyMax>r.supply?` <span style="color:var(--text3)">of ${fmtKW(r.supplyMax)}</span>`:''}`)}</div></div>`;
+  // Consumers
+  html+=`<div class="card"><span class="sec-label">USING POWER</span>`;
+  if(!r.cons.length)html+=`<div style="${small};line-height:1.8">Nothing here uses power yet. Stone and Blast Furnaces never do.</div>`;
+  for(const c of r.cons.sort((a,b)=>b.kw-a.kw||b.total-a.total)){
+    html+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:var(--f5);color:var(--text2)">${iconHtml(c.type)} ${MDEFS[c.type].name} <span style="color:var(--text3)">×${c.total}</span></div>
+        <div style="${small};margin-top:3px;line-height:1.6">${fmtKW(c.each)} each${c.total>c.on?` · ${c.total-c.on} paused (draws nothing)`:''}</div>
+      </div>
+      <span style="font-size:var(--f6);color:${c.kw?'var(--amber)':'var(--text3)'}">${fmtKW(c.kw)}</span>
+      ${findBtn(c.ids)}
+    </div>`;
+  }
+  if(perkMult().power<1)html+=`<div style="${small};margin-bottom:6px">Power perks: machines draw ${Math.round((1-perkMult().power)*100)}% less (included)</div>`;
+  html+=`${irow('Total',`<span style="color:var(--amber)">${fmtKW(r.demand)}</span>`)}</div>`;
+  // Advice
+  const opts=Object.keys(MDEFS).filter(t=>MDEFS[t].power<0&&t!=='lumen_panel'&&buildableHere(t));
+  const idleKW=r.gens.reduce((a,g)=>a+(g.total-g.on-(g.idle.dark||0))*g.kw,0);
+  let advice;
+  if(short){
+    const need=-free;
+    advice=`<span style="color:var(--red)">Need ${fmtKW(need)} more.</span>`
+      +(idleKW?` Refuelling the idle generators gives ${fmtKW(idleKW)}${idleKW>=need?', enough':''}.`:'')
+      +(opts.length?`<br>Or build: ${opts.map(t=>`${Math.ceil(need/-MDEFS[t].power)} ${iconHtml(t)} ${MDEFS[t].name}`).join(' · ')}`:'');
+  } else if(r.demand){
+    const big=r.cons.filter(c=>c.each<=free).sort((a,b)=>b.each-a.each)[0];
+    advice=load>80?`<span style="color:var(--amber)">Nearly full.</span> Add a generator before building more.`:`<span style="color:var(--green)">Room for ${fmtKW(free)} more</span>${big?`, e.g. ${Math.floor(free/big.each)} more ${MDEFS[big.type].name}${Math.floor(free/big.each)===1?'':'s'}`:''}.`;
+  } else advice=r.supply?`Generators are ready.`:`Build a Burner and feed it coal to start.`;
+  html+=`<div class="card"><span class="sec-label">BALANCE</span>
+    <div style="font-size:var(--f5);color:var(--text2);line-height:1.8">${advice}</div>
+    ${opts.length?`<div style="${small};line-height:1.8;margin-top:6px">${opts.map(t=>{const f=GEN_FUEL[t];return `${iconHtml(t)} ${MDEFS[t].name}: ${fmtKW(-MDEFS[t].power)}${f?`, ${fmtRate(TICKS_PER_MIN/f[1])} ${ITEMS[f[0]].name.toLowerCase()}/min`:''}`;}).join('<br>')}</div>`:''}
+  </div>`;
+  setHtml(el,html);
+}
+function refineryFuelMin(){const rid=(MDEFS.refinery.recipes||[]).find(id=>RECIPES[id]?.out?.refined_fuel); const rec=RECIPES[rid]; return rec?rec.out.refined_fuel*TICKS_PER_MIN/rec.time:0;}
 
 // ═══════════════════════════════════════════════════
 //  ACHIEVEMENTS
