@@ -277,6 +277,26 @@ const r=await p.evaluate(async()=>{
     window.drawItem=orig;
     const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
     ok('belt_item_smooth_mixed_tiers',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
+  // ── no item may sit on two tiles at once (T2/T3 speed sums landed just under 1 and copied items), full belts carry
+  //    the same in every direction, and a tunnel mouth holds 4 like a belt
+  { const line=(tier,dir,n)=>{reset(); const[dx,dy]=D_VEC[dir], sx=40-dx*10, sy=40-dy*10;
+      for(let k=0;k<20;k++){const b=put('belt',sx+dx*k,sy+dy*k,dir); b.tier=tier;} const ch=put('chest',sx+dx*20,sy+dy*20);
+      const src=G.map[sy][sx]; let dup=0;
+      for(let t=0;t<n;t++){while(src.items.length<4)src.items.push({id:'coal',prog:0}); runBelts();
+        const seen=new Set(); for(let k=0;k<20;k++)for(const it of G.map[sy+dy*k][sx+dx*k].items){if(seen.has(it))dup++;seen.add(it);}}
+      return {dup,got:ch.chestInv.coal||0};};
+    const r={t2:line(2,0,600),t3:line(3,1,600),right:line(3,0,960).got,left:line(3,2,960).got,down:line(1,1,960).got,up:line(1,3,960).got};
+    ok('belt_no_duplicates',r.t2.dup===0&&r.t3.dup===0&&r.t3.got>=180,r);
+    ok('belt_same_speed_every_way',Math.abs(r.right-r.left)<=4&&Math.abs(r.down-r.up)<=4,r);
+    reset(); for(let x=10;x<14;x++)put('belt',x,60,0); const ta=put('tunnel',14,60,0), tb=put('tunnel',17,60,0); // exit leads nowhere: blocked
+    for(let t=0;t<400;t++){if(G.map[60][10].items.length<4)G.map[60][10].items.push({id:'coal',prog:0}); runBelts();}
+    ok('tunnel_mouth_holds_4',G.map[60][14].items.length<=4&&G.map[60][17].items.length<=4,{mouth:G.map[60][14].items.length,exit:G.map[60][17].items.length,linked:ta.tunnelId===tb.id}); }
+  // ── an old save with a stuffed tunnel mouth: the extras go to the inventory on load
+  { reset(); const tn=put('tunnel',20,62,0); put('tunnel',23,62,0); G.map[62][20].items=Array.from({length:30},()=>({id:'coal',prog:.5}));
+    G.map[63][25].items=[{id:'iron_plate',prog:.5}]; const c0=G.inv.coal||0, i0=G.inv.iron_plate||0;
+    saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    ok('old_save_tunnel_items_returned',G.map[62][20].items.length===4&&G.map[63][25].items.length===0&&G.inv.coal===c0+26&&G.inv.iron_plate===i0+1,{left:G.map[62][20].items.length,coal:G.inv.coal-c0,plate:G.inv.iron_plate-i0});
+    G.devFreeBuild=true; }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};

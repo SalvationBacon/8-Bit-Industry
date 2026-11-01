@@ -485,7 +485,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.7 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -653,7 +653,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.6';
+const VER      = '2.0.7';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1665,6 +1665,20 @@ function trimFactoryFloor(){
   const want=G.floorY+FLOOR_ROWS+grown;
   while(G.map.length>want&&G.map[G.map.length-1].every(t=>t.mid===null&&!t.res&&!t.items.length))G.map.pop();
   MAP_H=G.map.length;
+}
+// Before v2.0.7 a tunnel mouth took any number of items from a belt (one held 1,700), and a few tiles kept items
+// after their belt was gone: on load, anything past 4 per belt tile, or on a tile with no belt, goes to the inventory
+function tidyBeltItems(){
+  if(!G.map)return;
+  let back=0;
+  for(const row of G.map)for(const t of row){
+    if(!t.items||!t.items.length)continue;
+    const m=t.mid!==null?G.machines[t.mid]:null, keep=m&&BELT_TYPES.includes(m.type)?4:0;
+    if(t.items.length<=keep)continue;
+    for(const it of t.items.slice(keep)){G.inv[it.id]=(G.inv[it.id]||0)+1;back++;}
+    t.items=t.items.slice(0,keep);
+  }
+  if(back)G._tidied=back;
 }
 function expandMap(dw,dh){
   const oldW=MAP_W, oldH=MAP_H, nw=oldW+dw, nh=oldH+dh;
@@ -5044,11 +5058,16 @@ function runBelts(){
     for(const it of tile.items)it.prog=Math.min(1+sp,it.prog+sp);
   }
 
-  // Transfer completed items
-  for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){
-    const tile=G.map[ty][tx]; if(tile.mid===null)continue;
-    const m=G.machines[tile.mid]; if(!m)continue;
-    if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
+  // Transfer completed items. A blocked item keeps its place (prog >= BELT_DONE) and retries after the tiles ahead
+  // have moved: the first pass runs top-left to bottom-right, so a full belt flowing right or down only freed one
+  // tile per tick (221 items/min on T3 against 240 flowing left or up). Whatever is still blocked after the retries
+  // is marked queued (prog .99), which the renderer and inserters read.
+  const moveTile=(tx,ty,final)=>{ // returns true if items are still waiting on this tile
+    const tile=G.map[ty][tx]; if(tile.mid===null)return false;
+    const m=G.machines[tile.mid]; if(!m)return false;
+    if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')return false;
+    const hold=it=>{if(final)it.prog=0.99;tile.items.push(it);};
+    const left=()=>!final&&tile.items.some(it=>it.prog>=BELT_DONE);
 
     // Tunnel: entrance teleports to exit; exit passes items forward like a belt
     if(m.type==='tunnel'){
@@ -5066,16 +5085,16 @@ function runBelts(){
               tile.items=tile.items.filter(it=>!arr.includes(it));
               for(const it of arr){it.prog=carryProg(it.prog);exTile.items.push(it);}
             }
-            continue;
+            return left();
           }
           // EXIT, pass forward; back-pressure if blocked (so inserter can grab)
           const arr=tile.items.filter(it=>it.prog>=BELT_DONE);
-          if(!arr.length)continue;
+          if(!arr.length)return false;
           const nx=tx+dvx,ny=ty+dvy;
-          tile.items=tile.items.filter(it=>it.prog<1);
+          tile.items=tile.items.filter(it=>it.prog<BELT_DONE); // same test as arr: an item just under 1 must not stay behind as well
           if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
-            for(const it of arr){it.prog=0.99;tile.items.push(it);}
-            continue;
+            for(const it of arr)hold(it);
+            return left();
           }
           const next=G.map[ny][nx];
           for(const it of arr){
@@ -5083,19 +5102,21 @@ function runBelts(){
               const nm=G.machines[next.mid];
               if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
                 it.prog=carryProg(it.prog);next.items.push(it);
-              } else {it.prog=0.99;tile.items.push(it);}
-            } else {it.prog=0.99;tile.items.push(it);}
+              } else hold(it);
+            } else hold(it);
           }
-          continue;
+          return left();
         }
       }
       // UNLINKED, stall all items, never pass through
-      continue;
+      return false;
     }
 
     const arrived=tile.items.filter(it=>it.prog>=BELT_DONE);
-    if(!arrived.length)continue;
-    tile.items=tile.items.filter(it=>it.prog<1);
+    if(!arrived.length)return false;
+    // Remove exactly what arrived (prog >= BELT_DONE). Filtering on prog<1 kept an item at 0.9999999 here AND moved it on,
+    // so one item object sat on two tiles: a back-pressure reset on one froze the other (T2/T3 belt sums hit that often)
+    tile.items=tile.items.filter(it=>it.prog<BELT_DONE);
     const[dvx,dvy]=D_VEC[m.dir];
 
     // Splitter: 1×2, second cell always at (m.x, m.y+1)
@@ -5120,16 +5141,16 @@ function runBelts(){
             it.prog=carryProg(it.prog); nt.items.push(it); placed=true; break;
           }
         }
-        if(!placed){it.prog=0.99; tile.items.push(it);}
+        if(!placed)hold(it);
       }
-      continue;
+      return left();
     }
 
     // Normal belt
     const nx=tx+dvx,ny=ty+dvy;
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
-      for(const it of arrived){it.prog=0.99;tile.items.push(it);}
-      continue;
+      for(const it of arrived)hold(it);
+      return left();
     }
     const next=G.map[ny][nx];
     for(const it of arrived){
@@ -5137,19 +5158,28 @@ function runBelts(){
         const nm=G.machines[next.mid];
         if((nm.type==='belt'||nm.type==='splitter')&&next.items.length<4){
           it.prog=carryProg(it.prog);next.items.push(it);
-        } else if(nm.type==='tunnel'){
+        } else if(nm.type==='tunnel'&&next.items.length<4){ // a tunnel mouth holds 4 like a belt (it had no cap and swallowed thousands)
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='chest'){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else {
           // All other machines (assembler, furnace, etc), belts cannot feed directly, back-pressure
-          it.prog=0.99;tile.items.push(it);
+          hold(it);
         }
-      } else {
-        it.prog=0.99;tile.items.push(it);
-      }
+      } else hold(it);
     }
+    return left();
+  };
+  let waiting=[];
+  for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++)if(moveTile(tx,ty,false))waiting.push([tx,ty]);
+  for(let pass=0;pass<4&&waiting.length;pass++){ // alternate direction: each pass clears a whole run of belt
+    const n0=waiting.length;
+    waiting=(pass%2===0?[...waiting].reverse():waiting).filter(([x,y])=>moveTile(x,y,false));
+    if(pass%2===0)waiting.reverse();
+    if(waiting.length===n0&&pass>0)break;
   }
+  for(const[x,y]of waiting)moveTile(x,y,true);
+
 
   // Inserters every tick. (Every 4 ticks made each arm phase wait for the next check,
   // so a 1.7s swing took 4s and an inserter moved 1 item per 4s.)
@@ -8463,6 +8493,7 @@ function migrateSave(){
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
+  tidyBeltItems();
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }
@@ -8507,6 +8538,7 @@ function newGame(){
 function startGame(isNew){
   stopTitleScene(); clearUndo();
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
+  if(G._tidied){const n=G._tidied;delete G._tidied;setTimeout(()=>toast(`${fmt(n)} items stuck in tunnels went to your inventory`,'ok'),2200);}
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
