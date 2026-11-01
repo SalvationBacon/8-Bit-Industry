@@ -260,6 +260,23 @@ const r=await p.evaluate(async()=>{
     window.drawItem=orig;
     const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
     ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
+  // ── busy belts: every item glides at belt speed and never steps back, whether the belt flows, queues or drains
+  { const scen=(build,tier=1)=>{ reset(); G.research.done=Object.keys(TECHS); power(2,2); build();
+      G.cam.zoom=.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=6*TILE*.5; G.cam.y=36*TILE*.5;
+      const uid=new WeakMap(); let nid=0, frame=null; const o=window.beltItemWorld;
+      window.beltItemWorld=function(it,...a){const w=o(it,...a); if(frame&&w){if(!uid.has(it))uid.set(it,nid++); frame[uid.get(it)]=w;} return w;};
+      const lim=1.55*BELT_T1_SPEED*BELT_TIER_SPEED[tier]/5; let last={}, worst=0, backs=0; // catch-up after a pickup is capped at 1.5x belt speed
+      for(let t=0;t<260;t++){ const ft=G.map[40][8]; if(beltRoom(ft,0))ft.items.push({id:'coal',prog:0});
+        run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame={}; draw();
+          for(const k in frame)if(last[k]){const dx=frame[k][0]-last[k][0], d=Math.hypot(dx,frame[k][1]-last[k][1]); worst=Math.max(worst,d/lim); if(dx<-1e-6)backs++;}
+          last=frame; } T=t0; }
+      window.beltItemWorld=o; return {worst:+worst.toFixed(2),backs}; };
+    const line=(tier,end)=>()=>{for(let x=8;x<20;x++){const b=put('belt',x,40,0); b.tier=tier;} end();};
+    const r={flow:scen(line(1,()=>put('chest',20,40))), queue:scen(line(1,()=>{})),
+      drain:scen(line(2,()=>{put('inserter',20,40,0);put('chest',21,40);}),2),
+      tunnel:scen(()=>{for(let x=8;x<12;x++)put('belt',x,40,0); put('tunnel',12,40,0); put('tunnel',15,40,0); for(let x=16;x<20;x++)put('belt',x,40,0); put('inserter',20,40,0); put('chest',21,40);}),
+      side:scen(line(1,()=>{const c=put('chest',12,38); c.chestInv.coal=999; put('inserter',12,39,1); put('inserter',20,40,0); put('chest',21,40);}))};
+    ok('belt_busy_smooth',Object.values(r).every(v=>v.worst<=1&&v.backs===0),r); }
   // same, on belts of mixed tiers (T1/T2/T3 side by side)
   { reset(); G.research.done=Object.keys(TECHS);
     for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
@@ -398,6 +415,75 @@ const r=await p.evaluate(async()=>{
     ok('power_panel',opened&&r1.supply===60&&Math.abs(r1.demand-72*perkMult().power)<1e-9&&h1.includes('SHORT')&&h1.includes('idle: 1 no fuel')&&h1.includes('FIND IDLE GENERATORS (1)')
       &&h1.includes('enough')&&h1.includes('Assembler')&&r2.supply===120&&h2.includes('Running')&&h2.includes('Burning')&&h2.includes('30 coal'),
       {opened,s1:r1.supply,d1:r1.demand,s2:r2.supply,h1:h1.slice(0,500)}); }
+  // ── music: every zone has its own playlist of tracks; each compiles cleanly, keeps its hook and varies the rest
+  { const per={}; for(const t of MTRACKS)per[t.ctx]=(per[t.ctx]||0)+1;
+    const bad=[], lens=[];
+    const leadOf=(song,from,to)=>JSON.stringify(song.ev.filter(e=>e.t>=from&&e.t<to&&!['pad','kick','snare','hat'].includes(e.i)&&e.d<2).map(e=>[+e.t.toFixed(3),+e.f.toFixed(1)]));
+    let hook=true, varies=true;
+    for(const tr of MTRACKS){ const a=compileSong(tr,1), c=compileSong(tr,2); lens.push(Math.round(a.len));
+      if(a.ev.some(e=>!isFinite(e.t)||!isFinite(e.f)||!isFinite(e.v)||!(e.d>0)||e.f>0&&e.f<55))bad.push(tr.name);
+      if(!tr.raw){ const bar=240/tr.bpm, A0=MFORMS[tr.form][1]*bar; // the first A section starts after the intro
+        if(leadOf(a,A0,A0+4*bar)!==leadOf(c,A0,A0+4*bar))hook=false;
+        if(JSON.stringify(a.ev)===JSON.stringify(c.ev))varies=false; } }
+    const zonesOk=[1,2,3,4,5].every(z=>per[z]>=3)&&per.title>=2;
+    const ctxGame=musicCtx();
+    ok('music_playlists',zonesOk&&!bad.length&&lens.every(l=>l>=90&&l<=240)&&hook&&varies&&ctxGame===G.zone,{per,bad,lens,hook,varies,ctxGame}); }
+  // ── build menu: grouped by job; every machine appears once, and only in the zones it belongs to
+  { const z0=G.zone, all=DRAWER_DEFS.build.flatMap(c=>c.items.map(i=>i.id)), dupes=all.filter((x,i)=>all.indexOf(x)!==i);
+    const missing=Object.keys(MDEFS).filter(t=>!MDEFS[t].stub&&!all.includes(t));
+    const at={}; for(const z of[1,2,3,4,5]){G.zone=z; at[z]=Object.fromEntries(drawerCats('build').map(c=>[c.label,c.items.map(i=>i.id)]));}
+    G.zone=z0;
+    const okZ=!at[1].Pipes&&!at[1]['Clean Air']&&at[1].Power.join()==='burner,generator'&&at[2].Power.includes('combustion_gen')&&at[2]['Clean Air']
+      &&at[3].Power.includes('lumen_panel')&&at[4].Power.includes('reactor')&&!at[4].Refining&&at[5].Mining.length===4;
+    ok('build_menu_groups',!dupes.length&&!missing.length&&okZ,{dupes,missing,z1:Object.keys(at[1]),z2:at[2].Power}); }
+  // ── recipe book: every recipe and resource of the zone, search, item pages, icons that open them
+  { const z0=G.zone; reset(); G.zone=3; G.research.done=Object.keys(TECHS);
+    for(let y=10;y<12;y++)for(let x=10;x<12;x++){G.map[y][x].type=1;G.map[y][x].res='rare_earth';G.map[y+5][x].type=1;G.map[y+5][x].res='brine';}
+    rbFocus=null; rbHist=[]; rbBack=null; recipeSearch('',true); showPanel('recipes');
+    rbOpen=new Set(['mine','hand',...Object.keys(MDEFS)]); renderRecipesPanel();
+    const body=()=>document.getElementById('pRecipesBody').innerText;
+    const cards=document.querySelectorAll('#pRecipesBody .rb-card').length, recs=rbRecipes().length;
+    const allShown=cards>=recs&&body().includes('Separate Rare Earth')&&body().includes('Brine Pump on a brine pool');
+    const fnTime=rbCard({...RECIPES.fn_iron,id:'fn_iron',secs:RECIPES.fn_iron.time/4}).includes('4s per craft');
+    document.getElementById('rbSearch').value='oxide'; recipeSearch('oxide'); const srch=body();
+    const searchOk=srch.includes('Rare Earth Oxide')&&srch.includes('Separator')&&srch.includes('Magnet')&&srch.includes('(piped)');
+    recipeSearch('',true); G.inv.re_oxide=2; showPanel('inv'); document.querySelector('#pInvBody .inv-chip[onclick*="re_oxide"]')?.click();
+    const fromInv=openPanel==='recipes'&&rbFocus==='re_oxide';
+    document.querySelector('#pRecipesBody .rb-card img.ico[data-i="magnet"]')?.click(); const hop=rbFocus==='magnet';
+    rbGoBack(); const back1=rbFocus==='re_oxide'; rbGoBack(); const back2=openPanel==='inv';
+    const asm=put('assembler',20,20); asm.recipe='z3_magnet'; openMachinePanel(asm);
+    const ic=[...document.querySelectorAll('#pMachBody img.ico[data-i]')].find(i=>!i.closest('button,[onclick]'));
+    ic?.click(); const fromMach=openPanel==='recipes'&&rbFocus===ic?.dataset.i; rbGoBack(); const toMach=openPanel==='machine';
+    closePanel(openPanel); G.zone=z0;
+    ok('recipe_book',allShown&&fnTime&&searchOk&&fromInv&&hop&&back1&&back2&&fromMach&&toMach,{cards,recs,allShown,fnTime,searchOk,fromInv,hop,back1,back2,fromMach,toMach}); }
+  // ── tutorial text that says BUILD → group names a real group that holds that machine
+  { const bad=[]; const z0=G.zone;
+    for(const [z,t] of Object.entries(TUTORIALS))for(const st of t.steps){const m=st.text.match(/BUILD → (\w[\w ]*?) → \[\[(\w+)\]\]/); if(!m)continue;
+      G.zone=+z; const g=drawerCats('build').find(c=>c.label===m[1]); if(!g||!g.items.some(i=>i.id===m[2]))bad.push(m[0]);}
+    G.zone=z0; ok('tutorial_menu_names',!bad.length,bad); }
+  // ── relief valves vent half a T1 pump each and wear out gaskets; jammed valves let pressure build
+  { const z0=G.zone;
+    const net=(valves,spares)=>{ reset(); G.zone=3; G.research.done=Object.keys(TECHS); power(2,2); G.stats.bursts=0;
+      res(10,40,2,2,'brine'); put('brine_pump',10,40); for(let x=12;x<22;x++)put('pipe',x,40);
+      const vs=[]; for(let i=0;i<valves;i++){const v=put('relief_valve',12+i*3,41); v.inBuf.gasket=spares; vs.push(v);}
+      return vs; };
+    let vs=net(1,10); run(240*3); const one=G.stats.bursts;
+    vs=net(2,10); run(240*3); const two=G.stats.bursts, used=20-vs.reduce((a,v)=>a+(v.inBuf.gasket||0),0);
+    vs=net(2,0); run(240*4); const dry=G.stats.bursts, jam=vs.every(v=>valveJammed(v));
+    // an inserter feeds a valve only gaskets, and stops at its 10
+    reset(); G.zone=3; G.research.done=Object.keys(TECHS); power(2,2);
+    const c=put('chest',30,30); c.chestInv.coal=20; c.chestInv.gasket=30; put('inserter',31,30,0); const v=put('relief_valve',32,30);
+    run(240); const fed=v.inBuf.gasket||0, noCoal=!v.inBuf.coal&&c.chestInv.coal===20;
+    G.zone=z0;
+    ok('valve_gaskets',one>0&&two===0&&used>0&&dry>0&&jam&&fed===10&&noCoal,{one,two,used,dry,jam,fed,noCoal}); }
+  // ── every machine that makes items has an output side; an Algae Vat's algae goes onto a belt and into an inserter
+  { const missing=Object.keys(MDEFS).filter(t=>MDEFS[t].recipes?.length&&!PORTS[t]);
+    const z0=G.zone; reset(); G.zone=4; G.research.done=Object.keys(TECHS); power(2,2);
+    const av=put('algae_vat',20,40); av.recipe='z4_algae'; av.outBuf.algae=6; av.vit=60;
+    for(let x=22;x<26;x++)put('belt',x,40,0); const ch=put('chest',26,40);
+    const av2=put('algae_vat',20,44); av2.outBuf.algae=6; put('inserter',22,44,0); const ch2=put('chest',23,44);
+    run(120); G.zone=z0;
+    ok('living_machines_output',!missing.length&&(ch.chestInv.algae||0)>=4&&(ch2.chestInv.algae||0)>=4,{missing,belt:ch.chestInv,ins:ch2.chestInv}); }
   // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
     res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);

@@ -99,6 +99,26 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .zone-tab.locked{opacity:.35}
 #hudRes{display:flex;gap:4px;align-items:center;padding:0 4px;flex-shrink:0}
 .hres{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.rb-search{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border)}
+.rb-search input{flex:1;min-width:0;font-family:var(--font);font-size:16px;padding:8px;background:var(--bg3);color:var(--text);border:1px solid var(--border2);outline:none}
+.rb-search input:focus{border-color:var(--amber)}
+.rb-search button{font-family:var(--font);background:transparent;border:1px solid var(--border2);color:var(--text2);padding:0 10px;cursor:pointer}
+.rb-sec{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--amber);letter-spacing:1px;margin:8px 0 4px;padding:6px 2px;border-bottom:1px solid var(--border);cursor:pointer}
+.rb-sec .n{color:var(--text3);margin-left:auto}
+.rb-card{padding:7px 8px;margin-bottom:5px;border:1px solid var(--border2);background:var(--bg3)}
+.rb-card.locked{opacity:.55}
+.rb-head{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--text);margin-bottom:4px;flex-wrap:wrap}
+.rb-head .w{color:var(--text3);font-size:var(--f5);margin-left:auto}
+.rb-row{font-size:var(--f5);color:var(--text2);line-height:1.8}
+.rb-chip{display:inline-flex;align-items:center;gap:2px;white-space:nowrap;margin-right:6px}
+.rb-chip b{color:var(--amber);font-weight:normal}
+.rb-meta{font-size:var(--f4);color:var(--text3);margin-top:3px}
+.rb-lock{font-size:var(--f5);color:var(--red);margin-top:3px}
+.rb-match{display:flex;align-items:center;gap:8px;padding:7px 8px;margin-bottom:4px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-size:var(--f6)}
+.rb-match .w{color:var(--text3);font-size:var(--f4);margin-left:auto;text-align:right}
+.rb-big{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.rb-big img.ico{width:40px;height:40px}
+.inv-chip{cursor:pointer}
 .hres-tap{cursor:pointer;border:1px solid var(--border2);padding:2px 4px;margin:-3px 0}
 .hres-tap:active{background:var(--bg3)}
 .hres-icon{font-size:14px;line-height:1}
@@ -489,7 +509,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.16 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.17 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -619,6 +639,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 
 <div id="pRecipes" class="spanel">
   <div class="ph"><span class="ph-title"><span data-ui="recipes"></span>RECIPE BOOK</span><button class="ph-x" onclick="togglePanel('recipes')">✕</button></div>
+  <div class="rb-search"><input id="rbSearch" type="text" enterkeyhint="search" placeholder="Search..." autocomplete="off" spellcheck="false" oninput="recipeSearch(this.value)"><button id="rbClear" class="hidden" onclick="recipeSearch('',true)">✕</button></div>
   <div class="pbody" id="pRecipesBody"></div>
 </div>
 
@@ -667,7 +688,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.16';
+const VER      = '2.0.17';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -744,9 +765,8 @@ function sfx(type) {
 }
 
 // ═══════════════════════════════════════════════════
-//  MUSIC ENGINE  (Factory Pulse, 2m10s structured track)
+//  FACTORY PULSE: the original track (2m10s), kept as notes for the playlist
 // ═══════════════════════════════════════════════════
-let _music={nodes:[],gain:null,running:false,loopId:null};
 
 const _MNOTE=0.3;  // seconds per 16th-note slot
 const _MBAR=8*_MNOTE; // 8 slots per bar
@@ -817,53 +837,254 @@ function _buildMusicSchedule(){
 const _MSCHED=_buildMusicSchedule();
 const _MTOTAL=_MSCHED.length?_MSCHED[_MSCHED.length-1].t+1:130;
 
+// ═══════════════════════════════════════════════════
+//  MUSIC ENGINE (v2.0.17): a playlist per zone, every track composed as it plays
+// ═══════════════════════════════════════════════════
+// Each track in MTRACKS is a recipe: tempo, key, scale, chord progressions (A / B / C), form and instruments.
+// compileSong() turns it into notes. The A melody (the hook) comes from the track's own seed, so it is the same
+// every time; everything else is reseeded on each play, and repeats of A pick up small variations, so a track
+// never plays back exactly the same. A look-ahead scheduler (mTick, every 100ms) plays the notes. The playlist
+// shuffles within the current zone or the title screen (musicCtx) and crossfades when that changes.
+// Factory Pulse, the original track, is kept as written (raw) on the title screen and in Ironfield.
+const MSCALE={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixo:[0,2,4,5,7,9,10],phryg:[0,1,3,5,7,8,10],lydian:[0,2,4,6,7,9,11],harm:[0,2,3,5,7,8,11]};
+// Lead rhythms: [16th step, length] within one 4/4 bar
+const MRHY=[
+  [[0,4],[4,2],[6,2],[8,4],[12,4]],
+  [[0,2],[2,2],[4,4],[8,2],[10,2],[12,4]],
+  [[0,6],[6,2],[8,6],[14,2]],
+  [[0,3],[3,3],[6,2],[8,3],[11,3],[14,2]],
+  [[0,8],[8,8]],
+  [[0,2],[2,2],[4,2],[6,2],[8,2],[10,2],[12,2],[14,2]],
+  [[0,4],[6,2],[8,4],[12,2],[14,2]],
+  [[0,12],[12,4]],
+];
+const MFORMS={
+  song:   ['intro',4,'A',8,'B',8,'A',8,'C',8,'break',4,'B',8,'A',8,'outro',4],
+  drive:  ['intro',4,'A',8,'A',8,'B',8,'break',4,'C',8,'B',8,'A',8,'outro',4],
+  ambient:['intro',8,'A',8,'B',8,'C',8,'A',8,'break',8,'B',8,'outro',8],
+};
+// What plays in each part of the form
+const MROLES={
+  intro:{lead:0,bass:'long',drums:'intro',arp:1},
+  A:    {lead:'mid',bass:'track',drums:'track',arp:0},
+  B:    {lead:'high',bass:'track',drums:'track',arp:1},
+  C:    {lead:'slow',bass:'pulse',drums:'half',arp:1},
+  break:{lead:0,bass:'long',drums:0,arp:1},
+  outro:{lead:'mid',bass:'long',drums:'intro',arp:0},
+};
+const MDRUMS={
+  four: {k:[0,4,8,12],s:[4,12],h:[2,6,10,14]},
+  back: {k:[0,8,10],s:[4,12],h:[0,2,4,6,8,10,12,14]},
+  half: {k:[0],s:[8],h:[0,4,8,12]},
+  break:{k:[0,6,10],s:[4,12],h:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]},
+  tick: {k:[],s:[],h:[2,6,10,14]},
+};
+const MV={pulse25:.032,pulse12:.03,square:.024,tri:.06,saw:.024,bell:.04,pad:.011,kick:.18,snare:.05,hat:.016};
+// vol: loudness trim so every track plays at about the same level (measured offline); root: MIDI note of the key; prog: chord roots as scale degrees, one per bar, for the A / B / C parts
+const MTRACKS=[
+  {id:'title',vol:0.6,ctx:'title',name:'Start With Nothing',bpm:112,root:60,scale:'major',prog:[[0,4,5,3],[3,4,0,5],[5,3,0,4]],form:'song',lead:'pulse25',arp:'pulse12',bass:'tri',drums:'back',bassPat:'octave',rhy:[0,1,6,3],fx:.18},
+  {id:'pulse_t',ctx:'title',name:'Factory Pulse',raw:true},
+  {id:'pulse',ctx:1,name:'Factory Pulse',raw:true},
+  {id:'z1a',vol:0.55,ctx:1,name:'Assembly Line',bpm:124,root:55,scale:'mixo',prog:[[0,6,3,0],[3,4,0,6],[5,3,6,4]],form:'drive',lead:'square',arp:'pulse12',bass:'tri',drums:'four',bassPat:'octave',rhy:[1,5,3,0],fx:.1},
+  {id:'z1b',vol:0.58,ctx:1,name:'Ore and Gears',bpm:116,root:62,scale:'major',prog:[[0,5,3,4],[5,3,0,4],[1,4,0,0]],form:'song',lead:'pulse25',arp:'pulse12',bass:'tri',drums:'back',bassPat:'root8',rhy:[0,6,1,2],fx:.12},
+  {id:'z1c',vol:0.65,ctx:1,name:'First Light',bpm:100,root:65,scale:'major',prog:[[0,3,5,4],[3,0,4,5],[5,4,3,4]],form:'song',lead:'tri',arp:'pulse12',bass:'tri',drums:'half',bassPat:'pulse',rhy:[2,0,4,6],pad:1,fx:.2},
+  {id:'z2a',vol:0.85,ctx:2,name:'Ash Rain',bpm:96,root:52,scale:'minor',prog:[[0,5,6,4],[3,0,4,4],[5,6,0,6]],form:'song',lead:'pulse12',arp:'pulse25',bass:'saw',drums:'back',bassPat:'synco',rhy:[3,0,6,2],fx:.15},
+  {id:'z2b',vol:0.74,ctx:2,name:'Crude',bpm:104,root:57,scale:'dorian',prog:[[0,3,0,6],[3,3,0,0],[5,6,3,4]],form:'drive',lead:'square',arp:'pulse12',bass:'saw',drums:'break',bassPat:'octave',rhy:[1,3,0,5],fx:.1},
+  {id:'z2c',vol:0.9,ctx:2,name:'Refinery Night',bpm:88,root:50,scale:'phryg',prog:[[0,1,0,6],[5,6,0,0],[3,1,6,0]],form:'ambient',lead:'pulse25',arp:'bell',bass:'saw',drums:'half',bassPat:'long',rhy:[2,4,0,7],pad:1,fx:.25},
+  {id:'z3a',vol:0.85,ctx:3,name:'Pressure',bpm:84,root:49,scale:'phryg',prog:[[0,5,3,4],[1,0,5,6],[3,1,0,0]],form:'ambient',lead:'bell',arp:'bell',bass:'tri',drums:'tick',bassPat:'long',rhy:[2,4,7,0],pad:1,fx:.38},
+  {id:'z3b',vol:0.76,ctx:3,name:'Glow Tide',bpm:90,root:59,scale:'minor',prog:[[0,2,5,6],[5,6,0,0],[3,4,5,4]],form:'ambient',lead:'pulse25',arp:'bell',bass:'tri',drums:'half',bassPat:'pulse',rhy:[0,2,6,4],pad:1,fx:.35},
+  {id:'z3c',vol:0.76,ctx:3,name:'Lattice',bpm:100,root:54,scale:'dorian',prog:[[0,6,3,4],[3,4,6,0],[5,3,4,4]],form:'drive',lead:'pulse25',arp:'pulse12',bass:'tri',drums:'tick',bassPat:'root8',rhy:[1,3,6,0],fx:.3},
+  {id:'z4a',vol:0.64,ctx:4,name:'Spore Drift',bpm:92,root:51,scale:'lydian',prog:[[0,1,0,4],[3,4,0,1],[5,1,4,4]],form:'ambient',lead:'tri',arp:'tri',bass:'tri',drums:'half',bassPat:'walk',rhy:[0,2,4,6],pad:1,swing:.33,fx:.22},
+  {id:'z4b',vol:0.63,ctx:4,name:'Green Engine',bpm:108,root:57,scale:'major',prog:[[0,3,5,4],[3,4,0,5],[1,4,0,4]],form:'song',lead:'pulse25',arp:'tri',bass:'tri',drums:'back',bassPat:'walk',rhy:[0,1,6,3],swing:.2,fx:.12},
+  {id:'z4c',vol:0.68,ctx:4,name:'Vital Signs',bpm:96,root:55,scale:'dorian',prog:[[0,3,4,0],[5,3,0,4],[3,6,0,0]],form:'song',lead:'bell',arp:'pulse12',bass:'tri',drums:'tick',bassPat:'synco',rhy:[3,0,2,6],pad:1,fx:.25},
+  {id:'z5a',vol:0.95,ctx:5,name:'Event Horizon',bpm:76,root:48,scale:'harm',prog:[[0,5,3,4],[5,3,4,4],[0,3,5,4]],form:'ambient',lead:'saw',arp:'bell',bass:'saw',drums:'half',bassPat:'long',rhy:[4,2,7,0],pad:1,fx:.4},
+  {id:'z5b',vol:0.67,ctx:5,name:'Void Engine',bpm:128,root:50,scale:'harm',prog:[[0,5,3,4],[3,4,5,4],[5,3,4,4]],form:'drive',lead:'square',arp:'pulse12',bass:'saw',drums:'four',bassPat:'octave',rhy:[5,1,3,0],fx:.2},
+  {id:'z5c',vol:0.69,ctx:5,name:'Collapse',bpm:110,root:57,scale:'minor',prog:[[0,6,5,4],[0,6,5,4],[3,4,5,6]],form:'song',lead:'pulse25',arp:'bell',bass:'saw',drums:'break',bassPat:'root8',rhy:[0,3,1,6],pad:1,fx:.3},
+  {id:'z5d',vol:0.73,ctx:5,name:'Stardust',bpm:96,root:62,scale:'lydian',prog:[[0,1,4,0],[5,1,0,4],[3,4,1,4]],form:'ambient',lead:'bell',arp:'tri',bass:'tri',drums:'tick',bassPat:'pulse',rhy:[2,0,4,6],pad:1,fx:.35},
+];
+function mRng(seed){let s=(seed>>>0)||1;return()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return s/4294967296;};}
+function mHash(str){let h=2166136261;for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619);return h>>>0;}
+function compileSong(tr,n){
+  if(tr.raw)return {ev:_MSCHED.map(e=>({t:e.t,f:e.f,d:e.d,v:e.v*1.2,i:e.w==='triangle'?'tri':'square'})),len:_MTOTAL};
+  const sc=MSCALE[tr.scale], st=60/tr.bpm/4, bar=st*16, ev=[], form=MFORMS[tr.form];
+  const freq=deg=>{const o=Math.floor(deg/7), k=((deg%7)+7)%7; return 440*Math.pow(2,(tr.root+12*o+sc[k]-69)/12);};
+  let t=0;
+  const add=(s,len,deg,i,v,x)=>{const sw=s%4===2?(tr.swing||0)*st:0; ev.push(Object.assign({t:t+s*st+sw,f:deg===null?0:freq(deg),d:len*st,v:v*(tr.vol||1),i},x||{}));};
+  const lp=i=>i==='saw'?{lp:1800}:null;
+  const occ={};
+  for(let k=0;k<form.length;k+=2){
+    const sec=form[k], bars=form[k+1], role=MROLES[sec]; occ[sec]=(occ[sec]||0)+1;
+    const prog=tr.prog[sec==='B'?1:sec==='C'?2:0];
+    // the hook: A (and the outro's reprise of it) always comes from the same seed
+    const hook=sec==='A'||sec==='outro', rng=mRng(mHash(tr.id+':'+(hook?'A':sec+':'+n+':'+occ[sec])));
+    const vrng=mRng(mHash(tr.id+':var:'+n+':'+k)), vary=sec==='A'&&occ.A>1;
+    const drums=role.drums==='track'?tr.drums:role.drums==='intro'?(tr.drums==='four'||tr.drums==='back'?'tick':tr.drums==='break'?'half':'tick'):role.drums==='half'?(tr.drums==='tick'?'tick':'half'):null;
+    const bassPat=role.bass==='track'?tr.bassPat:role.bass;
+    let prev=9;
+    for(let b=0;b<bars;b++){
+      const c=prog[b%prog.length], nc=prog[(b+1)%prog.length];
+      const fade=sec==='intro'?Math.min(1,.35+.65*b/bars):sec==='outro'?Math.max(.15,1-b/bars):1;
+      // pad: held chord
+      if(tr.pad||sec==='break'||sec==='intro'||sec==='outro')for(const d of[c,c+2,c+4])add(0,16,d,'pad',MV.pad*fade);
+      // lead
+      if(role.lead){
+        const hi=role.lead==='high', slow=role.lead==='slow';
+        const lo=hi?9:5, top=hi?16:13, phraseEnd=b%4===3;
+        const tpl=MRHY[slow?(b%2?7:4):phraseEnd&&rng()<.6?(rng()<.5?4:7):tr.rhy[(hi?2:0)+(b%2)]];
+        tpl.forEach(([s,len],j)=>{
+          if(s>0&&rng()<.08)return; // a breath
+          let d;
+          const last=phraseEnd&&j===tpl.length-1;
+          if(s%8===0||last){
+            const tones=last?[c]:[c,c+2,c+4], cand=[];
+            for(const ct of tones)for(let o=-14;o<=21;o+=7){const x=ct+o; if(x>=lo&&x<=top)cand.push(x);}
+            cand.sort((x,y)=>Math.abs(x-prev)-Math.abs(y-prev));
+            d=cand[Math.min(cand.length-1,Math.floor(rng()*2))];
+          } else d=Math.max(lo,Math.min(top,prev+[-1,1,-1,1,-2,2,0][Math.floor(rng()*7)]));
+          if(vary&&s%8!==0&&!last&&vrng()<.25)d=Math.max(lo,Math.min(top,d+(vrng()<.5?-1:1)));
+          prev=d;
+          add(s,len*.9,d,tr.lead,MV[tr.lead]*fade*(slow?.8:1),Object.assign({vib:len>=6},lp(tr.lead)));
+        });
+      }
+      // arpeggio
+      if(role.arp){
+        const tones=[c,c+2,c+4,c+7,c+9,c+7,c+4,c+2], stp=2;
+        for(let s=0,j=0;s<16;s+=stp,j++)add(s,stp*.8,tones[j%tones.length],tr.arp,MV[tr.arp]*.42*fade);
+      }
+      // bass, two octaves under the lead, but never below what a phone speaker can play
+      let bd=c-14; while(freq(bd)<58)bd+=7;
+      const bv=MV[tr.bass]*(tr.bass==='tri'?1:1.1)*fade, bx=tr.bass==='saw'?{lp:520}:null;
+      const B=(s,len,d)=>add(s,len,d,tr.bass,bv,bx);
+      if(bassPat==='long')B(0,15,bd);
+      else if(bassPat==='pulse')[0,4,8,12].forEach(s=>B(s,3,bd));
+      else if(bassPat==='root8')for(let s=0;s<16;s+=2)B(s,1.6,bd);
+      else if(bassPat==='octave')for(let s=0;s<16;s+=2)B(s,1.6,s%4?bd+7:bd);
+      else if(bassPat==='walk'){let ap=bd+(nc-c)+(rng()<.5?-1:1); while(freq(ap)<58)ap+=7; B(0,3.6,bd);B(4,3.6,bd+2);B(8,3.6,bd+4);B(12,3.6,ap);}
+      else if(bassPat==='synco')[[0,3,0],[3,3,0],[6,2,4],[8,3,0],[11,3,7],[14,2,4]].forEach(([s,l,o])=>B(s,l*.9,bd+o));
+      // drums
+      if(drums){
+        const D=MDRUMS[drums];
+        if(drums==='tick'&&b%2===0)add(0,2,null,'kick',MV.kick*.7*fade);
+        D.k.forEach(s=>add(s,2,null,'kick',MV.kick*fade));
+        D.s.forEach(s=>add(s,2,null,'snare',MV.snare*fade));
+        D.h.forEach(s=>add(s,1,null,'hat',MV.hat*(s%4===2?1:.6)*fade));
+        if(b===bars-1&&(sec==='A'||sec==='B'||sec==='C')&&drums!=='tick')[12,13,14,15].forEach((s,j)=>add(s,1,null,'snare',MV.snare*(.4+j*.2)));
+      }
+      t+=bar;
+    }
+  }
+  ev.sort((x,y)=>x.t-y.t);
+  return {ev,len:t};
+}
+let _music={running:false,gain:null,bus:null,send:null,delay:null,timer:null,song:null,idx:0,t0:0,key:null,cur:null,plays:{},last:{},fading:0,skip:false};
+let _noiseBuf=null, _pulseWaves={};
+function mNoise(){if(!_noiseBuf){const c=ac(),b=c.createBuffer(1,c.sampleRate,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;_noiseBuf=b;}return _noiseBuf;}
+function mPulse(duty){
+  if(!_pulseWaves[duty]){const N=32,re=new Float32Array(N),im=new Float32Array(N);for(let n=1;n<N;n++)re[n]=2/(n*Math.PI)*Math.sin(n*Math.PI*duty);_pulseWaves[duty]=ac().createPeriodicWave(re,im);}
+  return _pulseWaves[duty];
+}
+function mPlay(e,t){
+  const c=ac(), g=c.createGain(), end=t+e.d;
+  g.connect(_music.bus);
+  const done=n=>{n.onended=()=>{try{n.disconnect();g.disconnect();}catch(err){}};};
+  if(e.i==='kick'){
+    const o=c.createOscillator(); o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(42,t+.12);
+    g.gain.setValueAtTime(e.v,t); g.gain.exponentialRampToValueAtTime(.001,t+.22); o.connect(g); o.start(t); o.stop(t+.24); done(o); return;
+  }
+  if(e.i==='snare'||e.i==='hat'){
+    const n=c.createBufferSource(), f=c.createBiquadFilter(); n.buffer=mNoise();
+    f.type=e.i==='hat'?'highpass':'bandpass'; f.frequency.value=e.i==='hat'?7000:1800;
+    const len=e.i==='hat'?.035:.13;
+    g.gain.setValueAtTime(e.v,t); g.gain.exponentialRampToValueAtTime(.001,t+len);
+    n.connect(f); f.connect(g); n.start(t,Math.random()*.5); n.stop(t+len+.02); done(n); return;
+  }
+  if(e.i==='pad'){
+    const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1100; f.connect(g);
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(e.v,t+Math.min(.5,e.d*.3)); g.gain.setValueAtTime(e.v,end-Math.min(.4,e.d*.2)); g.gain.linearRampToValueAtTime(.0001,end+.3);
+    for(const dt of[-8,8]){const o=c.createOscillator(); o.type='sawtooth'; o.frequency.value=e.f; o.detune.value=dt; o.connect(f); o.start(t); o.stop(end+.35); done(o);}
+    return;
+  }
+  if(e.i==='bell'){
+    const o=c.createOscillator(), o2=c.createOscillator(), g2=c.createGain(), dec=Math.max(.6,Math.min(1.6,e.d*2));
+    o.frequency.value=e.f; o2.frequency.value=e.f*2.76; g2.gain.value=.25; o2.connect(g2); g2.connect(g); o.connect(g);
+    g.gain.setValueAtTime(e.v,t); g.gain.exponentialRampToValueAtTime(.001,t+dec);
+    if(_music.send)g.connect(_music.send);
+    o.start(t); o2.start(t); o.stop(t+dec+.05); o2.stop(t+dec+.05); done(o); done(o2); return;
+  }
+  // tone voices: pulse, square, triangle, saw
+  const o=c.createOscillator();
+  if(e.i==='pulse25')o.setPeriodicWave(mPulse(.25)); else if(e.i==='pulse12')o.setPeriodicWave(mPulse(.125));
+  else o.type=e.i==='tri'?'triangle':e.i==='saw'?'sawtooth':'square';
+  o.frequency.setValueAtTime(e.f,t);
+  if(e.vib){const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.5; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(e.f*.008,t+.3); l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(end+.05); done(l);}
+  let src=o;
+  if(e.lp){const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=e.lp; o.connect(f); src=f;}
+  src.connect(g);
+  g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(e.v,t+.006); g.gain.setValueAtTime(e.v*.75,t+Math.min(e.d*.5,.12)); g.gain.exponentialRampToValueAtTime(.001,end+.04);
+  if(_music.send&&e.i!=='tri'&&e.d<1.5)g.connect(_music.send);
+  o.start(t); o.stop(end+.06); done(o);
+}
+function musicCtx(){return onTitle()||!G?'title':(G.zone||1);}
+function musicPlaylist(key){const l=MTRACKS.filter(t=>t.ctx===key);return l.length?l:MTRACKS.filter(t=>t.ctx===1);}
+function mNext(key,at){
+  const list=musicPlaylist(key), last=_music.last[key];
+  const pick=list.length>1?list.filter(t=>t.id!==last):list;
+  const tr=pick[Math.floor(Math.random()*pick.length)];
+  _music.last[key]=tr.id; _music.plays[tr.id]=(_music.plays[tr.id]||0)+1;
+  _music.cur=tr; _music.key=key; _music.song=compileSong(tr,_music.plays[tr.id]); _music.idx=0; _music.t0=at;
+  try{const c=ac(); _music.send.gain.setValueAtTime(tr.fx||0,c.currentTime); _music.delay.delayTime.setValueAtTime(tr.raw?.36:Math.min(.9,45/(tr.bpm||112)),c.currentTime);}catch(e){}
+}
+function mTick(){
+  if(!_music.running)return;
+  let c; try{c=ac();}catch(e){return;}
+  const now=c.currentTime, want=musicCtx();
+  if(_music.song&&(_music.key!==want||_music.skip)&&!_music.fading){
+    _music.fading=now+1.2; _music.skip=false;
+    try{_music.bus.gain.setValueAtTime(_music.bus.gain.value,now);_music.bus.gain.linearRampToValueAtTime(.0001,now+1.1);}catch(e){}
+  }
+  if(_music.fading){
+    if(now<_music.fading)return;
+    _music.fading=0; try{_music.bus.gain.cancelScheduledValues(now);_music.bus.gain.setValueAtTime(1,now);}catch(e){}
+    mNext(want,now+.15);
+  }
+  if(!_music.song)mNext(want,now+.15);
+  const s=_music.song;
+  while(_music.idx<s.ev.length&&_music.t0+s.ev[_music.idx].t<now+.5){
+    const e=s.ev[_music.idx++], when=_music.t0+e.t;
+    if(when>=now-.05)try{mPlay(e,Math.max(when,now));}catch(err){}
+  }
+  if(_music.idx>=s.ev.length&&now>_music.t0+s.len)mNext(want,now+2.5); // a short breath between tracks
+}
 function musicStart(){
   if(_music.running)return;
   try{
-    const ctx=ac();
-    const mg=ctx.createGain();
-    mg.gain.setValueAtTime(G&&G.musicVol!==undefined?G.musicVol:0.7,ctx.currentTime);
-    mg.connect(ctx.destination);
-    _music.gain=mg;
-    _music.running=true;
-    _scheduleTrack(ctx.currentTime);
+    const c=ac();
+    const mg=c.createGain(); mg.gain.setValueAtTime(G&&G.musicVol!==undefined?G.musicVol:0.7,c.currentTime); mg.connect(c.destination);
+    const comp=c.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4; comp.connect(mg);
+    const bus=c.createGain(); bus.connect(comp);
+    const send=c.createGain(), dl=c.createDelay(1), fb=c.createGain(), wet=c.createGain();
+    send.gain.value=0; fb.gain.value=.32; wet.gain.value=.6;
+    send.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(bus);
+    Object.assign(_music,{gain:mg,bus,send,delay:dl,running:true,song:null,fading:0,skip:false});
+    _music.timer=setInterval(mTick,100); mTick();
   }catch(e){}
 }
-
-function _scheduleTrack(startTime){
-  if(!_music.running)return;
-  const ctx=ac();
-  _music.nodes=[];
-  for(const n of _MSCHED){
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.type=n.w;
-    o.frequency.setValueAtTime(n.f,startTime+n.t);
-    g.gain.setValueAtTime(n.v,startTime+n.t);
-    g.gain.exponentialRampToValueAtTime(0.001,startTime+n.t+n.d);
-    o.connect(g); g.connect(_music.gain);
-    o.start(startTime+n.t);
-    o.stop(startTime+n.t+n.d+0.05);
-    _music.nodes.push(o);
-  }
-  // Loop: reschedule just before track ends
-  const loopDelay=(_MTOTAL-0.5)*1000;
-  _music.loopId=setTimeout(()=>{
-    if(_music.running) _scheduleTrack(ac().currentTime+0.1);
-  },loopDelay);
-}
-
 function musicStop(){
   _music.running=false;
-  if(_music.loopId){clearTimeout(_music.loopId);_music.loopId=null;}
-  for(const n of _music.nodes){try{n.stop();}catch(e){}}
-  _music.nodes=[];
-  if(_music.gain){
-    try{
-      _music.gain.gain.exponentialRampToValueAtTime(0.001,ac().currentTime+0.4);
-      setTimeout(()=>{try{_music.gain.disconnect();}catch(e){}},500);
-    }catch(e){}
+  if(_music.timer){clearInterval(_music.timer);_music.timer=null;}
+  _music.song=null; _music.fading=0;
+  const mg=_music.gain;
+  if(mg){
+    try{mg.gain.cancelScheduledValues(ac().currentTime);mg.gain.setValueAtTime(mg.gain.value,ac().currentTime);mg.gain.exponentialRampToValueAtTime(0.001,ac().currentTime+0.4);
+      setTimeout(()=>{try{mg.disconnect();}catch(e){}},500);}catch(e){}
     _music.gain=null;
   }
+}
+function musicNext(){if(_music.running&&_music.song)_music.skip=true; setTimeout(()=>{const el=document.getElementById('nowPlaying'); if(el)el.textContent=nowPlayingText();},1500);}
+function nowPlayingText(){
+  if(!_music.running||!_music.cur)return 'Nothing playing';
+  const key=_music.key, list=musicPlaylist(key), i=list.indexOf(_music.cur)+1;
+  return `${_music.cur.name} · ${key==='title'?'Title':ZONES[key]?.name||''} ${i}/${list.length}`;
 }
 
 function toggleMusic(){
@@ -985,8 +1206,9 @@ const ITEMS = {
   silicon:      {name:'Silicon',        icon:'🔷', cat:'processed'},
   lithium_salt: {name:'Lithium Salt',   icon:'🧂', cat:'processed'},
   lithium:      {name:'Lithium',        icon:'⚪', cat:'processed'},
-  re_oxide:     {name:'RE Oxide',       icon:'🟧', cat:'processed'},
+  re_oxide:     {name:'Rare Earth Oxide', icon:'🟧', cat:'processed', desc:'Refined rare earth. A Separator makes it from 2 Rare Earth Ore plus 4 brine piped in (needs Pressure Control).', uses:['Magnet (Assembler, with 2 iron plates)','Pressure Hull (rocket part)']},
   magnet:       {name:'Magnet',         icon:'🧲', cat:'parts'},
+  gasket:       {name:'Gasket',         icon:'⭕', cat:'parts', desc:'A rubber seal for Relief Valves. A valve wears one out every 60 units it vents; with none left it jams shut.'},
   battery:      {name:'Battery',        icon:'🪫', cat:'parts'},
   lattice_core: {name:'Lattice Core',   icon:'💠', cat:'parts'},
   fuel_rod:     {name:'Lattice Fuel Rod',icon:'🟩', cat:'rocket3'},
@@ -1078,6 +1300,7 @@ const RECIPES = {
   z3_lithium: {name:'Lithium',           machine:'electric_smelter', time:8, in:{lithium_salt:1},             out:{lithium:1},     unlock:'energy_storage'},
   z3_evap:    {name:'Evaporate Brine',   machine:'evaporator', time:8,  in:{}, fluid:{brine:4},                out:{lithium_salt:1},unlock:'fluid_handling'},
   z3_separate:{name:'Separate Rare Earth',machine:'separator', time:8, in:{rare_earth:2}, fluid:{brine:4},     out:{re_oxide:1},    unlock:'pressure_control'},
+  mk_gasket:  {name:'Gasket',            machine:'assembler', time:8,  in:{iron_plate:1,stone:1},             out:{gasket:2},      unlock:'pressure_control'},
   z3_magnet:  {name:'Magnet',            machine:'assembler', time:8,  in:{re_oxide:1,iron_plate:2},          out:{magnet:1},      unlock:'pressure_control'},
   z3_battery: {name:'Battery',           machine:'assembler', time:8, in:{lithium:2,copper_plate:1,steel_plate:1}, out:{battery:1}, unlock:'energy_storage'},
   z3_core:    {name:'Lattice Core',      machine:'assembler', time:16, in:{silicon:3,magnet:1},               out:{lattice_core:1},unlock:'lattice_fuel'},
@@ -1120,7 +1343,7 @@ const MDEFS = {
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter, needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter, 2× speed'},
   electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed, runs on power. 4× a Stone Furnace: 120 ore in, 60 plates out per minute. Makes propellant.'},
-  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill','z4_paste','z4_composite','z4_rod','z4_biohull','z4_bionav','z4_core','z5_lens','z5_casing','z5_engine','z5_mind'], desc:'Crafts parts and components'},
+  assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','mk_gasket','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill','z4_paste','z4_composite','z4_rod','z4_biohull','z4_bionav','z4_core','z5_lens','z5_casing','z5_engine','z5_mind'], desc:'Crafts parts and components'},
   lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat','z4_sci_bloom','z4_sci_growth','z4_sci_synth','z5_sci_void'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
@@ -1140,7 +1363,7 @@ const MDEFS = {
   pipe:           {name:'Pipe',             icon:'🔗', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:'fluid_handling', recipes:[], fluidCap:10, noItems:true, desc:'Carries fluid. Connects to neighbouring pipes and fluid machines'},
   brine_pump:     {name:'Brine Pump',       icon:'⛲', size:[2,2], power:8,   cost:{iron_plate:10,iron_gear:4,circuit:2},            unlock:'fluid_handling', recipes:[], fluidPort:true, pumps:'brine', noItems:true, desc:'Pumps lithium brine from a brine pool into connected pipes'},
   fluid_tank:     {name:'Fluid Tank',       icon:'🥫', size:[2,2], power:0,   cost:{iron_plate:12,steel_plate:4},                    unlock:'fluid_handling', recipes:[], fluidCap:200, noItems:true, desc:'Adds 200 fluid capacity to its pipe network'},
-  relief_valve:   {name:'Relief Valve',     icon:'🚿', size:[1,1], power:0,   cost:{iron_plate:4,iron_gear:2},                       unlock:'pressure_control', recipes:[], fluidCap:5, noItems:true, desc:'Vents fluid when its network goes above 80% pressure'},
+  relief_valve:   {name:'Relief Valve',     icon:'🚿', size:[1,1], power:0,   cost:{iron_plate:4,iron_gear:2},                       unlock:'pressure_control', recipes:[], fluidCap:5, accepts:['gasket'], bufCap:10, desc:'Vents fluid above 80% pressure, up to 60 a minute. Wears out a Gasket every 60 units vented: load them by hand or with an inserter'},
   evaporator:     {name:'Evaporator',       icon:'♨️', size:[2,2], power:14,  cost:{iron_plate:12,iron_gear:6,circuit:3},            unlock:'fluid_handling', recipes:['z3_evap'], fluidPort:true, desc:'Evaporates brine into lithium salt'},
   separator:      {name:'Separator',        icon:'🌀', size:[2,2], power:16,  cost:{iron_plate:14,circuit:4,steel_plate:4},          unlock:'pressure_control', recipes:['z3_separate'], fluidPort:true, desc:'Separates rare earth ore using brine'},
   rod_press:      {name:'Rod Press',        icon:'🧰', size:[2,2], power:24,  cost:{steel_plate:10,circuit:6,magnet:4},              unlock:'lattice_fuel', recipes:['z3_rod'], fluidPort:true, desc:'Presses lattice fuel rods. Needs 60%+ pipe pressure'},
@@ -1163,6 +1386,7 @@ const MDEFS = {
 // unlock = research id required (null = always available)
 const HAND_CRAFTS = [
   {id:'iron_plate',   name:'Iron Plate',   icon:'🔘', in:{iron_ore:2},                         out:{iron_plate:1},   clicks:5,  unlock:null,           desc:'Smelt iron ore by hand'},
+  {id:'gasket',       name:'Gasket',       icon:'⭕', in:{iron_plate:1,stone:1},             out:{gasket:2},       clicks:6,  unlock:'pressure_control', desc:'Seals for Relief Valves'},
   {id:'copper_plate', name:'Copper Plate', icon:'🟠', in:{copper_ore:2},                        out:{copper_plate:1}, clicks:5,  unlock:null,           desc:'Smelt copper ore by hand'},
   {id:'iron_gear',    name:'Iron Gear',    icon:'⚙️', in:{iron_plate:2},                        out:{iron_gear:1},    clicks:10, unlock:null,           desc:'Shape iron plates into gears'},
   {id:'copper_wire',  name:'Copper Wire',  icon:'〰️', in:{copper_plate:1},                      out:{copper_wire:2},  clicks:8,  unlock:null,           desc:'Draw copper into wire'},
@@ -1202,55 +1426,63 @@ const MACHINE_BUILDS = [
 //  TAB / DRAWER DEFINITIONS
 // ═══════════════════════════════════════════════════
 const DRAWER_DEFS = {
+  // Grouped by what a machine does. An item with zones:[...] only shows in those zones; a group with nothing
+  // for this zone is hidden. Locked machines still show, with the research they need.
   build: [
-    {label:'Logistics', items:[
+    {label:'Belts', items:[
       {id:'belt',name:'Belt',icon:'➡️'},
       {id:'splitter',name:'Splitter',icon:'⑂'},
       {id:'tunnel',name:'Tunnel',icon:'⏬'},
+    ]},
+    {label:'Handling', items:[
       {id:'inserter',name:'Inserter',icon:'🦾'},
       {id:'long_inserter',name:'Long Ins.',icon:'🦿'},
       {id:'chest',name:'Chest',icon:'📦'},
     ]},
-    {label:'Extract', items:[
+    {label:'Mining', items:[
       {id:'miner',name:'Miner',icon:'⛏️'},
-      {id:'burner',name:'Burner',icon:'🪵'},
-      {id:'generator',name:'Generator',icon:'⚡'},
+      {id:'oil_pump',name:'Oil Pump',icon:'🛢️',zones:[2,5]},
+      {id:'brine_pump',name:'Brine Pump',icon:'⛲',zones:[3,4,5]},
+      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶',zones:[4,5]},
     ]},
-    {label:'Processing', items:[
+    {label:'Smelting', items:[
       {id:'stone_furnace',name:'Furnace',icon:'⚱️'},
       {id:'blast_furnace',name:'Blast Furn.',icon:'🔥'},
       {id:'electric_smelter',name:'Elec. Smelt.',icon:'🌩️'},
+    ]},
+    {label:'Production', items:[
       {id:'assembler',name:'Assembler',icon:'🏗️'},
       {id:'lab',name:'Lab',icon:'🔬'},
     ]},
-    {label:'Oil', zones:[2,5], unlock:'oil_extraction', items:[
-      {id:'oil_pump',name:'Oil Pump',icon:'🛢️'},
-      {id:'cracker',name:'Cracker',icon:'⚗️'},
-      {id:'refinery',name:'Refinery',icon:'🏭'},
-      {id:'combustion_gen',name:'Comb. Gen.',icon:'🔆'},
-      {id:'scrubber',name:'Scrubber',icon:'🌿'},
+    {label:'Power', items:[
+      {id:'burner',name:'Burner',icon:'🪵'},
+      {id:'generator',name:'Generator',icon:'⚡'},
+      {id:'combustion_gen',name:'Comb. Gen.',icon:'🔆',zones:[2,5]},
+      {id:'lumen_panel',name:'Lumen',icon:'💡',zones:[3,5]},
+      {id:'accumulator',name:'Accum.',icon:'🔋',zones:[3,5]},
+      {id:'reactor',name:'Reactor',icon:'☢️',zones:[4,5]},
+      {id:'heat_sink',name:'Heat Sink',icon:'❄️',zones:[4,5]},
     ]},
-    {label:'Fluids', zones:[3,4,5], items:[
-      {id:'pipe',name:'Pipe',icon:'🔗'},
-      {id:'brine_pump',name:'Brine Pump',icon:'⛲'},
-      {id:'fluid_tank',name:'Tank',icon:'🥫'},
-      {id:'relief_valve',name:'Valve',icon:'🚿'},
+    {label:'Pipes', items:[
+      {id:'pipe',name:'Pipe',icon:'🔗',zones:[3,4,5]},
+      {id:'fluid_tank',name:'Tank',icon:'🥫',zones:[3,4,5]},
+      {id:'relief_valve',name:'Valve',icon:'🚿',zones:[3,4,5]},
     ]},
-    {label:'Deep', zones:[3,5], items:[
-      {id:'evaporator',name:'Evaporator',icon:'♨️'},
-      {id:'separator',name:'Separator',icon:'🌀'},
-      {id:'rod_press',name:'Rod Press',icon:'🧰'},
-      {id:'lumen_panel',name:'Lumen',icon:'💡'},
-      {id:'accumulator',name:'Accum.',icon:'🔋'},
+    {label:'Refining', items:[
+      {id:'cracker',name:'Cracker',icon:'⚗️',zones:[2,5]},
+      {id:'refinery',name:'Refinery',icon:'🏭',zones:[2,5]},
+      {id:'evaporator',name:'Evaporator',icon:'♨️',zones:[3,5]},
+      {id:'separator',name:'Separator',icon:'🌀',zones:[3,5]},
+      {id:'rod_press',name:'Rod Press',icon:'🧰',zones:[3,5]},
     ]},
-    {label:'Bloom', zones:[4,5], items:[
-      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶'},
-      {id:'algae_vat',name:'Algae Vat',icon:'🌊'},
-      {id:'bioreactor',name:'Bioreactor',icon:'🦠'},
-      {id:'spore_incubator',name:'Incubator',icon:'🏺'},
-      {id:'hyper_synth',name:'Hyper Synth',icon:'🧬'},
-      {id:'reactor',name:'Reactor',icon:'☢️'},
-      {id:'heat_sink',name:'Heat Sink',icon:'❄️'},
+    {label:'Biology', items:[
+      {id:'algae_vat',name:'Algae Vat',icon:'🌊',zones:[4,5]},
+      {id:'bioreactor',name:'Bioreactor',icon:'🦠',zones:[4,5]},
+      {id:'spore_incubator',name:'Incubator',icon:'🏺',zones:[4,5]},
+      {id:'hyper_synth',name:'Hyper Synth',icon:'🧬',zones:[4,5]},
+    ]},
+    {label:'Clean Air', items:[
+      {id:'scrubber',name:'Scrubber',icon:'🌿',zones:[2,5]},
     ]},
     {label:'Singularity', zones:[5], unlock:'singularity', items:[
       {id:'singularity',name:'Singularity',icon:'🌌'},
@@ -2058,7 +2290,7 @@ function machineWorking(m){
   if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
   if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
   if(m.type==='fluid_tank')return (m.fluid?.amt||0)>0.5;
-  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT;
+  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT&&!valveJammed(m);
   if(m.type==='accumulator')return (m.charge||0)>1;
   if(m.type==='chest')return Object.values(m.chestInv).some(v=>v>0);
   if(m.type==='heat_sink')return machineNeighbors(m).some(n=>n.type==='reactor'&&machineWorking(n));
@@ -2136,7 +2368,7 @@ const ITEM_ART={
   engine:['engine','#6a7280','#a8b0bc','#2a2e34'],
   speed_module:['module','#42a5f5','#ffffff','#1a3a5a','arrow'], prod_module:['module','#4caf50','#ffffff','#1a4a1a','plus'],
   eff_module:['module','#e53935','#ffffff','#5a1a1a','drop'],
-  magnet:['magnet','#e53935','#d0dae6','#5a1414'], battery:['battery','#4a4a3a','#ffd600','#1a1a10'],
+  magnet:['magnet','#e53935','#d0dae6','#5a1414'], gasket:['gasket','#3a3f46','#7a828c','#16191c'], battery:['battery','#4a4a3a','#ffd600','#1a1a10'],
   lattice_core:['core','#2ac8a0','#c0fff0','#0e5a48'], bio_composite:['weave','#7a8a4a','#c0d08a','#3a4020'],
   lum_rod:['tube','#2ac8a0','#e0fff8','#0e5a48'],
   // science: one book shape, each with its own cover emblem
@@ -2171,6 +2403,7 @@ const BOOK_EMBLEMS=[ // 4×4 cover marks, '#' = lit
   ['.##.','#..#','#..#','.##.'],
 ];
 const ITEM_SHAPES_2={
+  gasket({O,P},c,h,d){O(6,6,5,d);O(6,6,4,c);O(6,6,3,c);P(4,3,h);P(3,4,h);P(5,2,h);for(const[x,y]of[[6,1],[11,6],[6,11],[1,6]])P(x,y,'#d0d4da');},
   lumps({C,P},c,h,d){C(4,7,2,c);C(8,8,2,c);C(6,4,2,c);P(3,6,h);P(7,7,h);P(5,3,h);P(6,3,h);P(5,9,d);P(9,10,d);},
   cobble({R},c,h,d){R(1,7,5,3,c);R(6,7,5,3,shade(c,.12));R(3,4,6,3,shade(c,-.05));R(1,7,5,1,h);R(6,7,5,1,h);R(3,4,6,1,h);R(1,10,10,1,d);R(6,7,1,3,d);},
   geode({C,P},c,h,d){C(6,6,5,d);C(6,6,4,c);C(6,6,2,h);P(5,5,'#ffffff');P(7,7,shade(h,.4));P(2,4,shade(c,.3));},
@@ -2276,7 +2509,7 @@ function stageSpr(name){
 function anySpr(id){return itemSpr(id)||(MDEFS[id]&&MACHINE_ART[id]?machineSpr(id,0,false):null);}
 // Icon for an item or machine id, as HTML: pixel sprite, or emoji when textures are off
 function iconHtml(id,fallback){
-  if(TEX_PIXEL){const s=anySpr(id); if(s)return `<img class="ico" src="${sprURL('ico:'+id,s)}" alt="">`;}
+  if(TEX_PIXEL){const s=anySpr(id); if(s)return `<img class="ico" data-i="${id}" src="${sprURL('ico:'+id,s)}" alt="">`;}
   return ITEMS[id]?.icon||MDEFS[id]?.icon||fallback||'·';
 }
 // Draw a machine sprite into its footprint. A non-square machine lying on its side (facing down or up)
@@ -2916,31 +3149,95 @@ function beltTurn(m){
   return a===b?0:a?1:3;
 }
 
-// Draw the items on one belt-like tile. Moving items interpolate smoothly and may run past the edge into
-// the next tile (the simulation hands them over with the leftover move). Items that cannot move on stop
-// just short of the edge and queue a quarter tile apart (even spacing across tiles) instead of piling onto one spot.
-// mode: 'belt' full tile · 'enter' tunnel mouth (sinks at the centre) · 'exit' rises from the centre
-function beltCanTake(tx,ty,dir){
-  const[dx,dy]=D_VEC[dir], t=G.map[ty+dy]?.[tx+dx]; if(!t||t.mid===null)return false;
-  const nm=G.machines[t.mid]; if(!nm)return false;
-  if(nm.type==='chest')return true;
-  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<BELT_CAP;
-}
-function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
-  const flow=mode==='enter'||beltCanTake(tx,ty,dir);
-  const items=[...tile.items].sort((a,b)=>b.prog-a.prog);
-  let lim=flow?1+spd:1-BELT_GAP/2;
-  const[dx,dy]=D_VEC[dir], mx=tx*ts-cx+ts/2, my=ty*ts-cy+ts/2, sz=ts*.42;
-  for(const it of items){
-    let p=Math.max(flow?0:BELT_GAP/2,Math.min(it.prog+spd*sub,lim));
-    if(!flow)lim=p-BELT_GAP;             // queued items sit a gap apart, evenly across tile edges
-    if(mode==='enter'&&p>=.5)continue;   // gone underground
-    if(mode==='exit')p=.5+p*.5;          // surfaces at the centre
-    let ox,oy;
-    if(p<=1)[ox,oy]=beltItemPos(dir,turn,p);
-    else{[ox,oy]=beltItemPos(dir,turn,1);ox+=dx*(p-1);oy+=dy*(p-1);}
-    drawItem(ctx,it.id,mx+ox*ts,my+oy*ts,sz);
+// ── Belt item display ──
+// Every tick, after the belts and inserters move, each item gets a display position on its tile (BELT_VIS):
+// its real progress, held a gap behind the item ahead (across tile edges too), so items queued at the end of a
+// full belt line up evenly instead of stacking where the simulation parks them (prog .99). The renderer then
+// slides each item from last tick's spot to this tick's, so what you see is always what happened: no guessing
+// whether a tile is flowing, which is what made busy belts jump (v2.0.17). It runs one tick behind.
+const BELT_VIS=new WeakMap(); // item -> {t,d,pt,pd}: tile key + display progress, now and last tick
+function beltGeom(tx,ty){ // how a belt-like tile lays out its items: direction, corner, tunnel mouth
+  const t=G.map[ty]?.[tx]; if(!t||t.mid===null)return null;
+  const m=G.machines[t.mid]; if(!m||!beltLike(m.type))return null;
+  if(m.type==='belt')return {m,dir:m.dir,turn:beltTurn(m),mode:'belt'};
+  if(m.type==='tunnel'){
+    const p=m.tunnelId!==null&&G.machines[m.tunnelId];
+    const exit=p&&((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1])<0;
+    return {m,dir:m.dir,turn:0,mode:exit?'exit':'enter',entrance:!!p&&!exit};
   }
+  return {m,dir:m.dir,turn:0,mode:'belt'};
+}
+function beltVisPass(){
+  const mins=new Map(), base=beltBaseSpeed();
+  const visit=(tx,ty,depth)=>{ // returns the lowest display progress on this tile (Infinity if empty)
+    const key=ty*MAP_W+tx; if(mins.has(key))return mins.get(key);
+    mins.set(key,Infinity); // loop guard: a belt that circles back on itself
+    const tile=G.map[ty][tx], g=beltGeom(tx,ty); if(!g||!tile.items.length)return Infinity;
+    const[dvx,dvy]=D_VEC[g.dir], nx=tx+dvx, ny=ty+dvy;
+    let lim=1;
+    if(!g.entrance){
+      const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
+      if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
+      else if(!(nm&&nm.type==='chest'))lim=1-BELT_GAP/2; // end of the line: stop short of the edge
+    }
+    const sp=base*beltTierMult(g.m);
+    let mn=Infinity;
+    for(const it of [...tile.items].sort((a,b)=>b.prog-a.prog)){
+      let st=BELT_VIS.get(it), fresh=!st; if(!st){st={};BELT_VIS.set(it,st);}
+      st.pt=st.t; st.pd=st.d;
+      let d=Math.max(0,Math.min(it.prog,lim));
+      if(fresh){st.pt=key; st.pd=Math.max(0,d-sp);} // new on the belt: it slides in from a tick's travel back rather than standing still
+      if(st.pt===key){d=Math.min(Math.max(d,st.pd),st.pd+sp*1.5);} // never backwards, never faster than the belt can carry it
+      else if(st.pt!==undefined&&beltFeeds(st.pt,tx,ty)){
+        const pg=beltGeom(st.pt%MAP_W,Math.floor(st.pt/MAP_W));
+        const cap=Math.max(sp,pg?base*beltTierMult(pg.m):sp)*1.5;
+        d=Math.max(0,Math.min(d,st.pd+cap-1));
+      }
+      st.t=key; st.d=d; lim=d-BELT_GAP; mn=Math.min(mn,d);
+    }
+    mins.set(key,mn); return mn;
+  };
+  for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){const t=G.map[ty][tx]; if(t.items.length&&t.mid!==null)visit(tx,ty,0);}
+}
+function beltFeeds(fromKey,tx,ty){ // does the belt-like tile fromKey hand items straight on to (tx,ty)?
+  const fx=fromKey%MAP_W, fy=Math.floor(fromKey/MAP_W), g=beltGeom(fx,fy);
+  return !!g&&!g.entrance&&fx+D_VEC[g.dir][0]===tx&&fy+D_VEC[g.dir][1]===ty;
+}
+// Where an item at display progress p sits, in tiles from the map origin; null while underground
+function beltWorldPos(tx,ty,g,p){
+  if(g.mode==='enter'&&p>=.5)return null; // gone underground
+  if(g.mode==='exit')p=.5+p*.5;           // surfaces at the centre
+  let ox,oy;
+  if(p<=1)[ox,oy]=beltItemPos(g.dir,g.turn,p);
+  else{[ox,oy]=beltItemPos(g.dir,g.turn,1);ox+=D_VEC[g.dir][0]*(p-1);oy+=D_VEC[g.dir][1]*(p-1);}
+  return [tx+.5+ox,ty+.5+oy];
+}
+// Draw the items on one belt-like tile, sliding each from last tick's display spot to this tick's.
+// An item that just crossed onto this tile from the one feeding it follows the path (round corners too);
+// a short hop between neighbouring cells (splitter sides) slides straight; anything else appears in place.
+function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
+  const g={dir,turn,mode,entrance:false}, sz=ts*.42;
+  for(const it of tile.items){
+    const w=beltItemWorld(it,tx,ty,g,sub);
+    if(w)drawItem(ctx,it.id,w[0]*ts-cx,w[1]*ts-cy,sz);
+  }
+}
+function beltItemWorld(it,tx,ty,g,sub){ // where to draw this item now, in tiles; null while underground
+  const key=ty*MAP_W+tx, st=BELT_VIS.get(it);
+  let w;
+  if(!st||st.t!==key)w=beltWorldPos(tx,ty,g,Math.max(0,Math.min(1,it.prog)));   // just dropped here: no history yet
+  else if(st.pt===undefined||st.pt===key)w=beltWorldPos(tx,ty,g,st.pd===undefined?st.d:st.pd+(st.d-st.pd)*sub);
+  else{
+    const px=st.pt%MAP_W, py=Math.floor(st.pt/MAP_W), pg=beltGeom(px,py);
+    if(pg&&beltFeeds(st.pt,tx,ty)){
+      const q=st.pd+(st.d+1-st.pd)*sub;
+      w=q<1?beltWorldPos(px,py,pg,q):beltWorldPos(tx,ty,g,q-1);
+    } else if(pg&&Math.abs(px-tx)<=1&&Math.abs(py-ty)<=1){
+      const a=beltWorldPos(px,py,pg,st.pd), b=beltWorldPos(tx,ty,g,st.d);
+      w=a&&b?[a[0]+(b[0]-a[0])*sub,a[1]+(b[1]-a[1])*sub]:b;
+    } else w=beltWorldPos(tx,ty,g,st.d);
+  }
+  return w;
 }
 
 // Port layout per machine type:
@@ -2958,6 +3255,10 @@ const PORTS = {
   evaporator:      { outputs:[{side:'right',pos:.5}] },
   separator:       { outputs:[{side:'right',pos:.5}] },
   rod_press:       { outputs:[{side:'right',pos:.5}] },
+  algae_vat:       { outputs:[{side:'right',pos:.5}] }, // the Bloom's living machines had no output side until v2.0.17
+  bioreactor:      { outputs:[{side:'right',pos:.5}] },
+  spore_incubator: { outputs:[{side:'right',pos:.5}] },
+  hyper_synth:     { outputs:[{side:'right',pos:.5}] },
   generator:       { outputs:[] },
   burner:          { outputs:[] },
   chest:           { outputs:[{side:'bottom',pos:.5}] },
@@ -3307,6 +3608,12 @@ function draw(){
       ctx.fillStyle=Math.floor(at/4)%2?'#42a5f5':'#0d3b4a';
       ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+ph-20),8,8);
     }
+    // Relief Valve: a gasket-wear bar, and a red blinking frame when it is jammed
+    if(m.type==='relief_valve'&&ts>12){
+      const seal=m.seal===undefined?VALVE_SEAL:m.seal, spare=m.inBuf.gasket||0;
+      if(valveJammed(m)){ctx.strokeStyle=Math.floor(at/3)%2?'#e53935':'#5a1414';ctx.lineWidth=Math.max(2,ts/16);ctx.strokeRect(px+2,py+2,pw-4,ph-4);}
+      else{ctx.fillStyle='#111';ctx.fillRect(px+3,py+ph-6,pw-6,3);ctx.fillStyle=spare?'#26c6a0':seal<15?'#e53935':'#f5a623';ctx.fillRect(px+3,py+ph-6,(pw-6)*seal/VALVE_SEAL,3);}
+    }
     // Living machines: vitality bar + stage badge; withered = grey
     if(def.living){
       const st=lifeStage(m);
@@ -3435,7 +3742,7 @@ function draw(){
   }
   // Pipe burst flashes
   for(let i=burstFx.length-1;i>=0;i--){
-    const b=burstFx[i]; const age=(now-b.t)/700;
+    const b=burstFx[i]; if(b.t>now)b.t=now; const age=(now-b.t)/700; // a page-clock time from before a clock reset never runs backwards
     if(age>1){burstFx.splice(i,1);continue;}
     const rr=ts*(.3+age*1.2), bx=b.x*ts-cx+ts/2, by=b.y*ts-cy+ts/2;
     pixelFx(ctx,bx-rr-2,by-rr-2,rr*2+4,rr*2+4,ts,c=>{c.beginPath();c.arc(rr+2,rr+2,rr,0,Math.PI*2);
@@ -4703,7 +5010,11 @@ function consumeInputs(m,rec){
 //  one fluid; pressure = amount / capacity. Pumps push in, fluidPort machines
 //  draw out at recipe start. ≥90% with inflow builds strain → a pipe bursts.
 // ═══════════════════════════════════════════════════
-const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80, VALVE_VENT=0.75;
+const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80;
+// Relief Valves (v2.0.17): each vents at most VALVE_VENT a tick (60 a minute, half of what a T1 pump pushes), and a
+// Gasket seals VALVE_SEAL units of venting. A valve comes with one fitted; with none left in its buffer it jams shut.
+const VALVE_VENT=0.25, VALVE_SEAL=60;
+function valveJammed(m){return (m.seal===undefined?VALVE_SEAL:m.seal)<=0&&!(m.inBuf.gasket>0);}
 function burstStrain(){return BURST_STRAIN*(G.perks?.spent?.pressure1?1.5:1);}
 const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP',enzymes:'🧪 NEEDS ENZYME PUMP'};
 let FLUID_NETS=[];
@@ -4785,9 +5096,18 @@ function consumeFluid(m,rec){
 function settleFluidNets(){
   for(const net of FLUID_NETS){
     if(!net.members.length)continue;
-    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active).length;
-    if(valves&&pressureOf(net)>RELIEF_AT)
-      net.amt=Math.max(net.cap*RELIEF_AT/100,net.amt-valves*VALVE_VENT);
+    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active);
+    let excess=net.amt-net.cap*RELIEF_AT/100;
+    for(const v of valves){
+      if(v.seal===undefined)v.seal=VALVE_SEAL; // a new valve comes with one gasket fitted
+      if(excess<=0)continue;
+      if(v.seal<=0){
+        if((v.inBuf.gasket||0)>0){v.inBuf.gasket--;v.seal+=VALVE_SEAL;}
+        else{ if(!v._jamWarned){v._jamWarned=true;toast('Relief Valve jammed: out of Gaskets','bad');} continue; }
+      }
+      const d=Math.min(VALVE_VENT,excess,v.seal);
+      v.seal-=d; excess-=d; net.amt-=d; v._jamWarned=false;
+    }
     // Strain builds while pumps push into an over-pressured network (pumps push every
     // other tick, so +2 per push ≈ +1/tick), holds between pushes, eases off below 90%
     if(pressureOf(net)>=OVER_PRESSURE){if(net.inflow>0)net.strain+=2;}
@@ -5225,6 +5545,7 @@ function runBelts(){
   for(const m of Object.values(G.machines)){
     if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
   }
+  beltVisPass();
 }
 
 // Burner fuel use: 1 coal per this many ticks (24 = 6s). It used to be 8 (2s), the same as a
@@ -5342,22 +5663,24 @@ function stepInserter(m){
     // Waiting for room before even grabbing lost most of a swing per item (a T1 chain ran at 34/min, not 60)
 
     let item=null;
+    const acc=MDEFS[dm.type]?.accepts, want=k=>!acc||acc.includes(k);
+    if(acc&&(dm.inBuf[acc[0]]||0)>=(MDEFS[dm.type].bufCap||50))return; // full: wait
     if(src.mid!==null){
       const sm=G.machines[src.mid];
       if(sm&&beltLike(sm.type)){ // belts, tunnel mouths and splitters
         // take the front item anywhere on the tile: a T3 belt moves over half a tile per tick, so waiting for an item
         // in the last tenth of the tile missed most of them and starved machines along a fast belt.
         // On a splitter it takes only items the splitter has handed to its side (not ones still coming in)
-        let pool=src.items;
-        if(sm.type==='splitter'){const mine=src===G.map[sm.y][sm.x]?0:1; pool=src.items.filter(i=>i.side===mine);}
+        let pool=src.items.filter(i=>want(i.id));
+        if(sm.type==='splitter'){const mine=src===G.map[sm.y][sm.x]?0:1; pool=pool.filter(i=>i.side===mine);}
         if(pool.length){const it=pool.reduce((a,b)=>b.prog>a.prog?b:a);src.items.splice(src.items.indexOf(it),1);item=it.id;}
       } else if(sm&&sm.type==='chest'){
-        const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0);
+        const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0&&want(k));
         if(k&&myTurn(m,sm)){item=k;sm.chestInv[k]--;markServed(sm,m);}
       } else if(sm&&sm.type!=='belt'&&sm.type!=='inserter'){
         const port=outputPortFacing(sm,-dvx,-dvy);
         if(port>=0){ // only what this arrow puts out
-          const k=Object.keys(sm.outBuf).find(k=>sm.outBuf[k]>0&&portTakes(sm,port,k));
+          const k=Object.keys(sm.outBuf).find(k=>sm.outBuf[k]>0&&portTakes(sm,port,k)&&want(k));
           if(k&&myTurn(m,sm)){item=k;sm.outBuf[k]--;markServed(sm,m);}
         }
       }
@@ -5384,7 +5707,7 @@ function stepInserter(m){
         if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
-        if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
+        if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else {
         returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
@@ -5398,7 +5721,7 @@ function stepInserter(m){
       const dm=G.machines[dst.mid]; let deposited=false;
       if(dm&&beltLike(dm.type)&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
       else if(dm&&dm.type==='chest'){const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
-      else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
     } else {
       returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
@@ -5662,12 +5985,15 @@ function switchTab(tab){
   }
 }
 
+// The drawer groups for this zone: zone-only machines show in their zones, empty groups are hidden
+function drawerCats(tab){
+  return (DRAWER_DEFS[tab]||[]).filter(c=>(!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)))
+    .map(c=>({...c,items:c.items.filter(i=>!i.zones||i.zones.includes(G.zone))})).filter(c=>c.items.length);
+}
 function buildDrawer(){
   const tab=activeTab;
   if(tab!=='build'&&tab!=='tools') return;
-  // Zone-specific categories only show in their zones, once their tech is researched
-  let cats=(DRAWER_DEFS[tab]||[]).filter(c=>
-    (!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)));
+  let cats=drawerCats(tab);
   const catIdx=activeDrawerCat[tab]||0;
   const safeCatIdx=Math.min(catIdx,cats.length-1);
 
@@ -5677,6 +6003,9 @@ function buildDrawer(){
     const catsHtml=cats.map((c,i)=>`<button class="dcat-btn${i===safeCatIdx?' active':''}" onclick="setDrawerCat(${i})">${c.label}</button>`).join('');
     if(catsEl._html===catsHtml&&catsEl.querySelector('.dcat-btn'))return buildDrawerItems(cats,safeCatIdx);
     catsEl.innerHTML=catsHtml; catsEl._html=catsHtml;
+    // keep the selected group in view (Zone 5 has eleven, more than fit across a phone)
+    const act=catsEl.querySelector('.dcat-btn.active');
+    if(act){const l=act.offsetLeft, r=l+act.offsetWidth; if(l<catsEl.scrollLeft)catsEl.scrollLeft=l-8; else if(r>catsEl.scrollLeft+catsEl.clientWidth)catsEl.scrollLeft=r-catsEl.clientWidth+8;}
     // One-time hint: pulse the second category tab to show it's tappable
     if(!localStorage.getItem('ebi_drawerHintSeen')&&cats.length>1){
       const hint=document.createElement('span');
@@ -5980,6 +6309,7 @@ function machineRates(m){
     R.notes.push('Only burns while something is using power');
   } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
   else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
+  else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${RELIEF_AT}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
   else if(m.type==='scrubber'){R.in.refined_fuel=per(SCRUBBER_FUEL_TICKS);R.notes.push(`Clears ${SCRUBBER_SMOG_MIN} smog/min while it has fuel, power and smog to clean`);}
   else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);}
   else if(m.type==='miner'){
@@ -6053,10 +6383,11 @@ function renderInvPanel(){
     if(!items.length)continue;
     html+=`<span class="sec-label">${label.toUpperCase()}</span><div class="inv-grid">`;
     for(const[id,it]of items)
-      html+=`<div class="inv-chip">${iconHtml(id)}<span style="font-size:var(--f6);color:var(--amber)">${fmt(G.inv[id])}</span><span class="n">${it.name}</span></div>`;
+      html+=`<div class="inv-chip" onclick="showRecipeFor('${id}')">${iconHtml(id)}<span style="font-size:var(--f6);color:var(--amber)">${fmt(G.inv[id])}</span><span class="n">${it.name}</span></div>`;
     html+='</div>';
   }
   if(!html)html=`<div style="color:var(--text3);font-size:var(--f6);text-align:center;padding:20px;line-height:2.2">Nothing yet.<br>Tap any ore deposit on the map to mine.</div>`;
+  else html+=`<div style="font-size:var(--f4);color:var(--text3);margin-top:8px">Tap an item to see how it is made and what uses it.</div>`;
   setHtml(document.getElementById('pInvBody'),html);
 }
 
@@ -6477,6 +6808,14 @@ function fluidPanelRows(m,def,rec){
     html+=irow('Cooling',`${sinks} heat sink${sinks!==1?'s':''} (${sinks>=2?'stable':'needs '+(2-sinks)+' more'})`);
     html+=irow('Fuel',`🔦 ${m.inBuf.lum_rod||0} rods · 1 rod / ${ROD_TICKS*TICK_MS/1000}s`);
   }
+  if(m.type==='relief_valve'){
+    const seal=m.seal===undefined?VALVE_SEAL:m.seal, jam=valveJammed(m), hot=m._net&&pressureOf(m._net)>RELIEF_AT;
+    html+=irow('Gasket',jam?`<span style="color:var(--red)">✗ Worn out: valve jammed shut</span>`:`<span style="color:${seal<15?'var(--amber)':'var(--teal)'}">${Math.round(seal/VALVE_SEAL*100)}% left</span>`);
+    html+=irow('Spares',`${iconHtml('gasket')} ${m.inBuf.gasket||0} / ${MDEFS.relief_valve.bufCap}`);
+    html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':'No (below 80%)');
+    html+=`<button class="full-btn teal" style="margin:4px 0" onclick="loadGaskets(${m.id})">LOAD GASKETS (have ${G.inv.gasket||0})</button>
+      <div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Each Gasket seals 60 units of venting. An inserter can keep it stocked.</div>`;
+  }
   if(m.type==='accumulator')html+=irow('Charge',`${Math.round((m.charge||0)/ACC_CAP*100)}% (${Math.round(m.charge||0)}/${ACC_CAP} kJ)`);
   if(m.type==='lumen_panel')html+=irow('Glow tide',glowBright()?`<span style="color:var(--amber)">☀️ Bright, ${glowSecsLeft()}s left</span>`:`<span style="color:var(--text3)">🌑 Dim, ${glowSecsLeft()}s left</span>`);
   return html;
@@ -6737,6 +7076,13 @@ function ejectBuf(id){
   updateHUD(); renderMachPanel();
 }
 
+function loadGaskets(id){
+  const m=G.machines[id]; if(!m)return;
+  const n=Math.min(G.inv.gasket||0,MDEFS.relief_valve.bufCap-(m.inBuf.gasket||0));
+  if(n<=0){toast((G.inv.gasket||0)?'Valve is full':'No Gaskets: craft them by hand or in an Assembler','wrn');sfx('error');return;}
+  G.inv.gasket-=n; m.inBuf.gasket=(m.inBuf.gasket||0)+n; m._jamWarned=false;
+  sfx('craft'); toast(`Loaded ${n} Gasket${n>1?'s':''}`,'ok'); updateHUD(); renderMachPanel();
+}
 function feedCoal(id,amount){
   const m=G.machines[id]; if(!m)return;
   const have=G.inv.coal||0;
@@ -7565,8 +7911,7 @@ function renderSmogPanel(){
 // ── Power panel: tap the power gauge. Every generator and consumer, and what to add ──
 const GEN_FUEL={burner:['coal',BURNER_COAL_TICKS],generator:['coal',16],combustion_gen:['refined_fuel',32],reactor:['lum_rod',ROD_TICKS]};
 function buildableHere(t){
-  const cat=DRAWER_DEFS.build.find(c=>c.items.some(i=>i.id===t)); if(!cat)return false;
-  if(cat.zones&&!cat.zones.includes(G.zone))return false;
+  const cat=drawerCats('build').find(c=>c.items.some(i=>i.id===t)); if(!cat)return false;
   const done=u=>!u||G.research.done.includes(u);
   return done(cat.unlock)&&done(MDEFS[t].unlock);
 }
@@ -8046,49 +8391,168 @@ function renderAchievePanel(){
   setHtml(el,html);
 }
 
+// ── Recipe Book (v2.0.17) ──
+// Every recipe this zone can run (machines and hand crafts), how raw resources are mined or pumped,
+// a search box, and an item page: what makes it, what uses it, and its other uses (fuel, food, machine
+// costs, research, the launch). Tapping an item icon in any panel opens its page (showRecipeFor).
+let rbQuery='', rbFocus=null, rbOpen=new Set(), rbBack=null, rbHist=[], rbRes={map:null,w:0,set:null};
+const RB_PUMPED={oil:['crude_oil','oil_pump'],brine:['brine','brine_pump'],enzymes:['enzymes','enzyme_pump']};
+function rbName(id){return ITEMS[id]?.name||MDEFS[id]?.name||id;}
+function rbChip(id,n,suffix){return `<span class="rb-chip">${n!=null?`<b>${fmt(n)}</b>`:''}${iconHtml(id)}${rbName(id)}${suffix||''}</span>`;}
+function rbResHere(){ // deposit types on this map (cached until the map changes)
+  if(rbRes.map!==G.map||rbRes.w!==MAP_W){const set=new Set(); for(const row of G.map)for(const t of row)if(t.res)set.add(t.res); rbRes={map:G.map,w:MAP_W,set};}
+  return rbRes.set;
+}
+function rbRecipes(){ // every recipe usable in this zone, machines then hand crafts
+  const list=Object.entries(RECIPES).filter(([id])=>zoneRecipeOk(id)).map(([id,r])=>({id,name:r.name,machine:r.machine,secs:r.time/4,in:r.in,out:r.out,fluid:r.fluid,minPressure:r.minPressure,unlock:r.unlock}));
+  for(const h of HAND_CRAFTS)if(zoneRecipeOk(h.id))list.push({id:'hand:'+h.id,name:h.name,machine:'hand',clicks:h.clicks,in:h.in,out:h.out,unlock:h.unlock});
+  return list;
+}
+function rbLock(r){
+  const done=G.research.done;
+  if(r.unlock&&!done.includes(r.unlock))return TECHS[r.unlock]?.name||r.unlock;
+  const mu=r.machine!=='hand'&&MDEFS[r.machine]?.unlock;
+  if(mu&&!done.includes(mu))return TECHS[mu]?.name||mu;
+  return null;
+}
+function rbCard(r){
+  const lock=rbLock(r), hand=r.machine==='hand';
+  const ins=Object.entries(r.in||{}).map(([k,v])=>rbChip(k,v)).join('');
+  const fl=Object.entries(r.fluid||{}).map(([k,v])=>rbChip(k,v,' (piped)')).join('');
+  const outs=Object.entries(r.out).map(([k,v])=>rbChip(k,v)).join('');
+  const meta=hand?`Hand craft: ${r.clicks} taps in the CRAFT tab`
+    :`${fmtRate(r.secs)}s per craft at T1 · makes ${Object.entries(r.out).map(([k,v])=>`${fmtRate(v*60/r.secs)} ${rbName(k)}`).join(', ')} a minute${r.minPressure?` · needs ${r.minPressure}%+ pipe pressure`:''}`;
+  return `<div class="rb-card${lock?' locked':''}">
+    <div class="rb-head">${hand?uiIcon('craft'):iconHtml(r.machine)}<span>${r.name}</span><span class="w">${hand?'Hand':MDEFS[r.machine]?.name||r.machine}</span></div>
+    <div class="rb-row">${ins}${fl}${ins||fl?' → ':''}${outs}</div>
+    <div class="rb-meta">${meta}</div>
+    ${lock?`<div class="rb-lock">🔒 Needs research: ${lock}</div>`:''}
+  </div>`;
+}
+function rbSources(id){ // ways to get an item that are not recipes: mining and pumping
+  const out=[], here=rbResHere();
+  for(const[res,[item,pump]]of Object.entries(RB_PUMPED))if(item===id&&here.has(res))
+    out.push(`${iconHtml(pump)} <b>${MDEFS[pump].name}</b> on a ${res} pool: 60 a minute at T1${res==='oil'?'':', into a pipe network'}`);
+  if(here.has(id)&&!RB_PUMPED[id])
+    out.push(`${iconHtml('miner')} <b>Miner</b> on a ${rbName(id)} deposit: ${id==='radiant_dust'?'30':'60'} a minute at T1. You can also tap the deposit to mine by hand.`);
+  return out;
+}
+function rbOtherUses(id){ // uses outside recipes
+  const out=[];
+  const fuel={coal:['burner','generator','stone_furnace','blast_furnace'],refined_fuel:['combustion_gen','scrubber'],lum_rod:['reactor'],nutrient:Object.keys(MDEFS).filter(t=>MDEFS[t].living)}[id];
+  if(fuel){const ok=fuel.filter(t=>DRAWER_DEFS.build.some(c=>c.items.some(i=>i.id===t&&(!i.zones||i.zones.includes(G.zone)))));
+    if(ok.length)out.push(`${id==='nutrient'?'Food for':'Fuel for'} ${ok.map(t=>rbChip(t)).join('')}`);}
+  if(id==='gasket')out.push(`Keeps ${rbChip('relief_valve')} venting: 1 per ${VALVE_SEAL} units vented`);
+  const builds=Object.keys(MDEFS).filter(t=>MDEFS[t].cost?.[id]&&drawerCats('build').some(c=>c.items.some(i=>i.id===t)));
+  if(builds.length)out.push(`Builds ${builds.map(t=>rbChip(t,MDEFS[t].cost[id])).join('')}`);
+  const techs=Object.entries(TECHS).filter(([tid,t])=>t.cost?.[id]&&!G.research.done.includes(tid));
+  if(techs.length)out.push(`Research: ${techs.map(([,t])=>`${t.name} (${fmt(t.cost[id])})`).join(', ')}`);
+  const launch=rocketReqs().find(r=>r.id===id);
+  if(launch)out.push(`Launch: ${fmt(launch.need)} needed (you have ${fmt(launch.have)})`);
+  if(G.zone===5&&SING_REQS[id])out.push(`The Singularity needs ${SING_REQS[id]}`);
+  return out;
+}
+function rbFocusHtml(id){
+  const recs=rbRecipes(), made=recs.filter(r=>r.out[id]), used=recs.filter(r=>r.in?.[id]||r.fluid?.[id]);
+  const it=ITEMS[id], md=MDEFS[id];
+  let html=`<div class="rb-big">${iconHtml(id)}<div><div style="font-size:var(--f8);color:var(--amber)">${rbName(id)}</div>${it?.desc?`<div style="font-size:var(--f5);color:var(--text2);line-height:1.8;margin-top:4px">${it.desc}</div>`:''}</div></div>`;
+  if(md&&!it){ // a machine: what it costs, and what it makes
+    const lock=md.unlock&&!G.research.done.includes(md.unlock);
+    html+=`<span class="sec-label">BUILD COST</span><div class="rb-row" style="margin-bottom:6px">${Object.entries(md.cost||{}).map(([k,v])=>rbChip(k,v)).join('')}</div>
+      <div class="rb-meta" style="margin-bottom:8px">${md.power>0?`Uses ${md.power} kW`:md.power<0?`Makes ${-md.power} kW`:'Needs no power'}${md.desc?` · ${md.desc}`:''}</div>
+      ${lock?`<div class="rb-lock" style="margin-bottom:8px">🔒 Needs research: ${TECHS[md.unlock]?.name||md.unlock}</div>`:''}`;
+    const runs=recs.filter(r=>r.machine===id);
+    if(runs.length)html+=`<span class="sec-label">RECIPES</span>${runs.map(rbCard).join('')}`;
+    const src=Object.entries(RB_PUMPED).find(([,[,p]])=>p===id);
+    if(src)html+=`<div class="rb-meta">Pumps ${rbName(src[1][0])} from a ${src[0]} pool.</div>`;
+    if(id==='miner')html+=`<div class="rb-meta">Mines the deposit it stands on: ${[...rbResHere()].filter(r=>!RB_PUMPED[r]).map(r=>rbChip(r)).join('')}</div>`;
+    return html;
+  }
+  const src=rbSources(id);
+  html+=`<span class="sec-label">HOW TO GET IT</span>`;
+  if(!src.length&&!made.length)html+=`<div class="rb-meta" style="margin-bottom:8px">Not available in this zone.</div>`;
+  for(const l of src)html+=`<div class="rb-card"><div class="rb-row">${l}</div></div>`;
+  html+=made.map(rbCard).join('');
+  const other=rbOtherUses(id);
+  if(used.length||other.length){
+    html+=`<span class="sec-label" style="margin-top:10px">WHAT USES IT</span>`;
+    for(const l of other)html+=`<div class="rb-card"><div class="rb-row">${l}</div></div>`;
+    html+=used.map(rbCard).join('');
+  }
+  return html;
+}
+function rbMatches(q){ // items and machines whose name contains q, best first
+  q=q.toLowerCase();
+  const recs=rbRecipes(), here=rbResHere();
+  const known=new Set(); for(const r of recs){for(const k of Object.keys(r.out))known.add(k);for(const k of Object.keys(r.in||{}))known.add(k);for(const k of Object.keys(r.fluid||{}))known.add(k);}
+  for(const r of here)known.add(RB_PUMPED[r]?RB_PUMPED[r][0]:r);
+  for(const c of drawerCats('build'))for(const i of c.items)known.add(i.id);
+  const ids=[...known].filter(id=>rbName(id).toLowerCase().includes(q));
+  return ids.sort((a,b)=>(rbName(b).toLowerCase().startsWith(q)-rbName(a).toLowerCase().startsWith(q))||rbName(a).localeCompare(rbName(b))).slice(0,20);
+}
 function renderRecipesPanel(){
   const el=document.getElementById('pRecipesBody'); if(!el)return;
-  const done=new Set(G.research.done);
-  // Group recipes by machine
-  const machineGroups={};
-  for(const[rid,rec]of Object.entries(RECIPES)){
-    const mid=rec.machine;
-    if(!machineGroups[mid])machineGroups[mid]=[];
-    if(zoneRecipeOk(rid))machineGroups[mid].push({id:rid,...rec});
-  }
-  // Also add hand crafts
-  machineGroups['hand']=HAND_CRAFTS.filter(hc=>zoneRecipeOk(hc.id)).map(hc=>({id:hc.id,name:hc.name,machine:'hand',time:hc.clicks*0.5,in:hc.in,out:hc.out,unlock:hc.unlock}));
-
-  const machOrder=['hand','stone_furnace','blast_furnace','electric_smelter','assembler','lab'];
-  const machLabels={hand:'✋ Hand Craft',stone_furnace:'⚱️ Stone Furnace',blast_furnace:'🔥 Blast Furnace',electric_smelter:'🌩️ Electric Smelter',assembler:'🏗️ Assembler',lab:'🔬 Research Lab'};
   let html='';
-  for(const mid of machOrder){
-    const recipes=machineGroups[mid]; if(!recipes||!recipes.length)continue;
-    const mdef=MDEFS[mid];
-    const machUnlocked=!mdef?.unlock||done.has(mdef.unlock);
-    html+=`<div style="font-size:var(--f6);color:var(--amber);letter-spacing:2px;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${machLabels[mid]||mid}</div>`;
-    for(const r of recipes){
-      const recUnlocked=!r.unlock||done.has(r.unlock);
-      const visible=mid==='hand'?recUnlocked:machUnlocked&&recUnlocked;
-      const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${iconHtml(k)}${ITEMS[k]?.name||k}`).join(' + ');
-      const outs=Object.entries(r.out).map(([k,v])=>`${v}× ${iconHtml(k)}${ITEMS[k]?.name||k}`).join(' + ');
-      if(!visible){
-        html+=`<div style="padding:6px 8px;margin-bottom:3px;border:1px solid var(--border);background:var(--bg3);opacity:0.4">
-          <span style="font-size:var(--f6);color:var(--text3)">🔒 Locked${r.unlock?`, requires ${TECHS[r.unlock]?.name||r.unlock}`:''}</span>
-        </div>`;
-      } else {
-        html+=`<div style="padding:7px 8px;margin-bottom:4px;border:1px solid var(--border2);background:var(--bg3)">
-          <div style="font-size:var(--f7);color:var(--text);margin-bottom:4px">${r.name}</div>
-          <div style="font-size:var(--f6);color:var(--blue);margin-bottom:2px">In: ${ins}</div>
-          <div style="font-size:var(--f6);color:var(--amber)">→ ${outs}</div>
-          ${mid!=='hand'?`<div style="font-size:var(--f6);color:var(--text3);margin-top:2px">⏱ ${r.time}s</div>`:''}
-        </div>`;
-      }
+  if(rbFocus){
+    const back=rbHist.length||rbBack?`<button class="mini-btn teal" onclick="rbGoBack()">← BACK</button>`:'';
+    html+=`<div style="display:flex;gap:6px;margin-bottom:10px">${back}<button class="mini-btn amber" onclick="rbFocus=null;rbBack=null;rbHist=[];renderRecipesPanel()">${rbQuery?'RESULTS':'ALL RECIPES'}</button></div>`+rbFocusHtml(rbFocus);
+  } else if(rbQuery){
+    const m=rbMatches(rbQuery), recs=rbRecipes();
+    if(!m.length)html=`<div style="font-size:var(--f6);color:var(--text3);text-align:center;padding:16px;line-height:2">Nothing called "${rbQuery.replace(/[<>&"]/g,'')}" in this zone.</div>`;
+    if(m.length===1)html=rbFocusHtml(m[0]); // one match: straight to its page
+    else for(const id of m){
+      const made=recs.filter(r=>r.out[id]), src=rbSources(id);
+      const how=MDEFS[id]&&!ITEMS[id]?'Machine':made.length?made.slice(0,2).map(r=>r.machine==='hand'?'Hand':MDEFS[r.machine]?.name).filter((v,i,a)=>a.indexOf(v)===i).join(', '):src.length?'Mined or pumped':'';
+      html+=`<div class="rb-match" onclick="showRecipeFor('${id}',true)">${iconHtml(id)}<span>${rbName(id)}</span><span class="w">${how}</span></div>`;
+    }
+  } else {
+    const recs=rbRecipes();
+    html+=`<div style="font-size:var(--f5);color:var(--text3);line-height:1.8;margin-bottom:6px">Search above, or tap any item icon in a menu to see how it is made.</div>`;
+    const sec=(key,icon,label,body,n)=>{const open=rbOpen.has(key);
+      return `<div class="rb-sec" onclick="rbToggle('${key}')">${icon}<span>${label}</span><span class="n">${n} ${open?'▾':'▸'}</span></div>${open?body:''}`;};
+    const res=[...rbResHere()].map(r=>RB_PUMPED[r]?RB_PUMPED[r][0]:r);
+    html+=sec('mine',iconHtml('miner'),'MINING & PUMPS',res.map(id=>`<div class="rb-card"><div class="rb-row">${rbSources(id).join('<br>')||rbChip(id)}</div></div>`).join(''),res.length);
+    const hand=recs.filter(r=>r.machine==='hand');
+    if(hand.length)html+=sec('hand',uiIcon('craft'),'HAND CRAFT',hand.map(rbCard).join(''),hand.length);
+    const order=[...new Set(DRAWER_DEFS.build.flatMap(c=>c.items.map(i=>i.id)))];
+    for(const mid of order){
+      const list=recs.filter(r=>r.machine===mid); if(!list.length)continue;
+      html+=sec(mid,iconHtml(mid),MDEFS[mid].name.toUpperCase(),list.map(rbCard).join(''),list.length);
     }
   }
-  if(!html)html='<div style="font-size:var(--f6);color:var(--text3);text-align:center;padding:12px">No recipes yet.</div>';
   setHtml(el,html);
 }
+function rbToggle(k){if(rbOpen.has(k))rbOpen.delete(k);else rbOpen.add(k);renderRecipesPanel();}
+function recipeSearch(v,clear){
+  rbQuery=String(v||'').trim(); rbFocus=null; rbBack=null; rbHist=[];
+  const inp=document.getElementById('rbSearch'); if(clear&&inp){inp.value='';}
+  document.getElementById('rbClear')?.classList.toggle('hidden',!rbQuery);
+  renderRecipesPanel();
+  const b=document.getElementById('pRecipesBody'); if(b)b.scrollTop=0;
+}
+// Open the Recipe Book on one item or machine. From another panel, BACK returns to it.
+function showRecipeFor(id,fromBook){
+  if(!ITEMS[id]&&!MDEFS[id])return;
+  if(openPanel!=='recipes'){rbBack=openPanel?{panel:openPanel,inspect:inspectId}:null; rbHist=[];}
+  else if(rbFocus&&rbFocus!==id)rbHist.push(rbFocus); // browsing from item to item: BACK walks back through them
+  rbFocus=id;
+  if(openPanel!=='recipes')showPanel('recipes'); else renderRecipesPanel();
+  const b=document.getElementById('pRecipesBody'); if(b)b.scrollTop=0;
+}
+function rbGoBack(){
+  if(rbHist.length){rbFocus=rbHist.pop();renderRecipesPanel();return;}
+  const bk=rbBack; rbBack=null; rbFocus=null; if(!bk){renderRecipesPanel();return;}
+  if(bk.panel==='machine'&&G.machines[bk.inspect])openMachinePanel(G.machines[bk.inspect]); else showPanel(bk.panel);
+}
+// Tap an item icon anywhere in a panel or popup to open its recipe page. Icons inside buttons and
+// cards that already do something on tap are left alone.
+document.addEventListener('click',e=>{
+  const ic=e.target&&e.target.closest&&e.target.closest('img.ico[data-i]'); if(!ic||!G)return;
+  if(ic.closest('button,[onclick],.ditem,#invStrip,#hud,#tabBar,#tabDrawer,input,#sTitle'))return;
+  if(!ic.closest('.spanel,#mOverlay,#tutHint,#toolTip'))return;
+  if(ic.closest('#mOverlay'))closeModal();
+  showRecipeFor(ic.dataset.i);
+});
 
 // ═══════════════════════════════════════════════════
 //  TUTORIAL
@@ -8115,17 +8579,17 @@ const TUTORIALS={
      tally:[['iron_plate',3]], done:()=>(G.inv.iron_plate||0)>=3},
     {text:'Now craft [[iron_gear]] Iron Gears (2 plates each). Almost every machine needs them.',
      tally:[['iron_gear',2]], done:()=>(G.inv.iron_gear||0)>=2},
-    {text:'Open 🏗️ BUILD → Extract → [[burner]] Burner. Move the ghost onto the map, then press ✓ PLACE.',
+    {text:'Open 🏗️ BUILD → Power → [[burner]] Burner. Move the ghost onto the map, then press ✓ PLACE.',
      done:()=>hasM('burner')},
     {text:'Tap your Burner to open it, then feed it [[coal]] coal. Burners turn coal into power.',
      done:()=>machinesOf('burner').some(m=>(m.inBuf.coal||0)>0)},
-    {text:'Power is on! BUILD → Extract → [[miner]] Miner. Place it on a [[coal]] COAL deposit. It mines on its own.',
+    {text:'Power is on! BUILD → Mining → [[miner]] Miner. Place it on a [[coal]] COAL deposit. It mines on its own.',
      done:()=>machinesOf('miner').some(m=>m.mineRes==='coal')},
     {text:'Place an [[inserter]] Inserter between the Miner and the Burner, arrow pointing at the Burner. Use ↻ to rotate before placing.',
      done:()=>hasM('inserter')&&machinesOf('burner').some(b=>(b.inBuf.coal||0)>=1)},
     {text:'Coal now flows by itself. Place another [[miner]] Miner on an [[iron_ore]] Iron Ore deposit.',
      done:()=>machinesOf('miner').some(m=>m.mineRes==='iron_ore')},
-    {text:'BUILD → Processing → [[stone_furnace]] Stone Furnace. Place it near the iron miner.',
+    {text:'BUILD → Smelting → [[stone_furnace]] Stone Furnace. Place it near the iron miner.',
      done:()=>hasM('stone_furnace')},
     {text:'Feed the Furnace iron ore AND coal with Inserters. Tap it and pick "Smelt Iron". Its output arrow drops plates straight onto a belt.',
      done:()=>machinesOf('stone_furnace').some(m=>m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
@@ -8181,7 +8645,7 @@ const TUTORIALS={
      done:()=>hasM('lumen_panel')},
     {text:'The glow dims for 1 minute in every 4 🌑. Research Energy Storage and add [[accumulator]] Accumulators to bank power.',
      done:()=>hasM('accumulator')},
-    {text:'Research Pressure Control for [[relief_valve]] Relief Valves (vent above 80%) and the [[separator]] Separator.',
+    {text:'Research Pressure Control for [[relief_valve]] Relief Valves and the [[separator]] Separator. A valve vents above 80% (half a pump each) and wears out [[gasket]] Gaskets, so keep it stocked.',
      done:()=>researched('pressure_control')},
     {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build the 5 kinds of escape part, then launch from 🚀 GOAL.',
      final:true},
@@ -8419,6 +8883,11 @@ function openSettings(){
       <span style="font-size:var(--f6);color:var(--text2);flex-shrink:0">🔉 Vol</span>
       <input id="musicVolSlider" type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}" oninput="setMusicVol(this.value)" style="flex:1;accent-color:var(--amber)">
       <span id="musicVolLabel" style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
+      <span style="flex-shrink:0">${uiIcon('sound')}</span>
+      <span id="nowPlaying" style="flex:1;font-size:var(--f5);color:var(--text2);line-height:1.6">${nowPlayingText()}</span>
+      <button class="mini-btn ${G.music?'teal':'dim'}" onclick="musicNext()" ${G.music?'':'disabled'}>NEXT</button>
     </div>`;
 
   const saver=PREFS.fps===30&&PREFS.res===.5;
@@ -8883,6 +9352,7 @@ function migrateSave(){
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
   tidyBeltItems();
+  for(const m of Object.values(G.machines||{}))if(m.type==='relief_valve'&&m.seal===undefined){m.seal=VALVE_SEAL;m.inBuf.gasket=Math.max(m.inBuf.gasket||0,4);G._gaskets=true;}
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }
@@ -8927,6 +9397,7 @@ function newGame(){
 function startGame(isNew){
   stopTitleScene(); clearUndo();
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
+  if(G._gaskets){delete G._gaskets;setTimeout(()=>toast('New: Relief Valves wear out Gaskets. Yours have 4 spares each: tap a valve to see','wrn'),2600);}
   if(G._tidied){const n=G._tidied;delete G._tidied;setTimeout(()=>toast(`Belts respaced: ${fmt(n)} items went to your inventory`,'ok'),2200);}
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
