@@ -192,6 +192,35 @@ const r=await p.evaluate(async()=>{
   // inserter throughput: about one item per 1.7s, not one per 4s
   reset(); power(2,2); const s9=put('chest',10,10); s9.chestInv.coal=999; put('inserter',11,10,0); const d9=put('chest',12,10);
   run(240); ok('inserter_throughput',(d9.chestInv.coal||0)>=30,{moved:d9.chestInv.coal});
+  // upgraded inserters swing faster: T2 2.5×, T3 4× (60s of chest → chest)
+  { const moved=tier=>{reset(); power(2,2); const a=put('chest',10,10); a.chestInv.coal=999; const i=put('inserter',11,10,0); i.tier=tier; const b=put('chest',12,10); run(240); return b.chestInv.coal||0;};
+    const t1=moved(1), t2=moved(2), t3=moved(3);
+    ok('inserter_tiers_faster',t2>=t1*2.2&&t3>=t1*3.5&&t3>=120,{t1,t2,t3});
+    const li=put('long_inserter',20,20,0); li.tier=3;
+    ok('inserter_tier_rates',machineRates(li).notes.some(n=>n.includes(`${Math.round(60000*4/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`)),machineRates(li).notes); }
+  // inserter upgrades cost INS_TIER_COSTS, and demolish refunds them
+  { reset(); G.devFreeBuild=false; const i=put('inserter',30,30,0)||null; G.devFreeBuild=true; if(!i){G.inv.iron_plate=9;G.inv.iron_gear=9;}
+    G.inv={...G.inv,iron_gear:10,circuit:10,steel_plate:10,iron_plate:10};
+    const ins=Object.values(G.machines).find(m=>m.type==='inserter');
+    upgradeMachine(ins.id); upgradeMachine(ins.id);
+    const after={g:G.inv.iron_gear,c:G.inv.circuit,s:G.inv.steel_plate};
+    tryRemove(ins.x,ins.y,true);
+    ok('inserter_upgrade_cost_refund',ins.tier===3&&after.g===8&&after.c===7&&after.s===9&&G.inv.iron_gear===11&&G.inv.circuit===10&&G.inv.steel_plate===10,{tier:ins.tier,after,inv:{g:G.inv.iron_gear,c:G.inv.circuit,s:G.inv.steel_plate}}); }
+  // EDIT → Upgrade: pick an area, filter a type off, upgrade what you can afford
+  { reset(); res(40,40,3,1,'iron_ore'); const ms=[put('miner',40,40),put('miner',41,40),put('miner',42,40)];
+    const is=[put('inserter',40,41,1),put('inserter',41,41,1)]; const ch=put('chest',40,42);
+    G.devFreeBuild=false; setTool('upgrade');
+    handleTap({x:40,y:40},false); handleTap({x:42,y:42},false);
+    const picked=upgState.ids.length;
+    upgToggle('miner');
+    G.inv={...G.inv,iron_gear:4,circuit:2,iron_plate:0};
+    const plan=upgPlan(); upgradeSelected();
+    const insT=is.map(m=>m.tier||1), minT=ms.map(m=>m.tier||1);
+    // a second press with everything turned back on: each machine goes up one more tier
+    upgToggle('miner'); G.inv={...G.inv,iron_plate:100,iron_gear:100,circuit:100,steel_plate:100}; upgradeSelected();
+    ok('upgrade_tool_area',picked===5&&!upgState.ids.includes(ch.id)&&plan.list.length===2&&insT.join()==='2,2'&&minT.join()==='1,1,1'
+      &&ms.every(m=>m.tier===2)&&is.every(m=>m.tier===3),{picked,plan:plan.list.length,insT,minT,after:[...ms,...is].map(m=>m.tier)});
+    setTool('select'); ok('upgrade_tool_clears',document.getElementById('upgradeBar').classList.contains('hidden')&&upgState.ids.length===0); G.devFreeBuild=true; }
   // ── opening any menu closes the manual mining popup
   { const hidden=()=>document.getElementById('resInfo').classList.contains('hidden'); const r=[];
     for(const open of [()=>switchTab('craft'),()=>switchTab('build'),()=>openBigMenu(),()=>showPanel('inv')]){
