@@ -333,6 +333,17 @@ const r=await p.evaluate(async()=>{
     openMachinePanel(a); const html=document.getElementById('pMachBody').innerHTML; closePanel('machine');
     ok('panel_shows_rates',keep&&R.out.circuit===60&&R.in.copper_wire===180&&armHint(60)==='T1 arm'&&armHint(180)==='T3 arm'&&armHint(600)==='3 T3 arms'
       &&html.includes('PER MIN')&&html.includes('T3 makes')&&Math.abs(labMinutes(TECHS.rocket_tech.cost)-14)<1e-6,{R,keep}); }
+  // ── inserters take straight from a splitter's two cells, and can drop onto one (it used to vanish into the splitter)
+  { reset(); power(2,2); const src=put('chest',10,40); src.chestInv.coal=9999; put('inserter',11,40,0);
+    put('belt',12,40,0); const sp=put('splitter',13,40,0); // cells (13,40) and (13,41), flowing right
+    put('inserter',14,40,0); const ca=put('chest',15,40); put('inserter',14,41,0); const cb=put('chest',15,41);
+    run(480);
+    const viaBelt={a:ca.chestInv.coal||0,b:cb.chestInv.coal||0};
+    reset(); power(2,2); const s2=put('chest',10,50); s2.chestInv.coal=9999; put('inserter',11,50,0); const sp2=put('splitter',12,50,0);
+    put('belt',13,50,0); put('belt',13,51,0); put('inserter',14,50,0); const c2=put('chest',15,50); put('inserter',14,51,0); const c3=put('chest',15,51);
+    run(480);
+    ok('inserters_use_splitters',viaBelt.a>=20&&viaBelt.b>=20&&(c2.chestInv.coal||0)+(c3.chestInv.coal||0)>=40&&!Object.values(sp2.inBuf).some(n=>n>0),
+      {viaBelt,dropped:{a:c2.chestInv.coal||0,b:c3.chestInv.coal||0},inBuf:sp2.inBuf}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};
