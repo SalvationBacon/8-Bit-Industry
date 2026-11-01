@@ -485,7 +485,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.7 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.8 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -653,7 +653,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.7';
+const VER      = '2.0.8';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1084,7 +1084,7 @@ const RECIPES = {
 //  MACHINES
 // ═══════════════════════════════════════════════════
 const MDEFS = {
-  miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits'},
+  miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits: 60/min (T2 120, T3 240)'},
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter, needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter, 2× speed'},
   electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed, runs on power. 3× speed. Makes propellant.'},
@@ -1092,10 +1092,10 @@ const MDEFS = {
   lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat','z4_sci_bloom','z4_sci_growth','z4_sci_synth','z5_sci_void'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
-  belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
+  belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction: 60/min (T2 120, T3 270)'},
   splitter:       {name:'Splitter',         icon:'⑂',  size:[1,2], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits one belt lane into two. 1×2 block, input left, two outputs right'},
   tunnel:         {name:'Belt Tunnel',      icon:'⏬', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
-  inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines'},
+  inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines: 60/min (T2 120, T3 270)'},
   long_inserter:  {name:'Long Inserter',    icon:'🦿', size:[1,1], power:2,   cost:{iron_plate:4, iron_gear:2, circuit:1},            unlock:'logistics',   recipes:[], desc:'2-tile reach inserter. Transfers items over longer distances'},
   chest:          {name:'Chest',            icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                                   unlock:null,          recipes:[], desc:'Stores up to 200 items'},
   // Zone 2 machines
@@ -1253,7 +1253,7 @@ const TECHS = {
   logistics: {
     name:'Advanced Logistics', icon:'➡️', era:'Era 1',
     cost:{sci_red:50}, req:['automation'],
-    desc:'50% faster belt speed + advanced logistics. Unlocks Circuit Diagrams research',
+    desc:'Unlocks belt upgrades (T2 120/min, T3 270/min), Splitters, Tunnels and Generators',
   },
   steel: {
     name:'Steel Processing', icon:'🔩', era:'Era 2',
@@ -1666,17 +1666,17 @@ function trimFactoryFloor(){
   while(G.map.length>want&&G.map[G.map.length-1].every(t=>t.mid===null&&!t.res&&!t.items.length))G.map.pop();
   MAP_H=G.map.length;
 }
-// Before v2.0.7 a tunnel mouth took any number of items from a belt (one held 1,700), and a few tiles kept items
-// after their belt was gone: on load, anything past 4 per belt tile, or on a tile with no belt, goes to the inventory
+// On load, every belt tile is brought to today's spacing: at most BELT_CAP items, a gap apart. Older saves held 4 per
+// tile (and before v2.0.7 a tunnel mouth took any number, one held 1,700); a few tiles also kept items after their
+// belt was gone. The extras go to the inventory.
 function tidyBeltItems(){
   if(!G.map)return;
   let back=0;
   for(const row of G.map)for(const t of row){
     if(!t.items||!t.items.length)continue;
-    const m=t.mid!==null?G.machines[t.mid]:null, keep=m&&BELT_TYPES.includes(m.type)?4:0;
-    if(t.items.length<=keep)continue;
-    for(const it of t.items.slice(keep)){G.inv[it.id]=(G.inv[it.id]||0)+1;back++;}
-    t.items=t.items.slice(0,keep);
+    const m=t.mid!==null?G.machines[t.mid]:null, keep=m&&BELT_TYPES.includes(m.type)?BELT_CAP:0;
+    if(t.items.length>keep){for(const it of t.items.slice(keep)){G.inv[it.id]=(G.inv[it.id]||0)+1;back++;} t.items=t.items.slice(0,keep);}
+    t.items.sort((a,b)=>b.prog-a.prog).forEach((it,i)=>{it.prog=Math.min(it.prog,.99-i*BELT_GAP);}); // front first, a gap apart
   }
   if(back)G._tidied=back;
 }
@@ -2891,16 +2891,16 @@ function beltCanTake(tx,ty,dir){
   const[dx,dy]=D_VEC[dir], t=G.map[ty+dy]?.[tx+dx]; if(!t||t.mid===null)return false;
   const nm=G.machines[t.mid]; if(!nm)return false;
   if(nm.type==='chest')return true;
-  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<4;
+  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<BELT_CAP;
 }
 function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
   const flow=mode==='enter'||beltCanTake(tx,ty,dir);
   const items=[...tile.items].sort((a,b)=>b.prog-a.prog);
-  let lim=flow?1+spd:.875;
+  let lim=flow?1+spd:1-BELT_GAP/2;
   const[dx,dy]=D_VEC[dir], mx=tx*ts-cx+ts/2, my=ty*ts-cy+ts/2, sz=ts*.42;
   for(const it of items){
-    let p=Math.max(flow?0:.125,Math.min(it.prog+spd*sub,lim));
-    if(!flow)lim=p-.25;                  // queued items sit a quarter tile apart, evenly across tile edges
+    let p=Math.max(flow?0:BELT_GAP/2,Math.min(it.prog+spd*sub,lim));
+    if(!flow)lim=p-BELT_GAP;             // queued items sit a gap apart, evenly across tile edges
     if(mode==='enter'&&p>=.5)continue;   // gone underground
     if(mode==='exit')p=.5+p*.5;          // surfaces at the centre
     let ox,oy;
@@ -4534,7 +4534,7 @@ function runMachine(m){
     return;
   }
   if(m.type==='burner'){
-    // 1 coal per 6s, so one coal Miner (1 coal per 2s) keeps three Burners running
+    // 1 coal per 6s (10/min); one T1 coal Miner (60/min) keeps six Burners running
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
@@ -4557,18 +4557,15 @@ function runMachine(m){
     // Auto-mines oil from deposit below, like miner but produces smog
     if(!m.mineRes||m.mineRes!=='oil')return;
     const ratio=powerRatio(); if(ratio===0)return;
-    m.prog++;
-    const tierMult=m.tier===3?2:m.tier===2?1.5:1;
-    const rate=Math.max(2,Math.floor(8/(ratio*tierMult)));
-    if(m.prog>=rate){
-      const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
-      if(bufTotal>=50)return;
-      m.prog=0;
+    m.prog+=ratio*(MINER_TIER_SPEED[m.tier||1]||1); // like a Miner: 60 · 120 · 240 /min
+    while(m.prog>=MINE_TICKS){
+      if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50){m.prog=MINE_TICKS;break;}
+      m.prog-=MINE_TICKS;
       m.outBuf.crude_oil=(m.outBuf.crude_oil||0)+1;
       m.produced++;
       recordOutput(m,1);
-      // Generate smog
-      if(zoneHas('smog')){G.smog=Math.min(100,(G.smog||0)+0.5*(G.perks?.spent?.smog1?0.7:1));}
+      // Generate smog: 0.25 per barrel (twice the barrels of the old 30/min pump, the same smog per minute)
+      if(zoneHas('smog')){G.smog=Math.min(100,(G.smog||0)+OIL_SMOG*(G.perks?.spent?.smog1?0.7:1));}
     }
     return;
   }
@@ -4597,18 +4594,16 @@ function runMachine(m){
     if(!m.mineRes)return;
     const ratio=powerRatio();
     if(ratio===0)return;
-    m.prog++;
     const pm=perkMult();
-    const tierMult=m.tier===3?2:m.tier===2?1.5:1;
     // Smog reduces efficiency in Zone 2
     const smogMult=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
     const resMult=m.mineRes==='radiant_dust'?0.5:1; // radiant vents yield slowly
-    const rate=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smogMult*resMult)));
-    if(m.prog>=rate){
-      const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
-      if(bufTotal>=50)return;
-      m.prog=0;
-      const n=Math.random()<((pm.yield*tierMult*modYield)-1)?2:1;
+    // progress builds up by the speed multiplier, so any mix of tier, perks and modules gives its exact rate
+    m.prog+=ratio*pm.speed*(MINER_TIER_SPEED[m.tier||1]||1)*modSpeed*smogMult*resMult;
+    while(m.prog>=MINE_TICKS){
+      if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50){m.prog=MINE_TICKS;break;} // full: wait
+      m.prog-=MINE_TICKS;
+      const n=Math.random()<(pm.yield*modYield-1)?2:1; // yield perks and Productivity Modules (tiers are speed)
       m.outBuf[m.mineRes]=(m.outBuf[m.mineRes]||0)+n;
       m.produced+=n;
       recordOutput(m,n);
@@ -5042,10 +5037,10 @@ function runAccumulators(){
 }
 
 const BELT_DONE=1-1e-6;
-const carryProg=p=>Math.max(0,Math.min(.5,p-1)); // what's left of this tick's move, on the next tile
+const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
-  const beltSpeed=(G.research.done.includes('logistics')?.15:.1)*pm.belt;
+  const beltSpeed=beltBaseSpeed();
 
   // Advance items on belt/splitter/tunnel
   for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){
@@ -5079,16 +5074,15 @@ function runBelts(){
           if(distForward>0){
             // ENTRANCE, teleport arrived items to exit tile
             const exTile=G.map[partner.y][partner.x];
-            const room=Math.max(0,4-exTile.items.length); // exit holds 4 like a belt; the rest wait
-            const arr=tile.items.filter(it=>it.prog>=BELT_DONE).slice(0,room);
-            if(arr.length){
-              tile.items=tile.items.filter(it=>!arr.includes(it));
-              for(const it of arr){it.prog=carryProg(it.prog);exTile.items.push(it);}
+            // the exit takes them like a belt tile (cap and gap); the rest wait at the mouth
+            for(const it of tile.items.filter(i=>i.prog>=BELT_DONE).sort((a,b)=>b.prog-a.prog)){
+              const c=carryProg(it.prog); if(!beltRoom(exTile,c))break;
+              tile.items.splice(tile.items.indexOf(it),1); it.prog=c; exTile.items.push(it);
             }
             return left();
           }
           // EXIT, pass forward; back-pressure if blocked (so inserter can grab)
-          const arr=tile.items.filter(it=>it.prog>=BELT_DONE);
+          const arr=tile.items.filter(it=>it.prog>=BELT_DONE).sort((a,b)=>b.prog-a.prog);
           if(!arr.length)return false;
           const nx=tx+dvx,ny=ty+dvy;
           tile.items=tile.items.filter(it=>it.prog<BELT_DONE); // same test as arr: an item just under 1 must not stay behind as well
@@ -5100,7 +5094,7 @@ function runBelts(){
           for(const it of arr){
             if(next.mid!==null){
               const nm=G.machines[next.mid];
-              if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
+              if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&beltRoom(next,carryProg(it.prog))){
                 it.prog=carryProg(it.prog);next.items.push(it);
               } else hold(it);
             } else hold(it);
@@ -5112,7 +5106,7 @@ function runBelts(){
       return false;
     }
 
-    const arrived=tile.items.filter(it=>it.prog>=BELT_DONE);
+    const arrived=tile.items.filter(it=>it.prog>=BELT_DONE).sort((a,b)=>b.prog-a.prog); // front item first
     if(!arrived.length)return false;
     // Remove exactly what arrived (prog >= BELT_DONE). Filtering on prog<1 kept an item at 0.9999999 here AND moved it on,
     // so one item object sat on two tiles: a back-pressure reset on one froze the other (T2/T3 belt sums hit that often)
@@ -5137,7 +5131,7 @@ function runBelts(){
           if(dest.x<0||dest.y<0||dest.x>=MAP_W||dest.y>=MAP_H)continue;
           const nt=G.map[dest.y][dest.x]; if(nt.mid===null)continue;
           const nm=G.machines[nt.mid];
-          if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&nt.items.length<4){
+          if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&beltRoom(nt,carryProg(it.prog))){
             it.prog=carryProg(it.prog); nt.items.push(it); placed=true; break;
           }
         }
@@ -5156,9 +5150,9 @@ function runBelts(){
     for(const it of arrived){
       if(next.mid!==null){
         const nm=G.machines[next.mid];
-        if((nm.type==='belt'||nm.type==='splitter')&&next.items.length<4){
+        if((nm.type==='belt'||nm.type==='splitter')&&beltRoom(next,carryProg(it.prog))){
           it.prog=carryProg(it.prog);next.items.push(it);
-        } else if(nm.type==='tunnel'&&next.items.length<4){ // a tunnel mouth holds 4 like a belt (it had no cap and swallowed thousands)
+        } else if(nm.type==='tunnel'&&beltRoom(next,carryProg(it.prog))){ // a tunnel mouth fills like a belt (it had no cap and swallowed thousands)
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='chest'){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
@@ -5193,15 +5187,38 @@ function runBelts(){
 // Miner's output, so the Miner + Inserter + Burner loop the tutorial teaches always ran dry.
 const BURNER_COAL_TICKS=24;
 // Inserter arm state machine constants (real ms)
-const INS_GRAB_MS   = 800;
+// ── Throughput: Satisfactory's numbers, one to one ──
+// A T1 Miner makes 60 items/min, and one T1 inserter and one T1 belt carry exactly that.
+//   Miner, Oil Pump        60 · 120 · 240 /min   (Satisfactory Miner Mk1-3 on a normal node)
+//   Belt, Splitter, Tunnel 60 · 120 · 270 /min   (Conveyor Belt Mk1-3)
+//   Inserter, Long Inserter 60 · 120 · 270 /min  (matched to the belt of the same tier)
+// Coal Generators burn 15 coal/min, as in Satisfactory. Perks and modules add on top.
+const INS_GRAB_MS   = 460;   // grab + deposit + return = 1s: 60 items/min at T1
 const INS_DEPOSIT_MS= 80;
-const INS_RETURN_MS = 800;
-// Upgraded inserters swing faster: T2 2.5×, T3 4× (a T2/T3 Miner outruns a T1 arm)
-const INS_TIER_SPEED={1:1,2:2.5,3:4};
-// Upgraded belts, splitters and tunnels carry items faster: T2 1.5×, T3 2×. Studs and rails show the tier
-const BELT_TIER_SPEED={1:1,2:1.5,3:2};
+const INS_RETURN_MS = 460;
+const INS_TIER_SPEED={1:1,2:2,3:4.5};
+const MINE_TICKS=4;          // a T1 Miner or Oil Pump makes 1 item per 4 ticks (60/min)
+const OIL_SMOG=0.25;         // smog per barrel of crude
+const MINER_TIER_SPEED={1:1,2:2,3:4};
+// Belts hold BELT_CAP items per tile, at least BELT_GAP apart, so a belt carries speed / gap items per tick
+// with no rounding to whole ticks: T1 moves 0.5 tiles/s × 2 per tile = 1 item/s.
+const BELT_CAP=2, BELT_GAP=1/BELT_CAP;
+const BELT_T1_SPEED=.125;    // tiles per tick
+const BELT_TIER_SPEED={1:1,2:2,3:4.5};
 const BELT_TIER_COL={1:'#f5a623',2:'#e53935',3:'#42a5f5'};
-function beltBaseSpeed(){return (G.research.done.includes('logistics')?.15:.1)*perkMult().belt;} // tiles per tick
+function beltBaseSpeed(){return BELT_T1_SPEED*perkMult().belt;} // tiles per tick
+// Room for an item entering a belt tile at progress p: under the cap, and nothing within a gap ahead of it
+function beltRoom(tile,p=0){return tile.items.length<BELT_CAP&&tile.items.every(i=>i.prog>=p+BELT_GAP-1e-6);}
+// Where an inserter can drop onto a belt tile: the start if it's clear, otherwise into the gap behind or ahead of the
+// item already there (-1 if none). Dropping only at the start made a belt fed from the side top out at 240 on T3
+function beltDropPos(tile){
+  if(tile.items.length>=BELT_CAP)return -1;
+  const ps=tile.items.map(i=>i.prog);
+  const fits=p=>p>=0&&p<=.99&&ps.every(q=>Math.abs(q-p)>=BELT_GAP-1e-6);
+  if(fits(0))return 0;
+  for(const q of ps){if(fits(q-BELT_GAP))return q-BELT_GAP; if(fits(q+BELT_GAP))return q+BELT_GAP;}
+  return -1;
+}
 function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
 function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?INS_TIER_SPEED[m.tier||1]||1:1);}
 
@@ -5229,7 +5246,7 @@ function insReady(m){ // idle, with somewhere to put an item (the same gate the 
   if(!dst||dst.mid===null)return false;
   const dm=G.machines[dst.mid]; if(!dm||MDEFS[dm.type]?.noItems)return false;
   if(dm.type!=='belt'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return false;
-  return !((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4);
+  return true; // a belt drop waits at the belt (claw shows blocked), so the arm keeps its 1s rhythm
 }
 function myTurn(m,sm){
   const ids=INS_TAKERS[sm.id]; if(!ids||ids.length<2)return true;
@@ -5246,7 +5263,7 @@ function markServed(sm,m){(sm._served||(sm._served={}))[m.id]=sm._serveN=(sm._se
 // from a finished phase carries into the next, so the arm keeps its real 1.7s cycle
 function runInserter(m){
   if(powerRatio()===0)return;
-  for(let k=0;k<5;k++){const st=m._arm?.state; stepInserter(m); if(!m._arm||m._arm.state===st)break;}
+  for(let k=0;k<10;k++){const st=m._arm?.state; stepInserter(m); if(!m._arm||m._arm.state===st)break;} // a T3 arm can finish two swings in a tick
 }
 function stepInserter(m){
 
@@ -5271,14 +5288,16 @@ function stepInserter(m){
     if(MDEFS[dm.type]?.noItems)return;
     if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return;
     if(dm.type==='chest'&&isOutputFacing(dm,dvx,dvy))return;
-    if((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4)return;
+    // Belts aren't checked here: the arm grabs and swings, and waits at the drop only if the belt has no room then.
+    // Waiting for room before even grabbing lost most of a swing per item (a T1 chain ran at 34/min, not 60)
 
     let item=null;
     if(src.mid!==null){
       const sm=G.machines[src.mid];
       if(sm&&(sm.type==='belt'||sm.type==='tunnel')){
-        const ready=src.items.filter(it=>it.prog>=0.9);
-        if(ready.length>0){const it=ready[0];src.items.splice(src.items.indexOf(it),1);item=it.id;}
+        // take the front item anywhere on the tile: a T3 belt moves over half a tile per tick, so waiting for an item
+        // in the last tenth of the tile missed most of them and starved machines along a fast belt
+        if(src.items.length){const it=src.items.reduce((a,b)=>b.prog>a.prog?b:a);src.items.splice(src.items.indexOf(it),1);item=it.id;}
       } else if(sm&&sm.type==='chest'){
         const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0);
         if(k&&myTurn(m,sm)){item=k;sm.chestInv[k]--;markServed(sm,m);}
@@ -5289,8 +5308,10 @@ function stepInserter(m){
         }
       }
     }
-    if(!item)return;
-    arm.state='grabbing'; arm.stateStart=Math.max(arm.stateStart,now-insMs(TICK_MS)); arm.item=item;
+    if(!item){arm.stateStart=now;return;} // waiting for an item: the next swing starts when one is there
+    // An arm that just came back this tick carries its leftover time into the grab (exact 1s cycle at T1);
+    // one that sat idle starts now (it used to get up to a tick of free swing)
+    arm.state='grabbing'; arm.stateStart=arm.stateStart>now-insMs(TICK_MS)?arm.stateStart:now; arm.item=item;
     m.lastTransfer=G.tick;
 
   } else if(arm.state==='grabbing'){
@@ -5301,14 +5322,15 @@ function stepInserter(m){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid];
       if(dm&&(dm.type==='belt'||dm.type==='tunnel')){
-        if(dst.items.length<4){dst.items.push({id:arm.item,prog:0});arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        const dp=beltDropPos(dst);
+        if(dp>=0){dst.items.push({id:arm.item,prog:dp});arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type==='chest'){
         const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
-        if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
-        if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else {
         returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
@@ -5320,7 +5342,7 @@ function stepInserter(m){
   } else if(arm.state==='waiting'){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid]; let deposited=false;
-      if(dm&&(dm.type==='belt'||dm.type==='tunnel')&&dst.items.length<4){dst.items.push({id:arm.item,prog:0});deposited=true;m.lastTransferMs=now;}
+      if(dm&&(dm.type==='belt'||dm.type==='tunnel')&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
       else if(dm&&dm.type==='chest'){const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
@@ -5849,7 +5871,7 @@ function machineRates(m){
   if(ratio===0){ratio=1;if(def.power>0)R.notes.push('No power right now: these are full-speed rates');}
   if(m.type==='burner'){
     R.in.coal=per(BURNER_COAL_TICKS);
-    const miner=per(8);
+    const miner=per(MINE_TICKS);
     R.notes.push(`One coal Miner (${fmtRate(miner)}/min) feeds ${Math.floor(miner/R.in.coal)} Burners`);
     R.notes.push('Only burns while something is using power');
   } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
@@ -5860,17 +5882,16 @@ function machineRates(m){
     if(!m.mineRes)R.notes.push('Place it on a deposit to mine');
     else{
       const resMult=m.mineRes==='radiant_dust'?0.5:1;
-      const t=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smog*resMult)));
-      R.out[m.mineRes]=per(t)*(1+Math.min(1,Math.max(0,pm.yield*tierMult*modYield-1)));
+      R.out[m.mineRes]=per(MINE_TICKS)*ratio*pm.speed*(MINER_TIER_SPEED[m.tier||1]||1)*modSpeed*smog*resMult*(1+Math.min(1,Math.max(0,pm.yield*modYield-1)));
     }
   } else if(m.type==='oil_pump'){
-    if(m.mineRes==='oil')R.out.crude_oil=per(Math.max(2,Math.floor(8/(ratio*tierMult))));
+    if(m.mineRes==='oil')R.out.crude_oil=per(MINE_TICKS)*ratio*(MINER_TIER_SPEED[m.tier||1]||1);
     else R.notes.push('Place it on an oil deposit');
   } else if(def.pumps){
     if(m.mineRes===def.pumps)R.out[def.pumps]=per(2)*tierMult;
     else R.notes.push('Place it on its pool');
   } else if(BELT_TYPES.includes(m.type)){
-    R.notes.push(`Carries items at ${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s`);
+    R.notes.push(`Carries up to ${fmtRate(beltBaseSpeed()*beltTierMult(m)*BELT_CAP*TICKS_PER_MIN)} items/min (${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s)`);
   } else if(m.type==='inserter'||m.type==='long_inserter'){
     R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
   } else if(m.recipe&&RECIPES[m.recipe]){
@@ -6270,8 +6291,8 @@ function renderMachPanel(){
     const tier=m.tier||1;
     if(tier<3){
       const nextTier=tier+1;
-      const cost=tierCost(m.type,nextTier);
-      const canAfford=Object.entries(cost).every(([k,v])=>(G.inv[k]||0)>=v);
+      const cost=tierCost(m.type,nextTier), locked=tierLocked(m.type);
+      const canAfford=!locked&&Object.entries(cost).every(([k,v])=>(G.inv[k]||0)>=v);
       const costStr=Object.entries(cost).map(([k,v])=>{
         const have=G.inv[k]||0;
         const col=have>=v?'var(--green)':'var(--red)';
@@ -6279,7 +6300,7 @@ function renderMachPanel(){
       }).join(', ');
       html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:7px;margin-top:6px">
         <div style="font-size:var(--f5);color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier}: ${tierBonus(m.type,nextTier)}</div>
-        <div style="font-size:var(--f4);color:var(--text3);margin-bottom:5px">${costStr}</div>
+        <div style="font-size:var(--f4);color:var(--text3);margin-bottom:5px">${locked?`<span style="color:var(--red)">Needs ${locked} research</span>`:costStr}</div>
         <button class="mini-btn ${canAfford?'teal':'dim'}" onclick="upgradeMachine(${m.id})" ${canAfford?'':'disabled'}>⬆ UPGRADE</button>
       </div>`;
     } else {
@@ -6385,10 +6406,13 @@ const MODULE_TYPES=['miner','blast_furnace','electric_smelter','assembler','lab'
 const BELT_TYPES=['belt','splitter','tunnel'];
 const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES];
 const isInserter=t=>t==='inserter'||t==='long_inserter';
+// Belt upgrades need Advanced Logistics (it used to give +50% belt speed instead)
+function tierLocked(type){return BELT_TYPES.includes(type)&&!G.research.done.includes('logistics')?'Advanced Logistics':null;}
 function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:TIER_COSTS)[tier];}
 function tierBonus(type,tier){
-  if(isInserter(type))return `${INS_TIER_SPEED[tier]}× swing speed`;
-  if(BELT_TYPES.includes(type))return `${BELT_TIER_SPEED[tier]}× belt speed`;
+  if(isInserter(type))return `${60*INS_TIER_SPEED[tier]} items/min`;
+  if(BELT_TYPES.includes(type))return `${60*BELT_TIER_SPEED[tier]} items/min`;
+  if(type==='miner')return `${60*MINER_TIER_SPEED[tier]} items/min`;
   return tier===3?'2× speed & yield':'1.5× speed & yield';
 }
 function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
@@ -6405,6 +6429,7 @@ function upgradeMachine(id){
   const tier=m.tier||1; if(tier>=3)return;
   const nextTier=tier+1;
   const cost=tierCost(m.type,nextTier);
+  if(tierLocked(m.type)){toast(`Needs ${tierLocked(m.type)} research`,'wrn');sfx('error');return;}
   for(const[item,need]of Object.entries(cost)){
     if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');return;}
   }
@@ -6848,7 +6873,7 @@ const PERK_DEFS=[
   {id:'speed2',   name:'Machine Haste II',  desc:'+20% all machine processing speed', cost:2, req:['speed1'], cat:'Speed'},
   {id:'power1',   name:'Power Saver I',     desc:'-15% power consumption all machines', cost:1, req:[], cat:'Efficiency'},
   {id:'start1',   name:'Quick Start',       desc:'Begin next zone with 50 of each basic resource', cost:2, req:[], cat:'Utility'},
-  {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput (stacks with research)', cost:1, req:[], cat:'Logistics'},
+  {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput', cost:1, req:[], cat:'Logistics'},
   // Unlock after a zone's launch (after:N)
   {id:'yield3',   name:'Ore Richness III',  desc:'+15% more resource yield (stacks)',  cost:3, req:['yield2'], cat:'Yield',      after:2},
   {id:'power2',   name:'Power Saver II',    desc:'-15% more power consumption',        cost:2, req:['power1'], cat:'Efficiency', after:2},
@@ -7170,7 +7195,7 @@ function multiselClear(){
 // (Miners, furnaces, assemblers, labs, inserters). Chips filter by machine type.
 let upgState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[],off:new Set()};
 function upgPlan(){
-  const list=upgState.ids.map(id=>G.machines[id]).filter(m=>m&&TIER_TYPES.includes(m.type)&&(m.tier||1)<3&&!upgState.off.has(m.type));
+  const list=upgState.ids.map(id=>G.machines[id]).filter(m=>m&&TIER_TYPES.includes(m.type)&&(m.tier||1)<3&&!upgState.off.has(m.type)&&!tierLocked(m.type));
   const cost={}; for(const m of list)addCost(cost,tierCost(m.type,(m.tier||1)+1));
   return {list,cost};
 }
@@ -7185,7 +7210,7 @@ function updateUpgradeBar(){
   }
   const all=us.ids.map(id=>G.machines[id]).filter(Boolean), types={};
   for(const m of all){const t=types[m.type]||(types[m.type]={n:0,max:0});t.n++;if((m.tier||1)>=3)t.max++;}
-  const chips=Object.entries(types).map(([t,c])=>`<button class="ub-chip${us.off.has(t)?' off':''}" onclick="upgToggle('${t}')" title="${MDEFS[t].name}">${iconHtml(t)}×${c.n-c.max}${c.max?`<span style="color:var(--teal)">+${c.max} MAX</span>`:''}</button>`).join('');
+  const chips=Object.entries(types).map(([t,c])=>`<button class="ub-chip${us.off.has(t)?' off':''}" onclick="upgToggle('${t}')" title="${MDEFS[t].name}">${iconHtml(t)}×${c.n-c.max}${c.max?`<span style="color:var(--teal)">+${c.max} MAX</span>`:''}${tierLocked(t)?'<span style="color:var(--red)">LOCKED</span>':''}</button>`).join('');
   const {list,cost}=upgPlan(), ok=G.devFreeBuild||Object.entries(cost).every(([k,n])=>(G.inv[k]||0)>=n);
   setHtml(bar,`<div class="ub-row"><span class="ub-t">${list.length?`${list.length} to upgrade`:'Nothing left to upgrade'}</span>
     ${list.length?`<span class="ub-cost">${G.devFreeBuild?'<span class="cc ok">FREE</span>':costChips(cost)}</span>`:''}
@@ -8538,7 +8563,7 @@ function newGame(){
 function startGame(isNew){
   stopTitleScene(); clearUndo();
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
-  if(G._tidied){const n=G._tidied;delete G._tidied;setTimeout(()=>toast(`${fmt(n)} items stuck in tunnels went to your inventory`,'ok'),2200);}
+  if(G._tidied){const n=G._tidied;delete G._tidied;setTimeout(()=>toast(`Belts respaced: ${fmt(n)} items went to your inventory`,'ok'),2200);}
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');

@@ -192,12 +192,13 @@ const r=await p.evaluate(async()=>{
   // inserter throughput: about one item per 1.7s, not one per 4s
   reset(); power(2,2); const s9=put('chest',10,10); s9.chestInv.coal=999; put('inserter',11,10,0); const d9=put('chest',12,10);
   run(240); ok('inserter_throughput',(d9.chestInv.coal||0)>=30,{moved:d9.chestInv.coal});
-  // upgraded inserters swing faster: T2 2.5×, T3 4× (60s of chest → chest)
-  { const moved=tier=>{reset(); power(2,2); const a=put('chest',10,10); a.chestInv.coal=999; const i=put('inserter',11,10,0); i.tier=tier; const b=put('chest',12,10); run(240); return b.chestInv.coal||0;};
+  // Satisfactory numbers: inserters move 60 · 120 · 270 items/min (2 minutes of chest → chest, emptied as it fills)
+  { const moved=tier=>{reset(); power(2,2); const a=put('chest',10,10); a.chestInv.coal=9999; const i=put('inserter',11,10,0); i.tier=tier; const b=put('chest',12,10);
+      run(40); b.chestInv={}; let n=0; for(let t=0;t<480;t++){run(1); n+=b.chestInv.coal||0; b.chestInv={};} return n/2;};
     const t1=moved(1), t2=moved(2), t3=moved(3);
-    ok('inserter_tiers_faster',t2>=t1*2.2&&t3>=t1*3.5&&t3>=120,{t1,t2,t3});
+    ok('inserter_tiers_faster',Math.abs(t1-60)<=1&&Math.abs(t2-120)<=1&&Math.abs(t3-270)<=2,{t1,t2,t3});
     const li=put('long_inserter',20,20,0); li.tier=3;
-    ok('inserter_tier_rates',machineRates(li).notes.some(n=>n.includes(`${Math.round(60000*4/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`)),machineRates(li).notes); }
+    ok('inserter_tier_rates',machineRates(li).notes.some(n=>n.includes('270 items/min'))&&tierBonus('inserter',2)==='120 items/min',machineRates(li).notes); }
   // inserter upgrades cost INS_TIER_COSTS, and demolish refunds them
   { reset(); G.devFreeBuild=false; const i=put('inserter',30,30,0)||null; G.devFreeBuild=true; if(!i){G.inv.iron_plate=9;G.inv.iron_gear=9;}
     G.inv={...G.inv,iron_gear:10,circuit:10,steel_plate:10,iron_plate:10};
@@ -295,8 +296,25 @@ const r=await p.evaluate(async()=>{
   { reset(); const tn=put('tunnel',20,62,0); put('tunnel',23,62,0); G.map[62][20].items=Array.from({length:30},()=>({id:'coal',prog:.5}));
     G.map[63][25].items=[{id:'iron_plate',prog:.5}]; const c0=G.inv.coal||0, i0=G.inv.iron_plate||0;
     saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
-    ok('old_save_tunnel_items_returned',G.map[62][20].items.length===4&&G.map[63][25].items.length===0&&G.inv.coal===c0+26&&G.inv.iron_plate===i0+1,{left:G.map[62][20].items.length,coal:G.inv.coal-c0,plate:G.inv.iron_plate-i0});
+    ok('old_save_tunnel_items_returned',G.map[62][20].items.length===BELT_CAP&&G.map[63][25].items.length===0&&G.inv.coal===c0+30-BELT_CAP&&G.inv.iron_plate===i0+1,{left:G.map[62][20].items.length,coal:G.inv.coal-c0,plate:G.inv.iron_plate-i0});
     G.devFreeBuild=true; }
+  // ── Satisfactory throughput, one to one: Miner 60/120/240, belt 60/120/270, and a whole chain keeps up
+  { const r={};
+    for(const tier of [1,2,3]){
+      reset(); power(2,2); res(10,40,1,1,'iron_ore'); const mi=put('miner',10,40); mi.tier=tier;
+      let n=0; for(let t=0;t<480;t++){run(1); n+=mi.outBuf.iron_ore||0; mi.outBuf={};} r['miner'+tier]=n/2;
+      reset(); power(2,2); res(10,40,1,1,'iron_ore'); const m2=put('miner',10,40); m2.tier=tier; put('inserter',11,40,0).tier=tier;
+      for(let x=12;x<24;x++)put('belt',x,40,0).tier=tier; put('inserter',24,40,0).tier=tier; const ch=put('chest',25,40);
+      run(200); ch.chestInv={}; n=0; for(let t=0;t<480;t++){run(1); n+=ch.chestInv.iron_ore||0; ch.chestInv={};} r['chain'+tier]=n/2;
+      reset(); for(let x=5;x<45;x++){put('belt',x,44,0).tier=tier; G.map[44][x].items=[{id:'coal',prog:0},{id:'coal',prog:.5}];} const pc=put('chest',45,44);
+      for(let t=0;t<40;t++)runBelts(); r['belt'+tier]=(pc.chestInv.coal||0)*6;
+    }
+    ok('satisfactory_rates',r.miner1===60&&r.miner2===120&&r.miner3===240&&r.belt1===60&&r.belt2===120&&r.belt3===270,r);
+    ok('satisfactory_chain_keeps_up',r.chain1>=58&&r.chain2>=116&&r.chain3>=232,r);
+    reset(); G.research.done=G.research.done.filter(t=>t!=='logistics'); const lb=put('belt',30,30,0); G.inv={...G.inv,iron_gear:5};
+    upgradeMachine(lb.id); const locked=lb.tier===undefined||lb.tier===1;
+    G.research.done.push('logistics'); upgradeMachine(lb.id);
+    ok('belt_upgrade_needs_logistics',locked&&lb.tier===2,{tier:lb.tier}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};
@@ -304,7 +322,7 @@ const r=await p.evaluate(async()=>{
     const w=machineWorth('belt',3);
     ok('belt_tiers_faster',b<=a*0.75&&c<=a*0.55&&w.iron_plate===1&&w.iron_gear===1&&w.steel_plate===1,{a,b,c,w});
     const bt=put('belt',10,52,0); bt.tier=3;
-    ok('belt_tier_rates',machineRates(bt).notes.some(n=>n.includes(`${fmtRate(beltBaseSpeed()*2*4)} tiles/s`)),machineRates(bt).notes); }
+    ok('belt_tier_rates',machineRates(bt).notes.some(n=>n.includes('270 items/min'))&&tierBonus('belt',2)==='120 items/min',machineRates(bt).notes); }
   // ── rotate / flip a copied layout before pasting
   { reset(); G.research.done=Object.keys(TECHS);
     const L=[{type:'belt',rx:0,ry:0,dir:0},{type:'inserter',rx:1,ry:0,dir:0},{type:'assembler',rx:2,ry:0,dir:0,recipe:'mk_gear'},{type:'splitter',rx:4,ry:0,dir:0}];
