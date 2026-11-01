@@ -358,6 +358,8 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 .rate-row{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--text)}
 .rate-row .ico{width:18px;height:18px}.rate-n{color:var(--text);min-width:34px;text-align:right}.rate-u{color:var(--text3)}.rate-name{color:var(--text2)}
 .rate-note{font-size:var(--f4);color:var(--text3);line-height:1.8}
+.rate-arm{margin-left:auto;font-size:var(--f4);color:var(--text3);border:1px solid var(--border2);padding:1px 4px;white-space:nowrap}
+.rp-rates{font-size:var(--f5);line-height:1.8}.rp-rates .rin{color:var(--blue)}.rp-rates .rout{color:var(--green)}
 .tut-tally{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;color:var(--text2)}
 .tut-tally .ok{color:var(--teal)}
 .tut-go{font-family:var(--font);font-size:1em;margin-top:5px;padding:6px 12px;border:1px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer;display:block}
@@ -485,7 +487,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.10 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -653,7 +655,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.6';
+const VER      = '2.0.10';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1002,100 +1004,100 @@ const RECIPES = {
   // Blast Furnace, needs coal, 2× speed
   bf_iron:    {name:'Smelt Iron',       machine:'blast_furnace', time:8,  in:{iron_ore:2,coal:1},                out:{iron_plate:1}},
   bf_copper:  {name:'Smelt Copper',     machine:'blast_furnace', time:8,  in:{copper_ore:2,coal:1},              out:{copper_plate:1}},
-  bf_steel:   {name:'Smelt Steel',      machine:'blast_furnace', time:16, in:{iron_plate:5,coal:2},              out:{steel_plate:1}},
+  bf_steel:   {name:'Smelt Steel',      machine:'blast_furnace', time:16, in:{iron_plate:4,coal:2},              out:{steel_plate:1}},
   bf_prop:    {name:'Coal Propellant',  machine:'blast_furnace', time:20, in:{coal:10,stone:5},                  out:{r_propellant:1},  unlock:'rocket_tech'},
-  // Electric Smelter, no coal, 3× speed, needs power
-  es_iron:    {name:'Smelt Iron',       machine:'electric_smelter', time:6,  in:{iron_ore:2},                   out:{iron_plate:1}},
-  es_copper:  {name:'Smelt Copper',     machine:'electric_smelter', time:6,  in:{copper_ore:2},                 out:{copper_plate:1}},
-  es_steel:   {name:'Smelt Steel',      machine:'electric_smelter', time:10, in:{iron_plate:5},                 out:{steel_plate:1}},
-  es_prop:    {name:'Coal Propellant',  machine:'electric_smelter', time:14, in:{coal:10,stone:5},              out:{r_propellant:1},  unlock:'rocket_tech'},
+  // Electric Smelter, no coal, 4× a Stone Furnace (2× a Blast Furnace), needs power
+  es_iron:    {name:'Smelt Iron',       machine:'electric_smelter', time:4,  in:{iron_ore:2},                   out:{iron_plate:1}},
+  es_copper:  {name:'Smelt Copper',     machine:'electric_smelter', time:4,  in:{copper_ore:2},                 out:{copper_plate:1}},
+  es_steel:   {name:'Smelt Steel',      machine:'electric_smelter', time:8, in:{iron_plate:4},                 out:{steel_plate:1}},
+  es_prop:    {name:'Coal Propellant',  machine:'electric_smelter', time:20, in:{coal:10,stone:5},              out:{r_propellant:1},  unlock:'rocket_tech'},
   // Assembler
   mk_gear:    {name:'Iron Gear',        machine:'assembler', time:4,  in:{iron_plate:2},                     out:{iron_gear:1},    unlock:'automation'},
-  mk_wire:    {name:'Copper Wire',      machine:'assembler', time:2,  in:{copper_plate:1},                   out:{copper_wire:2},   unlock:'automation'},
+  mk_wire:    {name:'Copper Wire',      machine:'assembler', time:4,  in:{copper_plate:1},                   out:{copper_wire:2},   unlock:'automation'},
   mk_rod:     {name:'Iron Rod',         machine:'assembler', time:4,  in:{iron_plate:1},                     out:{iron_rod:2},      unlock:'automation'},
   mk_circuit: {name:'Circuit Board',    machine:'assembler', time:8,  in:{iron_plate:1,copper_wire:3},       out:{circuit:1},       unlock:'automation'},
   mk_engine:  {name:'Engine Block',     machine:'assembler', time:16, in:{iron_gear:2,iron_rod:2},           out:{engine:1},        unlock:'steel'},
-  mk_speed_mod:{name:'Speed Module',   machine:'assembler', time:20, in:{circuit:3,iron_gear:2},             out:{speed_module:1},  unlock:'electronics'},
-  mk_prod_mod: {name:'Prod. Module',   machine:'assembler', time:20, in:{circuit:4,copper_wire:4},           out:{prod_module:1},   unlock:'electronics'},
-  mk_eff_mod:  {name:'Eff. Module',    machine:'assembler', time:20, in:{circuit:3,iron_rod:3},              out:{eff_module:1},    unlock:'electronics'},
-  mk_chassis: {name:'Rocket Chassis',   machine:'assembler', time:30, in:{steel_plate:10,iron_gear:5,engine:2},       out:{r_chassis:1},   unlock:'rocket_tech'},
-  mk_computer:{name:'Flight Computer',  machine:'assembler', time:30, in:{circuit:8,copper_wire:4},          out:{r_computer:1},   unlock:'rocket_tech'},
-  mk_frame:   {name:'Struct. Frame',    machine:'assembler', time:20, in:{steel_plate:8,iron_rod:6},         out:{r_frame:1},      unlock:'rocket_tech'},
+  mk_speed_mod:{name:'Speed Module',   machine:'assembler', time:24, in:{circuit:3,iron_gear:2},             out:{speed_module:1},  unlock:'electronics'},
+  mk_prod_mod: {name:'Prod. Module',   machine:'assembler', time:16, in:{circuit:4,copper_wire:4},           out:{prod_module:1},   unlock:'electronics'},
+  mk_eff_mod:  {name:'Eff. Module',    machine:'assembler', time:24, in:{circuit:3,iron_rod:3},              out:{eff_module:1},    unlock:'electronics'},
+  mk_chassis: {name:'Rocket Chassis',   machine:'assembler', time:40, in:{steel_plate:10,iron_gear:5,engine:2},       out:{r_chassis:1},   unlock:'rocket_tech'},
+  mk_computer:{name:'Flight Computer',  machine:'assembler', time:32, in:{circuit:8,copper_wire:4},          out:{r_computer:1},   unlock:'rocket_tech'},
+  mk_frame:   {name:'Struct. Frame',    machine:'assembler', time:16, in:{steel_plate:8,iron_rod:6},         out:{r_frame:1},      unlock:'rocket_tech'},
   // Lab
   sci_r:      {name:'Field Notes',       machine:'lab', time:8,  in:{iron_gear:1,copper_wire:2},              out:{sci_red:1}},
-  sci_g:      {name:'Circuit Diagrams',  machine:'lab', time:10, in:{circuit:1,iron_rod:2},                   out:{sci_green:1},  unlock:'logistics'},
-  sci_b:      {name:'Adv. Schematics',   machine:'lab', time:15, in:{circuit:2,steel_plate:1,copper_wire:3},  out:{sci_blue:1},   unlock:'electronics'},
+  sci_g:      {name:'Circuit Diagrams',  machine:'lab', time:8, in:{circuit:1,iron_rod:2},                   out:{sci_green:1},  unlock:'logistics'},
+  sci_b:      {name:'Adv. Schematics',   machine:'lab', time:16, in:{circuit:2,steel_plate:1,copper_wire:3},  out:{sci_blue:1},   unlock:'electronics'},
   // Zone 2, Oil chain
-  z2_crack:   {name:'Crack Oil',         machine:'cracker',  time:10, in:{crude_oil:3},                       out:{raw_fuel:2,plastic:1},  unlock:'oil_extraction'},
+  z2_crack:   {name:'Crack Oil',         machine:'cracker',  time:8, in:{crude_oil:3},                       out:{raw_fuel:2,plastic:1},  unlock:'oil_extraction'},
   z2_refine:  {name:'Refine Fuel',       machine:'refinery', time:8,  in:{raw_fuel:2},                        out:{refined_fuel:1},        unlock:'oil_extraction'},
   // Zone 2, Plastic processing (assembler)
-  z2_polymer: {name:'Polymer Sheet',     machine:'assembler', time:6, in:{plastic:2,iron_plate:1},            out:{polymer_sheet:1},       unlock:'oil_extraction'},
+  z2_polymer: {name:'Polymer Sheet',     machine:'assembler', time:8, in:{plastic:2,iron_plate:1},            out:{polymer_sheet:1},       unlock:'oil_extraction'},
   // Zone 2, Science packs
   z2_sci_scar:{name:'Scar Notes',        machine:'lab', time:8,  in:{iron_gear:1,coal:2},                     out:{sci_scar:1}}, // no oil needed, Oil Extraction costs these
-  z2_sci_smog:{name:'Smog Data',         machine:'lab', time:10, in:{plastic:2,copper_wire:2},                out:{sci_smog:1},   unlock:'oil_extraction'},
-  z2_sci_rep: {name:'Repair Data',       machine:'lab', time:12, in:{refined_fuel:1,circuit:2},               out:{sci_repair:1}, unlock:'smog_control'},
+  z2_sci_smog:{name:'Smog Data',         machine:'lab', time:8, in:{plastic:2,copper_wire:2},                out:{sci_smog:1},   unlock:'oil_extraction'},
+  z2_sci_rep: {name:'Repair Data',       machine:'lab', time:16, in:{refined_fuel:1,circuit:2},               out:{sci_repair:1}, unlock:'smog_control'},
   // Zone 2, Repair components
-  z2_hull:    {name:'Hull Patch',        machine:'assembler', time:20, in:{steel_plate:4,plastic:3},          out:{r_hull:1},      unlock:'repair_tech'},
+  z2_hull:    {name:'Hull Patch',        machine:'assembler', time:16, in:{steel_plate:4,plastic:3},          out:{r_hull:1},      unlock:'repair_tech'},
   z2_engine:  {name:'Engine Fix',        machine:'assembler', time:24, in:{refined_fuel:2,engine:1},          out:{r_engine_fix:1},unlock:'repair_tech'},
-  z2_nav:     {name:'Nav Computer',      machine:'assembler', time:20, in:{circuit:4,plastic:2},              out:{r_nav:1},       unlock:'repair_tech'},
+  z2_nav:     {name:'Nav Computer',      machine:'assembler', time:16, in:{circuit:4,plastic:2},              out:{r_nav:1},       unlock:'repair_tech'},
   z2_tank:    {name:'Fuel Tank',         machine:'assembler', time:24, in:{steel_plate:3,refined_fuel:3},     out:{r_tank:1},      unlock:'repair_tech'},
-  z2_thrust:  {name:'Thruster',          machine:'assembler', time:28, in:{engine:1,plastic:3},               out:{r_thruster:1},  unlock:'repair_tech'},
-  z2_cell:    {name:'Power Cell',        machine:'assembler', time:20, in:{circuit:3,refined_fuel:2},         out:{r_cell:1},      unlock:'repair_tech'},
+  z2_thrust:  {name:'Thruster',          machine:'assembler', time:24, in:{engine:1,plastic:3},               out:{r_thruster:1},  unlock:'repair_tech'},
+  z2_cell:    {name:'Power Cell',        machine:'assembler', time:24, in:{circuit:3,refined_fuel:2},         out:{r_cell:1},      unlock:'repair_tech'},
   // Zone 3, The Deep (fluid:{} is drawn from a connected pipe network)
-  z3_silicon: {name:'Silicon',           machine:'electric_smelter', time:6, in:{quartz:2},                   out:{silicon:1},     unlock:'crystal_refining'},
+  z3_silicon: {name:'Silicon',           machine:'electric_smelter', time:8, in:{quartz:2},                   out:{silicon:1},     unlock:'crystal_refining'},
   z3_lithium: {name:'Lithium',           machine:'electric_smelter', time:8, in:{lithium_salt:1},             out:{lithium:1},     unlock:'energy_storage'},
-  z3_evap:    {name:'Evaporate Brine',   machine:'evaporator', time:8,  in:{}, fluid:{brine:5},                out:{lithium_salt:1},unlock:'fluid_handling'},
-  z3_separate:{name:'Separate Rare Earth',machine:'separator', time:10, in:{rare_earth:2}, fluid:{brine:4},     out:{re_oxide:1},    unlock:'pressure_control'},
+  z3_evap:    {name:'Evaporate Brine',   machine:'evaporator', time:8,  in:{}, fluid:{brine:4},                out:{lithium_salt:1},unlock:'fluid_handling'},
+  z3_separate:{name:'Separate Rare Earth',machine:'separator', time:8, in:{rare_earth:2}, fluid:{brine:4},     out:{re_oxide:1},    unlock:'pressure_control'},
   z3_magnet:  {name:'Magnet',            machine:'assembler', time:8,  in:{re_oxide:1,iron_plate:2},          out:{magnet:1},      unlock:'pressure_control'},
-  z3_battery: {name:'Battery',           machine:'assembler', time:10, in:{lithium:2,copper_plate:1,steel_plate:1}, out:{battery:1}, unlock:'energy_storage'},
+  z3_battery: {name:'Battery',           machine:'assembler', time:8, in:{lithium:2,copper_plate:1,steel_plate:1}, out:{battery:1}, unlock:'energy_storage'},
   z3_core:    {name:'Lattice Core',      machine:'assembler', time:16, in:{silicon:3,magnet:1},               out:{lattice_core:1},unlock:'lattice_fuel'},
   z3_rod:     {name:'Lattice Fuel Rod',  machine:'rod_press', time:20,  in:{lattice_core:1,radiant_dust:5}, fluid:{brine:10}, minPressure:60, out:{fuel_rod:1}, unlock:'lattice_fuel'},
   z3_sci_deep:{name:'Deep Notes',        machine:'lab', time:8,  in:{quartz:1,copper_wire:2},                 out:{sci_deep:1}},
-  z3_sci_press:{name:'Pressure Data',    machine:'lab', time:10, in:{lithium_salt:1,circuit:1},               out:{sci_pressure:1},unlock:'fluid_handling'},
-  z3_sci_lat: {name:'Lattice Data',      machine:'lab', time:14, in:{silicon:2,magnet:1},                     out:{sci_lattice:1}, unlock:'pressure_control'},
-  z3_phull:   {name:'Pressure Hull',     machine:'assembler', time:20, in:{steel_plate:6,re_oxide:2},         out:{r_phull:1},     unlock:'lattice_fuel'},
-  z3_battbank:{name:'Battery Bank',      machine:'assembler', time:20, in:{battery:4,circuit:2},              out:{r_battbank:1},  unlock:'lattice_fuel'},
-  z3_guidance:{name:'Guidance Crystal',  machine:'assembler', time:24, in:{lattice_core:2,circuit:4},         out:{r_guidance:1},  unlock:'lattice_fuel'},
-  z3_drill:   {name:'Shaft Drill',       machine:'assembler', time:28, in:{steel_plate:8,magnet:4,engine:2},  out:{r_drill:1},     unlock:'lattice_fuel'},
+  z3_sci_press:{name:'Pressure Data',    machine:'lab', time:12, in:{lithium_salt:1,circuit:1},               out:{sci_pressure:1},unlock:'fluid_handling'},
+  z3_sci_lat: {name:'Lattice Data',      machine:'lab', time:16, in:{silicon:2,magnet:1},                     out:{sci_lattice:1}, unlock:'pressure_control'},
+  z3_phull:   {name:'Pressure Hull',     machine:'assembler', time:24, in:{steel_plate:6,re_oxide:2},         out:{r_phull:1},     unlock:'lattice_fuel'},
+  z3_battbank:{name:'Battery Bank',      machine:'assembler', time:16, in:{battery:4,circuit:2},              out:{r_battbank:1},  unlock:'lattice_fuel'},
+  z3_guidance:{name:'Guidance Crystal',  machine:'assembler', time:32, in:{lattice_core:2,circuit:4},         out:{r_guidance:1},  unlock:'lattice_fuel'},
+  z3_drill:   {name:'Shaft Drill',       machine:'assembler', time:32, in:{steel_plate:8,magnet:4,engine:2},  out:{r_drill:1},     unlock:'lattice_fuel'},
   // Zone 4, The Bloom (living machines grow faster when well fed)
-  z4_paste:   {name:'Nutrient Paste',    machine:'assembler', time:6,  in:{biomass:2},                        out:{nutrient:1},    unlock:'bio_cultivation'},
-  z4_algae:   {name:'Grow Algae',        machine:'algae_vat', time:12, in:{}, fluid:{enzymes:3},              out:{algae:2},       unlock:'bio_cultivation'},
+  z4_paste:   {name:'Nutrient Paste',    machine:'assembler', time:8,  in:{biomass:2},                        out:{nutrient:1},    unlock:'bio_cultivation'},
+  z4_algae:   {name:'Grow Algae',        machine:'algae_vat', time:16, in:{}, fluid:{enzymes:3},              out:{algae:2},       unlock:'bio_cultivation'},
   z4_lum:     {name:'Luminite Crystal',  machine:'electric_smelter', time:8, in:{luminite:2},                 out:{lum_crystal:1}, unlock:'luminite_refining'},
-  z4_biooil:  {name:'Bio-Oil',           machine:'bioreactor', time:10, in:{algae:2,biomass:1},               out:{bio_oil:1},     unlock:'symbiosis'},
-  z4_mycel:   {name:'Mycelium',          machine:'spore_incubator', time:12, in:{spores:3,nutrient:1},        out:{mycelium:2},    unlock:'symbiosis'},
-  z4_composite:{name:'Bio-Composite',    machine:'assembler', time:10, in:{mycelium:2,steel_plate:1},         out:{bio_composite:1},unlock:'symbiosis'},
+  z4_biooil:  {name:'Bio-Oil',           machine:'bioreactor', time:8, in:{algae:2,biomass:1},               out:{bio_oil:1},     unlock:'symbiosis'},
+  z4_mycel:   {name:'Mycelium',          machine:'spore_incubator', time:16, in:{spores:3,nutrient:1},        out:{mycelium:2},    unlock:'symbiosis'},
+  z4_composite:{name:'Bio-Composite',    machine:'assembler', time:8, in:{mycelium:2,steel_plate:1},         out:{bio_composite:1},unlock:'symbiosis'},
   z4_rod:     {name:'Luminite Rod',      machine:'assembler', time:16, in:{lum_crystal:3,steel_plate:2},      out:{lum_rod:1},     unlock:'nuclear_power'},
-  z4_hyper:   {name:'Bio-Hyperfuel',     machine:'hyper_synth', time:20, in:{bio_oil:3,lum_crystal:1}, fluid:{enzymes:4}, out:{hyperfuel:1}, unlock:'hyperfuel'},
+  z4_hyper:   {name:'Bio-Hyperfuel',     machine:'hyper_synth', time:16, in:{bio_oil:3,lum_crystal:1}, fluid:{enzymes:4}, out:{hyperfuel:1}, unlock:'hyperfuel'},
   z4_sci_bloom:{name:'Bloom Notes',      machine:'lab', time:8,  in:{biomass:2,copper_wire:1},                out:{sci_bloom:1}},
-  z4_sci_growth:{name:'Growth Data',     machine:'lab', time:10, in:{algae:2,circuit:1},                      out:{sci_growth:1},  unlock:'bio_cultivation'},
-  z4_sci_synth:{name:'Synthesis Data',   machine:'lab', time:14, in:{bio_oil:1,lum_crystal:1},                out:{sci_synth:1},   unlock:'symbiosis'},
-  z4_biohull: {name:'Bio-Hull',          machine:'assembler', time:24, in:{bio_composite:4,steel_plate:4},    out:{r_biohull:1},   unlock:'hyperfuel'},
+  z4_sci_growth:{name:'Growth Data',     machine:'lab', time:8, in:{algae:2,circuit:1},                      out:{sci_growth:1},  unlock:'bio_cultivation'},
+  z4_sci_synth:{name:'Synthesis Data',   machine:'lab', time:16, in:{bio_oil:1,lum_crystal:1},                out:{sci_synth:1},   unlock:'symbiosis'},
+  z4_biohull: {name:'Bio-Hull',          machine:'assembler', time:32, in:{bio_composite:4,steel_plate:4},    out:{r_biohull:1},   unlock:'hyperfuel'},
   z4_bionav:  {name:'Living Navigator',  machine:'assembler', time:24, in:{algae:6,circuit:6,lum_crystal:2},   out:{r_bionav:1},    unlock:'hyperfuel'},
-  z4_core:    {name:'Reactor Core',      machine:'assembler', time:30, in:{lum_rod:2,steel_plate:10,circuit:4},out:{r_core:1},     unlock:'hyperfuel'},
+  z4_core:    {name:'Reactor Core',      machine:'assembler', time:32, in:{lum_rod:2,steel_plate:8,circuit:4},out:{r_core:1},     unlock:'hyperfuel'},
   // Zone 5, every chain feeds the Singularity
   z5_sci_void:{name:'Void Data',         machine:'lab', time:20, in:{sci_blue:1,sci_repair:1,sci_lattice:1,sci_synth:1}, out:{sci_void:1}, unlock:'void_theory'},
-  z5_lens:    {name:'Graviton Lens',     machine:'assembler', time:30, in:{lattice_core:2,lum_crystal:2,polymer_sheet:2}, out:{grav_lens:1}, unlock:'void_theory'},
-  z5_casing:  {name:'Stellar Casing',    machine:'assembler', time:30, in:{steel_plate:10,bio_composite:3,plastic:5},     out:{stellar_casing:1}, unlock:'void_theory'},
-  z5_engine:  {name:'Void Engine',       machine:'assembler', time:40, in:{engine:2,magnet:3,hyperfuel:1,refined_fuel:5}, out:{void_engine:1}, unlock:'void_theory'},
-  z5_mind:    {name:'Quantum Mind',      machine:'assembler', time:40, in:{circuit:10,battery:3,algae:5},                 out:{quantum_mind:1}, unlock:'void_theory'},
+  z5_lens:    {name:'Graviton Lens',     machine:'assembler', time:32, in:{lattice_core:2,lum_crystal:2,polymer_sheet:2}, out:{grav_lens:1}, unlock:'void_theory'},
+  z5_casing:  {name:'Stellar Casing',    machine:'assembler', time:40, in:{steel_plate:10,bio_composite:2,plastic:5},     out:{stellar_casing:1}, unlock:'void_theory'},
+  z5_engine:  {name:'Void Engine',       machine:'assembler', time:40, in:{engine:2,magnet:2,hyperfuel:1,refined_fuel:5}, out:{void_engine:1}, unlock:'void_theory'},
+  z5_mind:    {name:'Quantum Mind',      machine:'assembler', time:40, in:{circuit:10,battery:2,algae:5},                 out:{quantum_mind:1}, unlock:'void_theory'},
 };
 
 // ═══════════════════════════════════════════════════
 //  MACHINES
 // ═══════════════════════════════════════════════════
 const MDEFS = {
-  miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits'},
+  miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits: 60/min (T2 120, T3 240)'},
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter, needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter, 2× speed'},
-  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed, runs on power. 3× speed. Makes propellant.'},
+  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed, runs on power. 4× a Stone Furnace: 120 ore in, 60 plates out per minute. Makes propellant.'},
   assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill','z4_paste','z4_composite','z4_rod','z4_biohull','z4_bionav','z4_core','z5_lens','z5_casing','z5_engine','z5_mind'], desc:'Crafts parts and components'},
   lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat','z4_sci_bloom','z4_sci_growth','z4_sci_synth','z5_sci_void'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
   generator:      {name:'Generator',        icon:'⚡', size:[2,2], power:-60, cost:{iron_plate:8, iron_gear:4},                      unlock:'logistics',          recipes:[], desc:'Burns coal → 60kW power'},
-  belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction'},
+  belt:           {name:'Belt',             icon:'➡️', size:[1,1], power:0,   cost:{iron_plate:1},                                   unlock:null,          recipes:[], desc:'Moves items in one direction: 60/min (T2 120, T3 270)'},
   splitter:       {name:'Splitter',         icon:'⑂',  size:[1,2], power:0,   cost:{iron_plate:3, iron_gear:1},                      unlock:'logistics',   recipes:[], desc:'Splits one belt lane into two. 1×2 block, input left, two outputs right'},
   tunnel:         {name:'Belt Tunnel',      icon:'⏬', size:[1,1], power:0,   cost:{iron_plate:4, iron_gear:2},                      unlock:'logistics',   recipes:[], desc:'Tunnels items under machines. Place two to connect'},
-  inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines'},
+  inserter:       {name:'Inserter',         icon:'🦾', size:[1,1], power:1,   cost:{iron_plate:2, iron_gear:1},                      unlock:null,          recipes:[], desc:'Transfers items to/from machines: 60/min (T2 120, T3 270)'},
   long_inserter:  {name:'Long Inserter',    icon:'🦿', size:[1,1], power:2,   cost:{iron_plate:4, iron_gear:2, circuit:1},            unlock:'logistics',   recipes:[], desc:'2-tile reach inserter. Transfers items over longer distances'},
   chest:          {name:'Chest',            icon:'📦', size:[1,1], power:0,   cost:{iron_plate:4},                                   unlock:null,          recipes:[], desc:'Stores up to 200 items'},
   // Zone 2 machines
@@ -1252,127 +1254,127 @@ const TECHS = {
   },
   logistics: {
     name:'Advanced Logistics', icon:'➡️', era:'Era 1',
-    cost:{sci_red:50}, req:['automation'],
-    desc:'50% faster belt speed + advanced logistics. Unlocks Circuit Diagrams research',
+    cost:{sci_red:60}, req:['automation'],
+    desc:'Unlocks belt upgrades (T2 120/min, T3 270/min), Splitters, Tunnels and Generators',
   },
   steel: {
     name:'Steel Processing', icon:'🔩', era:'Era 2',
-    cost:{sci_red:75,sci_green:50}, req:['automation','logistics'],
+    cost:{sci_red:90,sci_green:60}, req:['automation','logistics'],
     desc:'Enables steel recipes + unlocks Electric Smelter',
   },
   electronics: {
     name:'Electronics', icon:'💚', era:'Era 2',
-    cost:{sci_red:100,sci_green:75}, req:['automation','logistics'],
+    cost:{sci_red:120,sci_green:90}, req:['automation','logistics'],
     desc:'Advanced circuit and computer recipes. Unlocks Adv. Schematics research',
   },
   rocket_tech: {
     name:'Rocket Science', icon:'🚀', era:'Era 3',
-    cost:{sci_red:125,sci_green:125,sci_blue:50}, req:['steel','electronics'],
+    cost:{sci_red:150,sci_green:150,sci_blue:60}, req:['steel','electronics'],
     desc:'Unlocks all rocket component recipes',
   },
   // Zone 2, The Scar
   oil_extraction: {
     name:'Oil Extraction', icon:'🛢️', era:'The Scar · Era 1',
-    cost:{sci_scar:10}, req:[],
+    cost:{sci_scar:30}, req:[],
     desc:'Unlocks Oil Pump, Cracker, Refinery and oil production chains',
     zone:2,
   },
   smog_control: {
     name:'Smog Control', icon:'🌿', era:'The Scar · Era 2',
-    cost:{sci_scar:30,sci_smog:20}, req:['oil_extraction'],
+    cost:{sci_scar:120,sci_smog:90}, req:['oil_extraction'],
     desc:'Unlocks Scrubber and Combustion Generator. Required for Repair Data science pack.',
     zone:2,
   },
   repair_tech: {
     name:'Rocket Repair', icon:'🔧', era:'The Scar · Era 3',
-    cost:{sci_scar:50,sci_smog:50,sci_repair:20}, req:['oil_extraction','smog_control'],
+    cost:{sci_scar:240,sci_smog:240,sci_repair:90}, req:['oil_extraction','smog_control'],
     desc:'Unlocks all 6 rocket repair component recipes',
     zone:2,
   },
   // Zone 3, The Deep
   fluid_handling: {
     name:'Fluid Handling', icon:'💧', era:'The Deep · Era 1',
-    cost:{sci_deep:10}, req:[],
+    cost:{sci_deep:30}, req:[],
     desc:'Unlocks Pipe, Brine Pump, Fluid Tank, Evaporator and Pressure Data',
     zone:3,
   },
   crystal_refining: {
     name:'Crystal Refining', icon:'💎', era:'The Deep · Era 1',
-    cost:{sci_deep:15}, req:[],
+    cost:{sci_deep:45}, req:[],
     desc:'Unlocks Silicon smelting and the Lumen Panel',
     zone:3,
   },
   pressure_control: {
     name:'Pressure Control', icon:'🚿', era:'The Deep · Era 2',
-    cost:{sci_deep:30,sci_pressure:20}, req:['fluid_handling'],
+    cost:{sci_deep:120,sci_pressure:80}, req:['fluid_handling'],
     desc:'Unlocks Relief Valve, Separator, Magnets and Lattice Data',
     zone:3,
   },
   energy_storage: {
     name:'Energy Storage', icon:'🔋', era:'The Deep · Era 2',
-    cost:{sci_deep:30,sci_pressure:20}, req:['fluid_handling','crystal_refining'],
+    cost:{sci_deep:120,sci_pressure:80}, req:['fluid_handling','crystal_refining'],
     desc:'Unlocks Lithium, Batteries and the Accumulator',
     zone:3,
   },
   lattice_fuel: {
     name:'Lattice Fuel', icon:'🟩', era:'The Deep · Era 3',
-    cost:{sci_deep:50,sci_pressure:40,sci_lattice:20}, req:['pressure_control','energy_storage'],
+    cost:{sci_deep:240,sci_pressure:160,sci_lattice:90}, req:['pressure_control','energy_storage'],
     desc:'Unlocks the Rod Press and all escape-shaft rocket parts',
     zone:3,
   },
   // Zone 4, The Bloom
   bio_cultivation: {
     name:'Bio Cultivation', icon:'🌱', era:'The Bloom · Era 1',
-    cost:{sci_bloom:10}, req:[],
+    cost:{sci_bloom:30}, req:[],
     desc:'Unlocks Enzyme Pump, Algae Vat, Nutrient Paste and Growth Data',
     zone:4,
   },
   luminite_refining: {
     name:'Luminite Refining', icon:'❇️', era:'The Bloom · Era 1',
-    cost:{sci_bloom:15}, req:[],
+    cost:{sci_bloom:45}, req:[],
     desc:'Unlocks Luminite Crystal smelting and the Heat Sink',
     zone:4,
   },
   symbiosis: {
     name:'Symbiosis', icon:'🦠', era:'The Bloom · Era 2',
-    cost:{sci_bloom:30,sci_growth:20}, req:['bio_cultivation'],
+    cost:{sci_bloom:120,sci_growth:90}, req:['bio_cultivation'],
     desc:'Unlocks Bioreactor, Spore Incubator, Bio-Composite and Synthesis Data',
     zone:4,
   },
   nuclear_power: {
     name:'Nuclear Power', icon:'☢️', era:'The Bloom · Era 2',
-    cost:{sci_bloom:40,sci_growth:30}, req:['bio_cultivation','luminite_refining'],
+    cost:{sci_bloom:150,sci_growth:120}, req:['bio_cultivation','luminite_refining'],
     desc:'Unlocks the Nuclear Reactor and Luminite Rods',
     zone:4,
   },
   hyperfuel: {
     name:'Hyperfuel', icon:'🌟', era:'The Bloom · Era 3',
-    cost:{sci_bloom:60,sci_growth:50,sci_synth:30}, req:['symbiosis','nuclear_power'],
+    cost:{sci_bloom:240,sci_growth:210,sci_synth:120}, req:['symbiosis','nuclear_power'],
     desc:'Unlocks the Hyperfuel Synthesiser and all Bloom rocket parts',
     zone:4,
   },
   // Zone 5, The Singularity
   expansion_1: {
     name:'Expansion I', icon:'🗺️', era:'The Singularity · Era 1',
-    cost:{sci_red:100,sci_scar:50,sci_deep:50,sci_bloom:50}, req:[],
+    cost:{sci_red:120,sci_scar:60,sci_deep:60,sci_bloom:60}, req:[],
     desc:'The merged world grows: +32 columns, +16 rows of new territory',
     zone:5, onResearch:()=>expandMap(32,16),
   },
   void_theory: {
     name:'Void Theory', icon:'📕', era:'The Singularity · Era 1',
-    cost:{sci_blue:40,sci_repair:30,sci_lattice:30,sci_synth:30}, req:[],
+    cost:{sci_blue:45,sci_repair:30,sci_lattice:30,sci_synth:30}, req:[],
     desc:'Unlocks Void Data and the four Singularity components',
     zone:5,
   },
   expansion_2: {
     name:'Expansion II', icon:'🗺️', era:'The Singularity · Era 2',
-    cost:{sci_void:40}, req:['expansion_1'],
+    cost:{sci_void:48}, req:['expansion_1'],
     desc:'The world grows again: +32 columns, +16 rows',
     zone:5, onResearch:()=>expandMap(32,16),
   },
   singularity: {
     name:'The Singularity', icon:'🌌', era:'The Singularity · Era 2',
-    cost:{sci_void:100}, req:['void_theory'],
+    cost:{sci_void:120}, req:['void_theory'],
     desc:'Unlocks the Singularity. Build it, power it, end everything',
     zone:5,
   },
@@ -1382,33 +1384,33 @@ const TECHS = {
 //  ROCKET COMPONENTS
 // ═══════════════════════════════════════════════════
 const ROCKET_PARTS = [
-  {id:'r_chassis',    name:'Rocket Chassis',  need:1, unlock:'rocket_tech'},
-  {id:'r_computer',   name:'Flight Computer', need:1, unlock:'rocket_tech'},
-  {id:'r_frame',      name:'Struct. Frame',   need:1, unlock:'rocket_tech'},
-  {id:'r_propellant', name:'Coal Propellant', need:2, unlock:'rocket_tech'},
+  {id:'r_chassis',    name:'Rocket Chassis',  need:5, unlock:'rocket_tech'},
+  {id:'r_computer',   name:'Flight Computer', need:5, unlock:'rocket_tech'},
+  {id:'r_frame',      name:'Struct. Frame',   need:5, unlock:'rocket_tech'},
+  {id:'r_propellant', name:'Coal Propellant', need:10, unlock:'rocket_tech'},
 ];
 const ROCKET_PARTS_Z2 = [
-  {id:'r_hull',       name:'Hull Patch',    need:4, unlock:'repair_tech'},
-  {id:'r_engine_fix', name:'Engine Fix',    need:1, unlock:'repair_tech'},
-  {id:'r_nav',        name:'Nav Computer',  need:1, unlock:'repair_tech'},
-  {id:'r_tank',       name:'Fuel Tank',     need:2, unlock:'repair_tech'},
-  {id:'r_thruster',   name:'Thruster',      need:2, unlock:'repair_tech'},
-  {id:'r_cell',       name:'Power Cell',    need:1, unlock:'repair_tech'},
+  {id:'r_hull',       name:'Hull Patch',    need:20, unlock:'repair_tech'},
+  {id:'r_engine_fix', name:'Engine Fix',    need:5, unlock:'repair_tech'},
+  {id:'r_nav',        name:'Nav Computer',  need:5, unlock:'repair_tech'},
+  {id:'r_tank',       name:'Fuel Tank',     need:10, unlock:'repair_tech'},
+  {id:'r_thruster',   name:'Thruster',      need:10, unlock:'repair_tech'},
+  {id:'r_cell',       name:'Power Cell',    need:5, unlock:'repair_tech'},
 ];
 
 const ROCKET_PARTS_Z3 = [
-  {id:'fuel_rod',     name:'Lattice Fuel Rod', need:4, unlock:'lattice_fuel'},
-  {id:'r_phull',      name:'Pressure Hull',    need:2, unlock:'lattice_fuel'},
-  {id:'r_battbank',   name:'Battery Bank',     need:2, unlock:'lattice_fuel'},
-  {id:'r_guidance',   name:'Guidance Crystal', need:1, unlock:'lattice_fuel'},
-  {id:'r_drill',      name:'Shaft Drill',      need:1, unlock:'lattice_fuel'},
+  {id:'fuel_rod',     name:'Lattice Fuel Rod', need:20, unlock:'lattice_fuel'},
+  {id:'r_phull',      name:'Pressure Hull',    need:10, unlock:'lattice_fuel'},
+  {id:'r_battbank',   name:'Battery Bank',     need:10, unlock:'lattice_fuel'},
+  {id:'r_guidance',   name:'Guidance Crystal', need:5, unlock:'lattice_fuel'},
+  {id:'r_drill',      name:'Shaft Drill',      need:5, unlock:'lattice_fuel'},
 ];
 
 const ROCKET_PARTS_Z4 = [
-  {id:'hyperfuel',    name:'Bio-Hyperfuel',    need:6, unlock:'hyperfuel'},
-  {id:'r_biohull',    name:'Bio-Hull',         need:3, unlock:'hyperfuel'},
-  {id:'r_bionav',     name:'Living Navigator', need:1, unlock:'hyperfuel'},
-  {id:'r_core',       name:'Reactor Core',     need:1, unlock:'hyperfuel'},
+  {id:'hyperfuel',    name:'Bio-Hyperfuel',    need:30, unlock:'hyperfuel'},
+  {id:'r_biohull',    name:'Bio-Hull',         need:15, unlock:'hyperfuel'},
+  {id:'r_bionav',     name:'Living Navigator', need:5, unlock:'hyperfuel'},
+  {id:'r_core',       name:'Reactor Core',     need:5, unlock:'hyperfuel'},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -1423,7 +1425,7 @@ const ZONES={
      arrivalTitle:'⛏️ IRONFIELD', arrivalBtn:"LET'S GO",
      arrivalHtml:`Welcome to <span style="color:var(--amber)">Ironfield</span>.<br>No machines. No power. Nothing.<br><br>
        Tap <span style="color:var(--amber)">🛠️ TOOLS</span> then<br>⛏️ Mine to collect resources.<br><br>Build a rocket to escape.`},
-  2:{name:'The Scar', icon:'💥', rocketTech:'repair_tech', parts:ROCKET_PARTS_Z2, fuel:{item:'refined_fuel',n:20},
+  2:{name:'The Scar', icon:'💥', rocketTech:'repair_tech', parts:ROCKET_PARTS_Z2, fuel:{item:'refined_fuel',n:100},
      partsCat:'rocket2', partsLabel:'Repair (Zone 2)', sci:['sci_scar','sci_smog','sci_repair'],
      hazards:['smog'], buildMap:()=>buildMapZ2(), mapSize:[96,64],
      launchLabel:'REPAIR & RELAUNCH', launchText:'The rocket screams upward.<br>The Scar fades to a scar of light.',
@@ -1665,6 +1667,20 @@ function trimFactoryFloor(){
   const want=G.floorY+FLOOR_ROWS+grown;
   while(G.map.length>want&&G.map[G.map.length-1].every(t=>t.mid===null&&!t.res&&!t.items.length))G.map.pop();
   MAP_H=G.map.length;
+}
+// On load, every belt tile is brought to today's spacing: at most BELT_CAP items, a gap apart. Older saves held 4 per
+// tile (and before v2.0.7 a tunnel mouth took any number, one held 1,700); a few tiles also kept items after their
+// belt was gone. The extras go to the inventory.
+function tidyBeltItems(){
+  if(!G.map)return;
+  let back=0;
+  for(const row of G.map)for(const t of row){
+    if(!t.items||!t.items.length)continue;
+    const m=t.mid!==null?G.machines[t.mid]:null, keep=m&&BELT_TYPES.includes(m.type)?BELT_CAP:0;
+    if(t.items.length>keep){for(const it of t.items.slice(keep)){G.inv[it.id]=(G.inv[it.id]||0)+1;back++;} t.items=t.items.slice(0,keep);}
+    t.items.sort((a,b)=>b.prog-a.prog).forEach((it,i)=>{it.prog=Math.min(it.prog,.99-i*BELT_GAP);}); // front first, a gap apart
+  }
+  if(back)G._tidied=back;
 }
 function expandMap(dw,dh){
   const oldW=MAP_W, oldH=MAP_H, nw=oldW+dw, nh=oldH+dh;
@@ -2877,16 +2893,16 @@ function beltCanTake(tx,ty,dir){
   const[dx,dy]=D_VEC[dir], t=G.map[ty+dy]?.[tx+dx]; if(!t||t.mid===null)return false;
   const nm=G.machines[t.mid]; if(!nm)return false;
   if(nm.type==='chest')return true;
-  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<4;
+  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<BELT_CAP;
 }
 function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
   const flow=mode==='enter'||beltCanTake(tx,ty,dir);
   const items=[...tile.items].sort((a,b)=>b.prog-a.prog);
-  let lim=flow?1+spd:.875;
+  let lim=flow?1+spd:1-BELT_GAP/2;
   const[dx,dy]=D_VEC[dir], mx=tx*ts-cx+ts/2, my=ty*ts-cy+ts/2, sz=ts*.42;
   for(const it of items){
-    let p=Math.max(flow?0:.125,Math.min(it.prog+spd*sub,lim));
-    if(!flow)lim=p-.25;                  // queued items sit a quarter tile apart, evenly across tile edges
+    let p=Math.max(flow?0:BELT_GAP/2,Math.min(it.prog+spd*sub,lim));
+    if(!flow)lim=p-BELT_GAP;             // queued items sit a gap apart, evenly across tile edges
     if(mode==='enter'&&p>=.5)continue;   // gone underground
     if(mode==='exit')p=.5+p*.5;          // surfaces at the centre
     let ox,oy;
@@ -4520,7 +4536,7 @@ function runMachine(m){
     return;
   }
   if(m.type==='burner'){
-    // 1 coal per 6s, so one coal Miner (1 coal per 2s) keeps three Burners running
+    // 1 coal per 6s (10/min); one T1 coal Miner (60/min) keeps six Burners running
     const hasFuel=(m.inBuf.coal||0)>0;
     if(hasFuel){
       G.power.out+=Math.abs(def.power);
@@ -4543,18 +4559,15 @@ function runMachine(m){
     // Auto-mines oil from deposit below, like miner but produces smog
     if(!m.mineRes||m.mineRes!=='oil')return;
     const ratio=powerRatio(); if(ratio===0)return;
-    m.prog++;
-    const tierMult=m.tier===3?2:m.tier===2?1.5:1;
-    const rate=Math.max(2,Math.floor(8/(ratio*tierMult)));
-    if(m.prog>=rate){
-      const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
-      if(bufTotal>=50)return;
-      m.prog=0;
+    m.prog+=ratio*(MINER_TIER_SPEED[m.tier||1]||1); // like a Miner: 60 · 120 · 240 /min
+    while(m.prog>=MINE_TICKS){
+      if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50){m.prog=MINE_TICKS;break;}
+      m.prog-=MINE_TICKS;
       m.outBuf.crude_oil=(m.outBuf.crude_oil||0)+1;
       m.produced++;
       recordOutput(m,1);
-      // Generate smog
-      if(zoneHas('smog')){G.smog=Math.min(100,(G.smog||0)+0.5*(G.perks?.spent?.smog1?0.7:1));}
+      // Generate smog: 0.25 per barrel (twice the barrels of the old 30/min pump, the same smog per minute)
+      if(zoneHas('smog')){G.smog=Math.min(100,(G.smog||0)+OIL_SMOG*(G.perks?.spent?.smog1?0.7:1));}
     }
     return;
   }
@@ -4583,18 +4596,16 @@ function runMachine(m){
     if(!m.mineRes)return;
     const ratio=powerRatio();
     if(ratio===0)return;
-    m.prog++;
     const pm=perkMult();
-    const tierMult=m.tier===3?2:m.tier===2?1.5:1;
     // Smog reduces efficiency in Zone 2
     const smogMult=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
     const resMult=m.mineRes==='radiant_dust'?0.5:1; // radiant vents yield slowly
-    const rate=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smogMult*resMult)));
-    if(m.prog>=rate){
-      const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
-      if(bufTotal>=50)return;
-      m.prog=0;
-      const n=Math.random()<((pm.yield*tierMult*modYield)-1)?2:1;
+    // progress builds up by the speed multiplier, so any mix of tier, perks and modules gives its exact rate
+    m.prog+=ratio*pm.speed*(MINER_TIER_SPEED[m.tier||1]||1)*modSpeed*smogMult*resMult;
+    while(m.prog>=MINE_TICKS){
+      if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50){m.prog=MINE_TICKS;break;} // full: wait
+      m.prog-=MINE_TICKS;
+      const n=Math.random()<(pm.yield*modYield-1)?2:1; // yield perks and Productivity Modules (tiers are speed)
       m.outBuf[m.mineRes]=(m.outBuf[m.mineRes]||0)+n;
       m.produced+=n;
       recordOutput(m,n);
@@ -4610,7 +4621,7 @@ function runMachine(m){
   const powerImmune=(m.type==='stone_furnace'||m.type==='blast_furnace');
   const ratio=powerImmune?1:powerRatio();
   if(ratio===0)return;
-  const tierMult=m.tier===3?2:m.tier===2?1.5:1;
+  const tierMult=MACHINE_TIER_SPEED[m.tier||1]||1;
   // Smog reduces efficiency in Zone 2 for all powered machines
   const smogEff=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
   const lifeMult=def.living?lifeStage(m).mult:1;
@@ -4618,8 +4629,8 @@ function runMachine(m){
 
   if(m.prog===0){
     if(canFill(m,rec)&&fluidReady(m,rec)){consumeInputs(m,rec);consumeFluid(m,rec);m.prog=1;}
-  } else {
-    m.prog++;
+  } else m.prog++;
+  if(m.prog>0){ // checked on the start tick too, so a one-tick cycle (a 1s recipe at T3) isn't stretched to two
     m._dur=Math.ceil(rec.time/Math.max(.01,speedMult));
     if(m.prog>=m._dur){
       // Stall if output buffer full
@@ -4846,7 +4857,7 @@ function runReactor(m,def){
 //  Inserters (any side) or the panel feed components into it. Once complete it
 //  draws SING_POWER; holding full power for SING_SUSTAIN ticks → Big Bang.
 // ═══════════════════════════════════════════════════
-const SING_REQS={grav_lens:10,stellar_casing:20,void_engine:10,quantum_mind:10};
+const SING_REQS={grav_lens:20,stellar_casing:40,void_engine:20,quantum_mind:20};
 const SING_POWER=5000, SING_SUSTAIN=240;
 function singularity(){return Object.values(G.machines).find(m=>m.type==='singularity')||null;}
 function runSingularity(m){
@@ -5028,10 +5039,10 @@ function runAccumulators(){
 }
 
 const BELT_DONE=1-1e-6;
-const carryProg=p=>Math.max(0,Math.min(.5,p-1)); // what's left of this tick's move, on the next tile
+const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
-  const beltSpeed=(G.research.done.includes('logistics')?.15:.1)*pm.belt;
+  const beltSpeed=beltBaseSpeed();
 
   // Advance items on belt/splitter/tunnel
   for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){
@@ -5044,11 +5055,16 @@ function runBelts(){
     for(const it of tile.items)it.prog=Math.min(1+sp,it.prog+sp);
   }
 
-  // Transfer completed items
-  for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){
-    const tile=G.map[ty][tx]; if(tile.mid===null)continue;
-    const m=G.machines[tile.mid]; if(!m)continue;
-    if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
+  // Transfer completed items. A blocked item keeps its place (prog >= BELT_DONE) and retries after the tiles ahead
+  // have moved: the first pass runs top-left to bottom-right, so a full belt flowing right or down only freed one
+  // tile per tick (221 items/min on T3 against 240 flowing left or up). Whatever is still blocked after the retries
+  // is marked queued (prog .99), which the renderer and inserters read.
+  const moveTile=(tx,ty,final)=>{ // returns true if items are still waiting on this tile
+    const tile=G.map[ty][tx]; if(tile.mid===null)return false;
+    const m=G.machines[tile.mid]; if(!m)return false;
+    if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')return false;
+    const hold=it=>{if(final)it.prog=0.99;tile.items.push(it);};
+    const left=()=>!final&&tile.items.some(it=>it.prog>=BELT_DONE);
 
     // Tunnel: entrance teleports to exit; exit passes items forward like a belt
     if(m.type==='tunnel'){
@@ -5060,42 +5076,43 @@ function runBelts(){
           if(distForward>0){
             // ENTRANCE, teleport arrived items to exit tile
             const exTile=G.map[partner.y][partner.x];
-            const room=Math.max(0,4-exTile.items.length); // exit holds 4 like a belt; the rest wait
-            const arr=tile.items.filter(it=>it.prog>=BELT_DONE).slice(0,room);
-            if(arr.length){
-              tile.items=tile.items.filter(it=>!arr.includes(it));
-              for(const it of arr){it.prog=carryProg(it.prog);exTile.items.push(it);}
+            // the exit takes them like a belt tile (cap and gap); the rest wait at the mouth
+            for(const it of tile.items.filter(i=>i.prog>=BELT_DONE).sort((a,b)=>b.prog-a.prog)){
+              const c=carryProg(it.prog); if(!beltRoom(exTile,c))break;
+              tile.items.splice(tile.items.indexOf(it),1); it.prog=c; exTile.items.push(it);
             }
-            continue;
+            return left();
           }
           // EXIT, pass forward; back-pressure if blocked (so inserter can grab)
-          const arr=tile.items.filter(it=>it.prog>=BELT_DONE);
-          if(!arr.length)continue;
+          const arr=tile.items.filter(it=>it.prog>=BELT_DONE).sort((a,b)=>b.prog-a.prog);
+          if(!arr.length)return false;
           const nx=tx+dvx,ny=ty+dvy;
-          tile.items=tile.items.filter(it=>it.prog<1);
+          tile.items=tile.items.filter(it=>it.prog<BELT_DONE); // same test as arr: an item just under 1 must not stay behind as well
           if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
-            for(const it of arr){it.prog=0.99;tile.items.push(it);}
-            continue;
+            for(const it of arr)hold(it);
+            return left();
           }
           const next=G.map[ny][nx];
           for(const it of arr){
             if(next.mid!==null){
               const nm=G.machines[next.mid];
-              if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&next.items.length<4){
+              if((nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&beltRoom(next,carryProg(it.prog))){
                 it.prog=carryProg(it.prog);next.items.push(it);
-              } else {it.prog=0.99;tile.items.push(it);}
-            } else {it.prog=0.99;tile.items.push(it);}
+              } else hold(it);
+            } else hold(it);
           }
-          continue;
+          return left();
         }
       }
       // UNLINKED, stall all items, never pass through
-      continue;
+      return false;
     }
 
-    const arrived=tile.items.filter(it=>it.prog>=BELT_DONE);
-    if(!arrived.length)continue;
-    tile.items=tile.items.filter(it=>it.prog<1);
+    const arrived=tile.items.filter(it=>it.prog>=BELT_DONE).sort((a,b)=>b.prog-a.prog); // front item first
+    if(!arrived.length)return false;
+    // Remove exactly what arrived (prog >= BELT_DONE). Filtering on prog<1 kept an item at 0.9999999 here AND moved it on,
+    // so one item object sat on two tiles: a back-pressure reset on one froze the other (T2/T3 belt sums hit that often)
+    tile.items=tile.items.filter(it=>it.prog<BELT_DONE);
     const[dvx,dvy]=D_VEC[m.dir];
 
     // Splitter: 1×2, second cell always at (m.x, m.y+1)
@@ -5116,40 +5133,49 @@ function runBelts(){
           if(dest.x<0||dest.y<0||dest.x>=MAP_W||dest.y>=MAP_H)continue;
           const nt=G.map[dest.y][dest.x]; if(nt.mid===null)continue;
           const nm=G.machines[nt.mid];
-          if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&nt.items.length<4){
+          if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&beltRoom(nt,carryProg(it.prog))){
             it.prog=carryProg(it.prog); nt.items.push(it); placed=true; break;
           }
         }
-        if(!placed){it.prog=0.99; tile.items.push(it);}
+        if(!placed)hold(it);
       }
-      continue;
+      return left();
     }
 
     // Normal belt
     const nx=tx+dvx,ny=ty+dvy;
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H){
-      for(const it of arrived){it.prog=0.99;tile.items.push(it);}
-      continue;
+      for(const it of arrived)hold(it);
+      return left();
     }
     const next=G.map[ny][nx];
     for(const it of arrived){
       if(next.mid!==null){
         const nm=G.machines[next.mid];
-        if((nm.type==='belt'||nm.type==='splitter')&&next.items.length<4){
+        if((nm.type==='belt'||nm.type==='splitter')&&beltRoom(next,carryProg(it.prog))){
           it.prog=carryProg(it.prog);next.items.push(it);
-        } else if(nm.type==='tunnel'){
+        } else if(nm.type==='tunnel'&&beltRoom(next,carryProg(it.prog))){ // a tunnel mouth fills like a belt (it had no cap and swallowed thousands)
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='chest'){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else {
           // All other machines (assembler, furnace, etc), belts cannot feed directly, back-pressure
-          it.prog=0.99;tile.items.push(it);
+          hold(it);
         }
-      } else {
-        it.prog=0.99;tile.items.push(it);
-      }
+      } else hold(it);
     }
+    return left();
+  };
+  let waiting=[];
+  for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++)if(moveTile(tx,ty,false))waiting.push([tx,ty]);
+  for(let pass=0;pass<4&&waiting.length;pass++){ // alternate direction: each pass clears a whole run of belt
+    const n0=waiting.length;
+    waiting=(pass%2===0?[...waiting].reverse():waiting).filter(([x,y])=>moveTile(x,y,false));
+    if(pass%2===0)waiting.reverse();
+    if(waiting.length===n0&&pass>0)break;
   }
+  for(const[x,y]of waiting)moveTile(x,y,true);
+
 
   // Inserters every tick. (Every 4 ticks made each arm phase wait for the next check,
   // so a 1.7s swing took 4s and an inserter moved 1 item per 4s.)
@@ -5163,15 +5189,42 @@ function runBelts(){
 // Miner's output, so the Miner + Inserter + Burner loop the tutorial teaches always ran dry.
 const BURNER_COAL_TICKS=24;
 // Inserter arm state machine constants (real ms)
-const INS_GRAB_MS   = 800;
+// ── Throughput: Satisfactory's numbers, one to one ──
+// A T1 Miner makes 60 items/min, and one T1 inserter and one T1 belt carry exactly that.
+//   Miner, Oil Pump        60 · 120 · 240 /min   (Satisfactory Miner Mk1-3 on a normal node)
+//   Belt, Splitter, Tunnel 60 · 120 · 270 /min   (Conveyor Belt Mk1-3)
+//   Inserter, Long Inserter 60 · 120 · 270 /min  (matched to the belt of the same tier)
+// Coal Generators burn 15 coal/min, as in Satisfactory. Perks and modules add on top.
+const INS_GRAB_MS   = 460;   // grab + deposit + return = 1s: 60 items/min at T1
 const INS_DEPOSIT_MS= 80;
-const INS_RETURN_MS = 800;
-// Upgraded inserters swing faster: T2 2.5×, T3 4× (a T2/T3 Miner outruns a T1 arm)
-const INS_TIER_SPEED={1:1,2:2.5,3:4};
-// Upgraded belts, splitters and tunnels carry items faster: T2 1.5×, T3 2×. Studs and rails show the tier
-const BELT_TIER_SPEED={1:1,2:1.5,3:2};
+const INS_RETURN_MS = 460;
+const INS_TIER_SPEED={1:1,2:2,3:4.5};
+const MINE_TICKS=4;          // a T1 Miner or Oil Pump makes 1 item per 4 ticks (60/min)
+const OIL_SMOG=0.25;         // smog per barrel of crude
+const MINER_TIER_SPEED={1:1,2:2,3:4};
+// Furnaces, smelters, assemblers and labs speed up by tier the same way: a T2 machine does the work of two T1s.
+// Recipe times are whole seconds picked so every input and output is a clean rate (a Stone Furnace takes 30 ore/min,
+// so one T1 Miner feeds two; an Electric Smelter takes 120 and puts out exactly one T1 belt of plates)
+const MACHINE_TIER_SPEED=MINER_TIER_SPEED;
+// Belts hold BELT_CAP items per tile, at least BELT_GAP apart, so a belt carries speed / gap items per tick
+// with no rounding to whole ticks: T1 moves 0.5 tiles/s × 2 per tile = 1 item/s.
+const BELT_CAP=2, BELT_GAP=1/BELT_CAP;
+const BELT_T1_SPEED=.125;    // tiles per tick
+const BELT_TIER_SPEED={1:1,2:2,3:4.5};
 const BELT_TIER_COL={1:'#f5a623',2:'#e53935',3:'#42a5f5'};
-function beltBaseSpeed(){return (G.research.done.includes('logistics')?.15:.1)*perkMult().belt;} // tiles per tick
+function beltBaseSpeed(){return BELT_T1_SPEED*perkMult().belt;} // tiles per tick
+// Room for an item entering a belt tile at progress p: under the cap, and nothing within a gap ahead of it
+function beltRoom(tile,p=0){return tile.items.length<BELT_CAP&&tile.items.every(i=>i.prog>=p+BELT_GAP-1e-6);}
+// Where an inserter can drop onto a belt tile: the start if it's clear, otherwise into the gap behind or ahead of the
+// item already there (-1 if none). Dropping only at the start made a belt fed from the side top out at 240 on T3
+function beltDropPos(tile){
+  if(tile.items.length>=BELT_CAP)return -1;
+  const ps=tile.items.map(i=>i.prog);
+  const fits=p=>p>=0&&p<=.99&&ps.every(q=>Math.abs(q-p)>=BELT_GAP-1e-6);
+  if(fits(0))return 0;
+  for(const q of ps){if(fits(q-BELT_GAP))return q-BELT_GAP; if(fits(q+BELT_GAP))return q+BELT_GAP;}
+  return -1;
+}
 function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
 function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?INS_TIER_SPEED[m.tier||1]||1:1);}
 
@@ -5199,7 +5252,7 @@ function insReady(m){ // idle, with somewhere to put an item (the same gate the 
   if(!dst||dst.mid===null)return false;
   const dm=G.machines[dst.mid]; if(!dm||MDEFS[dm.type]?.noItems)return false;
   if(dm.type!=='belt'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return false;
-  return !((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4);
+  return true; // a belt drop waits at the belt (claw shows blocked), so the arm keeps its 1s rhythm
 }
 function myTurn(m,sm){
   const ids=INS_TAKERS[sm.id]; if(!ids||ids.length<2)return true;
@@ -5216,7 +5269,7 @@ function markServed(sm,m){(sm._served||(sm._served={}))[m.id]=sm._serveN=(sm._se
 // from a finished phase carries into the next, so the arm keeps its real 1.7s cycle
 function runInserter(m){
   if(powerRatio()===0)return;
-  for(let k=0;k<5;k++){const st=m._arm?.state; stepInserter(m); if(!m._arm||m._arm.state===st)break;}
+  for(let k=0;k<10;k++){const st=m._arm?.state; stepInserter(m); if(!m._arm||m._arm.state===st)break;} // a T3 arm can finish two swings in a tick
 }
 function stepInserter(m){
 
@@ -5241,14 +5294,16 @@ function stepInserter(m){
     if(MDEFS[dm.type]?.noItems)return;
     if(dm.type!=='belt'&&dm.type!=='chest'&&dm.type!=='inserter'&&dm.type!=='tunnel'&&isOutputFacing(dm,dvx,dvy))return;
     if(dm.type==='chest'&&isOutputFacing(dm,dvx,dvy))return;
-    if((dm.type==='belt'||dm.type==='tunnel')&&dst.items.length>=4)return;
+    // Belts aren't checked here: the arm grabs and swings, and waits at the drop only if the belt has no room then.
+    // Waiting for room before even grabbing lost most of a swing per item (a T1 chain ran at 34/min, not 60)
 
     let item=null;
     if(src.mid!==null){
       const sm=G.machines[src.mid];
       if(sm&&(sm.type==='belt'||sm.type==='tunnel')){
-        const ready=src.items.filter(it=>it.prog>=0.9);
-        if(ready.length>0){const it=ready[0];src.items.splice(src.items.indexOf(it),1);item=it.id;}
+        // take the front item anywhere on the tile: a T3 belt moves over half a tile per tick, so waiting for an item
+        // in the last tenth of the tile missed most of them and starved machines along a fast belt
+        if(src.items.length){const it=src.items.reduce((a,b)=>b.prog>a.prog?b:a);src.items.splice(src.items.indexOf(it),1);item=it.id;}
       } else if(sm&&sm.type==='chest'){
         const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0);
         if(k&&myTurn(m,sm)){item=k;sm.chestInv[k]--;markServed(sm,m);}
@@ -5259,8 +5314,10 @@ function stepInserter(m){
         }
       }
     }
-    if(!item)return;
-    arm.state='grabbing'; arm.stateStart=Math.max(arm.stateStart,now-insMs(TICK_MS)); arm.item=item;
+    if(!item){arm.stateStart=now;return;} // waiting for an item: the next swing starts when one is there
+    // An arm that just came back this tick carries its leftover time into the grab (exact 1s cycle at T1);
+    // one that sat idle starts now (it used to get up to a tick of free swing)
+    arm.state='grabbing'; arm.stateStart=arm.stateStart>now-insMs(TICK_MS)?arm.stateStart:now; arm.item=item;
     m.lastTransfer=G.tick;
 
   } else if(arm.state==='grabbing'){
@@ -5271,14 +5328,15 @@ function stepInserter(m){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid];
       if(dm&&(dm.type==='belt'||dm.type==='tunnel')){
-        if(dst.items.length<4){dst.items.push({id:arm.item,prog:0});arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        const dp=beltDropPos(dst);
+        if(dp>=0){dst.items.push({id:arm.item,prog:dp});arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type==='chest'){
         const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
-        if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
-        if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart=now;arm.item=null;m.lastTransferMs=now;}
+        if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else {
         returnItem(src,arm.item);arm.state='returning';arm.stateStart=now;arm.item=null;
@@ -5290,7 +5348,7 @@ function stepInserter(m){
   } else if(arm.state==='waiting'){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid]; let deposited=false;
-      if(dm&&(dm.type==='belt'||dm.type==='tunnel')&&dst.items.length<4){dst.items.push({id:arm.item,prog:0});deposited=true;m.lastTransferMs=now;}
+      if(dm&&(dm.type==='belt'||dm.type==='tunnel')&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
       else if(dm&&dm.type==='chest'){const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<50){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
@@ -5703,12 +5761,12 @@ function updateToolTip(){
       const r=RECIPES[rid]; if(!r)continue;
       const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(' + ');
       const outs=Object.entries(r.out).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(' + ');
-      const secs=((r.time*TICK_MS)/1000).toFixed(1);
+      const c=TICKS_PER_MIN/r.time, pmin=o=>Object.entries(o).map(([k,v])=>`${fmtRate(v*c)} ${ITEMS[k]?.name||k}`).join(' + ');
       recipesHtml+=`<div class="tt-recipe">
-        <span class="tt-rin">${ins}</span>
+        <span class="tt-rin">${pmin(r.in)}</span>
         <span style="color:var(--text3)"> → </span>
-        <span class="tt-rout">${outs}</span>
-        <span class="tt-rtime"> · ${secs}s</span>
+        <span class="tt-rout">${pmin(r.out)}</span>
+        <span class="tt-rtime"> /min at T1</span>
       </div>`;
     }
     if(avail.length>3)recipesHtml+=`<div class="tt-rlabel">+${avail.length-3} more (📖 Recipe Book)</div>`;
@@ -5733,7 +5791,8 @@ function updateToolTip(){
       <span class="tt-name">${def.name}</span>
     </div>
     ${unlockNote}
-    <div class="tt-desc">${def.desc}${notes[id]?'<br>'+notes[id]:''}</div>
+    <div class="tt-desc">${def.desc}${notes[id]?'<br>'+notes[id]:''}${TIER_TYPES.includes(id)?`<br><span style="color:var(--teal)">${
+      id==='miner'||isInserter(id)||BELT_TYPES.includes(id)?`PER MINUTE: T1 ${parseInt(tierBonus(id,1))} · T2 ${parseInt(tierBonus(id,2))} · T3 ${parseInt(tierBonus(id,3))}`:'UPGRADES: T2 ×2 · T3 ×4 speed'}</span>`:''}</div>
     <div class="tt-cost">Cost: ${costStr}</div>
     ${def.power>0?`<div class="tt-cost">Power: <span>${def.power}kW</span></div>`:''}
     ${def.power<0?`<div class="tt-cost">Generates: <span>${Math.abs(def.power)}kW</span></div>`:''}
@@ -5811,7 +5870,7 @@ function machineRates(m){
   const mods=m.modules||[];
   const modSpeed=1+mods.filter(x=>x==='speed_module').length*0.25;
   const modYield=1+mods.filter(x=>x==='prod_module').length*0.25;
-  const tierMult=m.tier===3?2:m.tier===2?1.5:1;
+  const tierMult=MACHINE_TIER_SPEED[m.tier||1]||1;
   const pm=perkMult();
   const smog=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
   const immune=m.type==='stone_furnace'||m.type==='blast_furnace';
@@ -5819,7 +5878,7 @@ function machineRates(m){
   if(ratio===0){ratio=1;if(def.power>0)R.notes.push('No power right now: these are full-speed rates');}
   if(m.type==='burner'){
     R.in.coal=per(BURNER_COAL_TICKS);
-    const miner=per(8);
+    const miner=per(MINE_TICKS);
     R.notes.push(`One coal Miner (${fmtRate(miner)}/min) feeds ${Math.floor(miner/R.in.coal)} Burners`);
     R.notes.push('Only burns while something is using power');
   } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
@@ -5830,17 +5889,16 @@ function machineRates(m){
     if(!m.mineRes)R.notes.push('Place it on a deposit to mine');
     else{
       const resMult=m.mineRes==='radiant_dust'?0.5:1;
-      const t=Math.max(2,Math.floor(8/(ratio*pm.speed*tierMult*modSpeed*smog*resMult)));
-      R.out[m.mineRes]=per(t)*(1+Math.min(1,Math.max(0,pm.yield*tierMult*modYield-1)));
+      R.out[m.mineRes]=per(MINE_TICKS)*ratio*pm.speed*(MINER_TIER_SPEED[m.tier||1]||1)*modSpeed*smog*resMult*(1+Math.min(1,Math.max(0,pm.yield*modYield-1)));
     }
   } else if(m.type==='oil_pump'){
-    if(m.mineRes==='oil')R.out.crude_oil=per(Math.max(2,Math.floor(8/(ratio*tierMult))));
+    if(m.mineRes==='oil')R.out.crude_oil=per(MINE_TICKS)*ratio*(MINER_TIER_SPEED[m.tier||1]||1);
     else R.notes.push('Place it on an oil deposit');
   } else if(def.pumps){
     if(m.mineRes===def.pumps)R.out[def.pumps]=per(2)*tierMult;
     else R.notes.push('Place it on its pool');
   } else if(BELT_TYPES.includes(m.type)){
-    R.notes.push(`Carries items at ${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s`);
+    R.notes.push(`Carries up to ${fmtRate(beltBaseSpeed()*beltTierMult(m)*BELT_CAP*TICKS_PER_MIN)} items/min (${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s)`);
   } else if(m.type==='inserter'||m.type==='long_inserter'){
     R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
   } else if(m.recipe&&RECIPES[m.recipe]){
@@ -5856,11 +5914,24 @@ function machineRates(m){
   if(def.living&&!m.withered){R.in.nutrient=(R.in.nutrient||0)+per(FEED_EVERY);R.notes.push('Nutrient Paste is eaten only while vitality is under 100%');}
   return R;
 }
+// Which inserter can carry a rate on its own (60 · 120 · 270 per minute), for the per-minute rows
+function armHint(v){
+  if(v<=60+1e-6)return 'T1 arm'; if(v<=120+1e-6)return 'T2 arm'; if(v<=270+1e-6)return 'T3 arm';
+  return `${Math.ceil(v/270-1e-6)} T3 arms`;
+}
+// A machine's per-minute rates for any recipe at its own tier (same maths as the panel)
+function recipeRates(m,rid){const old=m.recipe; m.recipe=rid; const R=machineRates(m); m.recipe=old; return R;}
+// How long one T1 Lab takes to make a tech's science, in minutes (the slowest pack sets it)
+function labMinutes(cost){
+  let t=0;
+  for(const[k,n]of Object.entries(cost)){const rid=Object.keys(RECIPES).find(id=>RECIPES[id].machine==='lab'&&RECIPES[id].out[k]); if(rid)t+=n/(RECIPES[rid].out[k]*TICKS_PER_MIN/RECIPES[rid].time);}
+  return t;
+}
 function fmtRate(n){return n>=10?String(Math.round(n)):n>=1?n.toFixed(1).replace(/\.0$/,''):n.toFixed(2).replace(/0$/,'');}
 function ratesHtml(m){
   const R=machineRates(m);
   const fluid=k=>k==='brine'||k==='enzymes';
-  const row=(k,v)=>`<div class="rate-row">${iconHtml(k)}<span class="rate-n">${fmtRate(v)}</span><span class="rate-u">${fluid(k)?'units':''}/min</span><span class="rate-name">${ITEMS[k]?.name||k}</span></div>`;
+  const row=(k,v)=>`<div class="rate-row">${iconHtml(k)}<span class="rate-n">${fmtRate(v)}</span><span class="rate-u">${fluid(k)?'units':''}/min</span><span class="rate-name">${ITEMS[k]?.name||k}</span>${fluid(k)?'':`<span class="rate-arm">${armHint(v)}</span>`}</div>`;
   const outs=Object.entries(R.out), ins=Object.entries(R.in);
   if(!outs.length&&!ins.length&&!R.notes.length)return '';
   let h=`<span class="sec-label" style="margin-top:10px">PER MINUTE</span><div class="rates">`;
@@ -6179,13 +6250,12 @@ function renderMachPanel(){
         </div>`;
         continue;
       }
-      const ins=Object.entries(r.in).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(' + ');
-      const outs=Object.entries(r.out).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(' + ');
+      // per minute at this machine's tier, so recipes compare at a glance
+      const RR=recipeRates(m,rid), pm=(o)=>Object.entries(o).map(([k,v])=>`${iconHtml(k)}${fmtRate(v)} ${ITEMS[k]?.name||k}`).join(' + ');
       const sel=m.recipe===rid;
       html+=`<div onclick="setRecipe(${m.id},'${rid}')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${sel?'var(--amber)':'var(--border)'};background:${sel?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer">
-        <div style="font-size:var(--f6);color:${sel?'var(--amber)':'var(--text)'};margin-bottom:2px">${r.name}${sel?' ✓':''}</div>
-        <div style="font-size:var(--f6);color:var(--blue)">${ins}</div>
-        <div style="font-size:var(--f6);color:var(--text3)">→ ${outs}</div>
+        <div style="font-size:var(--f6);color:${sel?'var(--amber)':'var(--text)'};margin-bottom:2px">${r.name}${sel?' ✓':''} <span style="color:var(--text3);font-size:var(--f4)">PER MIN</span></div>
+        <div class="rp-rates"><span class="rin">${pm(RR.in)||'nothing'}</span><br><span style="color:var(--text3)">→</span> <span class="rout">${pm(RR.out)}</span></div>
       </div>`;
     }
     html+=`</div>`;
@@ -6240,16 +6310,19 @@ function renderMachPanel(){
     const tier=m.tier||1;
     if(tier<3){
       const nextTier=tier+1;
-      const cost=tierCost(m.type,nextTier);
-      const canAfford=Object.entries(cost).every(([k,v])=>(G.inv[k]||0)>=v);
+      const cost=tierCost(m.type,nextTier), locked=tierLocked(m.type);
+      const canAfford=!locked&&Object.entries(cost).every(([k,v])=>(G.inv[k]||0)>=v);
       const costStr=Object.entries(cost).map(([k,v])=>{
         const have=G.inv[k]||0;
         const col=have>=v?'var(--green)':'var(--red)';
         return `${v}× ${ITEMS[k]?.name||k} <span style="color:${col}">(${have})</span>`;
       }).join(', ');
       html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:7px;margin-top:6px">
-        <div style="font-size:var(--f5);color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier}: ${tierBonus(m.type,nextTier)}</div>
-        <div style="font-size:var(--f4);color:var(--text3);margin-bottom:5px">${costStr}</div>
+        <div style="font-size:var(--f5);color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier}: ${tierBonus(m.type,nextTier)}</div>${(()=>{ // what this machine would make at the next tier
+          const R=machineRates(m), sp=t=>(isInserter(m.type)?INS_TIER_SPEED:BELT_TYPES.includes(m.type)?BELT_TIER_SPEED:MACHINE_TIER_SPEED)[t]||1, f=sp(nextTier)/sp(tier);
+          const outs=Object.entries(R.out); if(!outs.length)return '';
+          return `<div style="font-size:var(--f5);color:var(--green);margin-bottom:3px">T${nextTier} makes ${outs.map(([k,v])=>`${iconHtml(k)}${fmtRate(v*f)}/min`).join(' + ')} (now ${outs.map(([k,v])=>fmtRate(v)).join(' + ')})</div>`;})()}
+        <div style="font-size:var(--f4);color:var(--text3);margin-bottom:5px">${locked?`<span style="color:var(--red)">Needs ${locked} research</span>`:costStr}</div>
         <button class="mini-btn ${canAfford?'teal':'dim'}" onclick="upgradeMachine(${m.id})" ${canAfford?'':'disabled'}>⬆ UPGRADE</button>
       </div>`;
     } else {
@@ -6355,11 +6428,14 @@ const MODULE_TYPES=['miner','blast_furnace','electric_smelter','assembler','lab'
 const BELT_TYPES=['belt','splitter','tunnel'];
 const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES];
 const isInserter=t=>t==='inserter'||t==='long_inserter';
+// Belt upgrades need Advanced Logistics (it used to give +50% belt speed instead)
+function tierLocked(type){return BELT_TYPES.includes(type)&&!G.research.done.includes('logistics')?'Advanced Logistics':null;}
 function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:TIER_COSTS)[tier];}
 function tierBonus(type,tier){
-  if(isInserter(type))return `${INS_TIER_SPEED[tier]}× swing speed`;
-  if(BELT_TYPES.includes(type))return `${BELT_TIER_SPEED[tier]}× belt speed`;
-  return tier===3?'2× speed & yield':'1.5× speed & yield';
+  if(isInserter(type))return `${60*INS_TIER_SPEED[tier]} items/min`;
+  if(BELT_TYPES.includes(type))return `${60*BELT_TIER_SPEED[tier]} items/min`;
+  if(type==='miner')return `${60*MINER_TIER_SPEED[tier]} items/min`;
+  return `${MACHINE_TIER_SPEED[tier]}× speed`;
 }
 function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
 // Everything a machine is worth: build cost, each upgrade step up to its tier, installed modules.
@@ -6375,6 +6451,7 @@ function upgradeMachine(id){
   const tier=m.tier||1; if(tier>=3)return;
   const nextTier=tier+1;
   const cost=tierCost(m.type,nextTier);
+  if(tierLocked(m.type)){toast(`Needs ${tierLocked(m.type)} research`,'wrn');sfx('error');return;}
   for(const[item,need]of Object.entries(cost)){
     if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');return;}
   }
@@ -6625,7 +6702,7 @@ function renderResPanel(){
           ${!reqMet&&!done?'<span style="color:var(--text3);font-size:var(--f9)">🔒</span>':''}
         </div>
         <div style="font-size:var(--f5);color:var(--text3);margin-bottom:5px">${tech.desc}</div>
-        ${!done?`<div style="font-size:var(--f5);color:var(--amber);margin-bottom:5px">Cost: ${costStr}</div>`:''}
+        ${!done?`<div style="font-size:var(--f5);color:var(--amber);margin-bottom:5px">Cost: ${costStr} <span style="color:var(--text3)">· 1 Lab: ${fmtRate(labMinutes(tech.cost))} min</span></div>`:''}
         ${!done&&reqMet?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="doResearch('${id}')" ${canAfford?'':'disabled'}>RESEARCH</button>`:''}
       </div>`;
     }
@@ -6818,7 +6895,7 @@ const PERK_DEFS=[
   {id:'speed2',   name:'Machine Haste II',  desc:'+20% all machine processing speed', cost:2, req:['speed1'], cat:'Speed'},
   {id:'power1',   name:'Power Saver I',     desc:'-15% power consumption all machines', cost:1, req:[], cat:'Efficiency'},
   {id:'start1',   name:'Quick Start',       desc:'Begin next zone with 50 of each basic resource', cost:2, req:[], cat:'Utility'},
-  {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput (stacks with research)', cost:1, req:[], cat:'Logistics'},
+  {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput', cost:1, req:[], cat:'Logistics'},
   // Unlock after a zone's launch (after:N)
   {id:'yield3',   name:'Ore Richness III',  desc:'+15% more resource yield (stacks)',  cost:3, req:['yield2'], cat:'Yield',      after:2},
   {id:'power2',   name:'Power Saver II',    desc:'-15% more power consumption',        cost:2, req:['power1'], cat:'Efficiency', after:2},
@@ -7140,7 +7217,7 @@ function multiselClear(){
 // (Miners, furnaces, assemblers, labs, inserters). Chips filter by machine type.
 let upgState={mode:'idle',x1:0,y1:0,x2:0,y2:0,ids:[],off:new Set()};
 function upgPlan(){
-  const list=upgState.ids.map(id=>G.machines[id]).filter(m=>m&&TIER_TYPES.includes(m.type)&&(m.tier||1)<3&&!upgState.off.has(m.type));
+  const list=upgState.ids.map(id=>G.machines[id]).filter(m=>m&&TIER_TYPES.includes(m.type)&&(m.tier||1)<3&&!upgState.off.has(m.type)&&!tierLocked(m.type));
   const cost={}; for(const m of list)addCost(cost,tierCost(m.type,(m.tier||1)+1));
   return {list,cost};
 }
@@ -7155,7 +7232,7 @@ function updateUpgradeBar(){
   }
   const all=us.ids.map(id=>G.machines[id]).filter(Boolean), types={};
   for(const m of all){const t=types[m.type]||(types[m.type]={n:0,max:0});t.n++;if((m.tier||1)>=3)t.max++;}
-  const chips=Object.entries(types).map(([t,c])=>`<button class="ub-chip${us.off.has(t)?' off':''}" onclick="upgToggle('${t}')" title="${MDEFS[t].name}">${iconHtml(t)}×${c.n-c.max}${c.max?`<span style="color:var(--teal)">+${c.max} MAX</span>`:''}</button>`).join('');
+  const chips=Object.entries(types).map(([t,c])=>`<button class="ub-chip${us.off.has(t)?' off':''}" onclick="upgToggle('${t}')" title="${MDEFS[t].name}">${iconHtml(t)}×${c.n-c.max}${c.max?`<span style="color:var(--teal)">+${c.max} MAX</span>`:''}${tierLocked(t)?'<span style="color:var(--red)">LOCKED</span>':''}</button>`).join('');
   const {list,cost}=upgPlan(), ok=G.devFreeBuild||Object.entries(cost).every(([k,n])=>(G.inv[k]||0)>=n);
   setHtml(bar,`<div class="ub-row"><span class="ub-t">${list.length?`${list.length} to upgrade`:'Nothing left to upgrade'}</span>
     ${list.length?`<span class="ub-cost">${G.devFreeBuild?'<span class="cc ok">FREE</span>':costChips(cost)}</span>`:''}
@@ -7716,11 +7793,11 @@ const TUTORIALS={
      done:()=>machinesOf('assembler').some(m=>m.recipe)},
     {text:'Build a [[lab]] Research Lab making [[sci_red]] Field Notes, fed by inserters. Science on autopilot.',
      done:()=>made('lab')},
-    {text:'Research Advanced Logistics (50 Field Notes). It unlocks Generators, Splitters, Tunnels and faster belts.',
+    {text:'Research Advanced Logistics (60 Field Notes). It unlocks Generators, Splitters, Tunnels and belt upgrades.',
      tally:[['sci_red',50]], done:()=>researched('logistics')},
     {text:'Labs also make [[sci_green]] Circuit Diagrams now. Research Steel and Electronics, then Rocket Science.',
      done:()=>researched('rocket_tech')},
-    {text:'Final goal: build the 4 rocket parts and launch from the 🚀 GOAL tab. Milestones there earn bonus perk points.',
+    {text:'Final goal: build the 4 kinds of rocket part (the GOAL tab lists how many) and launch from the 🚀 GOAL tab. Milestones there earn bonus perk points.',
      final:true},
   ]},
   2:{done:'The Scar briefing complete', steps:[
@@ -7742,7 +7819,7 @@ const TUTORIALS={
      done:()=>researched('smog_control')},
     {text:'Build a [[scrubber]] Scrubber and feed it refined fuel. One scrubber cancels about 3 oil pumps.',
      done:()=>machinesOf('scrubber').some(m=>(m.inBuf.refined_fuel||0)>0)},
-    {text:'Goal: research Rocket Repair, build 6 repair parts and stock 20 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
+    {text:'Goal: research Rocket Repair, build the 6 kinds of repair part and stock 100 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
      final:true},
   ]},
   3:{done:'The Deep briefing complete', steps:[
@@ -7764,7 +7841,7 @@ const TUTORIALS={
      done:()=>hasM('accumulator')},
     {text:'Research Pressure Control for [[relief_valve]] Relief Valves (vent above 80%) and the [[separator]] Separator.',
      done:()=>researched('pressure_control')},
-    {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build 5 escape parts, then launch from 🚀 GOAL.',
+    {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build the 5 kinds of escape part, then launch from 🚀 GOAL.',
      final:true},
   ]},
   4:{done:'The Bloom briefing complete', steps:[
@@ -7786,7 +7863,7 @@ const TUTORIALS={
      done:()=>machinesOf('reactor').some(r=>machineNeighbors(r).filter(n=>n.type==='heat_sink').length>=2)},
     {text:'Fuel it with [[lum_rod]] Luminite Rods (Assembler). 2,000kW, but watch the 🌡️ gauge.',
      done:()=>machinesOf('reactor').some(r=>(r.inBuf.lum_rod||0)>0)},
-    {text:'Goal: research Symbiosis and Hyperfuel. Build [[hyperfuel]] hyperfuel and the 4 Bloom rocket parts, then launch from 🚀 GOAL.',
+    {text:'Goal: research Symbiosis and Hyperfuel. Build [[hyperfuel]] hyperfuel and the 4 kinds of Bloom rocket part, then launch from 🚀 GOAL.',
      final:true},
   ]},
   5:{done:'The Singularity briefing complete', steps:[
@@ -8463,6 +8540,7 @@ function migrateSave(){
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
+  tidyBeltItems();
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
 }
@@ -8507,6 +8585,7 @@ function newGame(){
 function startGame(isNew){
   stopTitleScene(); clearUndo();
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
+  if(G._tidied){const n=G._tidied;delete G._tidied;setTimeout(()=>toast(`Belts respaced: ${fmt(n)} items went to your inventory`,'ok'),2200);}
   syncMapSize();
   document.getElementById('sTitle').classList.add('hidden');
   document.getElementById('sGame').classList.remove('hidden');
