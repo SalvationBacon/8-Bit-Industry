@@ -509,7 +509,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.19 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.20 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -688,7 +688,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.19';
+const VER      = '2.0.20';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -1365,7 +1365,7 @@ const MDEFS = {
   spore_incubator:{name:'Spore Incubator',  icon:'🏺', size:[2,2], power:10,  cost:{iron_plate:10,circuit:3,spores:10},              unlock:'symbiosis', recipes:['z4_mycel'], living:true, desc:'LIVING, cultures spores into mycelium'},
   hyper_synth:    {name:'Hyperfuel Synth.', icon:'🧬', size:[2,2], power:30,  cost:{steel_plate:12,circuit:8,lum_crystal:4},         unlock:'hyperfuel', recipes:['z4_hyper'], fluidPort:true, living:true, desc:'LIVING, synthesises bio-hyperfuel'},
   reactor:        {name:'Nuclear Reactor',  icon:'☢️', size:[3,3], power:-2000,cost:{steel_plate:40,circuit:20,lum_crystal:10},      unlock:'nuclear_power', recipes:[], desc:'Burns Luminite Rods → 2,000kW. Overheats without Heat Sinks'},
-  heat_sink:      {name:'Heat Sink',        icon:'❄️', size:[1,1], power:0,   cost:{steel_plate:4,copper_plate:6},                   unlock:'luminite_refining', recipes:[], noItems:true, desc:'Cools an adjacent reactor'},
+  heat_sink:      {name:'Heat Sink',        icon:'❄️', size:[1,1], power:0,   cost:{steel_plate:4,copper_plate:6},                   unlock:'luminite_refining', recipes:[], noItems:true, fluidPort:true, desc:'Cools an adjacent reactor while it drinks coolant (enzymes or brine) from a pipe: 30 a minute'},
   // Zone 5, the win structure
   singularity:    {name:'Singularity',      icon:'🌌', size:[10,10], power:0, cost:{steel_plate:100,circuit:50,lum_crystal:20},       unlock:'singularity', recipes:[], desc:'Feed it components, then hold 5,000kW for 60s → Big Bang'},
 };
@@ -2282,7 +2282,7 @@ function machineWorking(m){
   if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT&&!valveJammed(m);
   if(m.type==='accumulator')return (m.charge||0)>1;
   if(m.type==='chest')return Object.values(m.chestInv).some(v=>v>0);
-  if(m.type==='heat_sink')return machineNeighbors(m).some(n=>n.type==='reactor'&&machineWorking(n));
+  if(m.type==='heat_sink')return !!m._wet&&machineNeighbors(m).some(n=>n.type==='reactor'&&machineWorking(n));
   if(def.living&&m.withered)return false;
   return m.prog>0;
 }
@@ -5181,8 +5181,17 @@ function feedMachine(id){
 // Running adds heat; passive cooling + each adjacent Heat Sink removes it.
 // At 100 the reactor SCRAMs: offline for REACTOR_SCRAM ticks while it cools.
 const REACTOR_HEAT=0.5, REACTOR_COOL=0.1, SINK_COOL=0.2, REACTOR_SCRAM=240, ROD_TICKS=240;
+// Heat Sinks need coolant (v2.0.20): a sink only cools while it drinks SINK_DRAW a tick (30 a minute) of enzymes or
+// brine from a pipe network it touches at 20%+ pressure. Dry, it does nothing, and the reactor heats up and SCRAMs.
+const COOLANTS=['enzymes','brine'], SINK_DRAW=0.125;
+function sinkCools(n){ // draws this tick's coolant if it can; marks the sink wet or dry
+  const net=(n._nets||[]).find(x=>COOLANTS.includes(x.type)&&x.amt>=SINK_DRAW&&pressureOf(x)>=LOW_PRESSURE);
+  if(!net){n._wet=false; n._fluidStatus=(n._nets||[]).some(x=>COOLANTS.includes(x.type))?'lowpressure':'nopipe'; return false;}
+  net.amt-=SINK_DRAW; n._wet=true; n._fluidStatus='ok'; return true;
+}
 function runReactor(m,def){
-  const sinks=machineNeighbors(m).filter(n=>n.type==='heat_sink').length;
+  const all=machineNeighbors(m).filter(n=>n.type==='heat_sink'&&n.active);
+  const sinks=m.heat>0||(m.inBuf.lum_rod||0)>0&&!(m.scram>0)?all.filter(sinkCools).length:0;
   m.heat=Math.max(0,(m.heat||0)-REACTOR_COOL-sinks*SINK_COOL);
   if(m.scram>0){m.scram--;return;}
   if((m.inBuf.lum_rod||0)<=0)return;
@@ -6338,7 +6347,8 @@ function machineRates(m){
   else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
   else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${RELIEF_AT}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
   else if(m.type==='scrubber'){R.in.refined_fuel=per(SCRUBBER_FUEL_TICKS);R.notes.push(`Clears ${SCRUBBER_SMOG_MIN} smog/min while it has fuel, power and smog to clean`);}
-  else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);}
+  else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);R.notes.push('Needs 2 Heat Sinks with coolant piped in (30 enzymes or brine a minute each), or it overheats');}
+  else if(m.type==='heat_sink'){R.notes.push(`Drinks ${SINK_DRAW*TICKS_PER_MIN} enzymes or brine a minute while its reactor runs`);}
   else if(m.type==='miner'){
     if(!m.mineRes)R.notes.push('Place it on a deposit to mine');
     else{
@@ -6830,9 +6840,9 @@ function fluidPanelRows(m,def,rec){
       :`<button class="full-btn teal" style="margin:4px 0" onclick="feedMachine(${m.id})">🥣 FEED 1 PASTE (have ${G.inv.nutrient||0})</button>`;
   }
   if(m.type==='reactor'){
-    const sinks=machineNeighbors(m).filter(n=>n.type==='heat_sink').length;
+    const ns=machineNeighbors(m).filter(n=>n.type==='heat_sink'), sinks=ns.filter(n=>n._wet).length, dry=ns.length-sinks;
     html+=irow('Heat',`<span style="color:${(m.heat||0)>80?'var(--red)':'var(--teal)'}">${Math.round(m.heat||0)}%${m.scram>0?`, SCRAM ${Math.ceil(m.scram*TICK_MS/1000)}s`:''}</span>`);
-    html+=irow('Cooling',`${sinks} heat sink${sinks!==1?'s':''} (${sinks>=2?'stable':'needs '+(2-sinks)+' more'})`);
+    html+=irow('Cooling',`${sinks} cooled heat sink${sinks!==1?'s':''} (${sinks>=2?'stable':'needs '+(2-sinks)+' more'})${dry?` · <span style="color:var(--red)">${dry} dry: pipe in coolant</span>`:''}`);
     html+=irow('Fuel',`🔦 ${m.inBuf.lum_rod||0} rods · 1 rod / ${ROD_TICKS*TICK_MS/1000}s`);
   }
   if(m.type==='relief_valve'){
@@ -6842,6 +6852,11 @@ function fluidPanelRows(m,def,rec){
     html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':'No (below 80%)');
     html+=`<button class="full-btn teal" style="margin:4px 0" onclick="loadGaskets(${m.id})">LOAD GASKETS (have ${G.inv.gasket||0})</button>
       <div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Each Gasket seals 60 units of venting. An inserter can keep it stocked.</div>`;
+  }
+  if(m.type==='heat_sink'){
+    const near=machineNeighbors(m).some(n=>n.type==='reactor');
+    html+=irow('Coolant',!near?'<span style="color:var(--text3)">No reactor next to it</span>':m._wet?'<span style="color:var(--green)">✓ Cooling</span>':'<span style="color:var(--red)">✗ Dry: not cooling</span>');
+    html+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Drinks 30 enzymes or brine a minute from a pipe touching it (20%+ pressure) while its reactor runs. Two cooled sinks hold a reactor steady.</div>`;
   }
   if(m.type==='accumulator')html+=irow('Charge',`${Math.round((m.charge||0)/ACC_CAP*100)}% (${Math.round(m.charge||0)}/${ACC_CAP} kJ)`);
   if(m.type==='lumen_panel')html+=irow('Glow tide',glowBright()?`<span style="color:var(--amber)">☀️ Bright, ${glowSecsLeft()}s left</span>`:`<span style="color:var(--text3)">🌑 Dim, ${glowSecsLeft()}s left</span>`);
@@ -8469,6 +8484,7 @@ function rbOtherUses(id){ // uses outside recipes
   const fuel={coal:['burner','generator','stone_furnace','blast_furnace'],refined_fuel:['combustion_gen','scrubber'],lum_rod:['reactor'],nutrient:Object.keys(MDEFS).filter(t=>MDEFS[t].living)}[id];
   if(fuel){const ok=fuel.filter(t=>DRAWER_DEFS.build.some(c=>c.items.some(i=>i.id===t&&(!i.zones||i.zones.includes(G.zone)))));
     if(ok.length)out.push(`${id==='nutrient'?'Food for':'Fuel for'} ${ok.map(t=>rbChip(t)).join('')}`);}
+  if(COOLANTS.includes(id)&&drawerCats('build').some(c=>c.items.some(i=>i.id==='heat_sink')))out.push(`Coolant for ${rbChip('heat_sink')}: ${SINK_DRAW*TICKS_PER_MIN} a minute each while its reactor runs`);
   if(id==='gasket')out.push(`Keeps ${rbChip('relief_valve')} venting: 1 per ${VALVE_SEAL} units vented`);
   const builds=Object.keys(MDEFS).filter(t=>MDEFS[t].cost?.[id]&&drawerCats('build').some(c=>c.items.some(i=>i.id===t)));
   if(builds.length)out.push(`Builds ${builds.map(t=>rbChip(t,MDEFS[t].cost[id])).join('')}`);
@@ -8692,7 +8708,7 @@ const TUTORIALS={
      done:()=>Object.values(G.machines).some(m=>MDEFS[m.type].living&&(m.vit||0)>=60)},
     {text:'Starved machines wither 🥀 and stop until replanted (5 biomass). Research Luminite Refining and smelt [[lum_crystal]] crystals.',
      tally:[['lum_crystal',3]], done:()=>(G.inv.lum_crystal||0)>=3||researched('nuclear_power')},
-    {text:'Research Nuclear Power. Place a [[reactor]] Reactor with 2 [[heat_sink]] Heat Sinks touching it, or it overheats.',
+    {text:'Research Nuclear Power. Place a [[reactor]] Reactor with 2 [[heat_sink]] Heat Sinks touching it, and pipe enzymes to the sinks (30 a minute each): dry sinks don\'t cool, and it overheats.',
      done:()=>machinesOf('reactor').some(r=>machineNeighbors(r).filter(n=>n.type==='heat_sink').length>=2)},
     {text:'Fuel it with [[lum_rod]] Luminite Rods (Assembler). 2,000kW, but watch the 🌡️ gauge.',
      done:()=>machinesOf('reactor').some(r=>(r.inBuf.lum_rod||0)>0)},
@@ -9379,6 +9395,10 @@ function migrateSave(){
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
   tidyBeltItems();
+  // version-gated notices: G.ver is the build that last loaded this save (it used to stay at the build that started it)
+  const older=v=>{const a=String(G.ver||'0').split('.').map(Number), b=v.split('.').map(Number); for(let i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)<(b[i]||0);} return false;};
+  if(older('2.0.20')&&Object.values(G.machines||{}).some(m=>m.type==='heat_sink'))G._coolant=true;
+  G.ver=VER;
   for(const m of Object.values(G.machines||{}))if(m.type==='relief_valve'&&m.seal===undefined){m.seal=VALVE_SEAL;m.inBuf.gasket=Math.max(m.inBuf.gasket||0,4);G._gaskets=true;}
   if(G.zoneTut===undefined&&G.tutorialZ2!==undefined)G.zoneTut=G.tutorialZ2;
   delete G.tutorialZ2;
@@ -9424,6 +9444,7 @@ function newGame(){
 function startGame(isNew){
   stopTitleScene(); clearUndo();
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
+  if(G._coolant){delete G._coolant;setTimeout(()=>toast('New: Heat Sinks need coolant. Pipe enzymes or brine to them, or reactors overheat','wrn'),3000);}
   if(G._gaskets){delete G._gaskets;setTimeout(()=>toast('New: Relief Valves wear out Gaskets. Yours have 4 spares each: tap a valve to see','wrn'),2600);}
   if(G._tidied){const n=G._tidied;delete G._tidied;setTimeout(()=>toast(`Belts respaced: ${fmt(n)} items went to your inventory`,'ok'),2200);}
   syncMapSize();
