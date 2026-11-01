@@ -342,8 +342,12 @@ const r=await p.evaluate(async()=>{
     reset(); power(2,2); const s2=put('chest',10,50); s2.chestInv.coal=9999; put('inserter',11,50,0); const sp2=put('splitter',12,50,0);
     put('belt',13,50,0); put('belt',13,51,0); put('inserter',14,50,0); const c2=put('chest',15,50); put('inserter',14,51,0); const c3=put('chest',15,51);
     run(480);
-    ok('inserters_use_splitters',viaBelt.a>=20&&viaBelt.b>=20&&(c2.chestInv.coal||0)+(c3.chestInv.coal||0)>=40&&!Object.values(sp2.inBuf).some(n=>n>0),
+    ok('inserters_use_splitters',viaBelt.a>=50&&Math.abs(viaBelt.a-viaBelt.b)<=2&&(c2.chestInv.coal||0)+(c3.chestInv.coal||0)>=40&&!Object.values(sp2.inBuf).some(n=>n>0),
       {viaBelt,dropped:{a:c2.chestInv.coal||0,b:c3.chestInv.coal||0},inBuf:sp2.inBuf}); }
+  // ── an inserter on a splitter takes only its own side; if one side is blocked, the other still runs
+  { reset(); power(2,2); const src=put('chest',10,40); src.chestInv.coal=9999; put('inserter',11,40,0); put('belt',12,40,0); put('splitter',13,40,0);
+    put('inserter',14,40,0); const ca=put('chest',15,40); const ib=put('inserter',14,41,0); const cb=put('chest',15,41); cb.chestInv={stone:200}; // full
+    run(480); ok('splitter_side_blocked',(ca.chestInv.coal||0)>=60&&(cb.chestInv.coal||0)===0,{a:ca.chestInv.coal,b:cb.chestInv}); }
   // ── a machine's output arrow drops straight onto a belt: no inserter needed to take things out
   { reset(); power(2,2); res(10,40,1,1,'iron_ore'); put('miner',10,40); for(let x=11;x<20;x++)put('belt',x,40,0); const ch=put('chest',20,40);
     run(120); ch.chestInv={}; let n=0; for(let t=0;t<480;t++){run(1); n+=ch.chestInv.iron_ore||0; ch.chestInv={};} // 9 tiles at 2s each before the first one arrives
