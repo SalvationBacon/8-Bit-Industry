@@ -509,7 +509,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.17 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.18 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -688,7 +688,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.17';
+const VER      = '2.0.18';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -847,17 +847,20 @@ const _MTOTAL=_MSCHED.length?_MSCHED[_MSCHED.length-1].t+1:130;
 // shuffles within the current zone or the title screen (musicCtx) and crossfades when that changes.
 // Factory Pulse, the original track, is kept as written (raw) on the title screen and in Ironfield.
 const MSCALE={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixo:[0,2,4,5,7,9,10],phryg:[0,1,3,5,7,8,10],lydian:[0,2,4,6,7,9,11],harm:[0,2,3,5,7,8,11]};
-// Lead rhythms: [16th step, length] within one 4/4 bar
-const MRHY=[
-  [[0,4],[4,2],[6,2],[8,4],[12,4]],
-  [[0,2],[2,2],[4,4],[8,2],[10,2],[12,4]],
-  [[0,6],[6,2],[8,6],[14,2]],
-  [[0,3],[3,3],[6,2],[8,3],[11,3],[14,2]],
-  [[0,8],[8,8]],
-  [[0,2],[2,2],[4,2],[6,2],[8,2],[10,2],[12,2],[14,2]],
-  [[0,4],[6,2],[8,4],[12,2],[14,2]],
-  [[0,12],[12,4]],
+// Lead motifs (v2.0.18): one bar each, [16th step, length, scale steps above the chord root]. 0, 2, 4 and 7 are the
+// chord's own notes (root, third, fifth, octave); 1 and 3 only pass between them. A phrase plays its motif three
+// times, following the chords, then a cadence holds a note: open (the fifth) mid-section, home (the root) at the end.
+const MMOT=[
+  [[0,4,0],[4,4,2],[8,8,4]],                    // 0 up the chord, hold
+  [[0,2,4],[2,2,2],[4,4,0],[8,4,2],[12,4,4]],   // 1 bounce
+  [[0,6,2],[6,2,1],[8,8,0]],                    // 2 dotted step down home
+  [[0,3,0],[3,3,2],[6,2,4],[8,8,2]],            // 3 syncopated rise
+  [[0,8,4],[8,8,2]],                            // 4 slow, two notes
+  [[0,2,0],[2,2,1],[4,2,2],[6,2,4],[8,8,2]],    // 5 run up, settle
+  [[0,4,4],[6,2,2],[8,4,0],[12,4,2]],           // 6 call with a breath
+  [[0,12,0],[12,4,2]],                          // 7 very slow
 ];
+const MCAD_OPEN=[[0,4,2],[4,12,4]], MCAD_HOME=[[0,4,2],[4,12,0]];
 const MFORMS={
   song:   ['intro',4,'A',8,'B',8,'A',8,'C',8,'break',4,'B',8,'A',8,'outro',4],
   drive:  ['intro',4,'A',8,'A',8,'B',8,'break',4,'C',8,'B',8,'A',8,'outro',4],
@@ -915,36 +918,22 @@ function compileSong(tr,n){
   for(let k=0;k<form.length;k+=2){
     const sec=form[k], bars=form[k+1], role=MROLES[sec]; occ[sec]=(occ[sec]||0)+1;
     const prog=tr.prog[sec==='B'?1:sec==='C'?2:0];
-    // the hook: A (and the outro's reprise of it) always comes from the same seed
-    const hook=sec==='A'||sec==='outro', rng=mRng(mHash(tr.id+':'+(hook?'A':sec+':'+n+':'+occ[sec])));
-    const vrng=mRng(mHash(tr.id+':var:'+n+':'+k)), vary=sec==='A'&&occ.A>1;
+    const rng=mRng(mHash(tr.id+':'+sec+':'+n+':'+occ[sec])); // accompaniment details only: the melody is written
     const drums=role.drums==='track'?tr.drums:role.drums==='intro'?(tr.drums==='four'||tr.drums==='back'?'tick':tr.drums==='break'?'half':'tick'):role.drums==='half'?(tr.drums==='tick'?'tick':'half'):null;
     const bassPat=role.bass==='track'?tr.bassPat:role.bass;
-    let prev=9;
     for(let b=0;b<bars;b++){
       const c=prog[b%prog.length], nc=prog[(b+1)%prog.length];
       const fade=sec==='intro'?Math.min(1,.35+.65*b/bars):sec==='outro'?Math.max(.15,1-b/bars):1;
       // pad: held chord
       if(tr.pad||sec==='break'||sec==='intro'||sec==='outro')for(const d of[c,c+2,c+4])add(0,16,d,'pad',MV.pad*fade);
-      // lead
+      // lead: the hook (A and the outro) is the track's own motif, B alternates between two motifs from play to play,
+      // the bridge (C) holds long notes. The motif follows each bar's chord, in a steady register.
       if(role.lead){
-        const hi=role.lead==='high', slow=role.lead==='slow';
-        const lo=hi?9:5, top=hi?16:13, phraseEnd=b%4===3;
-        const tpl=MRHY[slow?(b%2?7:4):phraseEnd&&rng()<.6?(rng()<.5?4:7):tr.rhy[(hi?2:0)+(b%2)]];
-        tpl.forEach(([s,len],j)=>{
-          if(s>0&&rng()<.08)return; // a breath
-          let d;
-          const last=phraseEnd&&j===tpl.length-1;
-          if(s%8===0||last){
-            const tones=last?[c]:[c,c+2,c+4], cand=[];
-            for(const ct of tones)for(let o=-14;o<=21;o+=7){const x=ct+o; if(x>=lo&&x<=top)cand.push(x);}
-            cand.sort((x,y)=>Math.abs(x-prev)-Math.abs(y-prev));
-            d=cand[Math.min(cand.length-1,Math.floor(rng()*2))];
-          } else d=Math.max(lo,Math.min(top,prev+[-1,1,-1,1,-2,2,0][Math.floor(rng()*7)]));
-          if(vary&&s%8!==0&&!last&&vrng()<.25)d=Math.max(lo,Math.min(top,d+(vrng()<.5?-1:1)));
-          prev=d;
-          add(s,len*.9,d,tr.lead,MV[tr.lead]*fade*(slow?.8:1),Object.assign({vib:len>=6},lp(tr.lead)));
-        });
+        const hi=role.lead==='high', slow=role.lead==='slow', phraseEnd=b%4===3;
+        const mot=slow?(b%2?[[0,16,0]]:[[0,8,4],[8,8,2]]):MMOT[(hi?tr.rhy[n%2?2:3]:tr.rhy[0])%MMOT.length];
+        const notes=phraseEnd&&!slow?(b===bars-1?MCAD_HOME:MCAD_OPEN):mot;
+        const centre=hi?11:8; let base=c; while(base<centre-3)base+=7; while(base>centre+3)base-=7;
+        for(const[s,len,off]of notes)add(s,len*.9,base+off,tr.lead,MV[tr.lead]*fade*(slow?.8:1),Object.assign({vib:len>=6,lead:1},lp(tr.lead)));
       }
       // arpeggio
       if(role.arp){
@@ -3178,7 +3167,7 @@ function beltVisPass(){
     if(!g.entrance){
       const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
       if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
-      else if(!(nm&&nm.type==='chest'))lim=1-BELT_GAP/2; // end of the line: stop short of the edge
+      else if(!(nm&&nm.type==='chest'))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
     }
     const sp=base*beltTierMult(g.m);
     let mn=Infinity;
@@ -5394,6 +5383,37 @@ function runAccumulators(){
 }
 
 const BELT_DONE=1-1e-6;
+const END_HOLD=0.75; // where the front item waits at the end of a line: a half gap (BELT_GAP/2) short of the edge
+// Gaps across tile edges too: the front item of a tile stays a gap behind the last item on the belt it feeds.
+// Tiles are visited downstream first (memo), so a whole queue lines up in one pass.
+function spaceBeltQueues(){
+  const mins=new Map();
+  const visit=(tx,ty,depth)=>{
+    const key=ty*MAP_W+tx; if(mins.has(key))return mins.get(key);
+    mins.set(key,Infinity); // loop guard
+    const t=G.map[ty][tx]; if(!t.items.length||t.mid===null)return Infinity;
+    const m=G.machines[t.mid]; if(!m||!beltLike(m.type))return Infinity;
+    t.items.sort((a,b)=>b.prog-a.prog);
+    let lim=Infinity;
+    const entrance=m.type==='tunnel'&&m.tunnelId!==null&&G.machines[m.tunnelId]&&((G.machines[m.tunnelId].x-m.x)*D_VEC[m.dir][0]+(G.machines[m.tunnelId].y-m.y)*D_VEC[m.dir][1])>0;
+    if(m.type!=='splitter'&&!entrance){
+      const nx=tx+D_VEC[m.dir][0], ny=ty+D_VEC[m.dir][1], nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
+      if(nm&&beltLike(nm.type)&&depth<400)lim=visit(nx,ny,depth+1)+1-BELT_GAP;
+    }
+    for(const it of t.items){if(it.prog>lim)it.prog=Math.max(0,lim); lim=it.prog-BELT_GAP;}
+    const mn=t.items[t.items.length-1].prog; mins.set(key,mn); return mn;
+  };
+  for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){const t=G.map[ty][tx]; if(t.items.length&&t.mid!==null)visit(tx,ty,0);}
+}
+function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on this tile
+  if(m.type==='splitter')return false; // a splitter's cells wait for their own side (see runBelts)
+  if(m.type==='tunnel'){
+    const p=m.tunnelId!==null&&G.machines[m.tunnelId]; if(!p)return true; // unlinked: stalls
+    if((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1]>0)return false; // entrance: items go underground
+  }
+  const nt=G.map[ty+D_VEC[m.dir][1]]?.[tx+D_VEC[m.dir][0]]; if(!nt||nt.mid===null)return true;
+  const nm=G.machines[nt.mid]; return !nm||!(beltLike(nm.type)||nm.type==='chest');
+}
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
@@ -5407,7 +5427,10 @@ function runBelts(){
     // No clamp at 1: the overshoot carries into the next tile (BELT_DONE absorbs float error, 10×0.1 < 1),
     // so each tile takes exactly its time and items never freeze at the edge for a tick
     const sp=beltSpeed*beltTierMult(m);
-    for(const it of tile.items)it.prog=Math.min(1+sp,it.prog+sp);
+    // At a dead end (a machine, nothing, or an unlinked tunnel ahead) items stop a quarter tile short of the edge
+    // instead of running into it, so the queue is drawn exactly where it is (v2.0.18)
+    const cap=beltDeadEnd(m,tx,ty)?END_HOLD:1+sp;
+    for(const it of tile.items)if(it.prog<cap)it.prog=Math.min(cap,it.prog+sp);
   }
 
   // Transfer completed items. A blocked item keeps its place (prog >= BELT_DONE) and retries after the tiles ahead
@@ -5537,6 +5560,10 @@ function runBelts(){
     if(waiting.length===n0&&pass>0)break;
   }
   for(const[x,y]of waiting)moveTile(x,y,true);
+  // A queue keeps its gaps (v2.0.18): a held item waits at the edge and each one behind stops a gap short of it.
+  // They all used to stack at the edge (prog .99), so a released queue poured out two at a time and jumped on screen.
+  // Moving items are a gap apart already, so this only changes queues, never throughput.
+  spaceBeltQueues();
 
 
   // Inserters every tick. (Every 4 ticks made each arm phase wait for the next check,
