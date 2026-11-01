@@ -260,6 +260,23 @@ const r=await p.evaluate(async()=>{
     window.drawItem=orig;
     const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
     ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
+  // ── busy belts: every item glides at belt speed and never steps back, whether the belt flows, queues or drains
+  { const scen=(build,tier=1)=>{ reset(); G.research.done=Object.keys(TECHS); power(2,2); build();
+      G.cam.zoom=.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=6*TILE*.5; G.cam.y=36*TILE*.5;
+      const uid=new WeakMap(); let nid=0, frame=null; const o=window.beltItemWorld;
+      window.beltItemWorld=function(it,...a){const w=o(it,...a); if(frame&&w){if(!uid.has(it))uid.set(it,nid++); frame[uid.get(it)]=w;} return w;};
+      const lim=1.55*BELT_T1_SPEED*BELT_TIER_SPEED[tier]/5; let last={}, worst=0, backs=0; // catch-up after a pickup is capped at 1.5x belt speed
+      for(let t=0;t<260;t++){ const ft=G.map[40][8]; if(beltRoom(ft,0))ft.items.push({id:'coal',prog:0});
+        run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame={}; draw();
+          for(const k in frame)if(last[k]){const dx=frame[k][0]-last[k][0], d=Math.hypot(dx,frame[k][1]-last[k][1]); worst=Math.max(worst,d/lim); if(dx<-1e-6)backs++;}
+          last=frame; } T=t0; }
+      window.beltItemWorld=o; return {worst:+worst.toFixed(2),backs}; };
+    const line=(tier,end)=>()=>{for(let x=8;x<20;x++){const b=put('belt',x,40,0); b.tier=tier;} end();};
+    const r={flow:scen(line(1,()=>put('chest',20,40))), queue:scen(line(1,()=>{})),
+      drain:scen(line(2,()=>{put('inserter',20,40,0);put('chest',21,40);}),2),
+      tunnel:scen(()=>{for(let x=8;x<12;x++)put('belt',x,40,0); put('tunnel',12,40,0); put('tunnel',15,40,0); for(let x=16;x<20;x++)put('belt',x,40,0); put('inserter',20,40,0); put('chest',21,40);}),
+      side:scen(line(1,()=>{const c=put('chest',12,38); c.chestInv.coal=999; put('inserter',12,39,1); put('inserter',20,40,0); put('chest',21,40);}))};
+    ok('belt_busy_smooth',Object.values(r).every(v=>v.worst<=1&&v.backs===0),r); }
   // same, on belts of mixed tiers (T1/T2/T3 side by side)
   { reset(); G.research.done=Object.keys(TECHS);
     for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
@@ -398,6 +415,19 @@ const r=await p.evaluate(async()=>{
     ok('power_panel',opened&&r1.supply===60&&Math.abs(r1.demand-72*perkMult().power)<1e-9&&h1.includes('SHORT')&&h1.includes('idle: 1 no fuel')&&h1.includes('FIND IDLE GENERATORS (1)')
       &&h1.includes('enough')&&h1.includes('Assembler')&&r2.supply===120&&h2.includes('Running')&&h2.includes('Burning')&&h2.includes('30 coal'),
       {opened,s1:r1.supply,d1:r1.demand,s2:r2.supply,h1:h1.slice(0,500)}); }
+  // ── music: every zone has its own playlist of tracks; each compiles cleanly, keeps its hook and varies the rest
+  { const per={}; for(const t of MTRACKS)per[t.ctx]=(per[t.ctx]||0)+1;
+    const bad=[], lens=[];
+    const leadOf=(song,from,to)=>JSON.stringify(song.ev.filter(e=>e.t>=from&&e.t<to&&!['pad','kick','snare','hat'].includes(e.i)&&e.d<2).map(e=>[+e.t.toFixed(3),+e.f.toFixed(1)]));
+    let hook=true, varies=true;
+    for(const tr of MTRACKS){ const a=compileSong(tr,1), c=compileSong(tr,2); lens.push(Math.round(a.len));
+      if(a.ev.some(e=>!isFinite(e.t)||!isFinite(e.f)||!isFinite(e.v)||!(e.d>0)||e.f>0&&e.f<55))bad.push(tr.name);
+      if(!tr.raw){ const bar=240/tr.bpm, A0=MFORMS[tr.form][1]*bar; // the first A section starts after the intro
+        if(leadOf(a,A0,A0+4*bar)!==leadOf(c,A0,A0+4*bar))hook=false;
+        if(JSON.stringify(a.ev)===JSON.stringify(c.ev))varies=false; } }
+    const zonesOk=[1,2,3,4,5].every(z=>per[z]>=3)&&per.title>=2;
+    const ctxGame=musicCtx();
+    ok('music_playlists',zonesOk&&!bad.length&&lens.every(l=>l>=90&&l<=240)&&hook&&varies&&ctxGame===G.zone,{per,bad,lens,hook,varies,ctxGame}); }
   // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
     res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);

@@ -489,7 +489,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.16 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.17 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -667,7 +667,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.16';
+const VER      = '2.0.17';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -744,9 +744,8 @@ function sfx(type) {
 }
 
 // ═══════════════════════════════════════════════════
-//  MUSIC ENGINE  (Factory Pulse, 2m10s structured track)
+//  FACTORY PULSE: the original track (2m10s), kept as notes for the playlist
 // ═══════════════════════════════════════════════════
-let _music={nodes:[],gain:null,running:false,loopId:null};
 
 const _MNOTE=0.3;  // seconds per 16th-note slot
 const _MBAR=8*_MNOTE; // 8 slots per bar
@@ -817,53 +816,254 @@ function _buildMusicSchedule(){
 const _MSCHED=_buildMusicSchedule();
 const _MTOTAL=_MSCHED.length?_MSCHED[_MSCHED.length-1].t+1:130;
 
+// ═══════════════════════════════════════════════════
+//  MUSIC ENGINE (v2.0.17): a playlist per zone, every track composed as it plays
+// ═══════════════════════════════════════════════════
+// Each track in MTRACKS is a recipe: tempo, key, scale, chord progressions (A / B / C), form and instruments.
+// compileSong() turns it into notes. The A melody (the hook) comes from the track's own seed, so it is the same
+// every time; everything else is reseeded on each play, and repeats of A pick up small variations, so a track
+// never plays back exactly the same. A look-ahead scheduler (mTick, every 100ms) plays the notes. The playlist
+// shuffles within the current zone or the title screen (musicCtx) and crossfades when that changes.
+// Factory Pulse, the original track, is kept as written (raw) on the title screen and in Ironfield.
+const MSCALE={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixo:[0,2,4,5,7,9,10],phryg:[0,1,3,5,7,8,10],lydian:[0,2,4,6,7,9,11],harm:[0,2,3,5,7,8,11]};
+// Lead rhythms: [16th step, length] within one 4/4 bar
+const MRHY=[
+  [[0,4],[4,2],[6,2],[8,4],[12,4]],
+  [[0,2],[2,2],[4,4],[8,2],[10,2],[12,4]],
+  [[0,6],[6,2],[8,6],[14,2]],
+  [[0,3],[3,3],[6,2],[8,3],[11,3],[14,2]],
+  [[0,8],[8,8]],
+  [[0,2],[2,2],[4,2],[6,2],[8,2],[10,2],[12,2],[14,2]],
+  [[0,4],[6,2],[8,4],[12,2],[14,2]],
+  [[0,12],[12,4]],
+];
+const MFORMS={
+  song:   ['intro',4,'A',8,'B',8,'A',8,'C',8,'break',4,'B',8,'A',8,'outro',4],
+  drive:  ['intro',4,'A',8,'A',8,'B',8,'break',4,'C',8,'B',8,'A',8,'outro',4],
+  ambient:['intro',8,'A',8,'B',8,'C',8,'A',8,'break',8,'B',8,'outro',8],
+};
+// What plays in each part of the form
+const MROLES={
+  intro:{lead:0,bass:'long',drums:'intro',arp:1},
+  A:    {lead:'mid',bass:'track',drums:'track',arp:0},
+  B:    {lead:'high',bass:'track',drums:'track',arp:1},
+  C:    {lead:'slow',bass:'pulse',drums:'half',arp:1},
+  break:{lead:0,bass:'long',drums:0,arp:1},
+  outro:{lead:'mid',bass:'long',drums:'intro',arp:0},
+};
+const MDRUMS={
+  four: {k:[0,4,8,12],s:[4,12],h:[2,6,10,14]},
+  back: {k:[0,8,10],s:[4,12],h:[0,2,4,6,8,10,12,14]},
+  half: {k:[0],s:[8],h:[0,4,8,12]},
+  break:{k:[0,6,10],s:[4,12],h:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]},
+  tick: {k:[],s:[],h:[2,6,10,14]},
+};
+const MV={pulse25:.032,pulse12:.03,square:.024,tri:.06,saw:.024,bell:.04,pad:.011,kick:.18,snare:.05,hat:.016};
+// vol: loudness trim so every track plays at about the same level (measured offline); root: MIDI note of the key; prog: chord roots as scale degrees, one per bar, for the A / B / C parts
+const MTRACKS=[
+  {id:'title',vol:0.6,ctx:'title',name:'Start With Nothing',bpm:112,root:60,scale:'major',prog:[[0,4,5,3],[3,4,0,5],[5,3,0,4]],form:'song',lead:'pulse25',arp:'pulse12',bass:'tri',drums:'back',bassPat:'octave',rhy:[0,1,6,3],fx:.18},
+  {id:'pulse_t',ctx:'title',name:'Factory Pulse',raw:true},
+  {id:'pulse',ctx:1,name:'Factory Pulse',raw:true},
+  {id:'z1a',vol:0.55,ctx:1,name:'Assembly Line',bpm:124,root:55,scale:'mixo',prog:[[0,6,3,0],[3,4,0,6],[5,3,6,4]],form:'drive',lead:'square',arp:'pulse12',bass:'tri',drums:'four',bassPat:'octave',rhy:[1,5,3,0],fx:.1},
+  {id:'z1b',vol:0.58,ctx:1,name:'Ore and Gears',bpm:116,root:62,scale:'major',prog:[[0,5,3,4],[5,3,0,4],[1,4,0,0]],form:'song',lead:'pulse25',arp:'pulse12',bass:'tri',drums:'back',bassPat:'root8',rhy:[0,6,1,2],fx:.12},
+  {id:'z1c',vol:0.65,ctx:1,name:'First Light',bpm:100,root:65,scale:'major',prog:[[0,3,5,4],[3,0,4,5],[5,4,3,4]],form:'song',lead:'tri',arp:'pulse12',bass:'tri',drums:'half',bassPat:'pulse',rhy:[2,0,4,6],pad:1,fx:.2},
+  {id:'z2a',vol:0.85,ctx:2,name:'Ash Rain',bpm:96,root:52,scale:'minor',prog:[[0,5,6,4],[3,0,4,4],[5,6,0,6]],form:'song',lead:'pulse12',arp:'pulse25',bass:'saw',drums:'back',bassPat:'synco',rhy:[3,0,6,2],fx:.15},
+  {id:'z2b',vol:0.74,ctx:2,name:'Crude',bpm:104,root:57,scale:'dorian',prog:[[0,3,0,6],[3,3,0,0],[5,6,3,4]],form:'drive',lead:'square',arp:'pulse12',bass:'saw',drums:'break',bassPat:'octave',rhy:[1,3,0,5],fx:.1},
+  {id:'z2c',vol:0.9,ctx:2,name:'Refinery Night',bpm:88,root:50,scale:'phryg',prog:[[0,1,0,6],[5,6,0,0],[3,1,6,0]],form:'ambient',lead:'pulse25',arp:'bell',bass:'saw',drums:'half',bassPat:'long',rhy:[2,4,0,7],pad:1,fx:.25},
+  {id:'z3a',vol:0.85,ctx:3,name:'Pressure',bpm:84,root:49,scale:'phryg',prog:[[0,5,3,4],[1,0,5,6],[3,1,0,0]],form:'ambient',lead:'bell',arp:'bell',bass:'tri',drums:'tick',bassPat:'long',rhy:[2,4,7,0],pad:1,fx:.38},
+  {id:'z3b',vol:0.76,ctx:3,name:'Glow Tide',bpm:90,root:59,scale:'minor',prog:[[0,2,5,6],[5,6,0,0],[3,4,5,4]],form:'ambient',lead:'pulse25',arp:'bell',bass:'tri',drums:'half',bassPat:'pulse',rhy:[0,2,6,4],pad:1,fx:.35},
+  {id:'z3c',vol:0.76,ctx:3,name:'Lattice',bpm:100,root:54,scale:'dorian',prog:[[0,6,3,4],[3,4,6,0],[5,3,4,4]],form:'drive',lead:'pulse25',arp:'pulse12',bass:'tri',drums:'tick',bassPat:'root8',rhy:[1,3,6,0],fx:.3},
+  {id:'z4a',vol:0.64,ctx:4,name:'Spore Drift',bpm:92,root:51,scale:'lydian',prog:[[0,1,0,4],[3,4,0,1],[5,1,4,4]],form:'ambient',lead:'tri',arp:'tri',bass:'tri',drums:'half',bassPat:'walk',rhy:[0,2,4,6],pad:1,swing:.33,fx:.22},
+  {id:'z4b',vol:0.63,ctx:4,name:'Green Engine',bpm:108,root:57,scale:'major',prog:[[0,3,5,4],[3,4,0,5],[1,4,0,4]],form:'song',lead:'pulse25',arp:'tri',bass:'tri',drums:'back',bassPat:'walk',rhy:[0,1,6,3],swing:.2,fx:.12},
+  {id:'z4c',vol:0.68,ctx:4,name:'Vital Signs',bpm:96,root:55,scale:'dorian',prog:[[0,3,4,0],[5,3,0,4],[3,6,0,0]],form:'song',lead:'bell',arp:'pulse12',bass:'tri',drums:'tick',bassPat:'synco',rhy:[3,0,2,6],pad:1,fx:.25},
+  {id:'z5a',vol:0.95,ctx:5,name:'Event Horizon',bpm:76,root:48,scale:'harm',prog:[[0,5,3,4],[5,3,4,4],[0,3,5,4]],form:'ambient',lead:'saw',arp:'bell',bass:'saw',drums:'half',bassPat:'long',rhy:[4,2,7,0],pad:1,fx:.4},
+  {id:'z5b',vol:0.67,ctx:5,name:'Void Engine',bpm:128,root:50,scale:'harm',prog:[[0,5,3,4],[3,4,5,4],[5,3,4,4]],form:'drive',lead:'square',arp:'pulse12',bass:'saw',drums:'four',bassPat:'octave',rhy:[5,1,3,0],fx:.2},
+  {id:'z5c',vol:0.69,ctx:5,name:'Collapse',bpm:110,root:57,scale:'minor',prog:[[0,6,5,4],[0,6,5,4],[3,4,5,6]],form:'song',lead:'pulse25',arp:'bell',bass:'saw',drums:'break',bassPat:'root8',rhy:[0,3,1,6],pad:1,fx:.3},
+  {id:'z5d',vol:0.73,ctx:5,name:'Stardust',bpm:96,root:62,scale:'lydian',prog:[[0,1,4,0],[5,1,0,4],[3,4,1,4]],form:'ambient',lead:'bell',arp:'tri',bass:'tri',drums:'tick',bassPat:'pulse',rhy:[2,0,4,6],pad:1,fx:.35},
+];
+function mRng(seed){let s=(seed>>>0)||1;return()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return s/4294967296;};}
+function mHash(str){let h=2166136261;for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619);return h>>>0;}
+function compileSong(tr,n){
+  if(tr.raw)return {ev:_MSCHED.map(e=>({t:e.t,f:e.f,d:e.d,v:e.v*1.2,i:e.w==='triangle'?'tri':'square'})),len:_MTOTAL};
+  const sc=MSCALE[tr.scale], st=60/tr.bpm/4, bar=st*16, ev=[], form=MFORMS[tr.form];
+  const freq=deg=>{const o=Math.floor(deg/7), k=((deg%7)+7)%7; return 440*Math.pow(2,(tr.root+12*o+sc[k]-69)/12);};
+  let t=0;
+  const add=(s,len,deg,i,v,x)=>{const sw=s%4===2?(tr.swing||0)*st:0; ev.push(Object.assign({t:t+s*st+sw,f:deg===null?0:freq(deg),d:len*st,v:v*(tr.vol||1),i},x||{}));};
+  const lp=i=>i==='saw'?{lp:1800}:null;
+  const occ={};
+  for(let k=0;k<form.length;k+=2){
+    const sec=form[k], bars=form[k+1], role=MROLES[sec]; occ[sec]=(occ[sec]||0)+1;
+    const prog=tr.prog[sec==='B'?1:sec==='C'?2:0];
+    // the hook: A (and the outro's reprise of it) always comes from the same seed
+    const hook=sec==='A'||sec==='outro', rng=mRng(mHash(tr.id+':'+(hook?'A':sec+':'+n+':'+occ[sec])));
+    const vrng=mRng(mHash(tr.id+':var:'+n+':'+k)), vary=sec==='A'&&occ.A>1;
+    const drums=role.drums==='track'?tr.drums:role.drums==='intro'?(tr.drums==='four'||tr.drums==='back'?'tick':tr.drums==='break'?'half':'tick'):role.drums==='half'?(tr.drums==='tick'?'tick':'half'):null;
+    const bassPat=role.bass==='track'?tr.bassPat:role.bass;
+    let prev=9;
+    for(let b=0;b<bars;b++){
+      const c=prog[b%prog.length], nc=prog[(b+1)%prog.length];
+      const fade=sec==='intro'?Math.min(1,.35+.65*b/bars):sec==='outro'?Math.max(.15,1-b/bars):1;
+      // pad: held chord
+      if(tr.pad||sec==='break'||sec==='intro'||sec==='outro')for(const d of[c,c+2,c+4])add(0,16,d,'pad',MV.pad*fade);
+      // lead
+      if(role.lead){
+        const hi=role.lead==='high', slow=role.lead==='slow';
+        const lo=hi?9:5, top=hi?16:13, phraseEnd=b%4===3;
+        const tpl=MRHY[slow?(b%2?7:4):phraseEnd&&rng()<.6?(rng()<.5?4:7):tr.rhy[(hi?2:0)+(b%2)]];
+        tpl.forEach(([s,len],j)=>{
+          if(s>0&&rng()<.08)return; // a breath
+          let d;
+          const last=phraseEnd&&j===tpl.length-1;
+          if(s%8===0||last){
+            const tones=last?[c]:[c,c+2,c+4], cand=[];
+            for(const ct of tones)for(let o=-14;o<=21;o+=7){const x=ct+o; if(x>=lo&&x<=top)cand.push(x);}
+            cand.sort((x,y)=>Math.abs(x-prev)-Math.abs(y-prev));
+            d=cand[Math.min(cand.length-1,Math.floor(rng()*2))];
+          } else d=Math.max(lo,Math.min(top,prev+[-1,1,-1,1,-2,2,0][Math.floor(rng()*7)]));
+          if(vary&&s%8!==0&&!last&&vrng()<.25)d=Math.max(lo,Math.min(top,d+(vrng()<.5?-1:1)));
+          prev=d;
+          add(s,len*.9,d,tr.lead,MV[tr.lead]*fade*(slow?.8:1),Object.assign({vib:len>=6},lp(tr.lead)));
+        });
+      }
+      // arpeggio
+      if(role.arp){
+        const tones=[c,c+2,c+4,c+7,c+9,c+7,c+4,c+2], stp=2;
+        for(let s=0,j=0;s<16;s+=stp,j++)add(s,stp*.8,tones[j%tones.length],tr.arp,MV[tr.arp]*.42*fade);
+      }
+      // bass, two octaves under the lead, but never below what a phone speaker can play
+      let bd=c-14; while(freq(bd)<58)bd+=7;
+      const bv=MV[tr.bass]*(tr.bass==='tri'?1:1.1)*fade, bx=tr.bass==='saw'?{lp:520}:null;
+      const B=(s,len,d)=>add(s,len,d,tr.bass,bv,bx);
+      if(bassPat==='long')B(0,15,bd);
+      else if(bassPat==='pulse')[0,4,8,12].forEach(s=>B(s,3,bd));
+      else if(bassPat==='root8')for(let s=0;s<16;s+=2)B(s,1.6,bd);
+      else if(bassPat==='octave')for(let s=0;s<16;s+=2)B(s,1.6,s%4?bd+7:bd);
+      else if(bassPat==='walk'){let ap=bd+(nc-c)+(rng()<.5?-1:1); while(freq(ap)<58)ap+=7; B(0,3.6,bd);B(4,3.6,bd+2);B(8,3.6,bd+4);B(12,3.6,ap);}
+      else if(bassPat==='synco')[[0,3,0],[3,3,0],[6,2,4],[8,3,0],[11,3,7],[14,2,4]].forEach(([s,l,o])=>B(s,l*.9,bd+o));
+      // drums
+      if(drums){
+        const D=MDRUMS[drums];
+        if(drums==='tick'&&b%2===0)add(0,2,null,'kick',MV.kick*.7*fade);
+        D.k.forEach(s=>add(s,2,null,'kick',MV.kick*fade));
+        D.s.forEach(s=>add(s,2,null,'snare',MV.snare*fade));
+        D.h.forEach(s=>add(s,1,null,'hat',MV.hat*(s%4===2?1:.6)*fade));
+        if(b===bars-1&&(sec==='A'||sec==='B'||sec==='C')&&drums!=='tick')[12,13,14,15].forEach((s,j)=>add(s,1,null,'snare',MV.snare*(.4+j*.2)));
+      }
+      t+=bar;
+    }
+  }
+  ev.sort((x,y)=>x.t-y.t);
+  return {ev,len:t};
+}
+let _music={running:false,gain:null,bus:null,send:null,delay:null,timer:null,song:null,idx:0,t0:0,key:null,cur:null,plays:{},last:{},fading:0,skip:false};
+let _noiseBuf=null, _pulseWaves={};
+function mNoise(){if(!_noiseBuf){const c=ac(),b=c.createBuffer(1,c.sampleRate,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;_noiseBuf=b;}return _noiseBuf;}
+function mPulse(duty){
+  if(!_pulseWaves[duty]){const N=32,re=new Float32Array(N),im=new Float32Array(N);for(let n=1;n<N;n++)re[n]=2/(n*Math.PI)*Math.sin(n*Math.PI*duty);_pulseWaves[duty]=ac().createPeriodicWave(re,im);}
+  return _pulseWaves[duty];
+}
+function mPlay(e,t){
+  const c=ac(), g=c.createGain(), end=t+e.d;
+  g.connect(_music.bus);
+  const done=n=>{n.onended=()=>{try{n.disconnect();g.disconnect();}catch(err){}};};
+  if(e.i==='kick'){
+    const o=c.createOscillator(); o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(42,t+.12);
+    g.gain.setValueAtTime(e.v,t); g.gain.exponentialRampToValueAtTime(.001,t+.22); o.connect(g); o.start(t); o.stop(t+.24); done(o); return;
+  }
+  if(e.i==='snare'||e.i==='hat'){
+    const n=c.createBufferSource(), f=c.createBiquadFilter(); n.buffer=mNoise();
+    f.type=e.i==='hat'?'highpass':'bandpass'; f.frequency.value=e.i==='hat'?7000:1800;
+    const len=e.i==='hat'?.035:.13;
+    g.gain.setValueAtTime(e.v,t); g.gain.exponentialRampToValueAtTime(.001,t+len);
+    n.connect(f); f.connect(g); n.start(t,Math.random()*.5); n.stop(t+len+.02); done(n); return;
+  }
+  if(e.i==='pad'){
+    const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1100; f.connect(g);
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(e.v,t+Math.min(.5,e.d*.3)); g.gain.setValueAtTime(e.v,end-Math.min(.4,e.d*.2)); g.gain.linearRampToValueAtTime(.0001,end+.3);
+    for(const dt of[-8,8]){const o=c.createOscillator(); o.type='sawtooth'; o.frequency.value=e.f; o.detune.value=dt; o.connect(f); o.start(t); o.stop(end+.35); done(o);}
+    return;
+  }
+  if(e.i==='bell'){
+    const o=c.createOscillator(), o2=c.createOscillator(), g2=c.createGain(), dec=Math.max(.6,Math.min(1.6,e.d*2));
+    o.frequency.value=e.f; o2.frequency.value=e.f*2.76; g2.gain.value=.25; o2.connect(g2); g2.connect(g); o.connect(g);
+    g.gain.setValueAtTime(e.v,t); g.gain.exponentialRampToValueAtTime(.001,t+dec);
+    if(_music.send)g.connect(_music.send);
+    o.start(t); o2.start(t); o.stop(t+dec+.05); o2.stop(t+dec+.05); done(o); done(o2); return;
+  }
+  // tone voices: pulse, square, triangle, saw
+  const o=c.createOscillator();
+  if(e.i==='pulse25')o.setPeriodicWave(mPulse(.25)); else if(e.i==='pulse12')o.setPeriodicWave(mPulse(.125));
+  else o.type=e.i==='tri'?'triangle':e.i==='saw'?'sawtooth':'square';
+  o.frequency.setValueAtTime(e.f,t);
+  if(e.vib){const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.5; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(e.f*.008,t+.3); l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(end+.05); done(l);}
+  let src=o;
+  if(e.lp){const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=e.lp; o.connect(f); src=f;}
+  src.connect(g);
+  g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(e.v,t+.006); g.gain.setValueAtTime(e.v*.75,t+Math.min(e.d*.5,.12)); g.gain.exponentialRampToValueAtTime(.001,end+.04);
+  if(_music.send&&e.i!=='tri'&&e.d<1.5)g.connect(_music.send);
+  o.start(t); o.stop(end+.06); done(o);
+}
+function musicCtx(){return onTitle()||!G?'title':(G.zone||1);}
+function musicPlaylist(key){const l=MTRACKS.filter(t=>t.ctx===key);return l.length?l:MTRACKS.filter(t=>t.ctx===1);}
+function mNext(key,at){
+  const list=musicPlaylist(key), last=_music.last[key];
+  const pick=list.length>1?list.filter(t=>t.id!==last):list;
+  const tr=pick[Math.floor(Math.random()*pick.length)];
+  _music.last[key]=tr.id; _music.plays[tr.id]=(_music.plays[tr.id]||0)+1;
+  _music.cur=tr; _music.key=key; _music.song=compileSong(tr,_music.plays[tr.id]); _music.idx=0; _music.t0=at;
+  try{const c=ac(); _music.send.gain.setValueAtTime(tr.fx||0,c.currentTime); _music.delay.delayTime.setValueAtTime(tr.raw?.36:Math.min(.9,45/(tr.bpm||112)),c.currentTime);}catch(e){}
+}
+function mTick(){
+  if(!_music.running)return;
+  let c; try{c=ac();}catch(e){return;}
+  const now=c.currentTime, want=musicCtx();
+  if(_music.song&&(_music.key!==want||_music.skip)&&!_music.fading){
+    _music.fading=now+1.2; _music.skip=false;
+    try{_music.bus.gain.setValueAtTime(_music.bus.gain.value,now);_music.bus.gain.linearRampToValueAtTime(.0001,now+1.1);}catch(e){}
+  }
+  if(_music.fading){
+    if(now<_music.fading)return;
+    _music.fading=0; try{_music.bus.gain.cancelScheduledValues(now);_music.bus.gain.setValueAtTime(1,now);}catch(e){}
+    mNext(want,now+.15);
+  }
+  if(!_music.song)mNext(want,now+.15);
+  const s=_music.song;
+  while(_music.idx<s.ev.length&&_music.t0+s.ev[_music.idx].t<now+.5){
+    const e=s.ev[_music.idx++], when=_music.t0+e.t;
+    if(when>=now-.05)try{mPlay(e,Math.max(when,now));}catch(err){}
+  }
+  if(_music.idx>=s.ev.length&&now>_music.t0+s.len)mNext(want,now+2.5); // a short breath between tracks
+}
 function musicStart(){
   if(_music.running)return;
   try{
-    const ctx=ac();
-    const mg=ctx.createGain();
-    mg.gain.setValueAtTime(G&&G.musicVol!==undefined?G.musicVol:0.7,ctx.currentTime);
-    mg.connect(ctx.destination);
-    _music.gain=mg;
-    _music.running=true;
-    _scheduleTrack(ctx.currentTime);
+    const c=ac();
+    const mg=c.createGain(); mg.gain.setValueAtTime(G&&G.musicVol!==undefined?G.musicVol:0.7,c.currentTime); mg.connect(c.destination);
+    const comp=c.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4; comp.connect(mg);
+    const bus=c.createGain(); bus.connect(comp);
+    const send=c.createGain(), dl=c.createDelay(1), fb=c.createGain(), wet=c.createGain();
+    send.gain.value=0; fb.gain.value=.32; wet.gain.value=.6;
+    send.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(bus);
+    Object.assign(_music,{gain:mg,bus,send,delay:dl,running:true,song:null,fading:0,skip:false});
+    _music.timer=setInterval(mTick,100); mTick();
   }catch(e){}
 }
-
-function _scheduleTrack(startTime){
-  if(!_music.running)return;
-  const ctx=ac();
-  _music.nodes=[];
-  for(const n of _MSCHED){
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.type=n.w;
-    o.frequency.setValueAtTime(n.f,startTime+n.t);
-    g.gain.setValueAtTime(n.v,startTime+n.t);
-    g.gain.exponentialRampToValueAtTime(0.001,startTime+n.t+n.d);
-    o.connect(g); g.connect(_music.gain);
-    o.start(startTime+n.t);
-    o.stop(startTime+n.t+n.d+0.05);
-    _music.nodes.push(o);
-  }
-  // Loop: reschedule just before track ends
-  const loopDelay=(_MTOTAL-0.5)*1000;
-  _music.loopId=setTimeout(()=>{
-    if(_music.running) _scheduleTrack(ac().currentTime+0.1);
-  },loopDelay);
-}
-
 function musicStop(){
   _music.running=false;
-  if(_music.loopId){clearTimeout(_music.loopId);_music.loopId=null;}
-  for(const n of _music.nodes){try{n.stop();}catch(e){}}
-  _music.nodes=[];
-  if(_music.gain){
-    try{
-      _music.gain.gain.exponentialRampToValueAtTime(0.001,ac().currentTime+0.4);
-      setTimeout(()=>{try{_music.gain.disconnect();}catch(e){}},500);
-    }catch(e){}
+  if(_music.timer){clearInterval(_music.timer);_music.timer=null;}
+  _music.song=null; _music.fading=0;
+  const mg=_music.gain;
+  if(mg){
+    try{mg.gain.cancelScheduledValues(ac().currentTime);mg.gain.setValueAtTime(mg.gain.value,ac().currentTime);mg.gain.exponentialRampToValueAtTime(0.001,ac().currentTime+0.4);
+      setTimeout(()=>{try{mg.disconnect();}catch(e){}},500);}catch(e){}
     _music.gain=null;
   }
+}
+function musicNext(){if(_music.running&&_music.song)_music.skip=true; setTimeout(()=>{const el=document.getElementById('nowPlaying'); if(el)el.textContent=nowPlayingText();},1500);}
+function nowPlayingText(){
+  if(!_music.running||!_music.cur)return 'Nothing playing';
+  const key=_music.key, list=musicPlaylist(key), i=list.indexOf(_music.cur)+1;
+  return `${_music.cur.name} · ${key==='title'?'Title':ZONES[key]?.name||''} ${i}/${list.length}`;
 }
 
 function toggleMusic(){
@@ -985,7 +1185,7 @@ const ITEMS = {
   silicon:      {name:'Silicon',        icon:'🔷', cat:'processed'},
   lithium_salt: {name:'Lithium Salt',   icon:'🧂', cat:'processed'},
   lithium:      {name:'Lithium',        icon:'⚪', cat:'processed'},
-  re_oxide:     {name:'RE Oxide',       icon:'🟧', cat:'processed'},
+  re_oxide:     {name:'Rare Earth Oxide', icon:'🟧', cat:'processed', desc:'Refined rare earth. A Separator makes it from 2 Rare Earth Ore plus 4 brine piped in (needs Pressure Control).', uses:['Magnet (Assembler, with 2 iron plates)','Pressure Hull (rocket part)']},
   magnet:       {name:'Magnet',         icon:'🧲', cat:'parts'},
   battery:      {name:'Battery',        icon:'🪫', cat:'parts'},
   lattice_core: {name:'Lattice Core',   icon:'💠', cat:'parts'},
@@ -2916,31 +3116,95 @@ function beltTurn(m){
   return a===b?0:a?1:3;
 }
 
-// Draw the items on one belt-like tile. Moving items interpolate smoothly and may run past the edge into
-// the next tile (the simulation hands them over with the leftover move). Items that cannot move on stop
-// just short of the edge and queue a quarter tile apart (even spacing across tiles) instead of piling onto one spot.
-// mode: 'belt' full tile · 'enter' tunnel mouth (sinks at the centre) · 'exit' rises from the centre
-function beltCanTake(tx,ty,dir){
-  const[dx,dy]=D_VEC[dir], t=G.map[ty+dy]?.[tx+dx]; if(!t||t.mid===null)return false;
-  const nm=G.machines[t.mid]; if(!nm)return false;
-  if(nm.type==='chest')return true;
-  return (nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&t.items.length<BELT_CAP;
-}
-function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
-  const flow=mode==='enter'||beltCanTake(tx,ty,dir);
-  const items=[...tile.items].sort((a,b)=>b.prog-a.prog);
-  let lim=flow?1+spd:1-BELT_GAP/2;
-  const[dx,dy]=D_VEC[dir], mx=tx*ts-cx+ts/2, my=ty*ts-cy+ts/2, sz=ts*.42;
-  for(const it of items){
-    let p=Math.max(flow?0:BELT_GAP/2,Math.min(it.prog+spd*sub,lim));
-    if(!flow)lim=p-BELT_GAP;             // queued items sit a gap apart, evenly across tile edges
-    if(mode==='enter'&&p>=.5)continue;   // gone underground
-    if(mode==='exit')p=.5+p*.5;          // surfaces at the centre
-    let ox,oy;
-    if(p<=1)[ox,oy]=beltItemPos(dir,turn,p);
-    else{[ox,oy]=beltItemPos(dir,turn,1);ox+=dx*(p-1);oy+=dy*(p-1);}
-    drawItem(ctx,it.id,mx+ox*ts,my+oy*ts,sz);
+// ── Belt item display ──
+// Every tick, after the belts and inserters move, each item gets a display position on its tile (BELT_VIS):
+// its real progress, held a gap behind the item ahead (across tile edges too), so items queued at the end of a
+// full belt line up evenly instead of stacking where the simulation parks them (prog .99). The renderer then
+// slides each item from last tick's spot to this tick's, so what you see is always what happened: no guessing
+// whether a tile is flowing, which is what made busy belts jump (v2.0.17). It runs one tick behind.
+const BELT_VIS=new WeakMap(); // item -> {t,d,pt,pd}: tile key + display progress, now and last tick
+function beltGeom(tx,ty){ // how a belt-like tile lays out its items: direction, corner, tunnel mouth
+  const t=G.map[ty]?.[tx]; if(!t||t.mid===null)return null;
+  const m=G.machines[t.mid]; if(!m||!beltLike(m.type))return null;
+  if(m.type==='belt')return {m,dir:m.dir,turn:beltTurn(m),mode:'belt'};
+  if(m.type==='tunnel'){
+    const p=m.tunnelId!==null&&G.machines[m.tunnelId];
+    const exit=p&&((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1])<0;
+    return {m,dir:m.dir,turn:0,mode:exit?'exit':'enter',entrance:!!p&&!exit};
   }
+  return {m,dir:m.dir,turn:0,mode:'belt'};
+}
+function beltVisPass(){
+  const mins=new Map(), base=beltBaseSpeed();
+  const visit=(tx,ty,depth)=>{ // returns the lowest display progress on this tile (Infinity if empty)
+    const key=ty*MAP_W+tx; if(mins.has(key))return mins.get(key);
+    mins.set(key,Infinity); // loop guard: a belt that circles back on itself
+    const tile=G.map[ty][tx], g=beltGeom(tx,ty); if(!g||!tile.items.length)return Infinity;
+    const[dvx,dvy]=D_VEC[g.dir], nx=tx+dvx, ny=ty+dvy;
+    let lim=1;
+    if(!g.entrance){
+      const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
+      if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
+      else if(!(nm&&nm.type==='chest'))lim=1-BELT_GAP/2; // end of the line: stop short of the edge
+    }
+    const sp=base*beltTierMult(g.m);
+    let mn=Infinity;
+    for(const it of [...tile.items].sort((a,b)=>b.prog-a.prog)){
+      let st=BELT_VIS.get(it), fresh=!st; if(!st){st={};BELT_VIS.set(it,st);}
+      st.pt=st.t; st.pd=st.d;
+      let d=Math.max(0,Math.min(it.prog,lim));
+      if(fresh){st.pt=key; st.pd=Math.max(0,d-sp);} // new on the belt: it slides in from a tick's travel back rather than standing still
+      if(st.pt===key){d=Math.min(Math.max(d,st.pd),st.pd+sp*1.5);} // never backwards, never faster than the belt can carry it
+      else if(st.pt!==undefined&&beltFeeds(st.pt,tx,ty)){
+        const pg=beltGeom(st.pt%MAP_W,Math.floor(st.pt/MAP_W));
+        const cap=Math.max(sp,pg?base*beltTierMult(pg.m):sp)*1.5;
+        d=Math.max(0,Math.min(d,st.pd+cap-1));
+      }
+      st.t=key; st.d=d; lim=d-BELT_GAP; mn=Math.min(mn,d);
+    }
+    mins.set(key,mn); return mn;
+  };
+  for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){const t=G.map[ty][tx]; if(t.items.length&&t.mid!==null)visit(tx,ty,0);}
+}
+function beltFeeds(fromKey,tx,ty){ // does the belt-like tile fromKey hand items straight on to (tx,ty)?
+  const fx=fromKey%MAP_W, fy=Math.floor(fromKey/MAP_W), g=beltGeom(fx,fy);
+  return !!g&&!g.entrance&&fx+D_VEC[g.dir][0]===tx&&fy+D_VEC[g.dir][1]===ty;
+}
+// Where an item at display progress p sits, in tiles from the map origin; null while underground
+function beltWorldPos(tx,ty,g,p){
+  if(g.mode==='enter'&&p>=.5)return null; // gone underground
+  if(g.mode==='exit')p=.5+p*.5;           // surfaces at the centre
+  let ox,oy;
+  if(p<=1)[ox,oy]=beltItemPos(g.dir,g.turn,p);
+  else{[ox,oy]=beltItemPos(g.dir,g.turn,1);ox+=D_VEC[g.dir][0]*(p-1);oy+=D_VEC[g.dir][1]*(p-1);}
+  return [tx+.5+ox,ty+.5+oy];
+}
+// Draw the items on one belt-like tile, sliding each from last tick's display spot to this tick's.
+// An item that just crossed onto this tile from the one feeding it follows the path (round corners too);
+// a short hop between neighbouring cells (splitter sides) slides straight; anything else appears in place.
+function drawBeltItems(tile,dir,tx,ty,turn,ts,cx,cy,spd,sub,mode){
+  const g={dir,turn,mode,entrance:false}, sz=ts*.42;
+  for(const it of tile.items){
+    const w=beltItemWorld(it,tx,ty,g,sub);
+    if(w)drawItem(ctx,it.id,w[0]*ts-cx,w[1]*ts-cy,sz);
+  }
+}
+function beltItemWorld(it,tx,ty,g,sub){ // where to draw this item now, in tiles; null while underground
+  const key=ty*MAP_W+tx, st=BELT_VIS.get(it);
+  let w;
+  if(!st||st.t!==key)w=beltWorldPos(tx,ty,g,Math.max(0,Math.min(1,it.prog)));   // just dropped here: no history yet
+  else if(st.pt===undefined||st.pt===key)w=beltWorldPos(tx,ty,g,st.pd===undefined?st.d:st.pd+(st.d-st.pd)*sub);
+  else{
+    const px=st.pt%MAP_W, py=Math.floor(st.pt/MAP_W), pg=beltGeom(px,py);
+    if(pg&&beltFeeds(st.pt,tx,ty)){
+      const q=st.pd+(st.d+1-st.pd)*sub;
+      w=q<1?beltWorldPos(px,py,pg,q):beltWorldPos(tx,ty,g,q-1);
+    } else if(pg&&Math.abs(px-tx)<=1&&Math.abs(py-ty)<=1){
+      const a=beltWorldPos(px,py,pg,st.pd), b=beltWorldPos(tx,ty,g,st.d);
+      w=a&&b?[a[0]+(b[0]-a[0])*sub,a[1]+(b[1]-a[1])*sub]:b;
+    } else w=beltWorldPos(tx,ty,g,st.d);
+  }
+  return w;
 }
 
 // Port layout per machine type:
@@ -5225,6 +5489,7 @@ function runBelts(){
   for(const m of Object.values(G.machines)){
     if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
   }
+  beltVisPass();
 }
 
 // Burner fuel use: 1 coal per this many ticks (24 = 6s). It used to be 8 (2s), the same as a
@@ -8419,6 +8684,11 @@ function openSettings(){
       <span style="font-size:var(--f6);color:var(--text2);flex-shrink:0">🔉 Vol</span>
       <input id="musicVolSlider" type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}" oninput="setMusicVol(this.value)" style="flex:1;accent-color:var(--amber)">
       <span id="musicVolLabel" style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
+      <span style="flex-shrink:0">${uiIcon('sound')}</span>
+      <span id="nowPlaying" style="flex:1;font-size:var(--f5);color:var(--text2);line-height:1.6">${nowPlayingText()}</span>
+      <button class="mini-btn ${G.music?'teal':'dim'}" onclick="musicNext()" ${G.music?'':'disabled'}>NEXT</button>
     </div>`;
 
   const saver=PREFS.fps===30&&PREFS.res===.5;
