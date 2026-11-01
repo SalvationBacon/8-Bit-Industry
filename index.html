@@ -487,7 +487,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.12 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.13 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -655,7 +655,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.12';
+const VER      = '2.0.13';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -5126,20 +5126,27 @@ function runBelts(){
       const outA={x:m.x+dvx,      y:m.y+dvy};
       const outB={x:m.x+dvx+px,   y:m.y+dvy+py};
 
+      // Each item gets a side as it comes in (alternating) and keeps it. A belt on that side takes it; with an
+      // inserter (or nothing) there, it moves onto that side's cell and waits, so the inserter on each side gets
+      // half. If that cell is full the item tries the other side's belt, then waits where it is (no deadlock).
+      const cells=[G.map[m.y][m.x],G.map[m.y+py]?.[m.x+px]], here=tile===cells[0]?0:1;
+      const tryBelt=dest=>{
+        if(dest.x<0||dest.y<0||dest.x>=MAP_W||dest.y>=MAP_H)return null;
+        const nt=G.map[dest.y][dest.x]; if(nt.mid===null)return null;
+        const nm=G.machines[nt.mid];
+        return nm&&beltLike(nm.type)?nt:null;
+      };
       for(const it of arrived){
-        const side=(m.splitSide||0)%2;
-        m.splitSide=(m.splitSide||0)+1;
-        const first=side===0?outA:outB, second=side===0?outB:outA;
-        let placed=false;
-        for(const dest of [first,second]){
-          if(dest.x<0||dest.y<0||dest.x>=MAP_W||dest.y>=MAP_H)continue;
-          const nt=G.map[dest.y][dest.x]; if(nt.mid===null)continue;
-          const nm=G.machines[nt.mid];
-          if(nm&&(nm.type==='belt'||nm.type==='splitter'||nm.type==='tunnel')&&beltRoom(nt,carryProg(it.prog))){
-            it.prog=carryProg(it.prog); nt.items.push(it); placed=true; break;
-          }
-        }
-        if(!placed)hold(it);
+        if(it.side===undefined){it.side=(m.splitSide||0)%2; m.splitSide=(m.splitSide||0)+1;}
+        const mine=it.side, dests=[mine===0?outA:outB, mine===0?outB:outA];
+        const own=tryBelt(dests[0]), c=carryProg(it.prog);
+        if(own&&beltRoom(own,c)){it.prog=c;delete it.side;own.items.push(it);continue;}
+        if(!own&&here!==mine&&cells[mine]&&cells[mine].items.length<BELT_CAP){it.prog=.99;cells[mine].items.push(it);continue;} // waits on its side
+        if(!own&&here===mine){hold(it);continue;} // waiting on its own side for that side's inserter
+        const other=tryBelt(dests[1]);
+        if(other&&beltRoom(other,c)){it.prog=c;delete it.side;other.items.push(it);continue;}
+        if(!own&&here!==mine)it.side=here; // its side is backed up: it goes to this side instead, so nothing jams
+        hold(it);
       }
       return left();
     }
@@ -5241,9 +5248,7 @@ let INS_TAKERS={};
 function insSource(m){ // the chest or machine output this inserter takes from, or null (belts don't count)
   const[dvx,dvy]=D_VEC[m.dir], r=m.type==='long_inserter'?2:1, t=G.map[m.y-dvy*r]?.[m.x-dvx*r];
   if(!t||t.mid===null)return null;
-  const sm=G.machines[t.mid]; if(!sm)return null;
-  if(sm.type==='splitter')return sm; // inserters on a splitter's outputs take turns, so the split stays even
-  if(beltLike(sm.type)||sm.type==='inserter'||sm.type==='long_inserter')return null;
+  const sm=G.machines[t.mid]; if(!sm||beltLike(sm.type)||sm.type==='inserter'||sm.type==='long_inserter')return null;
   return sm.type==='chest'||isOutputFacing(sm,-dvx,-dvy)?sm:null;
 }
 function buildTakers(){
@@ -5310,13 +5315,10 @@ function stepInserter(m){
       if(sm&&beltLike(sm.type)){ // belts, tunnel mouths and splitters
         // take the front item anywhere on the tile: a T3 belt moves over half a tile per tick, so waiting for an item
         // in the last tenth of the tile missed most of them and starved machines along a fast belt.
-        // A splitter counts as one box: items sit on the cell they came in on, so an inserter at either cell takes
-        // from both, and two inserters on its outputs share the flow
-        const tiles=[src];
-        if(sm.type==='splitter'){const[w,h]=machSize(sm);for(let j=0;j<h;j++)for(let i=0;i<w;i++){const t=G.map[sm.y+j][sm.x+i];if(t!==src)tiles.push(t);}}
-        let from=null,it=null;
-        for(const t of tiles)for(const c of t.items)if(!it||c.prog>it.prog){it=c;from=t;}
-        if(it&&(sm.type!=='splitter'||myTurn(m,sm))){from.items.splice(from.items.indexOf(it),1);item=it.id;if(sm.type==='splitter')markServed(sm,m);}
+        // On a splitter it takes only items the splitter has handed to its side (not ones still coming in)
+        let pool=src.items;
+        if(sm.type==='splitter'){const mine=src===G.map[sm.y][sm.x]?0:1; pool=src.items.filter(i=>i.side===mine);}
+        if(pool.length){const it=pool.reduce((a,b)=>b.prog>a.prog?b:a);src.items.splice(src.items.indexOf(it),1);item=it.id;}
       } else if(sm&&sm.type==='chest'){
         const k=Object.keys(sm.chestInv).find(k=>sm.chestInv[k]>0);
         if(k&&myTurn(m,sm)){item=k;sm.chestInv[k]--;markServed(sm,m);}
