@@ -485,7 +485,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.5 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.6 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -653,7 +653,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.5';
+const VER      = '2.0.6';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -2025,20 +2025,22 @@ function machineSpr(type,frame,on){
   return mkSpr(`m:${type}:${fr}:${on?1:0}`,sw,sh,a=>art(a,fr,on));
 }
 // Belt tread: drawn facing right, rotated at draw time; 4 frames scroll the ridges
-function beltSpr(fr){
-  return mkSpr(`belt:${fr}`,16,16,({R,P})=>{
+function beltSpr(fr,tier=1){
+  const stud=BELT_TIER_COL[tier]||BELT_TIER_COL[1], rail=tier>1?shade(stud,-.45):'#5a5a5a';
+  return mkSpr(`belt:${fr}:${tier}`,16,16,({R,P})=>{
     R(0,0,16,16,'#1a1a1a'); R(0,2,16,12,'#2b2b2b');
     for(let x=0;x<16;x++){if((x+fr)%4===0)R(x,3,1,10,'#3c3c3c');}
-    R(0,1,16,1,'#5a5a5a'); R(0,14,16,1,'#5a5a5a'); R(0,0,16,1,'#0e0e0e'); R(0,15,16,1,'#0e0e0e');
-    for(let x=2;x<16;x+=8){P(x+fr*2%8,1,'#f5a623');}
+    R(0,1,16,1,rail); R(0,14,16,1,rail); R(0,0,16,1,'#0e0e0e'); R(0,15,16,1,'#0e0e0e');
+    for(let x=2;x<16;x+=8){P(x+fr*2%8,1,stud);if(tier>1)P(x+fr*2%8,14,stud);}
   });
 }
 
 // Belt corner, drawn for a belt facing right. turn 1: fed from the top; turn 3: fed from the bottom.
 // Each pixel takes the straight tread's colour by its radius (across the belt) and angle (along it),
 // so rails, ridges and the amber studs line up with the straight belts on both sides.
-function beltCornerSpr(fr,turn){
-  return mkSpr(`beltc:${turn}:${fr}`,16,16,({P})=>{
+function beltCornerSpr(fr,turn,tier=1){
+  const stud=BELT_TIER_COL[tier]||BELT_TIER_COL[1], rail=tier>1?shade(stud,-.45):'#5a5a5a';
+  return mkSpr(`beltc:${turn}:${fr}:${tier}`,16,16,({P})=>{
     const cy=turn===1?0:16;
     for(let y=0;y<16;y++)for(let x=0;x<16;x++){
       const dx=x+.5-16, dy=y+.5-cy, r=Math.hypot(dx,dy); if(r>=16)continue;
@@ -2047,8 +2049,8 @@ function beltCornerSpr(fr,turn){
       const yv=turn===1?Math.floor(r):15-Math.floor(r);
       let c='#2b2b2b';
       if(yv===0||yv===15)c='#0e0e0e';
-      else if(yv===1)c=((along-2-fr*2)%8+8)%8===0?'#f5a623':'#5a5a5a';
-      else if(yv===14)c='#5a5a5a';
+      else if(yv===1)c=((along-2-fr*2)%8+8)%8===0?stud:rail;
+      else if(yv===14)c=tier>1&&((along-2-fr*2)%8+8)%8===0?stud:rail;
       else if(yv>=3&&yv<=12&&(along+fr)%4===0)c='#3c3c3c';
       P(x,y,c);
     }
@@ -3058,11 +3060,10 @@ function draw(){
 
         if(TEX_PIXEL){
           // Tread scrolls at the real belt speed
-          const bs=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
-          const fr=Math.floor(at*bs*16)&3;
+          const tier=m.tier||1, fr=Math.floor(at*beltBaseSpeed()*beltTierMult(m)*16)&3;
           turn=beltTurn(m);
           ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
-          ctx.drawImage(turn?beltCornerSpr(fr,turn):beltSpr(fr),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
+          ctx.drawImage(turn?beltCornerSpr(fr,turn,tier):beltSpr(fr,tier),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
         } else {
         // Full dark surface
         ctx.fillStyle=BELT_BG; ctx.fillRect(px,py,ts,ts);
@@ -3105,9 +3106,9 @@ function draw(){
     }
   }
   // Belt items: drawn after every belt tile so none are clipped at an edge or covered by the next belt
-  const bSpd=(G.research.done.includes('logistics')?.15:.1)*perkMult().belt;
+  const bSpd=beltBaseSpeed();
   const bSub=Math.min(1,(now-lastTickMs)/tickInterval());
-  for(const[tile,m,tx,ty,turn]of beltQ)drawBeltItems(tile,m.dir,tx,ty,turn,ts,cx,cy,bSpd,bSub,'belt');
+  for(const[tile,m,tx,ty,turn]of beltQ)drawBeltItems(tile,m.dir,tx,ty,turn,ts,cx,cy,bSpd*beltTierMult(m),bSub,'belt');
 
   // Multi-tile machines
   const drawn=new Set();
@@ -3364,6 +3365,7 @@ function draw(){
     // Pixel sprite drawn for flow to the right (two tiles stacked), turned to the splitter's direction
     ctx.save(); ctx.translate(px+pw/2,py+ph/2); ctx.rotate(m.dir*Math.PI/2);
     ctx.drawImage(machineSpr('splitter',Math.floor(at/2)&3,true),-ts/2,-ts,ts+.5,ts*2+.5); ctx.restore();
+    if((m.tier||1)>1&&ts>16){const u=Math.max(1,Math.round(ts/24));ctx.drawImage(tierSpr(m.tier),Math.floor(px+2),Math.floor(py+2),9*u,7*u);}
   }
 
   // Pipes, auto-connect to neighbouring pipes and fluid machines, core tinted by fluid
@@ -3404,17 +3406,18 @@ function draw(){
       const as=Math.floor(ts*.34);
       ctx.drawImage(arrowSpr(m.dir,linked?MACH_COL.tunnel:'#666'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);
     }
+    if((m.tier||1)>1&&ts>16){const u=Math.max(1,Math.round(ts/24));ctx.drawImage(tierSpr(m.tier),Math.floor(px+2),Math.floor(py+2),9*u,7*u);}
   }
 
   // Items on splitter cells and at tunnel mouths, drawn over their sprites
   for(let ty=y0;ty<y1;ty++) for(let tx=x0;tx<x1;tx++){
     const tile=G.map[ty][tx]; if(!tile.items.length||tile.mid===null)continue;
     const m=G.machines[tile.mid]; if(!m)continue;
-    if(m.type==='splitter')drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,'belt');
+    if(m.type==='splitter')drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd*beltTierMult(m),bSub,'belt');
     else if(m.type==='tunnel'){
       const p=m.tunnelId!==null&&G.machines[m.tunnelId];
       const isExit=p&&((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1])<0;
-      drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd,bSub,isExit?'exit':'enter');
+      drawBeltItems(tile,m.dir,tx,ty,0,ts,cx,cy,bSpd*beltTierMult(m),bSub,isExit?'exit':'enter');
     }
   }
 
@@ -5037,7 +5040,8 @@ function runBelts(){
     if(m.type!=='belt'&&m.type!=='splitter'&&m.type!=='tunnel')continue;
     // No clamp at 1: the overshoot carries into the next tile (BELT_DONE absorbs float error, 10×0.1 < 1),
     // so each tile takes exactly its time and items never freeze at the edge for a tick
-    for(const it of tile.items)it.prog=Math.min(1+beltSpeed,it.prog+beltSpeed);
+    const sp=beltSpeed*beltTierMult(m);
+    for(const it of tile.items)it.prog=Math.min(1+sp,it.prog+sp);
   }
 
   // Transfer completed items
@@ -5164,6 +5168,11 @@ const INS_DEPOSIT_MS= 80;
 const INS_RETURN_MS = 800;
 // Upgraded inserters swing faster: T2 2.5×, T3 4× (a T2/T3 Miner outruns a T1 arm)
 const INS_TIER_SPEED={1:1,2:2.5,3:4};
+// Upgraded belts, splitters and tunnels carry items faster: T2 1.5×, T3 2×. Studs and rails show the tier
+const BELT_TIER_SPEED={1:1,2:1.5,3:2};
+const BELT_TIER_COL={1:'#f5a623',2:'#e53935',3:'#42a5f5'};
+function beltBaseSpeed(){return (G.research.done.includes('logistics')?.15:.1)*perkMult().belt;} // tiles per tick
+function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
 function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?INS_TIER_SPEED[m.tier||1]||1:1);}
 
 // ── Shared outputs ──
@@ -5830,6 +5839,8 @@ function machineRates(m){
   } else if(def.pumps){
     if(m.mineRes===def.pumps)R.out[def.pumps]=per(2)*tierMult;
     else R.notes.push('Place it on its pool');
+  } else if(BELT_TYPES.includes(m.type)){
+    R.notes.push(`Carries items at ${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s`);
   } else if(m.type==='inserter'||m.type==='long_inserter'){
     R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
   } else if(m.recipe&&RECIPES[m.recipe]){
@@ -6335,12 +6346,21 @@ const INS_TIER_COSTS={
   2:{iron_gear:2,circuit:1},
   3:{steel_plate:1,circuit:2},
 };
+const BELT_TIER_COSTS={ // per belt tile, splitter or tunnel
+  2:{iron_gear:1},
+  3:{steel_plate:1},
+};
 // Machines that take tier upgrades; module slots are only for the production machines
 const MODULE_TYPES=['miner','blast_furnace','electric_smelter','assembler','lab'];
-const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter'];
+const BELT_TYPES=['belt','splitter','tunnel'];
+const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES];
 const isInserter=t=>t==='inserter'||t==='long_inserter';
-function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:TIER_COSTS)[tier];}
-function tierBonus(type,tier){return isInserter(type)?`${INS_TIER_SPEED[tier]}× swing speed`:tier===3?'2× speed & yield':'1.5× speed & yield';}
+function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:TIER_COSTS)[tier];}
+function tierBonus(type,tier){
+  if(isInserter(type))return `${INS_TIER_SPEED[tier]}× swing speed`;
+  if(BELT_TYPES.includes(type))return `${BELT_TIER_SPEED[tier]}× belt speed`;
+  return tier===3?'2× speed & yield':'1.5× speed & yield';
+}
 function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
 // Everything a machine is worth: build cost, each upgrade step up to its tier, installed modules.
 // Demolish refunds this; paste, blueprints and undo rebuilds charge it.

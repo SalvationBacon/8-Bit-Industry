@@ -259,6 +259,32 @@ const r=await p.evaluate(async()=>{
     window.drawItem=orig;
     const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
     ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
+  // same, on belts of mixed tiers (T1/T2/T3 side by side)
+  { reset(); G.research.done=Object.keys(TECHS);
+    for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
+    put('belt',16,44,0); put('splitter',17,44,0); for(let x=18;x<22;x++)put('belt',x,44,0); put('chest',22,44);
+    for(const m of Object.values(G.machines))if(BELT_TYPES.includes(m.type))m.tier=1+(m.x+m.y)%3;
+    G.map[40][10].items=[{id:'eff_module',prog:0}];
+    G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5;
+    const pts=[]; const orig=drawItem; let frame=null;
+    window.drawItem=(c,id,x,y,sz)=>{if(id==='eff_module')frame.push([x,y]);};
+    let maxStep=0, missing=0, last=null, frames=0, still=0, maxStill=0;
+    for(let t=0;t<130;t++){ run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame=[]; draw(); frames++;
+        const inChest=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+        if(!frame.length){ if(!inChest)missing++; last=null; continue; }
+        const [x,y]=frame[0]; if(last){const d=Math.hypot(x-last[0],y-last[1])/(TILE*.5); maxStep=Math.max(maxStep,d); still=d<1e-6?still+1:0; maxStill=Math.max(maxStill,still);} last=[x,y]; }
+      T=t0; }
+    window.drawItem=orig;
+    const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+    ok('belt_item_smooth_mixed_tiers',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
+  // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
+  { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
+      let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};
+    const a=travel(1), b=travel(2), c=travel(3);
+    const w=machineWorth('belt',3);
+    ok('belt_tiers_faster',b<=a*0.75&&c<=a*0.55&&w.iron_plate===1&&w.iron_gear===1&&w.steel_plate===1,{a,b,c,w});
+    const bt=put('belt',10,52,0); bt.tier=3;
+    ok('belt_tier_rates',machineRates(bt).notes.some(n=>n.includes(`${fmtRate(beltBaseSpeed()*2*4)} tiles/s`)),machineRates(bt).notes); }
   // ── rotate / flip a copied layout before pasting
   { reset(); G.research.done=Object.keys(TECHS);
     const L=[{type:'belt',rx:0,ry:0,dir:0},{type:'inserter',rx:1,ry:0,dir:0},{type:'assembler',rx:2,ry:0,dir:0,recipe:'mk_gear'},{type:'splitter',rx:4,ry:0,dir:0}];

@@ -40,8 +40,10 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
   ok('drawer_open',await p.evaluate(()=>document.getElementById('tabDrawer').classList.contains('open')));
   await p.locator('.ditem:has-text("Chest")').scrollIntoViewIfNeeded(); await tapEl('.ditem:has-text("Chest")');
   ok('tool_chest',await p.evaluate(()=>activeTool==='chest'),await p.evaluate(()=>activeTool));
-  const spot=await p.evaluate(()=>{const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
-    const tx=Math.floor((G.cam.x+r.width*.3)/ts), ty=Math.floor((G.cam.y+r.height*.5)/ts); G.map[ty][tx]={type:0,res:null,mid:null,items:[]}; return{tx,ty};});
+  const spot=await p.evaluate(o=>{const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
+    let tx=Math.floor((G.cam.x+r.width*.3)/ts), ty=Math.floor((G.cam.y+r.height*.5)/ts);
+    if(tx===o.tx&&ty===o.ty)tx--; // the random map can put the ore tile here; it is needed again after the reload
+    G.map[ty][tx]={type:0,res:null,mid:null,items:[]}; return{tx,ty};},ore);
   await tapTile(spot.tx,spot.ty);
   ok('tap_moves_ghost_not_place',await p.evaluate(([x,y])=>G.map[y][x].mid===null,[spot.tx,spot.ty]));
   await tapEl('#buildConfirmBtn');
@@ -96,7 +98,8 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
   const t0=await p.evaluate(()=>G.stats.taps);
   await tapTile(ore.tx,ore.ty); for(let i=0;i<2;i++)await tapEl('#mineTapBtn');
   const t1=await p.evaluate(()=>G.stats.taps);
-  ok('no_double_input_after_reload',t1-t0===2,{t0,t1});
+  ok('no_double_input_after_reload',t1-t0===2,{t0,t1,diag:t1-t0===2?0:await p.evaluate(([x,y])=>{const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
+    const e=document.elementFromPoint(r.left+x*ts-G.cam.x+ts/2,r.top+y*ts-G.cam.y+ts/2);return{tile:G.map[y][x],popup:!document.getElementById('resInfo').classList.contains('hidden'),at:e&&(e.id||e.className||e.tagName),tool:activeTool,modal:!document.getElementById('mOverlay').classList.contains('hidden')};},[ore.tx,ore.ty])});
   for(const[k,v]of Object.entries(R))console.log(name.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
   console.log(name, errs.join('\n')||'no page errors'); await p.close();
 }
