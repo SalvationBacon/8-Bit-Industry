@@ -436,6 +436,31 @@ const r=await p.evaluate(async()=>{
     const okZ=!at[1].Pipes&&!at[1]['Clean Air']&&at[1].Power.join()==='burner,generator'&&at[2].Power.includes('combustion_gen')&&at[2]['Clean Air']
       &&at[3].Power.includes('lumen_panel')&&at[4].Power.includes('reactor')&&!at[4].Refining&&at[5].Mining.length===4;
     ok('build_menu_groups',!dupes.length&&!missing.length&&okZ,{dupes,missing,z1:Object.keys(at[1]),z2:at[2].Power}); }
+  // ── recipe book: every recipe and resource of the zone, search, item pages, icons that open them
+  { const z0=G.zone; reset(); G.zone=3; G.research.done=Object.keys(TECHS);
+    for(let y=10;y<12;y++)for(let x=10;x<12;x++){G.map[y][x].type=1;G.map[y][x].res='rare_earth';G.map[y+5][x].type=1;G.map[y+5][x].res='brine';}
+    rbFocus=null; rbHist=[]; rbBack=null; recipeSearch('',true); showPanel('recipes');
+    rbOpen=new Set(['mine','hand',...Object.keys(MDEFS)]); renderRecipesPanel();
+    const body=()=>document.getElementById('pRecipesBody').innerText;
+    const cards=document.querySelectorAll('#pRecipesBody .rb-card').length, recs=rbRecipes().length;
+    const allShown=cards>=recs&&body().includes('Separate Rare Earth')&&body().includes('Brine Pump on a brine pool');
+    const fnTime=rbCard({...RECIPES.fn_iron,id:'fn_iron',secs:RECIPES.fn_iron.time/4}).includes('4s per craft');
+    document.getElementById('rbSearch').value='oxide'; recipeSearch('oxide'); const srch=body();
+    const searchOk=srch.includes('Rare Earth Oxide')&&srch.includes('Separator')&&srch.includes('Magnet')&&srch.includes('(piped)');
+    recipeSearch('',true); G.inv.re_oxide=2; showPanel('inv'); document.querySelector('#pInvBody .inv-chip[onclick*="re_oxide"]')?.click();
+    const fromInv=openPanel==='recipes'&&rbFocus==='re_oxide';
+    document.querySelector('#pRecipesBody .rb-card img.ico[data-i="magnet"]')?.click(); const hop=rbFocus==='magnet';
+    rbGoBack(); const back1=rbFocus==='re_oxide'; rbGoBack(); const back2=openPanel==='inv';
+    const asm=put('assembler',20,20); asm.recipe='z3_magnet'; openMachinePanel(asm);
+    const ic=[...document.querySelectorAll('#pMachBody img.ico[data-i]')].find(i=>!i.closest('button,[onclick]'));
+    ic?.click(); const fromMach=openPanel==='recipes'&&rbFocus===ic?.dataset.i; rbGoBack(); const toMach=openPanel==='machine';
+    closePanel(openPanel); G.zone=z0;
+    ok('recipe_book',allShown&&fnTime&&searchOk&&fromInv&&hop&&back1&&back2&&fromMach&&toMach,{cards,recs,allShown,fnTime,searchOk,fromInv,hop,back1,back2,fromMach,toMach}); }
+  // ── tutorial text that says BUILD → group names a real group that holds that machine
+  { const bad=[]; const z0=G.zone;
+    for(const [z,t] of Object.entries(TUTORIALS))for(const st of t.steps){const m=st.text.match(/BUILD → (\w[\w ]*?) → \[\[(\w+)\]\]/); if(!m)continue;
+      G.zone=+z; const g=drawerCats('build').find(c=>c.label===m[1]); if(!g||!g.items.some(i=>i.id===m[2]))bad.push(m[0]);}
+    G.zone=z0; ok('tutorial_menu_names',!bad.length,bad); }
   // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
     res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);

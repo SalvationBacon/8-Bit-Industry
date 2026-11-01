@@ -38,6 +38,9 @@ https://salvationbacon.github.io/8-Bit-Industry/
 ## Music
 Every zone has its own playlist (3 or 4 tracks, plus a title theme), composed in the browser as it plays: each track keeps its main tune but the rest changes on every play. ☰ menu → Settings shows what's playing, with NEXT to skip.
 
+## Recipe Book
+☰ menu → Recipes lists every recipe and resource in your zone, with a search box. Tap any item icon in a menu to see how it is made and what uses it.
+
 ## Backups
 ☰ menu → 🛟 Backup (or BACKUP on the title screen): export a code or file holding your game, save slots and Stardust, and import it on any device.
 

@@ -99,6 +99,26 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .zone-tab.locked{opacity:.35}
 #hudRes{display:flex;gap:4px;align-items:center;padding:0 4px;flex-shrink:0}
 .hres{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.rb-search{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border)}
+.rb-search input{flex:1;min-width:0;font-family:var(--font);font-size:16px;padding:8px;background:var(--bg3);color:var(--text);border:1px solid var(--border2);outline:none}
+.rb-search input:focus{border-color:var(--amber)}
+.rb-search button{font-family:var(--font);background:transparent;border:1px solid var(--border2);color:var(--text2);padding:0 10px;cursor:pointer}
+.rb-sec{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--amber);letter-spacing:1px;margin:8px 0 4px;padding:6px 2px;border-bottom:1px solid var(--border);cursor:pointer}
+.rb-sec .n{color:var(--text3);margin-left:auto}
+.rb-card{padding:7px 8px;margin-bottom:5px;border:1px solid var(--border2);background:var(--bg3)}
+.rb-card.locked{opacity:.55}
+.rb-head{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--text);margin-bottom:4px;flex-wrap:wrap}
+.rb-head .w{color:var(--text3);font-size:var(--f5);margin-left:auto}
+.rb-row{font-size:var(--f5);color:var(--text2);line-height:1.8}
+.rb-chip{display:inline-flex;align-items:center;gap:2px;white-space:nowrap;margin-right:6px}
+.rb-chip b{color:var(--amber);font-weight:normal}
+.rb-meta{font-size:var(--f4);color:var(--text3);margin-top:3px}
+.rb-lock{font-size:var(--f5);color:var(--red);margin-top:3px}
+.rb-match{display:flex;align-items:center;gap:8px;padding:7px 8px;margin-bottom:4px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-size:var(--f6)}
+.rb-match .w{color:var(--text3);font-size:var(--f4);margin-left:auto;text-align:right}
+.rb-big{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.rb-big img.ico{width:40px;height:40px}
+.inv-chip{cursor:pointer}
 .hres-tap{cursor:pointer;border:1px solid var(--border2);padding:2px 4px;margin:-3px 0}
 .hres-tap:active{background:var(--bg3)}
 .hres-icon{font-size:14px;line-height:1}
@@ -619,6 +639,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 
 <div id="pRecipes" class="spanel">
   <div class="ph"><span class="ph-title"><span data-ui="recipes"></span>RECIPE BOOK</span><button class="ph-x" onclick="togglePanel('recipes')">✕</button></div>
+  <div class="rb-search"><input id="rbSearch" type="text" enterkeyhint="search" placeholder="Search..." autocomplete="off" spellcheck="false" oninput="recipeSearch(this.value)"><button id="rbClear" class="hidden" onclick="recipeSearch('',true)">✕</button></div>
   <div class="pbody" id="pRecipesBody"></div>
 </div>
 
@@ -2484,7 +2505,7 @@ function stageSpr(name){
 function anySpr(id){return itemSpr(id)||(MDEFS[id]&&MACHINE_ART[id]?machineSpr(id,0,false):null);}
 // Icon for an item or machine id, as HTML: pixel sprite, or emoji when textures are off
 function iconHtml(id,fallback){
-  if(TEX_PIXEL){const s=anySpr(id); if(s)return `<img class="ico" src="${sprURL('ico:'+id,s)}" alt="">`;}
+  if(TEX_PIXEL){const s=anySpr(id); if(s)return `<img class="ico" data-i="${id}" src="${sprURL('ico:'+id,s)}" alt="">`;}
   return ITEMS[id]?.icon||MDEFS[id]?.icon||fallback||'·';
 }
 // Draw a machine sprite into its footprint. A non-square machine lying on its side (facing down or up)
@@ -6332,10 +6353,11 @@ function renderInvPanel(){
     if(!items.length)continue;
     html+=`<span class="sec-label">${label.toUpperCase()}</span><div class="inv-grid">`;
     for(const[id,it]of items)
-      html+=`<div class="inv-chip">${iconHtml(id)}<span style="font-size:var(--f6);color:var(--amber)">${fmt(G.inv[id])}</span><span class="n">${it.name}</span></div>`;
+      html+=`<div class="inv-chip" onclick="showRecipeFor('${id}')">${iconHtml(id)}<span style="font-size:var(--f6);color:var(--amber)">${fmt(G.inv[id])}</span><span class="n">${it.name}</span></div>`;
     html+='</div>';
   }
   if(!html)html=`<div style="color:var(--text3);font-size:var(--f6);text-align:center;padding:20px;line-height:2.2">Nothing yet.<br>Tap any ore deposit on the map to mine.</div>`;
+  else html+=`<div style="font-size:var(--f4);color:var(--text3);margin-top:8px">Tap an item to see how it is made and what uses it.</div>`;
   setHtml(document.getElementById('pInvBody'),html);
 }
 
@@ -8324,49 +8346,167 @@ function renderAchievePanel(){
   setHtml(el,html);
 }
 
+// ── Recipe Book (v2.0.17) ──
+// Every recipe this zone can run (machines and hand crafts), how raw resources are mined or pumped,
+// a search box, and an item page: what makes it, what uses it, and its other uses (fuel, food, machine
+// costs, research, the launch). Tapping an item icon in any panel opens its page (showRecipeFor).
+let rbQuery='', rbFocus=null, rbOpen=new Set(), rbBack=null, rbHist=[], rbRes={map:null,w:0,set:null};
+const RB_PUMPED={oil:['crude_oil','oil_pump'],brine:['brine','brine_pump'],enzymes:['enzymes','enzyme_pump']};
+function rbName(id){return ITEMS[id]?.name||MDEFS[id]?.name||id;}
+function rbChip(id,n,suffix){return `<span class="rb-chip">${n!=null?`<b>${fmt(n)}</b>`:''}${iconHtml(id)}${rbName(id)}${suffix||''}</span>`;}
+function rbResHere(){ // deposit types on this map (cached until the map changes)
+  if(rbRes.map!==G.map||rbRes.w!==MAP_W){const set=new Set(); for(const row of G.map)for(const t of row)if(t.res)set.add(t.res); rbRes={map:G.map,w:MAP_W,set};}
+  return rbRes.set;
+}
+function rbRecipes(){ // every recipe usable in this zone, machines then hand crafts
+  const list=Object.entries(RECIPES).filter(([id])=>zoneRecipeOk(id)).map(([id,r])=>({id,name:r.name,machine:r.machine,secs:r.time/4,in:r.in,out:r.out,fluid:r.fluid,minPressure:r.minPressure,unlock:r.unlock}));
+  for(const h of HAND_CRAFTS)if(zoneRecipeOk(h.id))list.push({id:'hand:'+h.id,name:h.name,machine:'hand',clicks:h.clicks,in:h.in,out:h.out,unlock:h.unlock});
+  return list;
+}
+function rbLock(r){
+  const done=G.research.done;
+  if(r.unlock&&!done.includes(r.unlock))return TECHS[r.unlock]?.name||r.unlock;
+  const mu=r.machine!=='hand'&&MDEFS[r.machine]?.unlock;
+  if(mu&&!done.includes(mu))return TECHS[mu]?.name||mu;
+  return null;
+}
+function rbCard(r){
+  const lock=rbLock(r), hand=r.machine==='hand';
+  const ins=Object.entries(r.in||{}).map(([k,v])=>rbChip(k,v)).join('');
+  const fl=Object.entries(r.fluid||{}).map(([k,v])=>rbChip(k,v,' (piped)')).join('');
+  const outs=Object.entries(r.out).map(([k,v])=>rbChip(k,v)).join('');
+  const meta=hand?`Hand craft: ${r.clicks} taps in the CRAFT tab`
+    :`${fmtRate(r.secs)}s per craft at T1 · makes ${Object.entries(r.out).map(([k,v])=>`${fmtRate(v*60/r.secs)} ${rbName(k)}`).join(', ')} a minute${r.minPressure?` · needs ${r.minPressure}%+ pipe pressure`:''}`;
+  return `<div class="rb-card${lock?' locked':''}">
+    <div class="rb-head">${hand?uiIcon('craft'):iconHtml(r.machine)}<span>${r.name}</span><span class="w">${hand?'Hand':MDEFS[r.machine]?.name||r.machine}</span></div>
+    <div class="rb-row">${ins}${fl}${ins||fl?' → ':''}${outs}</div>
+    <div class="rb-meta">${meta}</div>
+    ${lock?`<div class="rb-lock">🔒 Needs research: ${lock}</div>`:''}
+  </div>`;
+}
+function rbSources(id){ // ways to get an item that are not recipes: mining and pumping
+  const out=[], here=rbResHere();
+  for(const[res,[item,pump]]of Object.entries(RB_PUMPED))if(item===id&&here.has(res))
+    out.push(`${iconHtml(pump)} <b>${MDEFS[pump].name}</b> on a ${res} pool: 60 a minute at T1${res==='oil'?'':', into a pipe network'}`);
+  if(here.has(id)&&!RB_PUMPED[id])
+    out.push(`${iconHtml('miner')} <b>Miner</b> on a ${rbName(id)} deposit: ${id==='radiant_dust'?'30':'60'} a minute at T1. You can also tap the deposit to mine by hand.`);
+  return out;
+}
+function rbOtherUses(id){ // uses outside recipes
+  const out=[];
+  const fuel={coal:['burner','generator','stone_furnace','blast_furnace'],refined_fuel:['combustion_gen','scrubber'],lum_rod:['reactor'],nutrient:Object.keys(MDEFS).filter(t=>MDEFS[t].living)}[id];
+  if(fuel){const ok=fuel.filter(t=>DRAWER_DEFS.build.some(c=>c.items.some(i=>i.id===t&&(!i.zones||i.zones.includes(G.zone)))));
+    if(ok.length)out.push(`${id==='nutrient'?'Food for':'Fuel for'} ${ok.map(t=>rbChip(t)).join('')}`);}
+  const builds=Object.keys(MDEFS).filter(t=>MDEFS[t].cost?.[id]&&drawerCats('build').some(c=>c.items.some(i=>i.id===t)));
+  if(builds.length)out.push(`Builds ${builds.map(t=>rbChip(t,MDEFS[t].cost[id])).join('')}`);
+  const techs=Object.entries(TECHS).filter(([tid,t])=>t.cost?.[id]&&!G.research.done.includes(tid));
+  if(techs.length)out.push(`Research: ${techs.map(([,t])=>`${t.name} (${fmt(t.cost[id])})`).join(', ')}`);
+  const launch=rocketReqs().find(r=>r.id===id);
+  if(launch)out.push(`Launch: ${fmt(launch.need)} needed (you have ${fmt(launch.have)})`);
+  if(G.zone===5&&SING_REQS[id])out.push(`The Singularity needs ${SING_REQS[id]}`);
+  return out;
+}
+function rbFocusHtml(id){
+  const recs=rbRecipes(), made=recs.filter(r=>r.out[id]), used=recs.filter(r=>r.in?.[id]||r.fluid?.[id]);
+  const it=ITEMS[id], md=MDEFS[id];
+  let html=`<div class="rb-big">${iconHtml(id)}<div><div style="font-size:var(--f8);color:var(--amber)">${rbName(id)}</div>${it?.desc?`<div style="font-size:var(--f5);color:var(--text2);line-height:1.8;margin-top:4px">${it.desc}</div>`:''}</div></div>`;
+  if(md&&!it){ // a machine: what it costs, and what it makes
+    const lock=md.unlock&&!G.research.done.includes(md.unlock);
+    html+=`<span class="sec-label">BUILD COST</span><div class="rb-row" style="margin-bottom:6px">${Object.entries(md.cost||{}).map(([k,v])=>rbChip(k,v)).join('')}</div>
+      <div class="rb-meta" style="margin-bottom:8px">${md.power>0?`Uses ${md.power} kW`:md.power<0?`Makes ${-md.power} kW`:'Needs no power'}${md.desc?` · ${md.desc}`:''}</div>
+      ${lock?`<div class="rb-lock" style="margin-bottom:8px">🔒 Needs research: ${TECHS[md.unlock]?.name||md.unlock}</div>`:''}`;
+    const runs=recs.filter(r=>r.machine===id);
+    if(runs.length)html+=`<span class="sec-label">RECIPES</span>${runs.map(rbCard).join('')}`;
+    const src=Object.entries(RB_PUMPED).find(([,[,p]])=>p===id);
+    if(src)html+=`<div class="rb-meta">Pumps ${rbName(src[1][0])} from a ${src[0]} pool.</div>`;
+    if(id==='miner')html+=`<div class="rb-meta">Mines the deposit it stands on: ${[...rbResHere()].filter(r=>!RB_PUMPED[r]).map(r=>rbChip(r)).join('')}</div>`;
+    return html;
+  }
+  const src=rbSources(id);
+  html+=`<span class="sec-label">HOW TO GET IT</span>`;
+  if(!src.length&&!made.length)html+=`<div class="rb-meta" style="margin-bottom:8px">Not available in this zone.</div>`;
+  for(const l of src)html+=`<div class="rb-card"><div class="rb-row">${l}</div></div>`;
+  html+=made.map(rbCard).join('');
+  const other=rbOtherUses(id);
+  if(used.length||other.length){
+    html+=`<span class="sec-label" style="margin-top:10px">WHAT USES IT</span>`;
+    for(const l of other)html+=`<div class="rb-card"><div class="rb-row">${l}</div></div>`;
+    html+=used.map(rbCard).join('');
+  }
+  return html;
+}
+function rbMatches(q){ // items and machines whose name contains q, best first
+  q=q.toLowerCase();
+  const recs=rbRecipes(), here=rbResHere();
+  const known=new Set(); for(const r of recs){for(const k of Object.keys(r.out))known.add(k);for(const k of Object.keys(r.in||{}))known.add(k);for(const k of Object.keys(r.fluid||{}))known.add(k);}
+  for(const r of here)known.add(RB_PUMPED[r]?RB_PUMPED[r][0]:r);
+  for(const c of drawerCats('build'))for(const i of c.items)known.add(i.id);
+  const ids=[...known].filter(id=>rbName(id).toLowerCase().includes(q));
+  return ids.sort((a,b)=>(rbName(b).toLowerCase().startsWith(q)-rbName(a).toLowerCase().startsWith(q))||rbName(a).localeCompare(rbName(b))).slice(0,20);
+}
 function renderRecipesPanel(){
   const el=document.getElementById('pRecipesBody'); if(!el)return;
-  const done=new Set(G.research.done);
-  // Group recipes by machine
-  const machineGroups={};
-  for(const[rid,rec]of Object.entries(RECIPES)){
-    const mid=rec.machine;
-    if(!machineGroups[mid])machineGroups[mid]=[];
-    if(zoneRecipeOk(rid))machineGroups[mid].push({id:rid,...rec});
-  }
-  // Also add hand crafts
-  machineGroups['hand']=HAND_CRAFTS.filter(hc=>zoneRecipeOk(hc.id)).map(hc=>({id:hc.id,name:hc.name,machine:'hand',time:hc.clicks*0.5,in:hc.in,out:hc.out,unlock:hc.unlock}));
-
-  const machOrder=['hand','stone_furnace','blast_furnace','electric_smelter','assembler','lab'];
-  const machLabels={hand:'✋ Hand Craft',stone_furnace:'⚱️ Stone Furnace',blast_furnace:'🔥 Blast Furnace',electric_smelter:'🌩️ Electric Smelter',assembler:'🏗️ Assembler',lab:'🔬 Research Lab'};
   let html='';
-  for(const mid of machOrder){
-    const recipes=machineGroups[mid]; if(!recipes||!recipes.length)continue;
-    const mdef=MDEFS[mid];
-    const machUnlocked=!mdef?.unlock||done.has(mdef.unlock);
-    html+=`<div style="font-size:var(--f6);color:var(--amber);letter-spacing:2px;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${machLabels[mid]||mid}</div>`;
-    for(const r of recipes){
-      const recUnlocked=!r.unlock||done.has(r.unlock);
-      const visible=mid==='hand'?recUnlocked:machUnlocked&&recUnlocked;
-      const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${iconHtml(k)}${ITEMS[k]?.name||k}`).join(' + ');
-      const outs=Object.entries(r.out).map(([k,v])=>`${v}× ${iconHtml(k)}${ITEMS[k]?.name||k}`).join(' + ');
-      if(!visible){
-        html+=`<div style="padding:6px 8px;margin-bottom:3px;border:1px solid var(--border);background:var(--bg3);opacity:0.4">
-          <span style="font-size:var(--f6);color:var(--text3)">🔒 Locked${r.unlock?`, requires ${TECHS[r.unlock]?.name||r.unlock}`:''}</span>
-        </div>`;
-      } else {
-        html+=`<div style="padding:7px 8px;margin-bottom:4px;border:1px solid var(--border2);background:var(--bg3)">
-          <div style="font-size:var(--f7);color:var(--text);margin-bottom:4px">${r.name}</div>
-          <div style="font-size:var(--f6);color:var(--blue);margin-bottom:2px">In: ${ins}</div>
-          <div style="font-size:var(--f6);color:var(--amber)">→ ${outs}</div>
-          ${mid!=='hand'?`<div style="font-size:var(--f6);color:var(--text3);margin-top:2px">⏱ ${r.time}s</div>`:''}
-        </div>`;
-      }
+  if(rbFocus){
+    const back=rbHist.length||rbBack?`<button class="mini-btn teal" onclick="rbGoBack()">← BACK</button>`:'';
+    html+=`<div style="display:flex;gap:6px;margin-bottom:10px">${back}<button class="mini-btn amber" onclick="rbFocus=null;rbBack=null;rbHist=[];renderRecipesPanel()">${rbQuery?'RESULTS':'ALL RECIPES'}</button></div>`+rbFocusHtml(rbFocus);
+  } else if(rbQuery){
+    const m=rbMatches(rbQuery), recs=rbRecipes();
+    if(!m.length)html=`<div style="font-size:var(--f6);color:var(--text3);text-align:center;padding:16px;line-height:2">Nothing called "${rbQuery.replace(/[<>&"]/g,'')}" in this zone.</div>`;
+    if(m.length===1)html=rbFocusHtml(m[0]); // one match: straight to its page
+    else for(const id of m){
+      const made=recs.filter(r=>r.out[id]), src=rbSources(id);
+      const how=MDEFS[id]&&!ITEMS[id]?'Machine':made.length?made.slice(0,2).map(r=>r.machine==='hand'?'Hand':MDEFS[r.machine]?.name).filter((v,i,a)=>a.indexOf(v)===i).join(', '):src.length?'Mined or pumped':'';
+      html+=`<div class="rb-match" onclick="showRecipeFor('${id}',true)">${iconHtml(id)}<span>${rbName(id)}</span><span class="w">${how}</span></div>`;
+    }
+  } else {
+    const recs=rbRecipes();
+    html+=`<div style="font-size:var(--f5);color:var(--text3);line-height:1.8;margin-bottom:6px">Search above, or tap any item icon in a menu to see how it is made.</div>`;
+    const sec=(key,icon,label,body,n)=>{const open=rbOpen.has(key);
+      return `<div class="rb-sec" onclick="rbToggle('${key}')">${icon}<span>${label}</span><span class="n">${n} ${open?'▾':'▸'}</span></div>${open?body:''}`;};
+    const res=[...rbResHere()].map(r=>RB_PUMPED[r]?RB_PUMPED[r][0]:r);
+    html+=sec('mine',iconHtml('miner'),'MINING & PUMPS',res.map(id=>`<div class="rb-card"><div class="rb-row">${rbSources(id).join('<br>')||rbChip(id)}</div></div>`).join(''),res.length);
+    const hand=recs.filter(r=>r.machine==='hand');
+    if(hand.length)html+=sec('hand',uiIcon('craft'),'HAND CRAFT',hand.map(rbCard).join(''),hand.length);
+    const order=[...new Set(DRAWER_DEFS.build.flatMap(c=>c.items.map(i=>i.id)))];
+    for(const mid of order){
+      const list=recs.filter(r=>r.machine===mid); if(!list.length)continue;
+      html+=sec(mid,iconHtml(mid),MDEFS[mid].name.toUpperCase(),list.map(rbCard).join(''),list.length);
     }
   }
-  if(!html)html='<div style="font-size:var(--f6);color:var(--text3);text-align:center;padding:12px">No recipes yet.</div>';
   setHtml(el,html);
 }
+function rbToggle(k){if(rbOpen.has(k))rbOpen.delete(k);else rbOpen.add(k);renderRecipesPanel();}
+function recipeSearch(v,clear){
+  rbQuery=String(v||'').trim(); rbFocus=null; rbBack=null; rbHist=[];
+  const inp=document.getElementById('rbSearch'); if(clear&&inp){inp.value='';}
+  document.getElementById('rbClear')?.classList.toggle('hidden',!rbQuery);
+  renderRecipesPanel();
+  const b=document.getElementById('pRecipesBody'); if(b)b.scrollTop=0;
+}
+// Open the Recipe Book on one item or machine. From another panel, BACK returns to it.
+function showRecipeFor(id,fromBook){
+  if(!ITEMS[id]&&!MDEFS[id])return;
+  if(openPanel!=='recipes'){rbBack=openPanel?{panel:openPanel,inspect:inspectId}:null; rbHist=[];}
+  else if(rbFocus&&rbFocus!==id)rbHist.push(rbFocus); // browsing from item to item: BACK walks back through them
+  rbFocus=id;
+  if(openPanel!=='recipes')showPanel('recipes'); else renderRecipesPanel();
+  const b=document.getElementById('pRecipesBody'); if(b)b.scrollTop=0;
+}
+function rbGoBack(){
+  if(rbHist.length){rbFocus=rbHist.pop();renderRecipesPanel();return;}
+  const bk=rbBack; rbBack=null; rbFocus=null; if(!bk){renderRecipesPanel();return;}
+  if(bk.panel==='machine'&&G.machines[bk.inspect])openMachinePanel(G.machines[bk.inspect]); else showPanel(bk.panel);
+}
+// Tap an item icon anywhere in a panel or popup to open its recipe page. Icons inside buttons and
+// cards that already do something on tap are left alone.
+document.addEventListener('click',e=>{
+  const ic=e.target&&e.target.closest&&e.target.closest('img.ico[data-i]'); if(!ic||!G)return;
+  if(ic.closest('button,[onclick],.ditem,#invStrip,#hud,#tabBar,#tabDrawer,input,#sTitle'))return;
+  if(!ic.closest('.spanel,#mOverlay,#tutHint,#toolTip'))return;
+  if(ic.closest('#mOverlay'))closeModal();
+  showRecipeFor(ic.dataset.i);
+});
 
 // ═══════════════════════════════════════════════════
 //  TUTORIAL
@@ -8393,17 +8533,17 @@ const TUTORIALS={
      tally:[['iron_plate',3]], done:()=>(G.inv.iron_plate||0)>=3},
     {text:'Now craft [[iron_gear]] Iron Gears (2 plates each). Almost every machine needs them.',
      tally:[['iron_gear',2]], done:()=>(G.inv.iron_gear||0)>=2},
-    {text:'Open 🏗️ BUILD → Extract → [[burner]] Burner. Move the ghost onto the map, then press ✓ PLACE.',
+    {text:'Open 🏗️ BUILD → Power → [[burner]] Burner. Move the ghost onto the map, then press ✓ PLACE.',
      done:()=>hasM('burner')},
     {text:'Tap your Burner to open it, then feed it [[coal]] coal. Burners turn coal into power.',
      done:()=>machinesOf('burner').some(m=>(m.inBuf.coal||0)>0)},
-    {text:'Power is on! BUILD → Extract → [[miner]] Miner. Place it on a [[coal]] COAL deposit. It mines on its own.',
+    {text:'Power is on! BUILD → Mining → [[miner]] Miner. Place it on a [[coal]] COAL deposit. It mines on its own.',
      done:()=>machinesOf('miner').some(m=>m.mineRes==='coal')},
     {text:'Place an [[inserter]] Inserter between the Miner and the Burner, arrow pointing at the Burner. Use ↻ to rotate before placing.',
      done:()=>hasM('inserter')&&machinesOf('burner').some(b=>(b.inBuf.coal||0)>=1)},
     {text:'Coal now flows by itself. Place another [[miner]] Miner on an [[iron_ore]] Iron Ore deposit.',
      done:()=>machinesOf('miner').some(m=>m.mineRes==='iron_ore')},
-    {text:'BUILD → Processing → [[stone_furnace]] Stone Furnace. Place it near the iron miner.',
+    {text:'BUILD → Smelting → [[stone_furnace]] Stone Furnace. Place it near the iron miner.',
      done:()=>hasM('stone_furnace')},
     {text:'Feed the Furnace iron ore AND coal with Inserters. Tap it and pick "Smelt Iron". Its output arrow drops plates straight onto a belt.',
      done:()=>machinesOf('stone_furnace').some(m=>m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
