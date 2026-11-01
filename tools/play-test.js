@@ -315,6 +315,18 @@ const r=await p.evaluate(async()=>{
     upgradeMachine(lb.id); const locked=lb.tier===undefined||lb.tier===1;
     G.research.done.push('logistics'); upgradeMachine(lb.id);
     ok('belt_upgrade_needs_logistics',locked&&lb.tier===2,{tier:lb.tier}); }
+  // ── machines: every recipe is whole seconds with clean per-minute rates, and tiers are ×1 / ×2 / ×4 speed
+  { const NICE=[0.5,0.75,1,1.5,2,2.5,3,3.75,4,5,6,7.5,10,12,15,20,30,45,60,90,120,180,240], bad=[];
+    for(const[id,r]of Object.entries(RECIPES)){const c=240/r.time; if(r.time%4)bad.push(id+' time');
+      for(const[k,n]of Object.entries({...r.in,...(r.fluid||{}),...r.out}))if(!NICE.some(v=>Math.abs(v-n*c)<1e-9))bad.push(id+' '+k);}
+    ok('recipes_clean_rates',!bad.length,bad);
+    const r={};
+    for(const[type,rid]of [['stone_furnace','fn_iron'],['electric_smelter','es_iron'],['assembler','mk_gear']])for(const tier of [1,2,3]){
+      reset(); power(2,2); const m=put(type,20,20); m.recipe=rid; m.tier=tier; const rec=RECIPES[rid], k=Object.keys(rec.out)[0]; let n=0;
+      for(let t=0;t<480;t++){for(const[i,q]of Object.entries(rec.in))m.inBuf[i]=50; run(1); n+=m.outBuf[k]||0; m.outBuf[k]=0;}
+      r[`${rid}_T${tier}`]=n/2; r[`${rid}_T${tier}_panel`]=machineRates(m).out[k]; }
+    ok('machine_tiers_x1_x2_x4',r.fn_iron_T1===15&&r.fn_iron_T2===30&&r.fn_iron_T3===60&&r.es_iron_T1===60&&r.es_iron_T3===240&&r.mk_gear_T2===120&&r.mk_gear_T3===240
+      &&Object.keys(r).filter(k=>!k.endsWith('panel')).every(k=>Math.abs(r[k]-r[k+'_panel'])<0.01),r); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};

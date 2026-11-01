@@ -485,7 +485,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.8 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.9 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -653,7 +653,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.8';
+const VER      = '2.0.9';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1002,82 +1002,82 @@ const RECIPES = {
   // Blast Furnace, needs coal, 2× speed
   bf_iron:    {name:'Smelt Iron',       machine:'blast_furnace', time:8,  in:{iron_ore:2,coal:1},                out:{iron_plate:1}},
   bf_copper:  {name:'Smelt Copper',     machine:'blast_furnace', time:8,  in:{copper_ore:2,coal:1},              out:{copper_plate:1}},
-  bf_steel:   {name:'Smelt Steel',      machine:'blast_furnace', time:16, in:{iron_plate:5,coal:2},              out:{steel_plate:1}},
+  bf_steel:   {name:'Smelt Steel',      machine:'blast_furnace', time:16, in:{iron_plate:4,coal:2},              out:{steel_plate:1}},
   bf_prop:    {name:'Coal Propellant',  machine:'blast_furnace', time:20, in:{coal:10,stone:5},                  out:{r_propellant:1},  unlock:'rocket_tech'},
-  // Electric Smelter, no coal, 3× speed, needs power
-  es_iron:    {name:'Smelt Iron',       machine:'electric_smelter', time:6,  in:{iron_ore:2},                   out:{iron_plate:1}},
-  es_copper:  {name:'Smelt Copper',     machine:'electric_smelter', time:6,  in:{copper_ore:2},                 out:{copper_plate:1}},
-  es_steel:   {name:'Smelt Steel',      machine:'electric_smelter', time:10, in:{iron_plate:5},                 out:{steel_plate:1}},
-  es_prop:    {name:'Coal Propellant',  machine:'electric_smelter', time:14, in:{coal:10,stone:5},              out:{r_propellant:1},  unlock:'rocket_tech'},
+  // Electric Smelter, no coal, 4× a Stone Furnace (2× a Blast Furnace), needs power
+  es_iron:    {name:'Smelt Iron',       machine:'electric_smelter', time:4,  in:{iron_ore:2},                   out:{iron_plate:1}},
+  es_copper:  {name:'Smelt Copper',     machine:'electric_smelter', time:4,  in:{copper_ore:2},                 out:{copper_plate:1}},
+  es_steel:   {name:'Smelt Steel',      machine:'electric_smelter', time:8, in:{iron_plate:4},                 out:{steel_plate:1}},
+  es_prop:    {name:'Coal Propellant',  machine:'electric_smelter', time:20, in:{coal:10,stone:5},              out:{r_propellant:1},  unlock:'rocket_tech'},
   // Assembler
   mk_gear:    {name:'Iron Gear',        machine:'assembler', time:4,  in:{iron_plate:2},                     out:{iron_gear:1},    unlock:'automation'},
-  mk_wire:    {name:'Copper Wire',      machine:'assembler', time:2,  in:{copper_plate:1},                   out:{copper_wire:2},   unlock:'automation'},
+  mk_wire:    {name:'Copper Wire',      machine:'assembler', time:4,  in:{copper_plate:1},                   out:{copper_wire:2},   unlock:'automation'},
   mk_rod:     {name:'Iron Rod',         machine:'assembler', time:4,  in:{iron_plate:1},                     out:{iron_rod:2},      unlock:'automation'},
   mk_circuit: {name:'Circuit Board',    machine:'assembler', time:8,  in:{iron_plate:1,copper_wire:3},       out:{circuit:1},       unlock:'automation'},
   mk_engine:  {name:'Engine Block',     machine:'assembler', time:16, in:{iron_gear:2,iron_rod:2},           out:{engine:1},        unlock:'steel'},
-  mk_speed_mod:{name:'Speed Module',   machine:'assembler', time:20, in:{circuit:3,iron_gear:2},             out:{speed_module:1},  unlock:'electronics'},
-  mk_prod_mod: {name:'Prod. Module',   machine:'assembler', time:20, in:{circuit:4,copper_wire:4},           out:{prod_module:1},   unlock:'electronics'},
-  mk_eff_mod:  {name:'Eff. Module',    machine:'assembler', time:20, in:{circuit:3,iron_rod:3},              out:{eff_module:1},    unlock:'electronics'},
-  mk_chassis: {name:'Rocket Chassis',   machine:'assembler', time:30, in:{steel_plate:10,iron_gear:5,engine:2},       out:{r_chassis:1},   unlock:'rocket_tech'},
-  mk_computer:{name:'Flight Computer',  machine:'assembler', time:30, in:{circuit:8,copper_wire:4},          out:{r_computer:1},   unlock:'rocket_tech'},
-  mk_frame:   {name:'Struct. Frame',    machine:'assembler', time:20, in:{steel_plate:8,iron_rod:6},         out:{r_frame:1},      unlock:'rocket_tech'},
+  mk_speed_mod:{name:'Speed Module',   machine:'assembler', time:24, in:{circuit:3,iron_gear:2},             out:{speed_module:1},  unlock:'electronics'},
+  mk_prod_mod: {name:'Prod. Module',   machine:'assembler', time:16, in:{circuit:4,copper_wire:4},           out:{prod_module:1},   unlock:'electronics'},
+  mk_eff_mod:  {name:'Eff. Module',    machine:'assembler', time:24, in:{circuit:3,iron_rod:3},              out:{eff_module:1},    unlock:'electronics'},
+  mk_chassis: {name:'Rocket Chassis',   machine:'assembler', time:40, in:{steel_plate:10,iron_gear:5,engine:2},       out:{r_chassis:1},   unlock:'rocket_tech'},
+  mk_computer:{name:'Flight Computer',  machine:'assembler', time:32, in:{circuit:8,copper_wire:4},          out:{r_computer:1},   unlock:'rocket_tech'},
+  mk_frame:   {name:'Struct. Frame',    machine:'assembler', time:16, in:{steel_plate:8,iron_rod:6},         out:{r_frame:1},      unlock:'rocket_tech'},
   // Lab
   sci_r:      {name:'Field Notes',       machine:'lab', time:8,  in:{iron_gear:1,copper_wire:2},              out:{sci_red:1}},
-  sci_g:      {name:'Circuit Diagrams',  machine:'lab', time:10, in:{circuit:1,iron_rod:2},                   out:{sci_green:1},  unlock:'logistics'},
-  sci_b:      {name:'Adv. Schematics',   machine:'lab', time:15, in:{circuit:2,steel_plate:1,copper_wire:3},  out:{sci_blue:1},   unlock:'electronics'},
+  sci_g:      {name:'Circuit Diagrams',  machine:'lab', time:8, in:{circuit:1,iron_rod:2},                   out:{sci_green:1},  unlock:'logistics'},
+  sci_b:      {name:'Adv. Schematics',   machine:'lab', time:16, in:{circuit:2,steel_plate:1,copper_wire:3},  out:{sci_blue:1},   unlock:'electronics'},
   // Zone 2, Oil chain
-  z2_crack:   {name:'Crack Oil',         machine:'cracker',  time:10, in:{crude_oil:3},                       out:{raw_fuel:2,plastic:1},  unlock:'oil_extraction'},
+  z2_crack:   {name:'Crack Oil',         machine:'cracker',  time:8, in:{crude_oil:3},                       out:{raw_fuel:2,plastic:1},  unlock:'oil_extraction'},
   z2_refine:  {name:'Refine Fuel',       machine:'refinery', time:8,  in:{raw_fuel:2},                        out:{refined_fuel:1},        unlock:'oil_extraction'},
   // Zone 2, Plastic processing (assembler)
-  z2_polymer: {name:'Polymer Sheet',     machine:'assembler', time:6, in:{plastic:2,iron_plate:1},            out:{polymer_sheet:1},       unlock:'oil_extraction'},
+  z2_polymer: {name:'Polymer Sheet',     machine:'assembler', time:8, in:{plastic:2,iron_plate:1},            out:{polymer_sheet:1},       unlock:'oil_extraction'},
   // Zone 2, Science packs
   z2_sci_scar:{name:'Scar Notes',        machine:'lab', time:8,  in:{iron_gear:1,coal:2},                     out:{sci_scar:1}}, // no oil needed, Oil Extraction costs these
-  z2_sci_smog:{name:'Smog Data',         machine:'lab', time:10, in:{plastic:2,copper_wire:2},                out:{sci_smog:1},   unlock:'oil_extraction'},
-  z2_sci_rep: {name:'Repair Data',       machine:'lab', time:12, in:{refined_fuel:1,circuit:2},               out:{sci_repair:1}, unlock:'smog_control'},
+  z2_sci_smog:{name:'Smog Data',         machine:'lab', time:8, in:{plastic:2,copper_wire:2},                out:{sci_smog:1},   unlock:'oil_extraction'},
+  z2_sci_rep: {name:'Repair Data',       machine:'lab', time:16, in:{refined_fuel:1,circuit:2},               out:{sci_repair:1}, unlock:'smog_control'},
   // Zone 2, Repair components
-  z2_hull:    {name:'Hull Patch',        machine:'assembler', time:20, in:{steel_plate:4,plastic:3},          out:{r_hull:1},      unlock:'repair_tech'},
+  z2_hull:    {name:'Hull Patch',        machine:'assembler', time:16, in:{steel_plate:4,plastic:3},          out:{r_hull:1},      unlock:'repair_tech'},
   z2_engine:  {name:'Engine Fix',        machine:'assembler', time:24, in:{refined_fuel:2,engine:1},          out:{r_engine_fix:1},unlock:'repair_tech'},
-  z2_nav:     {name:'Nav Computer',      machine:'assembler', time:20, in:{circuit:4,plastic:2},              out:{r_nav:1},       unlock:'repair_tech'},
+  z2_nav:     {name:'Nav Computer',      machine:'assembler', time:16, in:{circuit:4,plastic:2},              out:{r_nav:1},       unlock:'repair_tech'},
   z2_tank:    {name:'Fuel Tank',         machine:'assembler', time:24, in:{steel_plate:3,refined_fuel:3},     out:{r_tank:1},      unlock:'repair_tech'},
-  z2_thrust:  {name:'Thruster',          machine:'assembler', time:28, in:{engine:1,plastic:3},               out:{r_thruster:1},  unlock:'repair_tech'},
-  z2_cell:    {name:'Power Cell',        machine:'assembler', time:20, in:{circuit:3,refined_fuel:2},         out:{r_cell:1},      unlock:'repair_tech'},
+  z2_thrust:  {name:'Thruster',          machine:'assembler', time:24, in:{engine:1,plastic:3},               out:{r_thruster:1},  unlock:'repair_tech'},
+  z2_cell:    {name:'Power Cell',        machine:'assembler', time:24, in:{circuit:3,refined_fuel:2},         out:{r_cell:1},      unlock:'repair_tech'},
   // Zone 3, The Deep (fluid:{} is drawn from a connected pipe network)
-  z3_silicon: {name:'Silicon',           machine:'electric_smelter', time:6, in:{quartz:2},                   out:{silicon:1},     unlock:'crystal_refining'},
+  z3_silicon: {name:'Silicon',           machine:'electric_smelter', time:8, in:{quartz:2},                   out:{silicon:1},     unlock:'crystal_refining'},
   z3_lithium: {name:'Lithium',           machine:'electric_smelter', time:8, in:{lithium_salt:1},             out:{lithium:1},     unlock:'energy_storage'},
-  z3_evap:    {name:'Evaporate Brine',   machine:'evaporator', time:8,  in:{}, fluid:{brine:5},                out:{lithium_salt:1},unlock:'fluid_handling'},
-  z3_separate:{name:'Separate Rare Earth',machine:'separator', time:10, in:{rare_earth:2}, fluid:{brine:4},     out:{re_oxide:1},    unlock:'pressure_control'},
+  z3_evap:    {name:'Evaporate Brine',   machine:'evaporator', time:8,  in:{}, fluid:{brine:4},                out:{lithium_salt:1},unlock:'fluid_handling'},
+  z3_separate:{name:'Separate Rare Earth',machine:'separator', time:8, in:{rare_earth:2}, fluid:{brine:4},     out:{re_oxide:1},    unlock:'pressure_control'},
   z3_magnet:  {name:'Magnet',            machine:'assembler', time:8,  in:{re_oxide:1,iron_plate:2},          out:{magnet:1},      unlock:'pressure_control'},
-  z3_battery: {name:'Battery',           machine:'assembler', time:10, in:{lithium:2,copper_plate:1,steel_plate:1}, out:{battery:1}, unlock:'energy_storage'},
+  z3_battery: {name:'Battery',           machine:'assembler', time:8, in:{lithium:2,copper_plate:1,steel_plate:1}, out:{battery:1}, unlock:'energy_storage'},
   z3_core:    {name:'Lattice Core',      machine:'assembler', time:16, in:{silicon:3,magnet:1},               out:{lattice_core:1},unlock:'lattice_fuel'},
   z3_rod:     {name:'Lattice Fuel Rod',  machine:'rod_press', time:20,  in:{lattice_core:1,radiant_dust:5}, fluid:{brine:10}, minPressure:60, out:{fuel_rod:1}, unlock:'lattice_fuel'},
   z3_sci_deep:{name:'Deep Notes',        machine:'lab', time:8,  in:{quartz:1,copper_wire:2},                 out:{sci_deep:1}},
-  z3_sci_press:{name:'Pressure Data',    machine:'lab', time:10, in:{lithium_salt:1,circuit:1},               out:{sci_pressure:1},unlock:'fluid_handling'},
-  z3_sci_lat: {name:'Lattice Data',      machine:'lab', time:14, in:{silicon:2,magnet:1},                     out:{sci_lattice:1}, unlock:'pressure_control'},
-  z3_phull:   {name:'Pressure Hull',     machine:'assembler', time:20, in:{steel_plate:6,re_oxide:2},         out:{r_phull:1},     unlock:'lattice_fuel'},
-  z3_battbank:{name:'Battery Bank',      machine:'assembler', time:20, in:{battery:4,circuit:2},              out:{r_battbank:1},  unlock:'lattice_fuel'},
-  z3_guidance:{name:'Guidance Crystal',  machine:'assembler', time:24, in:{lattice_core:2,circuit:4},         out:{r_guidance:1},  unlock:'lattice_fuel'},
-  z3_drill:   {name:'Shaft Drill',       machine:'assembler', time:28, in:{steel_plate:8,magnet:4,engine:2},  out:{r_drill:1},     unlock:'lattice_fuel'},
+  z3_sci_press:{name:'Pressure Data',    machine:'lab', time:12, in:{lithium_salt:1,circuit:1},               out:{sci_pressure:1},unlock:'fluid_handling'},
+  z3_sci_lat: {name:'Lattice Data',      machine:'lab', time:16, in:{silicon:2,magnet:1},                     out:{sci_lattice:1}, unlock:'pressure_control'},
+  z3_phull:   {name:'Pressure Hull',     machine:'assembler', time:24, in:{steel_plate:6,re_oxide:2},         out:{r_phull:1},     unlock:'lattice_fuel'},
+  z3_battbank:{name:'Battery Bank',      machine:'assembler', time:16, in:{battery:4,circuit:2},              out:{r_battbank:1},  unlock:'lattice_fuel'},
+  z3_guidance:{name:'Guidance Crystal',  machine:'assembler', time:32, in:{lattice_core:2,circuit:4},         out:{r_guidance:1},  unlock:'lattice_fuel'},
+  z3_drill:   {name:'Shaft Drill',       machine:'assembler', time:32, in:{steel_plate:8,magnet:4,engine:2},  out:{r_drill:1},     unlock:'lattice_fuel'},
   // Zone 4, The Bloom (living machines grow faster when well fed)
-  z4_paste:   {name:'Nutrient Paste',    machine:'assembler', time:6,  in:{biomass:2},                        out:{nutrient:1},    unlock:'bio_cultivation'},
-  z4_algae:   {name:'Grow Algae',        machine:'algae_vat', time:12, in:{}, fluid:{enzymes:3},              out:{algae:2},       unlock:'bio_cultivation'},
+  z4_paste:   {name:'Nutrient Paste',    machine:'assembler', time:8,  in:{biomass:2},                        out:{nutrient:1},    unlock:'bio_cultivation'},
+  z4_algae:   {name:'Grow Algae',        machine:'algae_vat', time:16, in:{}, fluid:{enzymes:3},              out:{algae:2},       unlock:'bio_cultivation'},
   z4_lum:     {name:'Luminite Crystal',  machine:'electric_smelter', time:8, in:{luminite:2},                 out:{lum_crystal:1}, unlock:'luminite_refining'},
-  z4_biooil:  {name:'Bio-Oil',           machine:'bioreactor', time:10, in:{algae:2,biomass:1},               out:{bio_oil:1},     unlock:'symbiosis'},
-  z4_mycel:   {name:'Mycelium',          machine:'spore_incubator', time:12, in:{spores:3,nutrient:1},        out:{mycelium:2},    unlock:'symbiosis'},
-  z4_composite:{name:'Bio-Composite',    machine:'assembler', time:10, in:{mycelium:2,steel_plate:1},         out:{bio_composite:1},unlock:'symbiosis'},
+  z4_biooil:  {name:'Bio-Oil',           machine:'bioreactor', time:8, in:{algae:2,biomass:1},               out:{bio_oil:1},     unlock:'symbiosis'},
+  z4_mycel:   {name:'Mycelium',          machine:'spore_incubator', time:16, in:{spores:3,nutrient:1},        out:{mycelium:2},    unlock:'symbiosis'},
+  z4_composite:{name:'Bio-Composite',    machine:'assembler', time:8, in:{mycelium:2,steel_plate:1},         out:{bio_composite:1},unlock:'symbiosis'},
   z4_rod:     {name:'Luminite Rod',      machine:'assembler', time:16, in:{lum_crystal:3,steel_plate:2},      out:{lum_rod:1},     unlock:'nuclear_power'},
-  z4_hyper:   {name:'Bio-Hyperfuel',     machine:'hyper_synth', time:20, in:{bio_oil:3,lum_crystal:1}, fluid:{enzymes:4}, out:{hyperfuel:1}, unlock:'hyperfuel'},
+  z4_hyper:   {name:'Bio-Hyperfuel',     machine:'hyper_synth', time:16, in:{bio_oil:3,lum_crystal:1}, fluid:{enzymes:4}, out:{hyperfuel:1}, unlock:'hyperfuel'},
   z4_sci_bloom:{name:'Bloom Notes',      machine:'lab', time:8,  in:{biomass:2,copper_wire:1},                out:{sci_bloom:1}},
-  z4_sci_growth:{name:'Growth Data',     machine:'lab', time:10, in:{algae:2,circuit:1},                      out:{sci_growth:1},  unlock:'bio_cultivation'},
-  z4_sci_synth:{name:'Synthesis Data',   machine:'lab', time:14, in:{bio_oil:1,lum_crystal:1},                out:{sci_synth:1},   unlock:'symbiosis'},
-  z4_biohull: {name:'Bio-Hull',          machine:'assembler', time:24, in:{bio_composite:4,steel_plate:4},    out:{r_biohull:1},   unlock:'hyperfuel'},
+  z4_sci_growth:{name:'Growth Data',     machine:'lab', time:8, in:{algae:2,circuit:1},                      out:{sci_growth:1},  unlock:'bio_cultivation'},
+  z4_sci_synth:{name:'Synthesis Data',   machine:'lab', time:16, in:{bio_oil:1,lum_crystal:1},                out:{sci_synth:1},   unlock:'symbiosis'},
+  z4_biohull: {name:'Bio-Hull',          machine:'assembler', time:32, in:{bio_composite:4,steel_plate:4},    out:{r_biohull:1},   unlock:'hyperfuel'},
   z4_bionav:  {name:'Living Navigator',  machine:'assembler', time:24, in:{algae:6,circuit:6,lum_crystal:2},   out:{r_bionav:1},    unlock:'hyperfuel'},
-  z4_core:    {name:'Reactor Core',      machine:'assembler', time:30, in:{lum_rod:2,steel_plate:10,circuit:4},out:{r_core:1},     unlock:'hyperfuel'},
+  z4_core:    {name:'Reactor Core',      machine:'assembler', time:32, in:{lum_rod:2,steel_plate:8,circuit:4},out:{r_core:1},     unlock:'hyperfuel'},
   // Zone 5, every chain feeds the Singularity
   z5_sci_void:{name:'Void Data',         machine:'lab', time:20, in:{sci_blue:1,sci_repair:1,sci_lattice:1,sci_synth:1}, out:{sci_void:1}, unlock:'void_theory'},
-  z5_lens:    {name:'Graviton Lens',     machine:'assembler', time:30, in:{lattice_core:2,lum_crystal:2,polymer_sheet:2}, out:{grav_lens:1}, unlock:'void_theory'},
-  z5_casing:  {name:'Stellar Casing',    machine:'assembler', time:30, in:{steel_plate:10,bio_composite:3,plastic:5},     out:{stellar_casing:1}, unlock:'void_theory'},
-  z5_engine:  {name:'Void Engine',       machine:'assembler', time:40, in:{engine:2,magnet:3,hyperfuel:1,refined_fuel:5}, out:{void_engine:1}, unlock:'void_theory'},
-  z5_mind:    {name:'Quantum Mind',      machine:'assembler', time:40, in:{circuit:10,battery:3,algae:5},                 out:{quantum_mind:1}, unlock:'void_theory'},
+  z5_lens:    {name:'Graviton Lens',     machine:'assembler', time:32, in:{lattice_core:2,lum_crystal:2,polymer_sheet:2}, out:{grav_lens:1}, unlock:'void_theory'},
+  z5_casing:  {name:'Stellar Casing',    machine:'assembler', time:40, in:{steel_plate:10,bio_composite:2,plastic:5},     out:{stellar_casing:1}, unlock:'void_theory'},
+  z5_engine:  {name:'Void Engine',       machine:'assembler', time:40, in:{engine:2,magnet:2,hyperfuel:1,refined_fuel:5}, out:{void_engine:1}, unlock:'void_theory'},
+  z5_mind:    {name:'Quantum Mind',      machine:'assembler', time:40, in:{circuit:10,battery:2,algae:5},                 out:{quantum_mind:1}, unlock:'void_theory'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -1087,7 +1087,7 @@ const MDEFS = {
   miner:          {name:'Miner',            icon:'⛏️', size:[1,1], power:3,   cost:{iron_plate:5, iron_gear:2},                      unlock:null,          recipes:[], desc:'Extracts resources from deposits: 60/min (T2 120, T3 240)'},
   stone_furnace:  {name:'Stone Furnace',    icon:'⚱️', size:[1,1], power:0,   cost:{stone:8},                                        unlock:null,          recipes:['fn_iron','fn_copper'], desc:'Slow smelter, needs coal'},
   blast_furnace:  {name:'Blast Furnace',    icon:'🔥', size:[2,2], power:0,   cost:{iron_plate:8, iron_gear:4},                      unlock:'automation',  recipes:['bf_iron','bf_copper','bf_steel'], desc:'Fast coal-powered smelter, 2× speed'},
-  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed, runs on power. 3× speed. Makes propellant.'},
+  electric_smelter:{name:'Electric Smelter',icon:'🌩️', size:[2,2], power:20,  cost:{iron_plate:12,iron_gear:6,circuit:4,steel_plate:4},unlock:'steel',      recipes:['es_iron','es_copper','es_steel','es_prop','z3_silicon','z3_lithium','z4_lum'], desc:'No coal needed, runs on power. 4× a Stone Furnace: 120 ore in, 60 plates out per minute. Makes propellant.'},
   assembler:      {name:'Assembler',        icon:'🏗️', size:[2,2], power:12,  cost:{iron_plate:12,iron_gear:6,circuit:2},            unlock:'automation',  recipes:['mk_gear','mk_wire','mk_rod','mk_circuit','mk_engine','mk_speed_mod','mk_prod_mod','mk_eff_mod','mk_chassis','mk_computer','mk_frame','z2_polymer','z2_hull','z2_engine','z2_nav','z2_tank','z2_thrust','z2_cell','z3_magnet','z3_battery','z3_core','z3_phull','z3_battbank','z3_guidance','z3_drill','z4_paste','z4_composite','z4_rod','z4_biohull','z4_bionav','z4_core','z5_lens','z5_casing','z5_engine','z5_mind'], desc:'Crafts parts and components'},
   lab:            {name:'Research Lab',     icon:'🔬', size:[2,2], power:6,   cost:{iron_plate:15,circuit:5},                        unlock:'automation',  recipes:['sci_r','sci_g','sci_b','z2_sci_scar','z2_sci_smog','z2_sci_rep','z3_sci_deep','z3_sci_press','z3_sci_lat','z4_sci_bloom','z4_sci_growth','z4_sci_synth','z5_sci_void'], desc:'Produces science packs'},
   burner:         {name:'Burner Generator', icon:'🪵', size:[1,1], power:-15, cost:{stone:5, iron_plate:2},                          unlock:null,          recipes:[], desc:'Burns coal → 15kW. Cheap starter power'},
@@ -4619,7 +4619,7 @@ function runMachine(m){
   const powerImmune=(m.type==='stone_furnace'||m.type==='blast_furnace');
   const ratio=powerImmune?1:powerRatio();
   if(ratio===0)return;
-  const tierMult=m.tier===3?2:m.tier===2?1.5:1;
+  const tierMult=MACHINE_TIER_SPEED[m.tier||1]||1;
   // Smog reduces efficiency in Zone 2 for all powered machines
   const smogEff=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
   const lifeMult=def.living?lifeStage(m).mult:1;
@@ -4627,8 +4627,8 @@ function runMachine(m){
 
   if(m.prog===0){
     if(canFill(m,rec)&&fluidReady(m,rec)){consumeInputs(m,rec);consumeFluid(m,rec);m.prog=1;}
-  } else {
-    m.prog++;
+  } else m.prog++;
+  if(m.prog>0){ // checked on the start tick too, so a one-tick cycle (a 1s recipe at T3) isn't stretched to two
     m._dur=Math.ceil(rec.time/Math.max(.01,speedMult));
     if(m.prog>=m._dur){
       // Stall if output buffer full
@@ -5200,6 +5200,10 @@ const INS_TIER_SPEED={1:1,2:2,3:4.5};
 const MINE_TICKS=4;          // a T1 Miner or Oil Pump makes 1 item per 4 ticks (60/min)
 const OIL_SMOG=0.25;         // smog per barrel of crude
 const MINER_TIER_SPEED={1:1,2:2,3:4};
+// Furnaces, smelters, assemblers and labs speed up by tier the same way: a T2 machine does the work of two T1s.
+// Recipe times are whole seconds picked so every input and output is a clean rate (a Stone Furnace takes 30 ore/min,
+// so one T1 Miner feeds two; an Electric Smelter takes 120 and puts out exactly one T1 belt of plates)
+const MACHINE_TIER_SPEED=MINER_TIER_SPEED;
 // Belts hold BELT_CAP items per tile, at least BELT_GAP apart, so a belt carries speed / gap items per tick
 // with no rounding to whole ticks: T1 moves 0.5 tiles/s × 2 per tile = 1 item/s.
 const BELT_CAP=2, BELT_GAP=1/BELT_CAP;
@@ -5863,7 +5867,7 @@ function machineRates(m){
   const mods=m.modules||[];
   const modSpeed=1+mods.filter(x=>x==='speed_module').length*0.25;
   const modYield=1+mods.filter(x=>x==='prod_module').length*0.25;
-  const tierMult=m.tier===3?2:m.tier===2?1.5:1;
+  const tierMult=MACHINE_TIER_SPEED[m.tier||1]||1;
   const pm=perkMult();
   const smog=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
   const immune=m.type==='stone_furnace'||m.type==='blast_furnace';
@@ -6413,7 +6417,7 @@ function tierBonus(type,tier){
   if(isInserter(type))return `${60*INS_TIER_SPEED[tier]} items/min`;
   if(BELT_TYPES.includes(type))return `${60*BELT_TIER_SPEED[tier]} items/min`;
   if(type==='miner')return `${60*MINER_TIER_SPEED[tier]} items/min`;
-  return tier===3?'2× speed & yield':'1.5× speed & yield';
+  return `${MACHINE_TIER_SPEED[tier]}× speed`;
 }
 function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
 // Everything a machine is worth: build cost, each upgrade step up to its tier, installed modules.
