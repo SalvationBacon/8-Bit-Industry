@@ -261,12 +261,12 @@ const r=await p.evaluate(async()=>{
     const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
     ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
   // ── busy belts: every item glides at belt speed and never steps back, whether the belt flows, queues or drains
-  { const scen=(build,tier=1)=>{ reset(); G.research.done=Object.keys(TECHS); power(2,2); build();
+  { const scen=(build,tier=1,release)=>{ reset(); G.research.done=Object.keys(TECHS); power(2,2); build();
       G.cam.zoom=.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=6*TILE*.5; G.cam.y=36*TILE*.5;
       const uid=new WeakMap(); let nid=0, frame=null; const o=window.beltItemWorld;
       window.beltItemWorld=function(it,...a){const w=o(it,...a); if(frame&&w){if(!uid.has(it))uid.set(it,nid++); frame[uid.get(it)]=w;} return w;};
       const lim=1.55*BELT_T1_SPEED*BELT_TIER_SPEED[tier]/5; let last={}, worst=0, backs=0; // catch-up after a pickup is capped at 1.5x belt speed
-      for(let t=0;t<260;t++){ const ft=G.map[40][8]; if(beltRoom(ft,0))ft.items.push({id:'coal',prog:0});
+      for(let t=0;t<260;t++){ const ft=G.map[40][8]; if(beltRoom(ft,0))ft.items.push({id:'coal',prog:0}); if(t===150&&release)release();
         run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame={}; draw();
           for(const k in frame)if(last[k]){const dx=frame[k][0]-last[k][0], d=Math.hypot(dx,frame[k][1]-last[k][1]); worst=Math.max(worst,d/lim); if(dx<-1e-6)backs++;}
           last=frame; } T=t0; }
@@ -276,7 +276,11 @@ const r=await p.evaluate(async()=>{
       drain:scen(line(2,()=>{put('inserter',20,40,0);put('chest',21,40);}),2),
       tunnel:scen(()=>{for(let x=8;x<12;x++)put('belt',x,40,0); put('tunnel',12,40,0); put('tunnel',15,40,0); for(let x=16;x<20;x++)put('belt',x,40,0); put('inserter',20,40,0); put('chest',21,40);}),
       side:scen(line(1,()=>{const c=put('chest',12,38); c.chestInv.coal=999; put('inserter',12,39,1); put('inserter',20,40,0); put('chest',21,40);}))};
-    ok('belt_busy_smooth',Object.values(r).every(v=>v.worst<=1&&v.backs===0),r); }
+    ok('belt_busy_smooth',Object.values(r).every(v=>v.worst<=1&&v.backs===0),r);
+    // a full line that starts moving again: every item sets off at belt speed, no surge (the queue is spaced in the sim)
+    const lim1=1.05/1.55, rel={t1:scen(line(1,()=>{}),1,()=>put('chest',20,40)), t3:scen(line(3,()=>{}),3,()=>put('chest',20,40)),
+      extend:scen(line(1,()=>{}),1,()=>{for(let x=20;x<24;x++)put('belt',x,40,0);put('chest',24,40);})};
+    ok('belt_queue_restart',Object.values(rel).every(v=>v.worst<=lim1&&v.backs===0),rel); }
   // same, on belts of mixed tiers (T1/T2/T3 side by side)
   { reset(); G.research.done=Object.keys(TECHS);
     for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
@@ -418,16 +422,19 @@ const r=await p.evaluate(async()=>{
   // ── music: every zone has its own playlist of tracks; each compiles cleanly, keeps its hook and varies the rest
   { const per={}; for(const t of MTRACKS)per[t.ctx]=(per[t.ctx]||0)+1;
     const bad=[], lens=[];
-    const leadOf=(song,from,to)=>JSON.stringify(song.ev.filter(e=>e.t>=from&&e.t<to&&!['pad','kick','snare','hat'].includes(e.i)&&e.d<2).map(e=>[+e.t.toFixed(3),+e.f.toFixed(1)]));
-    let hook=true, varies=true;
+    const leadOf=(song,from,to)=>JSON.stringify(song.ev.filter(e=>e.t>=from&&e.t<to&&e.lead).map(e=>[+e.t.toFixed(3),+e.f.toFixed(1)]));
+    let hook=true, varies=true, simple=true;
     for(const tr of MTRACKS){ const a=compileSong(tr,1), c=compileSong(tr,2); lens.push(Math.round(a.len));
       if(a.ev.some(e=>!isFinite(e.t)||!isFinite(e.f)||!isFinite(e.v)||!(e.d>0)||e.f>0&&e.f<55))bad.push(tr.name);
       if(!tr.raw){ const bar=240/tr.bpm, A0=MFORMS[tr.form][1]*bar; // the first A section starts after the intro
-        if(leadOf(a,A0,A0+4*bar)!==leadOf(c,A0,A0+4*bar))hook=false;
-        if(JSON.stringify(a.ev)===JSON.stringify(c.ev))varies=false; } }
+        if(leadOf(a,A0,A0+4*bar)!==leadOf(c,A0,A0+4*bar)||leadOf(a,A0,A0+4*bar)==='[]')hook=false;
+        if(JSON.stringify(a.ev)===JSON.stringify(c.ev))varies=false;
+        // simple melodies: in each phrase the motif repeats, so bars 1-3 share one rhythm
+        const rhythm=k=>JSON.stringify(a.ev.filter(e=>e.lead&&e.t>=A0+k*bar-1e-6&&e.t<A0+(k+1)*bar-1e-6).map(e=>+(e.t-A0-k*bar).toFixed(3)));
+        if(!(rhythm(0)===rhythm(1)&&rhythm(1)===rhythm(2)&&rhythm(4)===rhythm(5)))simple=false; } }
     const zonesOk=[1,2,3,4,5].every(z=>per[z]>=3)&&per.title>=2;
     const ctxGame=musicCtx();
-    ok('music_playlists',zonesOk&&!bad.length&&lens.every(l=>l>=90&&l<=240)&&hook&&varies&&ctxGame===G.zone,{per,bad,lens,hook,varies,ctxGame}); }
+    ok('music_playlists',zonesOk&&!bad.length&&lens.every(l=>l>=90&&l<=240)&&hook&&varies&&simple&&ctxGame===G.zone,{per,bad,lens,hook,varies,simple,ctxGame}); }
   // ── build menu: grouped by job; every machine appears once, and only in the zones it belongs to
   { const z0=G.zone, all=DRAWER_DEFS.build.flatMap(c=>c.items.map(i=>i.id)), dupes=all.filter((x,i)=>all.indexOf(x)!==i);
     const missing=Object.keys(MDEFS).filter(t=>!MDEFS[t].stub&&!all.includes(t));

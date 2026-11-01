@@ -25,7 +25,7 @@ https://salvationbacon.github.io/8-Bit-Industry/
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v162` → `ebi-v163`) on every update
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v163` → `ebi-v164`) on every update
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open
@@ -48,4 +48,4 @@ Every zone has its own playlist (3 or 4 tracks, plus a title theme), composed in
 ☰ menu → Settings: FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.17: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.18: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
