@@ -357,12 +357,26 @@ const r=await p.evaluate(async()=>{
     run(480);
     // a belt pointing back into the machine is left alone
     reset(); power(2,2); res(10,48,1,1,'iron_ore'); const mb=put('miner',10,48); const back=put('belt',11,48,2); run(40);
-    // a Cracker's two outputs alternate on the belt
+    // a Cracker's right arrow carries only raw fuel (plastic leaves by the bottom arrow, unbelted here)
     reset(); power(2,2); G.research.done=Object.keys(TECHS); const cr=put('cracker',10,52); cr.outBuf={raw_fuel:6,plastic:6};
     for(let x=12;x<20;x++){put('belt',x,52,0);} const cc=put('chest',20,52); run(120);
     ok('outputs_onto_belts',Math.abs(n/2-60)<=1&&(pc.chestInv.iron_plate||0)>=25&&G.map[48][11].items.length===0&&(mb.outBuf.iron_ore||0)>0
-      &&(cc.chestInv.raw_fuel||0)>=4&&(cc.chestInv.plastic||0)>=4,
+      &&(cc.chestInv.raw_fuel||0)>=4&&!cc.chestInv.plastic&&cr.outBuf.plastic===6, // plastic has its own (bottom) arrow
       {miner:n/2,plates:pc.chestInv.iron_plate,back:G.map[48][11].items.length,crack:cc.chestInv}); }
+  // ── a two-output recipe puts one item out of each arrow: Cracker raw fuel right, plastic bottom
+  { reset(); power(2,2); G.research.done=Object.keys(TECHS); const cr=put('cracker',20,20); cr.recipe='z2_crack'; cr.outBuf={raw_fuel:10,plastic:10};
+    for(let x=22;x<26;x++)put('belt',x,20,0); const right=put('chest',26,20);     // right arrow → belt → chest
+    for(let y=22;y<26;y++)put('belt',20,y,1); const down=put('chest',20,26);      // bottom arrow → belt → chest
+    run(160);
+    const beltOK=(right.chestInv.raw_fuel||0)>=8&&!right.chestInv.plastic&&(down.chestInv.plastic||0)>=8&&!down.chestInv.raw_fuel;
+    // inserters on each arrow take only that arrow's item
+    reset(); power(2,2); G.research.done=Object.keys(TECHS); const c2=put('cracker',20,30); c2.recipe='z2_crack'; c2.outBuf={raw_fuel:10,plastic:10};
+    put('inserter',22,30,0); const ri=put('chest',23,30); put('inserter',21,32,1); const bi=put('chest',21,33);
+    run(160);
+    const insOK=(ri.chestInv.raw_fuel||0)>=5&&!ri.chestInv.plastic&&(bi.chestInv.plastic||0)>=5&&!bi.chestInv.raw_fuel;
+    openMachinePanel(c2); const html=document.getElementById('pMachBody').innerHTML; closePanel('machine');
+    ok('two_outputs_two_arrows',beltOK&&insOK&&html.includes('RIGHT ARROW')&&html.includes('BOTTOM ARROW'),
+      {right:right.chestInv,down:down.chestInv,ri:ri.chestInv,bi:bi.chestInv}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};
