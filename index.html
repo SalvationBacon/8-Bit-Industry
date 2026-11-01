@@ -358,6 +358,8 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 .rate-row{display:flex;align-items:center;gap:6px;font-size:var(--f6);color:var(--text)}
 .rate-row .ico{width:18px;height:18px}.rate-n{color:var(--text);min-width:34px;text-align:right}.rate-u{color:var(--text3)}.rate-name{color:var(--text2)}
 .rate-note{font-size:var(--f4);color:var(--text3);line-height:1.8}
+.rate-arm{margin-left:auto;font-size:var(--f4);color:var(--text3);border:1px solid var(--border2);padding:1px 4px;white-space:nowrap}
+.rp-rates{font-size:var(--f5);line-height:1.8}.rp-rates .rin{color:var(--blue)}.rp-rates .rout{color:var(--green)}
 .tut-tally{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;color:var(--text2)}
 .tut-tally .ok{color:var(--teal)}
 .tut-go{font-family:var(--font);font-size:1em;margin-top:5px;padding:6px 12px;border:1px solid var(--amber);background:rgba(245,166,35,.15);color:var(--amber);cursor:pointer;display:block}
@@ -485,7 +487,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.9 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.10 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -653,7 +655,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.9';
+const VER      = '2.0.10';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 const SCRUBBER_SMOG = 0.75;
@@ -1252,127 +1254,127 @@ const TECHS = {
   },
   logistics: {
     name:'Advanced Logistics', icon:'➡️', era:'Era 1',
-    cost:{sci_red:50}, req:['automation'],
+    cost:{sci_red:60}, req:['automation'],
     desc:'Unlocks belt upgrades (T2 120/min, T3 270/min), Splitters, Tunnels and Generators',
   },
   steel: {
     name:'Steel Processing', icon:'🔩', era:'Era 2',
-    cost:{sci_red:75,sci_green:50}, req:['automation','logistics'],
+    cost:{sci_red:90,sci_green:60}, req:['automation','logistics'],
     desc:'Enables steel recipes + unlocks Electric Smelter',
   },
   electronics: {
     name:'Electronics', icon:'💚', era:'Era 2',
-    cost:{sci_red:100,sci_green:75}, req:['automation','logistics'],
+    cost:{sci_red:120,sci_green:90}, req:['automation','logistics'],
     desc:'Advanced circuit and computer recipes. Unlocks Adv. Schematics research',
   },
   rocket_tech: {
     name:'Rocket Science', icon:'🚀', era:'Era 3',
-    cost:{sci_red:125,sci_green:125,sci_blue:50}, req:['steel','electronics'],
+    cost:{sci_red:150,sci_green:150,sci_blue:60}, req:['steel','electronics'],
     desc:'Unlocks all rocket component recipes',
   },
   // Zone 2, The Scar
   oil_extraction: {
     name:'Oil Extraction', icon:'🛢️', era:'The Scar · Era 1',
-    cost:{sci_scar:10}, req:[],
+    cost:{sci_scar:30}, req:[],
     desc:'Unlocks Oil Pump, Cracker, Refinery and oil production chains',
     zone:2,
   },
   smog_control: {
     name:'Smog Control', icon:'🌿', era:'The Scar · Era 2',
-    cost:{sci_scar:30,sci_smog:20}, req:['oil_extraction'],
+    cost:{sci_scar:120,sci_smog:90}, req:['oil_extraction'],
     desc:'Unlocks Scrubber and Combustion Generator. Required for Repair Data science pack.',
     zone:2,
   },
   repair_tech: {
     name:'Rocket Repair', icon:'🔧', era:'The Scar · Era 3',
-    cost:{sci_scar:50,sci_smog:50,sci_repair:20}, req:['oil_extraction','smog_control'],
+    cost:{sci_scar:240,sci_smog:240,sci_repair:90}, req:['oil_extraction','smog_control'],
     desc:'Unlocks all 6 rocket repair component recipes',
     zone:2,
   },
   // Zone 3, The Deep
   fluid_handling: {
     name:'Fluid Handling', icon:'💧', era:'The Deep · Era 1',
-    cost:{sci_deep:10}, req:[],
+    cost:{sci_deep:30}, req:[],
     desc:'Unlocks Pipe, Brine Pump, Fluid Tank, Evaporator and Pressure Data',
     zone:3,
   },
   crystal_refining: {
     name:'Crystal Refining', icon:'💎', era:'The Deep · Era 1',
-    cost:{sci_deep:15}, req:[],
+    cost:{sci_deep:45}, req:[],
     desc:'Unlocks Silicon smelting and the Lumen Panel',
     zone:3,
   },
   pressure_control: {
     name:'Pressure Control', icon:'🚿', era:'The Deep · Era 2',
-    cost:{sci_deep:30,sci_pressure:20}, req:['fluid_handling'],
+    cost:{sci_deep:120,sci_pressure:80}, req:['fluid_handling'],
     desc:'Unlocks Relief Valve, Separator, Magnets and Lattice Data',
     zone:3,
   },
   energy_storage: {
     name:'Energy Storage', icon:'🔋', era:'The Deep · Era 2',
-    cost:{sci_deep:30,sci_pressure:20}, req:['fluid_handling','crystal_refining'],
+    cost:{sci_deep:120,sci_pressure:80}, req:['fluid_handling','crystal_refining'],
     desc:'Unlocks Lithium, Batteries and the Accumulator',
     zone:3,
   },
   lattice_fuel: {
     name:'Lattice Fuel', icon:'🟩', era:'The Deep · Era 3',
-    cost:{sci_deep:50,sci_pressure:40,sci_lattice:20}, req:['pressure_control','energy_storage'],
+    cost:{sci_deep:240,sci_pressure:160,sci_lattice:90}, req:['pressure_control','energy_storage'],
     desc:'Unlocks the Rod Press and all escape-shaft rocket parts',
     zone:3,
   },
   // Zone 4, The Bloom
   bio_cultivation: {
     name:'Bio Cultivation', icon:'🌱', era:'The Bloom · Era 1',
-    cost:{sci_bloom:10}, req:[],
+    cost:{sci_bloom:30}, req:[],
     desc:'Unlocks Enzyme Pump, Algae Vat, Nutrient Paste and Growth Data',
     zone:4,
   },
   luminite_refining: {
     name:'Luminite Refining', icon:'❇️', era:'The Bloom · Era 1',
-    cost:{sci_bloom:15}, req:[],
+    cost:{sci_bloom:45}, req:[],
     desc:'Unlocks Luminite Crystal smelting and the Heat Sink',
     zone:4,
   },
   symbiosis: {
     name:'Symbiosis', icon:'🦠', era:'The Bloom · Era 2',
-    cost:{sci_bloom:30,sci_growth:20}, req:['bio_cultivation'],
+    cost:{sci_bloom:120,sci_growth:90}, req:['bio_cultivation'],
     desc:'Unlocks Bioreactor, Spore Incubator, Bio-Composite and Synthesis Data',
     zone:4,
   },
   nuclear_power: {
     name:'Nuclear Power', icon:'☢️', era:'The Bloom · Era 2',
-    cost:{sci_bloom:40,sci_growth:30}, req:['bio_cultivation','luminite_refining'],
+    cost:{sci_bloom:150,sci_growth:120}, req:['bio_cultivation','luminite_refining'],
     desc:'Unlocks the Nuclear Reactor and Luminite Rods',
     zone:4,
   },
   hyperfuel: {
     name:'Hyperfuel', icon:'🌟', era:'The Bloom · Era 3',
-    cost:{sci_bloom:60,sci_growth:50,sci_synth:30}, req:['symbiosis','nuclear_power'],
+    cost:{sci_bloom:240,sci_growth:210,sci_synth:120}, req:['symbiosis','nuclear_power'],
     desc:'Unlocks the Hyperfuel Synthesiser and all Bloom rocket parts',
     zone:4,
   },
   // Zone 5, The Singularity
   expansion_1: {
     name:'Expansion I', icon:'🗺️', era:'The Singularity · Era 1',
-    cost:{sci_red:100,sci_scar:50,sci_deep:50,sci_bloom:50}, req:[],
+    cost:{sci_red:120,sci_scar:60,sci_deep:60,sci_bloom:60}, req:[],
     desc:'The merged world grows: +32 columns, +16 rows of new territory',
     zone:5, onResearch:()=>expandMap(32,16),
   },
   void_theory: {
     name:'Void Theory', icon:'📕', era:'The Singularity · Era 1',
-    cost:{sci_blue:40,sci_repair:30,sci_lattice:30,sci_synth:30}, req:[],
+    cost:{sci_blue:45,sci_repair:30,sci_lattice:30,sci_synth:30}, req:[],
     desc:'Unlocks Void Data and the four Singularity components',
     zone:5,
   },
   expansion_2: {
     name:'Expansion II', icon:'🗺️', era:'The Singularity · Era 2',
-    cost:{sci_void:40}, req:['expansion_1'],
+    cost:{sci_void:48}, req:['expansion_1'],
     desc:'The world grows again: +32 columns, +16 rows',
     zone:5, onResearch:()=>expandMap(32,16),
   },
   singularity: {
     name:'The Singularity', icon:'🌌', era:'The Singularity · Era 2',
-    cost:{sci_void:100}, req:['void_theory'],
+    cost:{sci_void:120}, req:['void_theory'],
     desc:'Unlocks the Singularity. Build it, power it, end everything',
     zone:5,
   },
@@ -1382,33 +1384,33 @@ const TECHS = {
 //  ROCKET COMPONENTS
 // ═══════════════════════════════════════════════════
 const ROCKET_PARTS = [
-  {id:'r_chassis',    name:'Rocket Chassis',  need:1, unlock:'rocket_tech'},
-  {id:'r_computer',   name:'Flight Computer', need:1, unlock:'rocket_tech'},
-  {id:'r_frame',      name:'Struct. Frame',   need:1, unlock:'rocket_tech'},
-  {id:'r_propellant', name:'Coal Propellant', need:2, unlock:'rocket_tech'},
+  {id:'r_chassis',    name:'Rocket Chassis',  need:5, unlock:'rocket_tech'},
+  {id:'r_computer',   name:'Flight Computer', need:5, unlock:'rocket_tech'},
+  {id:'r_frame',      name:'Struct. Frame',   need:5, unlock:'rocket_tech'},
+  {id:'r_propellant', name:'Coal Propellant', need:10, unlock:'rocket_tech'},
 ];
 const ROCKET_PARTS_Z2 = [
-  {id:'r_hull',       name:'Hull Patch',    need:4, unlock:'repair_tech'},
-  {id:'r_engine_fix', name:'Engine Fix',    need:1, unlock:'repair_tech'},
-  {id:'r_nav',        name:'Nav Computer',  need:1, unlock:'repair_tech'},
-  {id:'r_tank',       name:'Fuel Tank',     need:2, unlock:'repair_tech'},
-  {id:'r_thruster',   name:'Thruster',      need:2, unlock:'repair_tech'},
-  {id:'r_cell',       name:'Power Cell',    need:1, unlock:'repair_tech'},
+  {id:'r_hull',       name:'Hull Patch',    need:20, unlock:'repair_tech'},
+  {id:'r_engine_fix', name:'Engine Fix',    need:5, unlock:'repair_tech'},
+  {id:'r_nav',        name:'Nav Computer',  need:5, unlock:'repair_tech'},
+  {id:'r_tank',       name:'Fuel Tank',     need:10, unlock:'repair_tech'},
+  {id:'r_thruster',   name:'Thruster',      need:10, unlock:'repair_tech'},
+  {id:'r_cell',       name:'Power Cell',    need:5, unlock:'repair_tech'},
 ];
 
 const ROCKET_PARTS_Z3 = [
-  {id:'fuel_rod',     name:'Lattice Fuel Rod', need:4, unlock:'lattice_fuel'},
-  {id:'r_phull',      name:'Pressure Hull',    need:2, unlock:'lattice_fuel'},
-  {id:'r_battbank',   name:'Battery Bank',     need:2, unlock:'lattice_fuel'},
-  {id:'r_guidance',   name:'Guidance Crystal', need:1, unlock:'lattice_fuel'},
-  {id:'r_drill',      name:'Shaft Drill',      need:1, unlock:'lattice_fuel'},
+  {id:'fuel_rod',     name:'Lattice Fuel Rod', need:20, unlock:'lattice_fuel'},
+  {id:'r_phull',      name:'Pressure Hull',    need:10, unlock:'lattice_fuel'},
+  {id:'r_battbank',   name:'Battery Bank',     need:10, unlock:'lattice_fuel'},
+  {id:'r_guidance',   name:'Guidance Crystal', need:5, unlock:'lattice_fuel'},
+  {id:'r_drill',      name:'Shaft Drill',      need:5, unlock:'lattice_fuel'},
 ];
 
 const ROCKET_PARTS_Z4 = [
-  {id:'hyperfuel',    name:'Bio-Hyperfuel',    need:6, unlock:'hyperfuel'},
-  {id:'r_biohull',    name:'Bio-Hull',         need:3, unlock:'hyperfuel'},
-  {id:'r_bionav',     name:'Living Navigator', need:1, unlock:'hyperfuel'},
-  {id:'r_core',       name:'Reactor Core',     need:1, unlock:'hyperfuel'},
+  {id:'hyperfuel',    name:'Bio-Hyperfuel',    need:30, unlock:'hyperfuel'},
+  {id:'r_biohull',    name:'Bio-Hull',         need:15, unlock:'hyperfuel'},
+  {id:'r_bionav',     name:'Living Navigator', need:5, unlock:'hyperfuel'},
+  {id:'r_core',       name:'Reactor Core',     need:5, unlock:'hyperfuel'},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -1423,7 +1425,7 @@ const ZONES={
      arrivalTitle:'⛏️ IRONFIELD', arrivalBtn:"LET'S GO",
      arrivalHtml:`Welcome to <span style="color:var(--amber)">Ironfield</span>.<br>No machines. No power. Nothing.<br><br>
        Tap <span style="color:var(--amber)">🛠️ TOOLS</span> then<br>⛏️ Mine to collect resources.<br><br>Build a rocket to escape.`},
-  2:{name:'The Scar', icon:'💥', rocketTech:'repair_tech', parts:ROCKET_PARTS_Z2, fuel:{item:'refined_fuel',n:20},
+  2:{name:'The Scar', icon:'💥', rocketTech:'repair_tech', parts:ROCKET_PARTS_Z2, fuel:{item:'refined_fuel',n:100},
      partsCat:'rocket2', partsLabel:'Repair (Zone 2)', sci:['sci_scar','sci_smog','sci_repair'],
      hazards:['smog'], buildMap:()=>buildMapZ2(), mapSize:[96,64],
      launchLabel:'REPAIR & RELAUNCH', launchText:'The rocket screams upward.<br>The Scar fades to a scar of light.',
@@ -4855,7 +4857,7 @@ function runReactor(m,def){
 //  Inserters (any side) or the panel feed components into it. Once complete it
 //  draws SING_POWER; holding full power for SING_SUSTAIN ticks → Big Bang.
 // ═══════════════════════════════════════════════════
-const SING_REQS={grav_lens:10,stellar_casing:20,void_engine:10,quantum_mind:10};
+const SING_REQS={grav_lens:20,stellar_casing:40,void_engine:20,quantum_mind:20};
 const SING_POWER=5000, SING_SUSTAIN=240;
 function singularity(){return Object.values(G.machines).find(m=>m.type==='singularity')||null;}
 function runSingularity(m){
@@ -5759,12 +5761,12 @@ function updateToolTip(){
       const r=RECIPES[rid]; if(!r)continue;
       const ins=Object.entries(r.in).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(' + ');
       const outs=Object.entries(r.out).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(' + ');
-      const secs=((r.time*TICK_MS)/1000).toFixed(1);
+      const c=TICKS_PER_MIN/r.time, pmin=o=>Object.entries(o).map(([k,v])=>`${fmtRate(v*c)} ${ITEMS[k]?.name||k}`).join(' + ');
       recipesHtml+=`<div class="tt-recipe">
-        <span class="tt-rin">${ins}</span>
+        <span class="tt-rin">${pmin(r.in)}</span>
         <span style="color:var(--text3)"> → </span>
-        <span class="tt-rout">${outs}</span>
-        <span class="tt-rtime"> · ${secs}s</span>
+        <span class="tt-rout">${pmin(r.out)}</span>
+        <span class="tt-rtime"> /min at T1</span>
       </div>`;
     }
     if(avail.length>3)recipesHtml+=`<div class="tt-rlabel">+${avail.length-3} more (📖 Recipe Book)</div>`;
@@ -5789,7 +5791,8 @@ function updateToolTip(){
       <span class="tt-name">${def.name}</span>
     </div>
     ${unlockNote}
-    <div class="tt-desc">${def.desc}${notes[id]?'<br>'+notes[id]:''}</div>
+    <div class="tt-desc">${def.desc}${notes[id]?'<br>'+notes[id]:''}${TIER_TYPES.includes(id)?`<br><span style="color:var(--teal)">${
+      id==='miner'||isInserter(id)||BELT_TYPES.includes(id)?`PER MINUTE: T1 ${parseInt(tierBonus(id,1))} · T2 ${parseInt(tierBonus(id,2))} · T3 ${parseInt(tierBonus(id,3))}`:'UPGRADES: T2 ×2 · T3 ×4 speed'}</span>`:''}</div>
     <div class="tt-cost">Cost: ${costStr}</div>
     ${def.power>0?`<div class="tt-cost">Power: <span>${def.power}kW</span></div>`:''}
     ${def.power<0?`<div class="tt-cost">Generates: <span>${Math.abs(def.power)}kW</span></div>`:''}
@@ -5911,11 +5914,24 @@ function machineRates(m){
   if(def.living&&!m.withered){R.in.nutrient=(R.in.nutrient||0)+per(FEED_EVERY);R.notes.push('Nutrient Paste is eaten only while vitality is under 100%');}
   return R;
 }
+// Which inserter can carry a rate on its own (60 · 120 · 270 per minute), for the per-minute rows
+function armHint(v){
+  if(v<=60+1e-6)return 'T1 arm'; if(v<=120+1e-6)return 'T2 arm'; if(v<=270+1e-6)return 'T3 arm';
+  return `${Math.ceil(v/270-1e-6)} T3 arms`;
+}
+// A machine's per-minute rates for any recipe at its own tier (same maths as the panel)
+function recipeRates(m,rid){const old=m.recipe; m.recipe=rid; const R=machineRates(m); m.recipe=old; return R;}
+// How long one T1 Lab takes to make a tech's science, in minutes (the slowest pack sets it)
+function labMinutes(cost){
+  let t=0;
+  for(const[k,n]of Object.entries(cost)){const rid=Object.keys(RECIPES).find(id=>RECIPES[id].machine==='lab'&&RECIPES[id].out[k]); if(rid)t+=n/(RECIPES[rid].out[k]*TICKS_PER_MIN/RECIPES[rid].time);}
+  return t;
+}
 function fmtRate(n){return n>=10?String(Math.round(n)):n>=1?n.toFixed(1).replace(/\.0$/,''):n.toFixed(2).replace(/0$/,'');}
 function ratesHtml(m){
   const R=machineRates(m);
   const fluid=k=>k==='brine'||k==='enzymes';
-  const row=(k,v)=>`<div class="rate-row">${iconHtml(k)}<span class="rate-n">${fmtRate(v)}</span><span class="rate-u">${fluid(k)?'units':''}/min</span><span class="rate-name">${ITEMS[k]?.name||k}</span></div>`;
+  const row=(k,v)=>`<div class="rate-row">${iconHtml(k)}<span class="rate-n">${fmtRate(v)}</span><span class="rate-u">${fluid(k)?'units':''}/min</span><span class="rate-name">${ITEMS[k]?.name||k}</span>${fluid(k)?'':`<span class="rate-arm">${armHint(v)}</span>`}</div>`;
   const outs=Object.entries(R.out), ins=Object.entries(R.in);
   if(!outs.length&&!ins.length&&!R.notes.length)return '';
   let h=`<span class="sec-label" style="margin-top:10px">PER MINUTE</span><div class="rates">`;
@@ -6234,13 +6250,12 @@ function renderMachPanel(){
         </div>`;
         continue;
       }
-      const ins=Object.entries(r.in).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(' + ');
-      const outs=Object.entries(r.out).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(' + ');
+      // per minute at this machine's tier, so recipes compare at a glance
+      const RR=recipeRates(m,rid), pm=(o)=>Object.entries(o).map(([k,v])=>`${iconHtml(k)}${fmtRate(v)} ${ITEMS[k]?.name||k}`).join(' + ');
       const sel=m.recipe===rid;
       html+=`<div onclick="setRecipe(${m.id},'${rid}')" style="padding:6px 8px;margin-bottom:3px;border:1px solid ${sel?'var(--amber)':'var(--border)'};background:${sel?'rgba(245,166,35,.08)':'var(--bg3)'};cursor:pointer">
-        <div style="font-size:var(--f6);color:${sel?'var(--amber)':'var(--text)'};margin-bottom:2px">${r.name}${sel?' ✓':''}</div>
-        <div style="font-size:var(--f6);color:var(--blue)">${ins}</div>
-        <div style="font-size:var(--f6);color:var(--text3)">→ ${outs}</div>
+        <div style="font-size:var(--f6);color:${sel?'var(--amber)':'var(--text)'};margin-bottom:2px">${r.name}${sel?' ✓':''} <span style="color:var(--text3);font-size:var(--f4)">PER MIN</span></div>
+        <div class="rp-rates"><span class="rin">${pm(RR.in)||'nothing'}</span><br><span style="color:var(--text3)">→</span> <span class="rout">${pm(RR.out)}</span></div>
       </div>`;
     }
     html+=`</div>`;
@@ -6303,7 +6318,10 @@ function renderMachPanel(){
         return `${v}× ${ITEMS[k]?.name||k} <span style="color:${col}">(${have})</span>`;
       }).join(', ');
       html+=`<div style="border:1px solid var(--border);background:var(--bg3);padding:7px;margin-top:6px">
-        <div style="font-size:var(--f5);color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier}: ${tierBonus(m.type,nextTier)}</div>
+        <div style="font-size:var(--f5);color:var(--text3);margin-bottom:3px">UPGRADE TO T${nextTier}: ${tierBonus(m.type,nextTier)}</div>${(()=>{ // what this machine would make at the next tier
+          const R=machineRates(m), sp=t=>(isInserter(m.type)?INS_TIER_SPEED:BELT_TYPES.includes(m.type)?BELT_TIER_SPEED:MACHINE_TIER_SPEED)[t]||1, f=sp(nextTier)/sp(tier);
+          const outs=Object.entries(R.out); if(!outs.length)return '';
+          return `<div style="font-size:var(--f5);color:var(--green);margin-bottom:3px">T${nextTier} makes ${outs.map(([k,v])=>`${iconHtml(k)}${fmtRate(v*f)}/min`).join(' + ')} (now ${outs.map(([k,v])=>fmtRate(v)).join(' + ')})</div>`;})()}
         <div style="font-size:var(--f4);color:var(--text3);margin-bottom:5px">${locked?`<span style="color:var(--red)">Needs ${locked} research</span>`:costStr}</div>
         <button class="mini-btn ${canAfford?'teal':'dim'}" onclick="upgradeMachine(${m.id})" ${canAfford?'':'disabled'}>⬆ UPGRADE</button>
       </div>`;
@@ -6684,7 +6702,7 @@ function renderResPanel(){
           ${!reqMet&&!done?'<span style="color:var(--text3);font-size:var(--f9)">🔒</span>':''}
         </div>
         <div style="font-size:var(--f5);color:var(--text3);margin-bottom:5px">${tech.desc}</div>
-        ${!done?`<div style="font-size:var(--f5);color:var(--amber);margin-bottom:5px">Cost: ${costStr}</div>`:''}
+        ${!done?`<div style="font-size:var(--f5);color:var(--amber);margin-bottom:5px">Cost: ${costStr} <span style="color:var(--text3)">· 1 Lab: ${fmtRate(labMinutes(tech.cost))} min</span></div>`:''}
         ${!done&&reqMet?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="doResearch('${id}')" ${canAfford?'':'disabled'}>RESEARCH</button>`:''}
       </div>`;
     }
@@ -7775,11 +7793,11 @@ const TUTORIALS={
      done:()=>machinesOf('assembler').some(m=>m.recipe)},
     {text:'Build a [[lab]] Research Lab making [[sci_red]] Field Notes, fed by inserters. Science on autopilot.',
      done:()=>made('lab')},
-    {text:'Research Advanced Logistics (50 Field Notes). It unlocks Generators, Splitters, Tunnels and faster belts.',
+    {text:'Research Advanced Logistics (60 Field Notes). It unlocks Generators, Splitters, Tunnels and belt upgrades.',
      tally:[['sci_red',50]], done:()=>researched('logistics')},
     {text:'Labs also make [[sci_green]] Circuit Diagrams now. Research Steel and Electronics, then Rocket Science.',
      done:()=>researched('rocket_tech')},
-    {text:'Final goal: build the 4 rocket parts and launch from the 🚀 GOAL tab. Milestones there earn bonus perk points.',
+    {text:'Final goal: build the 4 kinds of rocket part (the GOAL tab lists how many) and launch from the 🚀 GOAL tab. Milestones there earn bonus perk points.',
      final:true},
   ]},
   2:{done:'The Scar briefing complete', steps:[
@@ -7801,7 +7819,7 @@ const TUTORIALS={
      done:()=>researched('smog_control')},
     {text:'Build a [[scrubber]] Scrubber and feed it refined fuel. One scrubber cancels about 3 oil pumps.',
      done:()=>machinesOf('scrubber').some(m=>(m.inBuf.refined_fuel||0)>0)},
-    {text:'Goal: research Rocket Repair, build 6 repair parts and stock 20 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
+    {text:'Goal: research Rocket Repair, build the 6 kinds of repair part and stock 100 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
      final:true},
   ]},
   3:{done:'The Deep briefing complete', steps:[
@@ -7823,7 +7841,7 @@ const TUTORIALS={
      done:()=>hasM('accumulator')},
     {text:'Research Pressure Control for [[relief_valve]] Relief Valves (vent above 80%) and the [[separator]] Separator.',
      done:()=>researched('pressure_control')},
-    {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build 5 escape parts, then launch from 🚀 GOAL.',
+    {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build the 5 kinds of escape part, then launch from 🚀 GOAL.',
      final:true},
   ]},
   4:{done:'The Bloom briefing complete', steps:[
@@ -7845,7 +7863,7 @@ const TUTORIALS={
      done:()=>machinesOf('reactor').some(r=>machineNeighbors(r).filter(n=>n.type==='heat_sink').length>=2)},
     {text:'Fuel it with [[lum_rod]] Luminite Rods (Assembler). 2,000kW, but watch the 🌡️ gauge.',
      done:()=>machinesOf('reactor').some(r=>(r.inBuf.lum_rod||0)>0)},
-    {text:'Goal: research Symbiosis and Hyperfuel. Build [[hyperfuel]] hyperfuel and the 4 Bloom rocket parts, then launch from 🚀 GOAL.',
+    {text:'Goal: research Symbiosis and Hyperfuel. Build [[hyperfuel]] hyperfuel and the 4 kinds of Bloom rocket part, then launch from 🚀 GOAL.',
      final:true},
   ]},
   5:{done:'The Singularity briefing complete', steps:[

@@ -327,6 +327,12 @@ const r=await p.evaluate(async()=>{
       r[`${rid}_T${tier}`]=n/2; r[`${rid}_T${tier}_panel`]=machineRates(m).out[k]; }
     ok('machine_tiers_x1_x2_x4',r.fn_iron_T1===15&&r.fn_iron_T2===30&&r.fn_iron_T3===60&&r.es_iron_T1===60&&r.es_iron_T3===240&&r.mk_gear_T2===120&&r.mk_gear_T3===240
       &&Object.keys(r).filter(k=>!k.endsWith('panel')).every(k=>Math.abs(r[k]-r[k+'_panel'])<0.01),r); }
+  // ── the machine panel shows the maths: per-minute rates per recipe, which arm can carry each, lab time for research
+  { reset(); power(2,2); const a=put('assembler',30,30); a.tier=2; a.recipe='mk_gear';
+    const R=recipeRates(a,'mk_circuit'); const keep=a.recipe==='mk_gear';
+    openMachinePanel(a); const html=document.getElementById('pMachBody').innerHTML; closePanel('machine');
+    ok('panel_shows_rates',keep&&R.out.circuit===60&&R.in.copper_wire===180&&armHint(60)==='T1 arm'&&armHint(180)==='T3 arm'&&armHint(600)==='3 T3 arms'
+      &&html.includes('PER MIN')&&html.includes('T3 makes')&&Math.abs(labMinutes(TECHS.rocket_tech.cost)-14)<1e-6,{R,keep}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};
