@@ -344,6 +344,21 @@ const r=await p.evaluate(async()=>{
     run(480);
     ok('inserters_use_splitters',viaBelt.a>=20&&viaBelt.b>=20&&(c2.chestInv.coal||0)+(c3.chestInv.coal||0)>=40&&!Object.values(sp2.inBuf).some(n=>n>0),
       {viaBelt,dropped:{a:c2.chestInv.coal||0,b:c3.chestInv.coal||0},inBuf:sp2.inBuf}); }
+  // ── a machine's output arrow drops straight onto a belt: no inserter needed to take things out
+  { reset(); power(2,2); res(10,40,1,1,'iron_ore'); put('miner',10,40); for(let x=11;x<20;x++)put('belt',x,40,0); const ch=put('chest',20,40);
+    run(120); ch.chestInv={}; let n=0; for(let t=0;t<480;t++){run(1); n+=ch.chestInv.iron_ore||0; ch.chestInv={};} // 9 tiles at 2s each before the first one arrives
+    // a furnace fed by inserters, its plates leave on a belt
+    reset(); power(2,2); const ore=put('chest',8,44); ore.chestInv.iron_ore=999; put('inserter',9,44,0); const fu=put('stone_furnace',10,44); fu.recipe='fn_iron';
+    const coal=put('chest',10,42); coal.chestInv.coal=999; put('inserter',10,43,1); for(let x=11;x<16;x++)put('belt',x,44,0); const pc=put('chest',16,44);
+    run(480);
+    // a belt pointing back into the machine is left alone
+    reset(); power(2,2); res(10,48,1,1,'iron_ore'); const mb=put('miner',10,48); const back=put('belt',11,48,2); run(40);
+    // a Cracker's two outputs alternate on the belt
+    reset(); power(2,2); G.research.done=Object.keys(TECHS); const cr=put('cracker',10,52); cr.outBuf={raw_fuel:6,plastic:6};
+    for(let x=12;x<20;x++){put('belt',x,52,0);} const cc=put('chest',20,52); run(120);
+    ok('outputs_onto_belts',Math.abs(n/2-60)<=1&&(pc.chestInv.iron_plate||0)>=25&&G.map[48][11].items.length===0&&(mb.outBuf.iron_ore||0)>0
+      &&(cc.chestInv.raw_fuel||0)>=4&&(cc.chestInv.plastic||0)>=4,
+      {miner:n/2,plates:pc.chestInv.iron_plate,back:G.map[48][11].items.length,crack:cc.chestInv}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
   { const travel=tier=>{reset(); for(let x=10;x<17;x++){const b=put('belt',x,50,0); b.tier=tier;} G.map[50][10].items=[{id:'coal',prog:0}];
       let t=0; while(t<300&&!G.map[50][16].items.length){run(1);t++;} return t;};
