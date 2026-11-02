@@ -637,6 +637,18 @@ const r=await p.evaluate(async()=>{
   let bad=''; try{await readBackupCode('EBI1.nope');}catch(e){bad=e.message;} ok('backup_rejects_garbage',!!bad,bad);
   const tk=G.tick; G.tick=tk+12345; tickId=tickId||1; document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('pagehide'));
   ok('save_on_hide',JSON.parse(localStorage.getItem(SAVE_KEY)).tick===tk+12345,{});
+  // ── Quantum Storage: belts and inserters feed it, everything lands in the inventory; it is a Stardust unlock
+  { const saved=JSON.stringify(PRESTIGE); PRESTIGE.owned={};
+    const hidden=!drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_chest'));
+    PRESTIGE.owned.quantum_storage=1; const shown=drawerCats('build').find(c=>c.label==='Handling').items.some(i=>i.id==='quantum_chest');
+    reset(); G.zone=1; power(2,2); G.inv={};
+    for(let x=10;x<14;x++)put('belt',x,G.floorY+4,0); const q1=put('quantum_chest',14,G.floorY+4); G.map[G.floorY+4][10].items=[{id:'coal',prog:0},{id:'coal',prog:.5}];
+    const src=put('chest',20,G.floorY+4); src.chestInv.iron_plate=5; put('inserter',21,G.floorY+4,0); const q2=put('quantum_chest',22,G.floorY+4);
+    run(120);
+    const okInv=(G.inv.coal||0)===2&&(G.inv.iron_plate||0)===5&&!Object.keys(q2.inBuf).some(k=>q2.inBuf[k]>0)&&q1.produced===2;
+    PRESTIGE=JSON.parse(saved); savePrestige();
+    const noFloorNote=![1,2,3,4,5].some(z=>ZONES[z].arrivalHtml.includes('Factory Floor'))&&typeof FLOOR_NOTE==='undefined';
+    ok('quantum_storage',hidden&&shown&&okInv&&noFloorNote,{hidden,shown,inv:G.inv,q2:q2.inBuf,q1:q1.produced,noFloorNote}); }
   // ── Stardust upgrades with levels, the unique unlocks, the big Singularity and the ascension ladder (runs last: moves to Zone 5)
   { const saved=JSON.stringify(PRESTIGE); G.perks.spent={};
     PRESTIGE.owned={}; const y0=perkMult().yield, b0=beltBaseSpeed();

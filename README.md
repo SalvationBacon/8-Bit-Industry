@@ -25,7 +25,7 @@ https://salvationbacon.github.io/8-Bit-Industry/
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v168` → `ebi-v169`) on every update
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v169` → `ebi-v170`) on every update
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open
@@ -39,7 +39,7 @@ https://salvationbacon.github.io/8-Bit-Industry/
 Every zone has its own playlist (3 or 4 tracks, plus a title theme), composed in the browser as it plays: each track keeps its main tune but the rest changes on every play. ☰ menu → Settings shows what's playing, with NEXT to skip.
 
 ## Stardust
-Each Big Bang earns Stardust for permanent upgrades: levelled boosts (yield, speed, power, labs, belts, inserters, hazards), starting kits, carrying cargo between zones, skipping research (Echoes) and a Stardust-only building. Every Big Bang also starts a harder universe: the next Singularity needs 25% more components and pays 25% more Stardust.
+Each Big Bang earns Stardust for permanent upgrades: levelled boosts (yield, speed, power, labs, belts, inserters, hazards), starting kits, carrying cargo between zones, skipping research (Echoes) and Stardust-only buildings (Quantum Extractor, Quantum Storage). Every Big Bang also starts a harder universe: the next Singularity needs 25% more components and pays 25% more Stardust.
 
 ## Recipe Book
 ☰ menu → Recipes lists every recipe and resource in your zone, with a search box. Tap any item icon in a menu to see how it is made and what uses it.
@@ -51,4 +51,4 @@ Each Big Bang earns Stardust for permanent upgrades: levelled boosts (yield, spe
 ☰ menu → Settings: FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.23: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.24: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
