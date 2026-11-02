@@ -759,6 +759,21 @@ const r=await p.evaluate(async()=>{
     const belt=put('belt',14,y); toggleM(belt.id); const beltStays=belt.active;
     ok('machine_actions_and_building',!bad.length&&turned&&pipeDim&&two&&blocked&&short&&cancelled&&held&&chests&&stopped&&resumed&&beltStays,
       {bad,turned,pipeDim,two,blocked,short,cancelled,held,chests,stopped,resumed,beltStays}); }
+  // ── A splitter placed on a belt line takes up the belt under it (refunded, items kept); undo puts the belt back
+  { reset(); power(2,2); const y=G.floorY+8; G.devFreeBuild=false; G.inv={iron_plate:500,iron_gear:500,circuit:50,copper_wire:50};
+    const c1=put('chest',10,y); c1.chestInv.coal=200; put('inserter',11,y,0);
+    for(let x=12;x<20;x++)put('belt',x,y,0); put('inserter',20,y,0); const c2=put('chest',21,y);
+    run(120); const before=c2.chestInv.coal||0;
+    const b15=G.machines[G.map[y][15].mid]; G.map[y][15].items=[{id:'coal',prog:.2}]; const inv0={...G.inv};
+    placeDir=0; setTool('splitter'); hov={x:15,y}; const ghostOk=canPlace('splitter',15,y,0,true), pasteNo=!stampFits([{type:'splitter',rx:0,ry:0,dir:0}],15,y);
+    confirmPlace(); const sp=G.machines[G.map[y][15].mid];
+    const replaced=sp?.type==='splitter'&&!G.machines[b15.id]&&G.map[y+1][15].mid===sp.id&&G.map[y][15].items.length===1&&(G.inv.coal||0)===(inv0.coal||0);
+    const refunded=Object.entries(MDEFS.splitter.cost).every(([k,n])=>G.inv[k]===inv0[k]-n+(MDEFS.belt.cost[k]||0));
+    run(240); const flows=(c2.chestInv.coal||0)>before+5;
+    const chestNo=!canPlace('splitter',21,y,0,true); // not over anything that isn't a belt
+    undoLast(); const back=G.machines[G.map[y][15].mid]?.type==='belt'&&G.map[y+1][15].mid===null&&!Object.values(G.machines).some(m=>m.type==='splitter');
+    setTool('select'); G.devFreeBuild=true;
+    ok('splitter_over_belts',ghostOk&&pasteNo&&replaced&&refunded&&flows&&chestNo&&back,{ghostOk,pasteNo,replaced,refunded,flows,before,after:c2.chestInv.coal,chestNo,back}); }
   // ── Stats graphs: machine output per item per 10s and per minute, power made and used, drawn in the Stats panel
   { reset(); G.prodLog=null; G.tick=0; power(2,2); res(10,G.floorY+4,1,1,'iron_ore'); const mi=put('miner',10,G.floorY+4); put('chest',11,G.floorY+4);
     G.inv.iron_ore=0; run(480);

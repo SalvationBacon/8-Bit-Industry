@@ -535,7 +535,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.30 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.31 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -719,7 +719,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.30';
+const VER      = '2.0.31';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -3977,7 +3977,7 @@ function draw(){
     if(def){
       const[mw,mh]=machSize(activeTool,placeDir);
       const px=hov.x*ts-cx, py=hov.y*ts-cy;
-      const ok=canPlace(activeTool,hov.x,hov.y);
+      const ok=canPlace(activeTool,hov.x,hov.y,undefined,true); // a splitter may go over belts
       ctx.fillStyle=ok?'rgba(245,166,35,.14)':rgba(PAL.bad,.14);
       ctx.fillRect(px,py,mw*ts,mh*ts);
       ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts,placeDir); ctx.globalAlpha=1;
@@ -4743,11 +4743,17 @@ function undoLast(){
   // Rebuilds must fit and be affordable before anything changes
   const rebuilds=ops.filter(o=>o.op==='remove');
   if(rebuilds.length){
-    if(!rebuilds.every(o=>canPlace(o.snap.type,o.snap.x,o.snap.y,o.snap.dir))){toast('Cannot undo: something is built there now','bad');sfx('error');return;}
+    // machines this same step placed come up first (a splitter laid over belts), so their tiles and refunds count
+    const placed=ops.filter(o=>o.op==='place').map(o=>G.machines[o.id]).filter(Boolean), cleared=[], back={};
+    for(const pm of placed){const[w,h]=machSize(pm);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){const t=G.map[pm.y+dy]?.[pm.x+dx];if(t&&t.mid===pm.id){t.mid=null;cleared.push([t,pm.id]);}}
+      if(ops.find(o=>o.op==='place'&&o.id===pm.id).src==='inv')addCost(back,machineWorth(pm.type,pm.tier,pm.modules));}
+    const fits=rebuilds.every(o=>canPlace(o.snap.type,o.snap.x,o.snap.y,o.snap.dir));
+    for(const[t,id]of cleared)t.mid=id;
+    if(!fits){toast('Cannot undo: something is built there now','bad');sfx('error');return;}
     if(!G.devFreeBuild){
       const need={};
       for(const o of rebuilds)addCost(need,machineWorth(o.snap.type,o.snap.tier,o.snap.modules));
-      const miss=Object.entries(need).find(([k,n])=>(G.inv[k]||0)<n);
+      const miss=Object.entries(need).find(([k,n])=>(G.inv[k]||0)+(back[k]||0)<n);
       if(miss){toast(`Cannot undo: need ${miss[1]}× ${ITEMS[miss[0]]?.name||miss[0]}`,'bad');sfx('error');return;}
     }
   }
@@ -4798,26 +4804,49 @@ function stampMachine(e,x,y,src){
   return m;
 }
 
-function canPlace(type,tx,ty,dir){
+function canPlace(type,tx,ty,dir,replace){
   if(!MDEFS[type])return false;
   const d=(dir!==undefined)?dir:placeDir;
   const[mw,mh]=machSize(type,d);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
     const nx=tx+dx,ny=ty+dy;
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
-    if(G.map[ny][nx].mid!==null)return false;
+    if(G.map[ny][nx].mid!==null&&!(replace&&REPLACES_BELTS.has(type)&&G.machines[G.map[ny][nx].mid]?.type==='belt'))return false;
     if(!terrainOk(type,G.map[ny][nx]))return false;
   }
   return !fluidsWouldMix(type,tx,ty,d);
 }
 
+// ── Splitters go straight onto belts (v2.0.31) ──
+// Placing a splitter over belt tiles takes those belts up first: each is refunded in full (machineWorth, so upgrades
+// too) and the items riding on it stay where they are, now on the splitter. Only placing by hand passes replace=true to
+// canPlace (tryPlace, completePlacement, confirmPlace and the build ghost); paste, blueprints, moves, lines and undo
+// still need empty ground. The belts and the splitter are one undo step.
+const REPLACES_BELTS=new Set(['splitter']);
+function beltsUnder(type,tx,ty,dir){
+  if(!REPLACES_BELTS.has(type))return [];
+  const[mw,mh]=machSize(type,dir!==undefined?dir:placeDir), ids=new Set();
+  for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){const t=G.map[ty+dy]?.[tx+dx], o=t&&t.mid!==null?G.machines[t.mid]:null; if(o&&o.type==='belt')ids.add(o.id);}
+  return [...ids].map(id=>G.machines[id]);
+}
+function liftBelts(belts){ // demolish quietly, keep their items to put back; returns [[x,y,items]]
+  const kept=[];
+  for(const b of belts){const t=G.map[b.y][b.x]; kept.push([b.x,b.y,t.items.map(it=>({...it}))]); tryRemove(b.x,b.y,true);}
+  return kept;
+}
+function restoreBeltItems(kept,m){ // the lifted items ride on the new splitter (they went to the inventory with the belt)
+  for(const[x,y,items]of kept){
+    const t=G.map[y][x]; if(t.mid!==m.id)continue;
+    for(const it of items.slice(0,BELT_CAP)){ if((G.inv[it.id]||0)<1)continue; G.inv[it.id]--; t.items.push({...it,side:x===m.x&&y===m.y?0:1}); }
+  }
+}
 function tryPlace(type,tx,ty){
   const def=MDEFS[type]; if(!def)return;
   if(def.stub){toast(`[FUTURE] ${def.name} is not active yet`,'wrn');hudSelect();return;}
   if(def.unlock&&!G.research.done.includes(def.unlock)){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); hudSelect(); return;
   }
-  if(!canPlace(type,tx,ty)){if(onWall(type,tx,ty))wallHint();else toast('Cannot place here','bad'); sfx('error'); return;}
+  if(!canPlace(type,tx,ty,undefined,true)){if(onWall(type,tx,ty))wallHint();else toast('Cannot place here','bad'); sfx('error'); return;}
 
   // Power warning, confirm if this machine will exceed available power
   if(def.power>0&&!G.devFreeBuild){
@@ -4851,6 +4880,8 @@ function tryPlace(type,tx,ty){
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
 
+  const under=beltsUnder(type,tx,ty); if(under.length)undoBegin();
+  const kept=liftBelts(under);
   const m=mkMachine(type,tx,ty,placeDir);
   undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
@@ -4863,8 +4894,9 @@ function tryPlace(type,tx,ty){
     G.map[ty+dy][tx+dx].mid=m.id;
   const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
 
+  if(under.length){restoreBeltItems(kept,m);undoEnd();}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
-  toast(`Placed ${def.name}`,'ok');
+  toast(under.length?`Placed ${def.name}, replacing ${under.length} belt${under.length>1?'s':''}`:`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
   updateBuildHUD(); // every machine stays selected: keep placing until CANCEL (v2.0.30)
 }
@@ -4872,7 +4904,7 @@ function tryPlace(type,tx,ty){
 function completePlacement(type,tx,ty){
   // Called after player confirms power warning, skip power check and place
   const def=MDEFS[type]; if(!def)return;
-  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad');sfx('error');return;}
+  if(!canPlace(type,tx,ty,undefined,true)){toast('Cannot place here','bad');sfx('error');return;}
   const crafted=(G.crafted[type]||0)>0;
   if(G.devFreeBuild){
     // free
@@ -4884,6 +4916,8 @@ function completePlacement(type,tx,ty){
     }
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
+  const under=beltsUnder(type,tx,ty); if(under.length)undoBegin();
+  const kept=liftBelts(under);
   const m=mkMachine(type,tx,ty,placeDir);
   undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
@@ -4893,6 +4927,7 @@ function completePlacement(type,tx,ty){
   const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++) G.map[ty+dy][tx+dx].mid=m.id;
   const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
+  if(under.length){restoreBeltItems(kept,m);undoEnd();}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
@@ -6408,7 +6443,7 @@ function cancelBuild(){
 function confirmPlace(){
   if(lineActive()){placeLine();return;}
   if(hov.x<0||hov.y<0)return;
-  if(!canPlace(activeTool,hov.x,hov.y)){toast('Cannot place here','bad');sfx('error');return;}
+  if(!canPlace(activeTool,hov.x,hov.y,undefined,true)){toast('Cannot place here','bad');sfx('error');return;}
   tryPlace(activeTool,hov.x,hov.y);
 }
 
