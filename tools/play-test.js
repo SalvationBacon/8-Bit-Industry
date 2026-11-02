@@ -555,9 +555,9 @@ const r=await p.evaluate(async()=>{
     ok('layout_flip_paste',at(44,40)?.type==='belt'&&at(44,40).dir===2&&at(43,40)?.type==='inserter'&&at(43,40).dir===2&&at(41,40)?.type==='assembler'&&at(41,40).recipe==='mk_gear'&&at(40,40)?.type==='splitter',{b:at(44,40)?.type});
     multiselClear(); setTool('select');
     // a saved blueprint is never changed by flipping while placing it
-    G.blueprints=[{name:'t',data:L.map(e=>({...e}))}]; const before=key(G.blueprints[0].data);
+    BLUEPRINTS=[{name:'t',data:L.map(e=>({...e}))}]; const before=key(BLUEPRINTS[0].data);
     startPasteBlueprint(0); transformGhost('rot'); transformGhost('v');
-    ok('layout_blueprint_untouched',key(G.blueprints[0].data)===before&&key(blueprintState.data)!==before,{});
+    ok('layout_blueprint_untouched',key(BLUEPRINTS[0].data)===before&&key(blueprintState.data)!==before,{});
     ghostCancel(); setTool('select'); }
   // ── every machine turns to all four directions, including the 1×2 Scrubber
   { reset(); G.research.done=Object.keys(TECHS); const at=(x,y)=>G.map[y][x].mid;
@@ -637,6 +637,21 @@ const r=await p.evaluate(async()=>{
   let bad=''; try{await readBackupCode('EBI1.nope');}catch(e){bad=e.message;} ok('backup_rejects_garbage',!!bad,bad);
   const tk=G.tick; G.tick=tk+12345; tickId=tickId||1; document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('pagehide'));
   ok('save_on_hide',JSON.parse(localStorage.getItem(SAVE_KEY)).tick===tk+12345,{});
+  // ── blueprints are one library for the device: old saves' blueprints move in, zone changes keep them, codes share them
+  { const L=[{type:'belt',rx:0,ry:0,dir:0},{type:'assembler',rx:1,ry:0,dir:0,recipe:'mk_gear',tier:2}];
+    BLUEPRINTS=[]; saveBlueprints();
+    G.blueprints=[{name:'Old <b>one</b>',data:L}]; saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const moved=BLUEPRINTS.length===1&&!/[<>]/.test(BLUEPRINTS[0].name)&&BLUEPRINTS[0].data[1].tier===2&&!('blueprints' in G)&&JSON.parse(localStorage.getItem(BP_KEY)).length===1;
+    const z0=G.zone; G.perks.awarded[G.zone]=true; transitionToZone(2); closeModal(); clearInterval(tickId); const kept=BLUEPRINTS.length===1;
+    const code=await makeBlueprintCode(BLUEPRINTS), back=await readBlueprintCode(code);
+    const r1=addBlueprints(back);                       // the same one again: skipped
+    const r2=addBlueprints([{name:'Two',data:[{type:'chest',rx:0,ry:0,dir:0}]},{name:'Junk',data:[{type:'nope',rx:0,ry:0}]}]);
+    let bad=''; try{await readBlueprintCode('EBI1.abc');}catch(e){bad=e.message;}
+    const bk=await readBackupCode(await makeBackupCode()); const inBackup=JSON.parse(bk.blueprints).length===2;
+    showPanel('blueprint'); const panel=document.getElementById('pBlueprintBody').innerText; closePanel('blueprint');
+    BLUEPRINTS=[]; saveBlueprints(); G.zone=z0;
+    ok('blueprint_library',moved&&kept&&code.startsWith('EBP')&&back.length===1&&r1.added===0&&r1.dupes===1&&r2.added===1&&!!bad&&inBackup&&panel.includes('EXPORT ALL')&&panel.includes('/30'),
+      {moved,kept,r1,r2,bad,inBackup,lib:BLUEPRINTS.length}); }
   // ── Quantum Storage: belts and inserters feed it, everything lands in the inventory; it is a Stardust unlock
   { const saved=JSON.stringify(PRESTIGE); PRESTIGE.owned={};
     const hidden=!drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_chest'));

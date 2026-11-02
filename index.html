@@ -513,7 +513,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.25 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.26 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -697,7 +697,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.25';
+const VER      = '2.0.26';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -1993,7 +1993,6 @@ function defaultState(){
     research:{done:[]},
     cam:{x:0,y:0,zoom:1},
     stats:{placed:0,taps:0,mined:0,launched:false,bursts:0,withered:0,scrams:0},
-    blueprints:[],
     craftState:{recipeId:null, clicks:0},
     achievements:[],
     tutorial:{step:0},
@@ -4385,7 +4384,7 @@ function handleTap(tile,isLong){
       if(!captured.length){toast('No machines in selection','wrn');bp.mode='idle';return;}
       bp.data=captured; bp.mode='idle';
       // Show save dialog with cost summary
-      const defaultName=`Blueprint ${(G.blueprints||[]).length+1}`;
+      const defaultName=`Blueprint ${BLUEPRINTS.length+1}`;
       showModal('💾 SAVE BLUEPRINT',
         `<div style="font-size:var(--f6);color:var(--text2);margin-bottom:8px">${captured.length} machine${captured.length!==1?'s':''} captured.</div>
          <input id="bpNameInput" type="text" value="${defaultName}" maxlength="24" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:var(--f6);padding:8px;margin-bottom:10px">
@@ -7113,18 +7112,96 @@ function blueprintCanAfford(data){
   const c=blueprintCost(data);
   return Object.entries(c).every(([k,v])=>(G.inv[k]||0)>=v);
 }
+// ═══ BLUEPRINT LIBRARY (v2.0.26) ═══
+// Kept once on the device (ebi_blueprints), shared by every save, slot, zone and Big Bang, and inside backup codes.
+// Blueprints that older saves held in G.blueprints move into it when they load (migrateSave). A blueprint code
+// (EBP1. + base64 of gzipped JSON, EBP0. without gzip) shares one blueprint or the whole library.
+const BP_KEY='ebi_blueprints', BP_MAX=30;
+function loadBlueprints(){try{const a=JSON.parse(localStorage.getItem(BP_KEY)||'[]');return Array.isArray(a)?a.filter(b=>b&&Array.isArray(b.data)):[];}catch(e){return [];}}
+let BLUEPRINTS=loadBlueprints();
+function saveBlueprints(){try{localStorage.setItem(BP_KEY,JSON.stringify(BLUEPRINTS));}catch(e){}}
+const bpKey=b=>b.name+'|'+JSON.stringify(b.data);
+function cleanBlueprint(b){ // only known machines and fields, and a name that is plain text
+  if(!b||!Array.isArray(b.data))return null;
+  const data=b.data.filter(e=>e&&MDEFS[e.type]&&isFinite(e.rx)&&isFinite(e.ry)).map(e=>({type:e.type,rx:e.rx|0,ry:e.ry|0,dir:(e.dir|0)&3,recipe:RECIPES[e.recipe]?e.recipe:null,tier:Math.min(3,Math.max(1,e.tier|0||1))}));
+  return data.length?{name:String(b.name||'Blueprint').replace(/[<>&"'`]/g,'').trim().slice(0,24)||'Blueprint',data}:null;
+}
+function addBlueprints(list){ // merges into the library, skipping exact copies; returns {added,dupes,full}
+  const have=new Set(BLUEPRINTS.map(bpKey)); let added=0,dupes=0,full=0;
+  for(const raw of list||[]){
+    const b=cleanBlueprint(raw); if(!b)continue;
+    if(have.has(bpKey(b))){dupes++;continue;}
+    if(BLUEPRINTS.length>=BP_MAX){full++;continue;}
+    BLUEPRINTS.push(b); have.add(bpKey(b)); added++;
+  }
+  if(added)saveBlueprints();
+  return {added,dupes,full};
+}
+async function makeBlueprintCode(list){
+  const bytes=new TextEncoder().encode(JSON.stringify({v:1,bps:list}));
+  if(window.CompressionStream)return 'EBP1.'+b64(await zipBytes(bytes,CompressionStream));
+  return 'EBP0.'+b64(bytes);
+}
+async function readBlueprintCode(code){
+  const m=String(code||'').replace(/\s+/g,'').match(/^EBP([01])\.([A-Za-z0-9+/=]+)$/);
+  if(!m)throw new Error('That is not an 8-Bit Industry blueprint code');
+  let bytes=unb64(m[2]);
+  if(m[1]==='1'){if(!window.DecompressionStream)throw new Error('This browser cannot read compressed codes'); bytes=await zipBytes(bytes,DecompressionStream);}
+  const d=JSON.parse(new TextDecoder().decode(bytes));
+  const list=(d&&Array.isArray(d.bps)?d.bps:[]).map(cleanBlueprint).filter(Boolean);
+  if(!list.length)throw new Error('The code has no blueprints in it');
+  return list;
+}
+let bpCode='', bpCodeName='';
+async function exportBlueprints(idx){
+  const list=idx===undefined?BLUEPRINTS:[BLUEPRINTS[idx]].filter(Boolean);
+  if(!list.length){toast('No blueprints to export','wrn');return;}
+  bpCode=await makeBlueprintCode(list);
+  bpCodeName=idx===undefined?'blueprints':list[0].name.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()||'blueprint';
+  if(openPanel==='blueprint')closePanel('blueprint');
+  showModal('📤 EXPORT BLUEPRINTS',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">${idx===undefined?`All ${list.length} blueprint${list.length>1?'s':''}`:`"${list[0].name}"`} as a code. Send it to yourself or a friend, or save it as a file, then IMPORT it in any game.</div>
+    <textarea id="bpCode" class="bk-area" readonly>${bpCode}</textarea>`,
+    `<button class="btn btn-sm" onclick="closeModal();showPanel('blueprint')">◀</button>
+     <button class="btn btn-sm" onclick="copyBpCode()">📋 COPY</button>
+     <button class="btn btn-sm btn-teal" onclick="downloadBpCode()">⬇ FILE</button>`);
+}
+async function copyBpCode(){
+  let ok=false;
+  try{await navigator.clipboard.writeText(bpCode);ok=true;}catch(e){const t=document.getElementById('bpCode'); if(t){t.select();try{ok=document.execCommand('copy');}catch(e2){}}}
+  const b=[...document.querySelectorAll('#mFoot button')].find(x=>x.textContent.includes('COPY')); if(b)b.textContent=ok?'✓ COPIED':'SELECT + COPY';
+}
+function downloadBpCode(){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bpCode],{type:'text/plain'}));
+  a.download=`8bit-industry-${bpCodeName}.txt`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function importBlueprintsUI(msg){
+  if(openPanel==='blueprint')closePanel('blueprint');
+  showModal('📥 IMPORT BLUEPRINTS',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">Paste a blueprint code, or load a blueprint file. They are added to your library (up to ${BP_MAX}); nothing is replaced.</div>
+    ${msg?`<div style="font-size:var(--f5);color:var(--red);margin-bottom:8px">${msg}</div>`:''}
+    <textarea id="bpIn" class="bk-area" placeholder="EBP1.…"></textarea>
+    <input id="bpFile" type="file" accept=".txt,text/plain" style="display:none" onchange="readBpFile(this)">
+    <button class="full-btn" onclick="document.getElementById('bpFile').click()">📄 LOAD FROM FILE</button>`,
+    `<button class="btn btn-sm" onclick="closeModal();showPanel('blueprint')">◀</button>
+     <button class="btn btn-sm btn-teal" onclick="importBlueprints()">IMPORT</button>`);
+}
+function readBpFile(inp){const f=inp.files&&inp.files[0]; if(!f)return; f.text().then(t=>{const a=document.getElementById('bpIn');if(a)a.value=t.trim();});}
+async function importBlueprints(){
+  let list; try{list=await readBlueprintCode(document.getElementById('bpIn')?.value||'');}catch(e){importBlueprintsUI(e.message||'That code could not be read');return;}
+  const r=addBlueprints(list);
+  closeModal(); showPanel('blueprint'); sfx(r.added?'craft':'error');
+  toast(`Added ${r.added} blueprint${r.added!==1?'s':''}${r.dupes?` · ${r.dupes} already in your library`:''}${r.full?` · ${r.full} skipped: library full (${BP_MAX})`:''}`,r.added?'ok':'wrn');
+}
 function saveBlueprintFromModal(){
   const name=(document.getElementById('bpNameInput')?.value||'Blueprint').trim()||'Blueprint';
-  if(!G.blueprints)G.blueprints=[];
-  if(G.blueprints.length>=8){toast('Blueprint limit reached (8)','wrn');closeModal();return;}
-  G.blueprints.push({name, data:[...blueprintState.data]});
+  if(BLUEPRINTS.length>=BP_MAX){toast(`Blueprint library full (${BP_MAX})`,'wrn');closeModal();return;}
+  const b=cleanBlueprint({name,data:[...blueprintState.data]}); if(b){BLUEPRINTS.push(b); saveBlueprints();}
   blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
-  saveGame(); closeModal(); sfx('craft');
+  closeModal(); sfx('craft');
   toast('Blueprint saved!','ok');
   if(openPanel==='blueprint')renderBlueprintPanel();
 }
 function startPasteBlueprint(idx){
-  const b=(G.blueprints||[])[idx]; if(!b)return;
+  const b=BLUEPRINTS[idx]; if(!b)return;
   if(!blueprintCanAfford(b.data)){
     const missing=Object.entries(blueprintCost(b.data))
       .filter(([k,v])=>(G.inv[k]||0)<v)
@@ -7182,16 +7259,16 @@ function pasteBlueprintAt(data,x,y){
   toast(`Placed ${data.length} machine${data.length!==1?'s':''}!`,'ok');
 }
 function deleteBlueprint(idx){
-  if(!G.blueprints)return;
-  G.blueprints.splice(idx,1);
-  saveGame(); renderBlueprintPanel();
+  if(!BLUEPRINTS[idx])return;
+  BLUEPRINTS.splice(idx,1);
+  saveBlueprints(); renderBlueprintPanel();
   toast('Blueprint deleted','ok');
 }
 
 // ── Blueprint Panel ─────────────────────────────────
 function renderBlueprintPanel(){
   const el=document.getElementById('pBlueprintBody'); if(!el)return;
-  const bps=G.blueprints||[];
+  const bps=BLUEPRINTS;
   const bp=blueprintState;
 
   let html=`<div style="font-size:var(--f6);color:var(--text2);line-height:2;margin-bottom:10px;padding:8px;border:1px solid var(--border2);background:var(--bg3)">
@@ -7209,7 +7286,12 @@ function renderBlueprintPanel(){
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};document.getElementById('ghostBar')?.classList.add('hidden');setTool('select');renderBlueprintPanel()">CANCEL PASTE</button>`;
   }
 
-  html+=`<span class="sec-label">SAVED BLUEPRINTS (${bps.length}/8)</span>`;
+  html+=`<div style="display:flex;gap:4px;margin-bottom:10px">
+    <button class="mini-btn teal" style="flex:1" onclick="exportBlueprints()" ${bps.length?'':'disabled'}>📤 EXPORT ALL</button>
+    <button class="mini-btn amber" style="flex:1" onclick="importBlueprintsUI()">📥 IMPORT</button>
+  </div>
+  <span class="sec-label">YOUR BLUEPRINTS (${bps.length}/${BP_MAX})</span>
+  <div style="font-size:var(--f4);color:var(--text3);margin:-4px 0 8px;line-height:1.8">Shared by every save, zone and universe.</div>`;
   if(!bps.length){
     html+=`<div style="font-size:var(--f6);color:var(--text3);text-align:center;padding:12px;border:1px solid var(--border);line-height:2">No blueprints saved.<br><span style="font-size:var(--f5)">Use 📐 tool to capture a layout.</span></div>`;
   } else {
@@ -7230,7 +7312,8 @@ function renderBlueprintPanel(){
         <div style="font-size:var(--f5);color:var(--text3);margin-bottom:7px;line-height:1.9">${costLines}</div>
         <div style="display:flex;gap:4px">
           <button class="mini-btn ${canAfford?'teal':'dim'}" style="flex:1;font-size:var(--f5)" onclick="startPasteBlueprint(${i})" ${canAfford?'':'disabled'}>▶ PLACE</button>
-          <button class="mini-btn red" style="font-size:var(--f5)" onclick="deleteBlueprint(${i})">✕ DELETE</button>
+          <button class="mini-btn" style="font-size:var(--f5);color:var(--text2)" onclick="exportBlueprints(${i})">📤 SHARE</button>
+          <button class="mini-btn red" style="font-size:var(--f5)" onclick="deleteBlueprint(${i})">✕</button>
         </div>
       </div>`;
     }
@@ -8620,8 +8703,8 @@ function checkAchievements(){
     t3:           ()=>machines.some(m=>(m.tier||1)>=3),
     first_module: ()=>machines.some(m=>(m.modules||[]).filter(Boolean).length>0),
     modules_5:    ()=>machines.reduce((a,m)=>a+(m.modules||[]).filter(Boolean).length,0)>=5,
-    first_blueprint:()=>(G.blueprints||[]).length>=1,
-    blueprints_4: ()=>(G.blueprints||[]).length>=4,
+    first_blueprint:()=>BLUEPRINTS.length>=1,
+    blueprints_4: ()=>BLUEPRINTS.length>=4,
     first_paste:  ()=>(G.stats.pastes||0)>=1,
     first_flip:   ()=>(G.stats.flips||0)>=1,
     first_undo:   ()=>(G.stats.undos||0)>=1,
@@ -9230,7 +9313,7 @@ function unb64(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.len
 const zipBytes=(u8,Stream)=>new Response(new Blob([u8]).stream().pipeThrough(new Stream('gzip'))).arrayBuffer().then(b=>new Uint8Array(b));
 async function makeBackupCode(){
   if(G&&tickId)saveGame();
-  const data={v:1,at:Date.now(),save:localStorage.getItem(SAVE_KEY),prestige:localStorage.getItem(PRESTIGE_KEY),
+  const data={v:1,at:Date.now(),save:localStorage.getItem(SAVE_KEY),prestige:localStorage.getItem(PRESTIGE_KEY),blueprints:localStorage.getItem(BP_KEY),
     slots:[1,2,3].map(n=>localStorage.getItem(`ebi_save_slot${n}`))};
   const bytes=new TextEncoder().encode(JSON.stringify(data));
   if(window.CompressionStream)return 'EBI1.'+b64(await zipBytes(bytes,CompressionStream));
@@ -9246,7 +9329,7 @@ async function readBackupCode(code){
   }
   const d=JSON.parse(new TextDecoder().decode(bytes));
   if(!d||d.v!==1||!(d.save||d.prestige||(d.slots||[]).some(Boolean)))throw new Error('The backup is empty');
-  for(const raw of[d.save,d.prestige,...(d.slots||[])])if(raw)JSON.parse(raw);
+  for(const raw of[d.save,d.prestige,d.blueprints,...(d.slots||[])])if(raw)JSON.parse(raw);
   return d;
 }
 let backupCode='';
@@ -9256,7 +9339,7 @@ async function openBackup(){
   const close=G?backToMenu:`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`;
   showModal('🛟 BACKUP',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:10px">
       Your progress lives only in this browser. Clearing site data deletes it, and so can a phone tidying its storage.
-      Keep a backup code somewhere safe: it holds your game, your save slots and your Stardust.
+      Keep a backup code somewhere safe: it holds your game, your save slots, your Stardust and your blueprints.
       ${prot?`<br><span style="color:var(--text3)">${prot}</span>`:''}</div>
     <button class="full-btn" onclick="exportBackup()">📤 EXPORT BACKUP</button>
     <button class="full-btn" onclick="importBackupUI()">📥 IMPORT BACKUP</button>`,close);
@@ -9313,6 +9396,7 @@ function applyBackup(){
   noSave=true; if(tickId){clearInterval(tickId);tickId=null;}
   const put=(k,v)=>{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k);};
   put(SAVE_KEY,d.save); put(PRESTIGE_KEY,d.prestige);
+  if(d.blueprints!==undefined)put(BP_KEY,d.blueprints); // older backups had none: keep this device's library
   (d.slots||[]).forEach((v,i)=>put(`ebi_save_slot${i+1}`,v));
   location.reload();
 }
@@ -9357,7 +9441,6 @@ function loadFromSlot(s){
     if(!G.perks)G.perks={points:0,spent:{},awarded:{}};
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
-    if(!G.blueprints)G.blueprints=[];
     if(!G.zone)G.zone=1;
     migrateSave();
     G.power={out:0,in:0};
@@ -9653,6 +9736,7 @@ function migrateSave(){
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
+  if(Array.isArray(G.blueprints)){addBlueprints(G.blueprints); delete G.blueprints;} // blueprints used to live in each save
   if(G.zone===5&&G.map&&G.floorY!==undefined){ // a Zone 5 save expanded by the old, smaller step gets the rest of the room
     MAP_W=G.map[0].length; MAP_H=G.map.length;
     const n=expansionsDone(), w=ZONES[5].mapSize[0]+EXPAND_W*n, h=G.floorY+FLOOR_ROWS+EXPAND_H*n;
@@ -9686,7 +9770,6 @@ function continueGame(){
     if(!G.perks)G.perks={points:0,spent:{},awarded:{}};
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
-    if(!G.blueprints)G.blueprints=[];
     if(!G.zone)G.zone=1;
     if(G.smog===undefined)G.smog=0;
     migrateSave();
