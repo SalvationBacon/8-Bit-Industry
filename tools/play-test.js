@@ -446,8 +446,9 @@ const r=await p.evaluate(async()=>{
     const missing=Object.keys(MDEFS).filter(t=>!MDEFS[t].stub&&!all.includes(t));
     const at={}; for(const z of[1,2,3,4,5]){G.zone=z; at[z]=Object.fromEntries(drawerCats('build').map(c=>[c.label,c.items.map(i=>i.id)]));}
     G.zone=z0;
-    const okZ=!at[1].Pipes&&!at[1]['Clean Air']&&at[1].Power.join()==='burner,generator'&&at[2].Power.includes('combustion_gen')&&at[2]['Clean Air']
-      &&at[3].Power.includes('lumen_panel')&&at[4].Power.includes('reactor')&&!at[4].Refining&&at[5].Mining.length===4;
+    const okZ=!at[1].Liquids&&!at[1]['Clean Air']&&at[1].Power.join()==='burner,generator'&&at[2].Power.includes('combustion_gen')&&at[2]['Clean Air']
+      &&at[2].Liquids.join()==='oil_pump'&&at[3].Liquids.join()==='brine_pump,pipe,fluid_tank,relief_valve'
+      &&at[3].Power.includes('lumen_panel')&&at[4].Power.includes('reactor')&&!at[4].Refining&&at[5].Mining.join()==='miner'&&at[5].Liquids.length===6;
     ok('build_menu_groups',!dupes.length&&!missing.length&&okZ,{dupes,missing,z1:Object.keys(at[1]),z2:at[2].Power}); }
   // ── recipe book: every recipe and resource of the zone, search, item pages, icons that open them
   { const z0=G.zone; reset(); G.zone=3; G.research.done=Object.keys(TECHS);
@@ -554,9 +555,9 @@ const r=await p.evaluate(async()=>{
     ok('layout_flip_paste',at(44,40)?.type==='belt'&&at(44,40).dir===2&&at(43,40)?.type==='inserter'&&at(43,40).dir===2&&at(41,40)?.type==='assembler'&&at(41,40).recipe==='mk_gear'&&at(40,40)?.type==='splitter',{b:at(44,40)?.type});
     multiselClear(); setTool('select');
     // a saved blueprint is never changed by flipping while placing it
-    G.blueprints=[{name:'t',data:L.map(e=>({...e}))}]; const before=key(G.blueprints[0].data);
+    BLUEPRINTS=[{name:'t',data:L.map(e=>({...e}))}]; const before=key(BLUEPRINTS[0].data);
     startPasteBlueprint(0); transformGhost('rot'); transformGhost('v');
-    ok('layout_blueprint_untouched',key(G.blueprints[0].data)===before&&key(blueprintState.data)!==before,{});
+    ok('layout_blueprint_untouched',key(BLUEPRINTS[0].data)===before&&key(blueprintState.data)!==before,{});
     ghostCancel(); setTool('select'); }
   // ── every machine turns to all four directions, including the 1×2 Scrubber
   { reset(); G.research.done=Object.keys(TECHS); const at=(x,y)=>G.map[y][x].mid;
@@ -636,6 +637,199 @@ const r=await p.evaluate(async()=>{
   let bad=''; try{await readBackupCode('EBI1.nope');}catch(e){bad=e.message;} ok('backup_rejects_garbage',!!bad,bad);
   const tk=G.tick; G.tick=tk+12345; tickId=tickId||1; document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('pagehide'));
   ok('save_on_hide',JSON.parse(localStorage.getItem(SAVE_KEY)).tick===tk+12345,{});
+  // ── blueprints are one library for the device: old saves' blueprints move in, zone changes keep them, codes share them
+  { const L=[{type:'belt',rx:0,ry:0,dir:0},{type:'assembler',rx:1,ry:0,dir:0,recipe:'mk_gear',tier:2}];
+    BLUEPRINTS=[]; saveBlueprints();
+    G.blueprints=[{name:'Old <b>one</b>',data:L}]; saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const moved=BLUEPRINTS.length===1&&!/[<>]/.test(BLUEPRINTS[0].name)&&BLUEPRINTS[0].data[1].tier===2&&!('blueprints' in G)&&JSON.parse(localStorage.getItem(BP_KEY)).length===1;
+    const z0=G.zone; G.perks.awarded[G.zone]=true; transitionToZone(2); closeModal(); clearInterval(tickId); const kept=BLUEPRINTS.length===1;
+    const code=await makeBlueprintCode(BLUEPRINTS), back=await readBlueprintCode(code);
+    const r1=addBlueprints(back);                       // the same one again: skipped
+    const r2=addBlueprints([{name:'Two',data:[{type:'chest',rx:0,ry:0,dir:0}]},{name:'Junk',data:[{type:'nope',rx:0,ry:0}]}]);
+    let bad=''; try{await readBlueprintCode('EBI1.abc');}catch(e){bad=e.message;}
+    const bk=await readBackupCode(await makeBackupCode()); const inBackup=JSON.parse(bk.blueprints).length===2;
+    showPanel('blueprint'); const panel=document.getElementById('pBlueprintBody').innerText; closePanel('blueprint');
+    BLUEPRINTS=[]; saveBlueprints(); G.zone=z0;
+    ok('blueprint_library',moved&&kept&&code.startsWith('EBP')&&back.length===1&&r1.added===0&&r1.dupes===1&&r2.added===1&&!!bad&&inBackup&&panel.includes('EXPORT ALL')&&panel.includes('/30'),
+      {moved,kept,r1,r2,bad,inBackup,lib:BLUEPRINTS.length}); }
+  // ── Quantum Storage: belts and inserters feed it, everything lands in the inventory; it is a Stardust unlock
+  { const saved=JSON.stringify(PRESTIGE); PRESTIGE.owned={};
+    const hidden=!drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_chest'));
+    PRESTIGE.owned.quantum_storage=1; const shown=drawerCats('build').find(c=>c.label==='Handling').items.some(i=>i.id==='quantum_chest');
+    reset(); G.zone=1; power(2,2); G.inv={};
+    for(let x=10;x<14;x++)put('belt',x,G.floorY+4,0); const q1=put('quantum_chest',14,G.floorY+4); G.map[G.floorY+4][10].items=[{id:'coal',prog:0},{id:'coal',prog:.5}];
+    const src=put('chest',20,G.floorY+4); src.chestInv.iron_plate=5; put('inserter',21,G.floorY+4,0); const q2=put('quantum_chest',22,G.floorY+4);
+    run(120);
+    const okInv=(G.inv.coal||0)===2&&(G.inv.iron_plate||0)===5&&!Object.keys(q2.inBuf).some(k=>q2.inBuf[k]>0)&&q1.produced===2;
+    PRESTIGE=JSON.parse(saved); savePrestige();
+    const noFloorNote=![1,2,3,4,5].some(z=>ZONES[z].arrivalHtml.includes('Factory Floor'))&&typeof FLOOR_NOTE==='undefined';
+    ok('quantum_storage',hidden&&shown&&okInv&&noFloorNote,{hidden,shown,inv:G.inv,q2:q2.inBuf,q1:q1.produced,noFloorNote}); }
+  // ── Stardust upgrades with levels, the unique unlocks, the big Singularity and the ascension ladder (runs last: moves to Zone 5)
+  { const saved=JSON.stringify(PRESTIGE); G.perks.spent={};
+    PRESTIGE.owned={}; const y0=perkMult().yield, b0=beltBaseSpeed();
+    PRESTIGE.owned={cosmic_yield:true}; const oldOwned=Math.abs(perkMult().yield/y0-1.15)<1e-9;           // an upgrade bought before levels counts as level 1
+    PRESTIGE.owned={cosmic_yield:5,swift_belts:5,quick_hands:5,bright_minds:5,stable_reality:3,cosmic_perk:3,cosmic_start:3};
+    const lv=Math.abs(perkMult().yield/y0-1.55)<1e-9&&Math.abs(beltBaseSpeed()/b0-1.5)<1e-9&&Math.abs(insMs(460,{tier:1})-460/1.5)<1e-9
+      &&labBoost({type:'lab'})===2&&Math.abs(hazardEase()-.55)<1e-9&&toolsFor(3).length===9;
+    const before=new Set(echoTechs(5)); PRESTIGE.owned.cosmic_research=3; const e3=echoTechs(5); PRESTIGE.owned.cosmic_research=4; const e4=echoTechs(5);
+    const echo=!before.size&&e3.includes('expansion_1')&&!e3.includes('expansion_2')&&e4.includes('expansion_2')&&!e4.includes('singularity')&&echoTechs(1).length===Object.keys(TECHS).filter(k=>!TECHS[k].zone).length-1;
+    // the Quantum Extractor: only in the build menu once bought; pulls 30 a minute
+    const hidden=!drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_extractor'));
+    PRESTIGE.owned.quantum_extractor=1; const shown=drawerCats('build').find(c=>c.label==='Mining').items.some(i=>i.id==='quantum_extractor');
+    reset(); G.zone=1; const qx=put('quantum_extractor',40,G.floorY+4); setExtract(qx.id,'iron_ore'); run(40); const unpowered=qx.produced===0;   // 400 kW: nothing without power
+    for(let k=0;k<7;k++)power(2+k*3,G.floorY+10); const q0=qx.produced; run(240); const qn=qx.produced-q0;
+    // Singularity sizes per universe
+    const sz=singReqsFor(0).stellar_casing===1000&&singReqsFor(0).grav_lens===500&&singReqsFor(2).grav_lens===750;
+    // Echoes and the Cargo Hold on arrival: Zone 5 starts with its Expansions done (map grown) and a share of the inventory
+    PRESTIGE.owned.cargo_hold=3; G.inv={iron_plate:1000};
+    transitionToZone(5); closeModal(); clearInterval(tickId);
+    const arrive=G.research.done.includes('expansion_2')&&!G.research.done.includes('singularity')&&MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&MAP_H===G.floorY+FLOOR_ROWS+2*EXPAND_H&&(G.inv.iron_plate||0)>=300;
+    // ascension: Universe 3 pays 1.5x
+    PRESTIGE.bangs=2; const d0=PRESTIGE.stardust, want=Math.round(achDust()*1.5); G.bigBang=false; triggerBigBang(); const paid=PRESTIGE.stardust-d0;
+    // a Zone 5 save that expanded by the old step (32 columns, 16 rows each) is topped up to the new size on load
+    G.bigBang=false; G.map=G.map.slice(0,G.floorY+FLOOR_ROWS+32).map(r=>r.slice(0,ZONES[5].mapSize[0]+64)); MAP_W=G.map[0].length; MAP_H=G.map.length;
+    saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const migrated=MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&MAP_H===G.floorY+FLOOR_ROWS+2*EXPAND_H&&G.map.every(r=>r.length===MAP_W);
+    PRESTIGE=JSON.parse(saved); savePrestige();
+    ok('stardust_upgrades',oldOwned&&lv&&echo&&hidden&&shown&&unpowered&&Math.abs(qn-30)<=1&&sz&&arrive&&paid===want&&migrated,{oldOwned,lv,echo,hidden,shown,unpowered,qn,sz,arrive,paid,want,migrated,w:MAP_W,h:MAP_H}); }
+  // ── Relief Valve setting: each valve opens at 60/70/80/85%, the lowest opens first, layouts and undo keep it
+  { const z0=G.zone;
+    const net=(at)=>{ reset(); G.zone=3; G.research.done=Object.keys(TECHS); power(2,2); G.stats.bursts=0;
+      res(10,40,2,2,'brine'); put('brine_pump',10,40); for(let x=12;x<22;x++)put('pipe',x,40);
+      const vs=[0,1].map(i=>{const v=put('relief_valve',12+i*3,41); v.inBuf.gasket=10; return v;}); vs.forEach(v=>setRelief(v.id,at)); return vs; };
+    let vs=net(60); run(240*3); const p60=pressureOf(vs[0]._net), b60=G.stats.bursts;
+    vs=net(85); run(240*3); const p85=pressureOf(vs[0]._net), b85=G.stats.bursts;
+    vs=net(80); setRelief(vs[1].id,70); run(240*2); const s0=vs[0].seal, s1=vs[1].seal, mixed=s1<VALVE_SEAL, vented=v=>(10-v.inBuf.gasket)*VALVE_SEAL+VALVE_SEAL-v.seal, onlyLow=vented(vs[1])>vented(vs[0]); // the 70% valve opens first and vents more
+    const bad=(setRelief(vs[0].id,90),vs[0].relief===80);
+    openMachinePanel(vs[1]); const panel=document.getElementById('pMachBody')?.innerText||''; closePanel('machine');
+    const bp=cleanBlueprint({name:'v',data:[{type:'relief_valve',rx:0,ry:0,dir:0,relief:70},{type:'relief_valve',rx:1,ry:0,dir:0,relief:90}]});
+    const st=stampMachine(bp.data[0],40,G.floorY+10); const kept=bp.data[0].relief===70&&bp.data[1].relief===undefined&&st.relief===70;
+    tryRemove(st.x,st.y); undoLast(); const back=Object.values(G.machines).find(m=>m.type==='relief_valve'&&m.x===40&&m.y===G.floorY+10);
+    G.zone=z0;
+    ok('valve_threshold',p60<=61&&p60>=58&&p85>84&&p85<=86&&b60===0&&b85===0&&mixed&&onlyLow&&bad&&/OPENS AT/.test(panel)&&kept&&back?.relief===70,
+      {p60:+p60.toFixed(1),p85:+p85.toFixed(1),b60,b85,s0,s1,mixed,onlyLow,bad,panel:/OPENS AT/.test(panel),kept,back:back?.relief}); }
+  // ── Run timer: an optional clock per zone and run, frozen at each launch, bests on the device, never with dev tools
+  { const savedT=localStorage.getItem(TIMES_KEY), savedPref=PREFS.timer, z0=G.zone;
+    TIMES={z:{},run:null}; saveTimes(); reset(); G.zone=1; G.runSplits={}; G.runDev=false;
+    PREFS.timer=false; const hidden=!hudHazardsHtml().includes('Run timer')&&timerCardHtml()==='';
+    PREFS.timer=true; G.devFreeBuild=false; G.devFreeCraft=false; G.devMode=false; G.timerDev=false; G.tick=4*90; run(4);
+    const shown=hudHazardsHtml().includes('Run timer')&&hudHazardsHtml().includes('1:31')&&timerCardHtml().includes('RUN TIMER');
+    // launch Zone 1: the split freezes and sets the first best
+    for(const r of rocketReqs())G.inv[r.id]=(G.inv[r.id]||0)+r.need;
+    launchRocket(); const msg=document.getElementById('mBody')?.innerText||''; closeModal();
+    const t1=G.runSplits[1]; run(40); const frozen=zoneTicks()===t1&&TIMES.z[1]===t1&&/FIRST BEST/.test(msg)&&/1:31/.test(msg);
+    // a slower go doesn't beat it; a faster one does
+    G.runSplits={}; G.tick=t1+400; const slow=recordSplit(1); G.runSplits={}; G.tick=t1-40; const fast=recordSplit(1);
+    const bests=!slow.nb&&slow.prev===t1&&fast.nb&&TIMES.z[1]===t1-40&&/\+1:40/.test(splitLine('x',slow))&&/faster/.test(splitLine('x',fast));
+    // dev tools taint the zone and the run
+    G.runSplits={}; G.devFreeBuild=true; run(1); G.devFreeBuild=false; const dev=recordSplit(1); const noBest=!dev.eligible&&TIMES.z[1]===t1-40&&G.runDev;
+    // splits ride along to the next zone; a full clean run sets a run best
+    G.runDev=false; G.timerDev=false; G.runSplits={1:400}; G.perks.awarded[1]=true; transitionToZone(2); closeModal(); clearInterval(tickId);
+    const carried=G.runSplits[1]===400&&G.tick===0&&runWhole();
+    G.runSplits={1:400,2:500,3:600,4:700}; G.tick=800; G.devFreeBuild=false; G.devFreeCraft=false; G.devMode=false; G.timerDev=false; recordSplit(5); const rr=recordRun();
+    const runBest=rr&&rr.t===3000&&rr.nb&&TIMES.run===3000;
+    const bk=await readBackupCode(await makeBackupCode()); const inBackup=JSON.parse(bk.times).run===3000;
+    openSettings(); const st=document.getElementById('mBody')?.innerText||''; closeModal();
+    if(savedT)localStorage.setItem(TIMES_KEY,savedT);else localStorage.removeItem(TIMES_KEY); TIMES=loadTimes(); PREFS.timer=savedPref; savePrefs(); G.zone=z0;
+    ok('run_timer',hidden&&shown&&frozen&&bests&&noBest&&carried&&runBest&&inBackup&&/TIMER/.test(st),{hidden,shown,frozen,t1,bests,noBest,carried,runBest,inBackup,settings:/TIMER/.test(st)}); }
+  // ── Every machine panel has the same action bar; every build keeps going until CANCEL; paused inserters stop
+  { reset(); power(2,2); const y=G.floorY+6; let x=8; const bad=[];
+    for(const t of Object.keys(MDEFS)){ if(MDEFS[t].stub)continue;
+      const m=mkMachine(t,x,y,0); G.machines[m.id]=m; x+=12; inspectId=m.id; renderMachPanel();
+      const btns=[...document.querySelectorAll('#pMachBody .mach-actions .ma-btn')].map(b=>b.innerText.replace(/\s+/g,' ').trim());
+      const body=document.getElementById('pMachBody').innerText, demolish=(body.match(/DEMOLISH/g)||[]).length;
+      const order=btns.length===4&&/ROTATE/.test(btns[0])&&/MOVE/.test(btns[1])&&/PAUSE|RESUME/.test(btns[2])&&/DEMOLISH/.test(btns[3]);
+      if(!order||demolish!==1)bad.push(t);
+      delete G.machines[m.id]; }
+    inspectId=null;
+    // the bar's ROTATE works on an assembler (it used to have none) and is dimmed on a pipe
+    reset(); power(2,2); const asm=put('assembler',20,y); inspectId=asm.id; renderMachPanel(); document.querySelector('#pMachBody .ma-btn').click(); const turned=asm.dir===1;
+    const pp=put('pipe',30,y); inspectId=pp.id; renderMachPanel(); const pipeDim=document.querySelector('#pMachBody .ma-btn').classList.contains('dim'); inspectId=null;
+    // keep building: two placements, a blocked one and a short one all keep the tool
+    reset(); power(2,2); G.devFreeBuild=false; G.inv.iron_plate=1000; G.inv.iron_gear=1000; G.inv.circuit=1000; G.inv.copper_wire=1000;
+    setTool('stone_furnace'); G.inv.stone=10; placeDir=0; tryPlace('stone_furnace',20,y); tryPlace('stone_furnace',22,y); const two=activeTool==='stone_furnace';
+    tryPlace('stone_furnace',20,y); const blocked=activeTool==='stone_furnace'; G.inv.stone=0; tryPlace('stone_furnace',24,y); const short=activeTool==='stone_furnace';
+    cancelBuild(); const cancelled=activeTool==='select'; G.devFreeBuild=true;
+    // a blueprint stays in hand after a paste
+    blueprintState={mode:'holding',data:[{type:'chest',rx:0,ry:0,dir:0}]}; pasteBlueprintAt(blueprintState.data,40,y); const held=blueprintState.mode==='holding';
+    pasteBlueprintAt(blueprintState.data,42,y); const chests=Object.values(G.machines).filter(m=>m.type==='chest').length===2; ghostCancel();
+    // a paused inserter moves nothing
+    reset(); power(2,2); const c1=put('chest',10,y); c1.chestInv.coal=20; const ins=put('inserter',11,y,0); const c2=put('chest',12,y);
+    toggleM(ins.id); run(80); const stopped=!c2.chestInv.coal; toggleM(ins.id); run(80); const resumed=(c2.chestInv.coal||0)>0;
+    const belt=put('belt',14,y); toggleM(belt.id); const beltStays=belt.active;
+    ok('machine_actions_and_building',!bad.length&&turned&&pipeDim&&two&&blocked&&short&&cancelled&&held&&chests&&stopped&&resumed&&beltStays,
+      {bad,turned,pipeDim,two,blocked,short,cancelled,held,chests,stopped,resumed,beltStays}); }
+  // ── A splitter placed on a belt line takes up the belt under it (refunded, items kept); undo puts the belt back
+  { reset(); power(2,2); const y=G.floorY+8; G.devFreeBuild=false; G.inv={iron_plate:500,iron_gear:500,circuit:50,copper_wire:50};
+    const c1=put('chest',10,y); c1.chestInv.coal=200; put('inserter',11,y,0);
+    for(let x=12;x<20;x++)put('belt',x,y,0); put('inserter',20,y,0); const c2=put('chest',21,y);
+    run(120); const before=c2.chestInv.coal||0;
+    const b15=G.machines[G.map[y][15].mid]; G.map[y][15].items=[{id:'coal',prog:.2}]; const inv0={...G.inv};
+    placeDir=0; setTool('splitter'); hov={x:15,y}; const ghostOk=canPlace('splitter',15,y,0,true), pasteNo=!stampFits([{type:'splitter',rx:0,ry:0,dir:0}],15,y);
+    confirmPlace(); const sp=G.machines[G.map[y][15].mid];
+    const replaced=sp?.type==='splitter'&&!G.machines[b15.id]&&G.map[y+1][15].mid===sp.id&&G.map[y][15].items.length===1&&(G.inv.coal||0)===(inv0.coal||0);
+    const refunded=Object.entries(MDEFS.splitter.cost).every(([k,n])=>G.inv[k]===inv0[k]-n+(MDEFS.belt.cost[k]||0));
+    run(240); const flows=(c2.chestInv.coal||0)>before+5;
+    const chestNo=!canPlace('splitter',21,y,0,true); // not over anything that isn't a belt
+    undoLast(); const back=G.machines[G.map[y][15].mid]?.type==='belt'&&G.map[y+1][15].mid===null&&!Object.values(G.machines).some(m=>m.type==='splitter');
+    setTool('select'); G.devFreeBuild=true;
+    ok('splitter_over_belts',ghostOk&&pasteNo&&replaced&&refunded&&flows&&chestNo&&back,{ghostOk,pasteNo,replaced,refunded,flows,before,after:c2.chestInv.coal,chestNo,back}); }
+  // ── Stats graphs: machine output per item per 10s and per minute, power made and used, drawn in the Stats panel
+  { reset(); G.prodLog=null; G.tick=0; power(2,2); res(10,G.floorY+4,1,1,'iron_ore'); const mi=put('miner',10,G.floorY+4); put('chest',11,G.floorY+4);
+    G.inv.iron_ore=0; run(480);
+    const L=prodLog(), f=L.f, c=L.c, sumF=f.reduce((a,b)=>a+(b.d.iron_ore||0),0);
+    const logged=f.length===12&&c.length===2&&sumF===mi.produced&&f.every(b=>b.po===60)&&f[f.length-1].pi>0;
+    showPanel('stats'); const cv=document.getElementById('statCvP'), body=document.getElementById('pStatsBody').innerText;
+    const drawn=!!cv&&cv.width>0&&!!document.getElementById('statCvW')&&body.includes('Iron Ore')&&body.includes('10 MIN');
+    statToggle('iron_ore'); const hid=document.querySelector('.stat-chip.off')!==null; statToggle('iron_ore');
+    setStatSpan('c'); const hour=document.getElementById('pStatsBody').innerText.includes('Iron Ore'); setStatSpan('f');
+    statHover({currentTarget:cv,clientX:cv.getBoundingClientRect().right-20},'p'); const read=document.getElementById('statReadP').innerText.includes('/min');
+    closePanel('stats'); statHov=null;
+    const back=JSON.parse(serializeG()).prodLog; const saved=back&&back.f.length===12;
+    ok('stats_graph',logged&&drawn&&hid&&hour&&read&&saved,{logged,f:f.length,c:c.length,sumF,made:mi.produced,po:f.map(b=>b.po).slice(0,3),drawn,hid,hour,read,saved}); }
+  // ── Colour-blind mode: a device setting that swaps the status colours in the panels (CSS) and on the map (PAL)
+  { setColourBlind(true);
+    const css=getComputedStyle(document.body), on=document.body.classList.contains('cb')&&PAL===PAL_CB&&css.getPropertyValue('--green').trim()==='#3d8bff'&&css.getPropertyValue('--red').trim()==='#ff3d8b'
+      &&JSON.parse(localStorage.getItem(PREFS_KEY)).cb===true&&insArmSpr(false,2)!==insArmSpr(false,0);
+    openSettings(); const row=document.getElementById('mBody')?.innerText||document.body.innerText; closeModal();
+    setColourBlind(false); const off=!document.body.classList.contains('cb')&&PAL===PAL_STD&&getComputedStyle(document.body).getPropertyValue('--green').trim()==='#4caf50';
+    ok('colour_blind_mode',on&&off&&/COLOURS/.test(row),{on,off,settings:/COLOURS/.test(row)}); }
+  // ── Cave walls in The Deep: caverns all joined, deposits clear, the floor open, nothing builds on rock, tunnels pass under, saves keep it
+  { const z0=[MAP_W,MAP_H]; let gen=true, fr=[];
+    for(let k=0;k<6;k++){ MAP_W=96;MAP_H=64; const m=carveCaves(buildZoneMap(DEPOSITS_Z3,0x0dee9+k*977),0x5ca7e+k*31);
+      let walls=0,open=0; for(const row of m)for(const t of row){if(t.type===T_WALL)walls++;else open++;}
+      const seen=new Set(), q=[[CAVE_START[0],CAVE_START[1]]]; seen.add(CAVE_START[1]*96+CAVE_START[0]);
+      for(let x=0;x<96;x++)if(m[63][x].type!==T_WALL){seen.add(63*96+x);q.push([x,63]);} // the bottom row opens onto the floor
+      while(q.length){const[x,y]=q.pop();for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=96||ny>=64)continue;const i=ny*96+nx;if(seen.has(i)||m[ny][nx].type===T_WALL)continue;seen.add(i);q.push([nx,ny]);}}
+      const f=walls/(96*64); fr.push(+f.toFixed(2)); if(!(f>.15&&f<.45&&seen.size===open))gen=false; }
+    MAP_W=96;MAP_H=64; const zm=addFactoryFloor(ZONES[3].buildMap());
+    const floorClear=zm.length===96&&zm.slice(64).every(r=>r.every(t=>t.type!==T_WALL))&&zm.slice(0,64).some(r=>r.some(t=>t.type===T_WALL));
+    [MAP_W,MAP_H]=z0;
+    reset(); power(2,2); const wy=G.floorY+6;
+    for(let y=wy-2;y<=wy+2;y++)for(let x=14;x<17;x++)G.map[y][x].type=T_WALL;
+    const blocked=!canPlace('belt',15,wy)&&!canPlace('pipe',15,wy)&&!canPlace('assembler',13,wy)&&!canPlace('quantum_extractor',15,wy)&&canPlace('belt',13,wy);
+    const src=put('chest',10,wy); src.chestInv.iron_plate=20; put('inserter',11,wy,0); put('belt',12,wy,0); const t1=put('tunnel',13,wy,0); const t2=put('tunnel',17,wy,0); put('belt',18,wy,0); put('inserter',19,wy,0); const dst=put('chest',20,wy);
+    run(400); const under=!!(t1&&t2&&t1.tunnelId===t2.id&&(dst.chestInv.iron_plate||0)>=5);
+    const back=unpackMap(JSON.parse(JSON.stringify(packMap(G.map))),G.machines); const kept=back[wy][15].type===T_WALL&&back[wy][13].mid===t1.id&&back[wy][15].mid===null&&back[wy][12].type===T_FLOOR;
+    reset();
+    ok('cave_walls',gen&&floorClear&&blocked&&under&&kept,{gen,fr,floorClear,blocked,under,dst:dst?.chestInv,kept}); }
+  // ── Sandbox: locked until the first Big Bang; any zone, everything researched and free, its own save, no rewards
+  { const saved=JSON.stringify(PRESTIGE), realSave=localStorage.getItem(SAVE_KEY);
+    PRESTIGE.bangs=0; const locked=!sandboxUnlocked(); openSandboxMenu(); closeModal();
+    PRESTIGE.bangs=1; localStorage.removeItem(SANDBOX_KEY);
+    startSandbox(3); closeModal(); clearInterval(tickId);
+    const z3=G.zone===3&&G.sandbox&&G.devFreeBuild&&G.devFreeCraft&&Object.keys(TECHS).every(t=>G.research.done.includes(t))&&G.zoneTut===undefined;
+    const quantum=drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_extractor'))&&drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_chest'));
+    saveGame(); const own=JSON.parse(localStorage.getItem(SANDBOX_KEY)||'{}').zone===3&&localStorage.getItem(SAVE_KEY)===realSave;
+    G.stats.placed=999; G.stats.launched=5; const a0=G.achievements.length; checkAchievements(); const noAch=G.achievements.length===a0;
+    sandboxZone(5); closeModal(); clearInterval(tickId);
+    const z5=G.zone===5&&G.sandbox&&MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&G.research.done.includes('singularity');
+    const d0=PRESTIGE.stardust, b0=PRESTIGE.bangs; G.bigBang=false; triggerBigBang(); const noDust=PRESTIGE.stardust===d0&&PRESTIGE.bangs===b0;
+    G.bigBang=false; saveGame(); G=null; continueGame(SANDBOX_KEY); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const back=G.sandbox&&G.zone===5&&localStorage.getItem(SAVE_KEY)===realSave;
+    startSandbox(1); closeModal(); clearInterval(tickId); const z1=G.zone===1&&G.tutorial.step===-1&&G.sandbox;
+    localStorage.removeItem(SANDBOX_KEY); PRESTIGE=JSON.parse(saved); savePrestige();
+    ok('sandbox_mode',locked&&z3&&quantum&&own&&noAch&&z5&&noDust&&back&&z1,{locked,z3,quantum,own,noAch,z5,noDust,back,z1,w:MAP_W}); }
   return R;
 });
 for(const[k,v]of Object.entries(r))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);

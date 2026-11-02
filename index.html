@@ -119,6 +119,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .rb-big{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .rb-big img.ico{width:40px;height:40px}
 .inv-chip{cursor:pointer}
+.sandbox #hudZone{border-color:var(--purple);color:var(--purple)}
+/* Colour-blind mode (v2.0.28, PREFS.cb): good blue, bad pink-red, safe light cyan, inputs lilac, amber kept. Every pair
+   tells apart under red-green and blue-yellow colour blindness (checked with a CVD validator). Beats Stardust themes. */
+body.cb{--green:#3d8bff;--red:#ff3d8b;--teal:#9af0ff;--tealDim:#1d4a55;--blue:#d9a8ff;--amber:#f5a623;--amberDim:#7a5010}
 .hres-tap{cursor:pointer;border:1px solid var(--border2);padding:2px 4px;margin:-3px 0}
 .hres-tap:active{background:var(--bg3)}
 .hres-icon{font-size:14px;line-height:1}
@@ -212,6 +216,23 @@ button .uico{vertical-align:-3px}
 .inv-item .iv{font-size:var(--f6);color:var(--amber)}
 .inv-item .in{font-size:var(--f5);color:var(--text2);text-align:center;line-height:1.4}
 .craft-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:5px}
+.mach-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}
+.ma-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:52px;padding:6px 2px;font-family:var(--font);font-size:var(--f4);line-height:1.3;text-align:center;background:transparent;border:1px solid var(--border2);color:var(--text2);cursor:pointer}
+.ma-btn .ma-ic{font-size:var(--f8);line-height:1}
+.ma-btn.teal{border-color:var(--teal);color:var(--teal)}.ma-btn.amber{border-color:var(--amber);color:var(--amber)}.ma-btn.red{border-color:var(--red);color:var(--red)}
+.ma-btn.dim{border-color:var(--border);color:var(--text3)}
+.ma-btn.dim .ma-ic{opacity:.35}
+.ma-btn:active{transform:translateY(1px)}
+.stat-cv{display:block;width:100%;height:130px;touch-action:pan-y;cursor:crosshair}
+.stat-read{min-height:22px;font-size:var(--f4);color:var(--text2);line-height:2;margin:4px 0}
+.stat-rv{white-space:nowrap;margin-right:8px}
+.stat-rv i,.stat-chip i{display:inline-block;width:8px;height:8px;margin-right:4px;vertical-align:middle}
+.stat-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.stat-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--font);font-size:var(--f4);color:var(--text2);background:var(--bg2);border:1px solid var(--border2);padding:5px 6px;cursor:pointer}
+.stat-chip b{color:var(--text);font-weight:normal;margin-left:2px}
+.stat-chip.off{opacity:.4;text-decoration:line-through}
+.stat-note{font-size:var(--f4);color:var(--text3);line-height:2;margin-top:6px}
+.stat-empty{font-size:var(--f5);color:var(--text3);padding:10px;border:1px solid var(--border);text-align:center;line-height:2.2}
 .mini-btn{min-height:34px;font-family:var(--font);font-size:var(--f5);padding:6px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer}
 .mini-btn.amber{border-color:var(--amber);color:var(--amber)}
 .mini-btn.amber:hover{background:rgba(245,166,35,.1)}
@@ -507,13 +528,14 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:320px;margin:0 auto">
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
+      <button class="btn" id="titleSandbox" onclick="openSandboxMenu()" style="width:100%"><span data-ui="build"></span>SANDBOX</button>
       <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none"><span data-ui="stardust"></span>STARDUST</button>
       <div style="display:flex;gap:8px;width:100%">
         <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none"><span data-ui="install"></span>INSTALL</button>
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.21 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.31 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -697,7 +719,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.21';
+const VER      = '2.0.31';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -708,7 +730,7 @@ const SCRUBBER_FUEL_TICKS=16; // a Scrubber burns 1 refined fuel per 4s (15/min)
 function machineSmog(m){ // smog/min this machine makes when working
   const base=SMOG_PER[m.type]; if(!base)return 0;
   const sp=m.type==='oil_pump'?MINER_TIER_SPEED[m.tier||1]||1:m.type==='combustion_gen'?1:MACHINE_TIER_SPEED[m.tier||1]||1;
-  return base*sp*(G.perks?.spent?.smog1?0.7:1);
+  return base*sp*(G.perks?.spent?.smog1?0.7:1)*hazardEase();
 }
 function smogBudget(){ // what is making and clearing smog right now, per minute
   let make=0, clear=SMOG_DECAY_MIN, makers=0, scrubbers=0;
@@ -718,10 +740,11 @@ function smogBudget(){ // what is making and clearing smog right now, per minute
   }
   return {make,clear,makers,scrubbers};
 }
-function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(100,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1));} // Clean Burn: -30%
+function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(100,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1)*hazardEase());} // Clean Burn: -30%
 
 const T_FLOOR    = 0;
 const T_RESOURCE = 1;
+const T_WALL     = 2; // The Deep's cave rock (v2.0.28): nothing builds on it, belt tunnels pass under
 
 const D_RIGHT = 0;
 const D_DOWN  = 1;
@@ -1365,6 +1388,8 @@ const MDEFS = {
   evaporator:     {name:'Evaporator',       icon:'♨️', size:[2,2], power:14,  cost:{iron_plate:12,iron_gear:6,circuit:3},            unlock:'fluid_handling', recipes:['z3_evap'], fluidPort:true, desc:'Evaporates brine into lithium salt'},
   separator:      {name:'Separator',        icon:'🌀', size:[2,2], power:16,  cost:{iron_plate:14,circuit:4,steel_plate:4},          unlock:'pressure_control', recipes:['z3_separate'], fluidPort:true, desc:'Separates rare earth ore using brine'},
   rod_press:      {name:'Rod Press',        icon:'🧰', size:[2,2], power:24,  cost:{steel_plate:10,circuit:6,magnet:4},              unlock:'lattice_fuel', recipes:['z3_rod'], fluidPort:true, desc:'Presses lattice fuel rods. Needs 60%+ pipe pressure'},
+  quantum_chest:  {name:'Quantum Storage', icon:'🫙', size:[1,1], power:0, cost:{steel_plate:6,circuit:6}, unlock:null, prestige:'quantum_storage', recipes:[], desc:'A chest that sends everything put into it (by belt or inserter) straight to your inventory. A Stardust unlock'},
+  quantum_extractor:{name:'Quantum Extractor',icon:'🌠', size:[2,2], power:400, cost:{steel_plate:10,circuit:10,iron_gear:10}, unlock:null, prestige:'quantum_extractor', recipes:[], desc:'Pulls a raw resource of this zone out of thin air: 30 a minute, on any open ground, for 400 kW. A Stardust unlock'},
   lumen_panel:    {name:'Lumen Panel',      icon:'💡', size:[2,2], power:-40, cost:{silicon:6,steel_plate:4,copper_wire:6},          unlock:'crystal_refining', recipes:[], noItems:true, desc:'40kW from the cave glow, nothing while the glow tide is dim'},
   accumulator:    {name:'Accumulator',      icon:'🔋', size:[1,1], power:0,   cost:{battery:4,steel_plate:2,circuit:2},              unlock:'energy_storage', recipes:[], noItems:true, desc:'Stores surplus power and releases it during shortfalls'},
   // Zone 4 machines, living:true machines grow/decay (see LIVING), fed Nutrient Paste
@@ -1417,7 +1442,7 @@ const MACHINE_BUILDS = [
   'blast_furnace','electric_smelter','assembler','lab',
   'oil_pump','cracker','refinery','combustion_gen','scrubber',
   'pipe','brine_pump','fluid_tank','relief_valve','evaporator','separator','rod_press','lumen_panel','accumulator',
-  'enzyme_pump','algae_vat','bioreactor','spore_incubator','hyper_synth','reactor','heat_sink','singularity',
+  'enzyme_pump','algae_vat','bioreactor','spore_incubator','hyper_synth','reactor','heat_sink','singularity','quantum_extractor','quantum_chest',
 ];
 // ═══════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════
@@ -1436,12 +1461,11 @@ const DRAWER_DEFS = {
       {id:'inserter',name:'Inserter',icon:'🦾'},
       {id:'long_inserter',name:'Long Ins.',icon:'🦿'},
       {id:'chest',name:'Chest',icon:'📦'},
+      {id:'quantum_chest',name:'Q. Storage',icon:'🫙',pr:'quantum_storage'}, // only once bought with Stardust
     ]},
     {label:'Mining', items:[
       {id:'miner',name:'Miner',icon:'⛏️'},
-      {id:'oil_pump',name:'Oil Pump',icon:'🛢️',zones:[2,5]},
-      {id:'brine_pump',name:'Brine Pump',icon:'⛲',zones:[3,4,5]},
-      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶',zones:[4,5]},
+      {id:'quantum_extractor',name:'Q. Extractor',icon:'🌠',pr:'quantum_extractor'}, // only once bought with Stardust
     ]},
     {label:'Smelting', items:[
       {id:'stone_furnace',name:'Furnace',icon:'⚱️'},
@@ -1461,7 +1485,10 @@ const DRAWER_DEFS = {
       {id:'reactor',name:'Reactor',icon:'☢️',zones:[4,5]},
       {id:'heat_sink',name:'Heat Sink',icon:'❄️',zones:[4,5]},
     ]},
-    {label:'Pipes', items:[
+    {label:'Liquids', items:[ // every pump, and the pipes, tanks and valves they fill (v2.0.22)
+      {id:'oil_pump',name:'Oil Pump',icon:'🛢️',zones:[2,5]},
+      {id:'brine_pump',name:'Brine Pump',icon:'⛲',zones:[3,4,5]},
+      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶',zones:[4,5]},
       {id:'pipe',name:'Pipe',icon:'🔗',zones:[3,4,5]},
       {id:'fluid_tank',name:'Tank',icon:'🥫',zones:[3,4,5]},
       {id:'relief_valve',name:'Valve',icon:'🚿',zones:[3,4,5]},
@@ -1618,7 +1645,7 @@ const TECHS = {
     name:'Expansion I', icon:'🗺️', era:'The Singularity · Era 1',
     cost:{sci_red:120,sci_scar:60,sci_deep:60,sci_bloom:60}, req:[],
     desc:'The merged world grows: +32 columns, +16 rows of new territory',
-    zone:5, onResearch:()=>expandMap(32,16),
+    zone:5, onResearch:()=>expandMap(EXPAND_W,EXPAND_H),
   },
   void_theory: {
     name:'Void Theory', icon:'📕', era:'The Singularity · Era 1',
@@ -1630,7 +1657,7 @@ const TECHS = {
     name:'Expansion II', icon:'🗺️', era:'The Singularity · Era 2',
     cost:{sci_void:48}, req:['expansion_1'],
     desc:'The world grows again: +32 columns, +16 rows',
-    zone:5, onResearch:()=>expandMap(32,16),
+    zone:5, onResearch:()=>expandMap(EXPAND_W,EXPAND_H),
   },
   singularity: {
     name:'The Singularity', icon:'🌌', era:'The Singularity · Era 2',
@@ -1697,13 +1724,14 @@ const ZONES={
        <span style="color:var(--text3);font-size:var(--f5)">Find the oil deposits. Build the chain. Fix the rocket.</span>`},
   3:{name:'The Deep', icon:'🕳️', rocketTech:'lattice_fuel', parts:ROCKET_PARTS_Z3, fuel:null,
      partsCat:'rocket3', partsLabel:'Escape Shaft (Zone 3)', sci:['sci_deep','sci_pressure','sci_lattice'],
-     hazards:['pressure','glow'], buildMap:()=>buildZoneMap(DEPOSITS_Z3,0x0dee9),
+     hazards:['pressure','glow'], buildMap:()=>carveCaves(buildZoneMap(DEPOSITS_Z3,0x0dee9),0x5ca7e),
      mapSize:[96,64],
      launchLabel:'DRILL & LAUNCH', launchText:'The Shaft Drill bites into the cave roof.<br>Light. Real light. You burst out of The Deep.',
      launchTease:'Below you, something enormous is glowing...',
      arrivalTitle:'🕳️ THE DEEP', arrivalBtn:'DESCEND',
      arrivalHtml:`The signal led down. Way down.<br>The rocket is wedged in a <span style="color:var(--teal)">cavern</span>.<br><br>
        The walls glow. The air hums with pressure.<br><br>
+       Rock splits the caverns: build around it, and run belt tunnels under it.<br><br>
        <span style="color:var(--amber)">Pump the brine. Grow the crystals.</span><br>
        <span style="color:var(--text3);font-size:var(--f5)">Watch the 💧 pressure gauge, pipes burst above 90%.</span>`},
   4:{name:'The Bloom', icon:'🌸', rocketTech:'hyperfuel', parts:ROCKET_PARTS_Z4, fuel:null,
@@ -1744,7 +1772,8 @@ function zoneTechs(z){return Object.entries(TECHS).filter(([,t])=>(t.zone||1)===
 function syncMapSize(){if(G?.map?.length){MAP_H=G.map.length;MAP_W=G.map[0].length;}}
 function updateZoneTabs(){
   const el=document.getElementById('hudZone');
-  if(el)el.textContent=`Z${G.zone} ${zoneDef().name.toUpperCase()}`;
+  if(el)el.textContent=`${G.sandbox?'SANDBOX ':''}Z${G.zone} ${zoneDef().name.toUpperCase()}`;
+  document.body.classList.toggle('sandbox',!!G.sandbox);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1890,6 +1919,59 @@ function buildZoneMap(deposits,salt,w=MAP_W,h=MAP_H,accept=null){
   return map;
 }
 
+// ── Cave walls (v2.0.28) ──
+// The Deep's ore fields are carved into caverns joined by passages. A cellular automaton grows the rock, every deposit
+// keeps a clear rim, the landing cavern (round the arrival camera) stays open, small pockets fill in, and every cavern
+// is joined to the rest by a 2-wide passage (or opens onto the Factory Floor, which stays clear). Walls only replace
+// open ground, never a deposit. Belt tunnels pass under them; pipes go round.
+const CAVE_FILL=.45, CAVE_START=[29,26];
+function carveCaves(map,salt){
+  const h=map.length, w=map[0].length, N=w*h;
+  const rng=(seed=>{let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;}})(Date.now()^salt);
+  let wall=new Uint8Array(N);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)wall[y*w+x]=(x<1||y<1||x>=w-1)?1:(rng()<CAVE_FILL?1:0);
+  const walls8=(g,x,y)=>{let n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;
+    const nx=x+dx,ny=y+dy; if(ny>=h)continue; if(nx<0||ny<0||nx>=w||g[ny*w+nx])n++;}return n;}; // the floor below counts as open
+  for(let k=0;k<5;k++){const nx=new Uint8Array(N);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const n=walls8(wall,x,y);nx[y*w+x]=n>=5||(n>=4&&wall[y*w+x])?1:0;}
+    wall=nx;}
+  const clear=(x,y)=>{if(x>=0&&y>=0&&x<w&&y<h)wall[y*w+x]=0;};
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(map[y][x].type===T_RESOURCE)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)clear(x+dx,y+dy);
+  const[sx,sy]=CAVE_START;
+  for(let dy=-7;dy<=7;dy++)for(let dx=-7;dx<=7;dx++)if(dx*dx+dy*dy<=50)clear(sx+dx,sy+dy);
+  // lone rock specks go
+  for(let y=1;y<h;y++)for(let x=1;x<w-1;x++)if(wall[y*w+x]&&walls8(wall,x,y)<=1)wall[y*w+x]=0;
+  // flood the open caverns; row h (the Factory Floor) is one big open region
+  const flood=(from)=>{const seen=new Uint8Array(N),q=[];let floor=false;
+    for(const i of from){if(!wall[i]&&!seen[i]){seen[i]=1;q.push(i);}}
+    while(q.length){const i=q.pop(),x=i%w,y=(i-x)/w;
+      if(y===h-1)floor=true;
+      for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+        const j=ny*w+nx;if(!wall[j]&&!seen[j]){seen[j]=1;q.push(j);}}}
+    return {seen,floor};};
+  const hasRes=(seen)=>{for(let i=0;i<N;i++)if(seen[i]&&map[(i/w)|0][i%w].type===T_RESOURCE)return true;return false;};
+  // small pockets with no deposit fill in
+  { const done=new Uint8Array(N);
+    for(let i=0;i<N;i++)if(!wall[i]&&!done[i]){const{seen,floor}=flood([i]);let n=0;for(let j=0;j<N;j++)if(seen[j]){done[j]=1;n++;}
+      if(n<14&&!floor&&!hasRes(seen))for(let j=0;j<N;j++)if(seen[j])wall[j]=1;} }
+  // join every cavern to the landing cavern (or the floor): carve the shortest way through the rock
+  const bottom=[];for(let x=0;x<w;x++)bottom.push((h-1)*w+x);
+  for(let guard=0;guard<60;guard++){
+    const main=flood([sy*w+sx,...bottom]).seen;
+    let lost=-1;for(let i=0;i<N;i++)if(!wall[i]&&!main[i]){lost=i;break;}
+    if(lost<0)break;
+    const region=flood([lost]).seen, prev=new Int32Array(N).fill(-2), q=[];
+    for(let i=0;i<N;i++)if(region[i]){prev[i]=-1;q.push(i);}
+    let hit=-1;
+    for(let qi=0;qi<q.length&&hit<0;qi++){const i=q[qi],x=i%w,y=(i-x)/w;
+      for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<1||ny<1||nx>=w-1||ny>=h)continue;
+        const j=ny*w+nx;if(prev[j]!==-2)continue;prev[j]=i;if(main[j]){hit=j;break;}q.push(j);}}
+    for(let i=hit;i>=0&&!region[i];i=prev[i]){const x=i%w,y=(i-x)/w;clear(x,y);clear(x+1,y);clear(x,y+1);clear(x+1,y+1);}
+  }
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(wall[y*w+x]&&map[y][x].type===T_FLOOR)map[y][x]={type:T_WALL,res:null,mid:null,items:[]};
+  return map;
+}
+
 const DEPOSITS_Z4=[
   ['biomass',6,8,5,6],['biomass',5,7,4,5],['biomass',5,6,4,5],['biomass',4,5,3,4],
   ['luminite',5,7,4,5],['luminite',5,6,4,5],['luminite',4,5,3,4],['luminite',4,5,3,4],
@@ -1913,7 +1995,6 @@ const DEPOSITS_Z5=[
 // Below every zone's ore fields: FLOOR_ROWS rows of open ground with no deposits, for big builds.
 // G.floorY is the first floor row (the map is the ore fields above it). It looks like the rest of the ground.
 const FLOOR_ROWS=32;
-const FLOOR_NOTE=`<br><br><span style="color:var(--text3)">Scroll down past the ore fields: the <span style="color:var(--amber)">Factory Floor</span> below is open ground for big builds.</span>`;
 function addFactoryFloor(map){
   const w=map[0].length;
   for(let k=0;k<FLOOR_ROWS;k++)map.push(Array.from({length:w},()=>({type:T_FLOOR,res:null,mid:null,items:[]})));
@@ -1923,7 +2004,7 @@ function addFactoryFloor(map){
 // Saves from v2.0.0 to v2.0.2 had a 64-row floor: drop the empty rows past the new size (never a row in use)
 function trimFactoryFloor(){
   if(!G.map||G.floorY===undefined)return;
-  const grown=G.zone===5?16*['expansion_1','expansion_2'].filter(t=>G.research?.done?.includes(t)).length:0;
+  const grown=G.zone===5?EXPAND_H*expansionsDone():0;
   const want=G.floorY+FLOOR_ROWS+grown;
   while(G.map.length>want&&G.map[G.map.length-1].every(t=>t.mid===null&&!t.res&&!t.items.length))G.map.pop();
   MAP_H=G.map.length;
@@ -1943,6 +2024,10 @@ function tidyBeltItems(){
   for(const m of Object.values(G.machines||{}))if(m.type==='splitter')for(const[k,n]of Object.entries(m.inBuf||{}))if(n>0){G.inv[k]=(G.inv[k]||0)+n;back+=n;m.inBuf[k]=0;}
   if(back)G._tidied=back;
 }
+// Zone 5 Expansions (v2.0.25): each adds 64 columns of ore fields and 32 rows of floor (was 32 and 16), so the map goes
+// 128×80 → 192×112 → 256×144 (plus the floor): room for a Singularity-sized factory
+const EXPAND_W=64, EXPAND_H=32;
+function expansionsDone(){return ['expansion_1','expansion_2'].filter(t=>G.research?.done?.includes(t)).length;}
 function expandMap(dw,dh){
   const oldW=MAP_W, oldH=MAP_H, nw=oldW+dw, nh=oldH+dh;
   // fresh deposits only in the new columns of the ore fields; the floor stays clear (new rows are more floor)
@@ -1963,6 +2048,8 @@ function defaultState(){
   return {
     ver:VER, tick:0,
     zone:1,
+    prodLog:null, // production history for the Stats graphs (prodLog())
+    runSplits:{}, timerDev:false, runDev:false, // run timer: zone times frozen at each launch, dev tools used (RUN TIMER)
     sfx:true,
     music:true,
     musicVol:0.7,
@@ -1986,7 +2073,6 @@ function defaultState(){
     research:{done:[]},
     cam:{x:0,y:0,zoom:1},
     stats:{placed:0,taps:0,mined:0,launched:false,bursts:0,withered:0,scrams:0},
-    blueprints:[],
     craftState:{recipeId:null, clicks:0},
     achievements:[],
     tutorial:{step:0},
@@ -2061,6 +2147,7 @@ const GROUND={
   5:{base:'#130f1d',a:'#1a1428',b:'#0c0a14',speck:'#7a58b0'},   // the void
 };
 function groundSpr(zone,v){
+  if(zone===5)return voidGroundSpr(v);
   return mkSpr(`g${zone}:${v}`,16,16,({P,R})=>{
     const p=GROUND[zone]||GROUND[1];
     R(0,0,16,16,p.base);
@@ -2071,6 +2158,53 @@ function groundSpr(zone,v){
     }
     // soft tile seam so the grid still reads
     R(0,15,16,1,shade(p.base,-.25)); R(15,0,1,16,shade(p.base,-.25));
+  });
+}
+
+// The Singularity's ground (v2.0.24): near-black space crossed by a faint glowing lattice, with nebula haze and stars,
+// so it no longer looks like a darker Bloom jungle floor
+function voidGroundSpr(v){
+  return mkSpr(`g5v:${v}`,16,16,({P,R})=>{
+    R(0,0,16,16,'#07060d');
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+      const n=hash2(x,y,v*31+5), haze=hash2(x>>2,y>>2,v*7+11);
+      if(haze>.72&&n<.5)P(x,y,haze>.86?'#160f2a':'#0f0b1e');      // nebula haze
+      if(n>.985)P(x,y,n>.995?'#ffffff':(n>.99?'#9ad8ff':'#d29aff')); // stars
+    }
+    R(0,15,16,1,'#1c1438'); R(15,0,1,16,'#1c1438');                 // the lattice
+    P(15,15,'#6a4ad0'); P(14,15,'#3a2a70'); P(15,14,'#3a2a70');      // a glowing node where lines cross
+  });
+}
+
+// Cave rock (v2.0.28): dark slate with glowing crystal veins. mask bits say which sides face open ground
+// (1 up, 2 right, 4 down, 8 left): a lit rim on top and sides, and a cliff face where the cavern floor is below
+function wallMask(x,y){
+  const open=(nx,ny)=>nx>=0&&ny>=0&&nx<MAP_W&&ny<MAP_H&&G.map[ny][nx].type!==T_WALL;
+  return (open(x,y-1)?1:0)|(open(x+1,y)?2:0)|(open(x,y+1)?4:0)|(open(x-1,y)?8:0);
+}
+function wallSpr(mask,v){ // v 0..7
+  return mkSpr(`w3:${mask}:${v}`,16,16,({P,R,L})=>{
+    const face=mask&4?6:0, top=16-face;
+    R(0,0,16,top,'#333a4a');
+    for(let y=0;y<top;y++)for(let x=0;x<16;x++){
+      const n=hash2(x,y,v*17+3);
+      if(n<.2)P(x,y,'#3c4456'); else if(n>.86)P(x,y,'#2a303d'); else if(n>.83)P(x,y,'#232833');
+    }
+    if(v&2){const cy=2+(v%5), cx=1+((v*5)%10); L(cx,cy,cx+4,cy+2,'#262b36'); L(cx+4,cy+2,cx+6,cy+1,'#262b36');} // a crack
+    if(v<5){ // a cluster of glowing crystals
+      const c=v===4?['#5a2f8a','#b07ae8','#ecd4ff']:['#1e6f7a','#3fd0e0','#c4fbff'];
+      const cx=3+((v*7)%8), cy=Math.min(top-4,3+((v*3)%6));
+      P(cx,cy+2,c[0]);P(cx+1,cy+1,c[1]);P(cx+1,cy+2,c[0]);P(cx+2,cy,c[2]);P(cx+2,cy+1,c[1]);P(cx+2,cy+2,c[0]);P(cx+3,cy+2,c[0]);P(cx+3,cy+1,c[1]);
+    }
+    if(mask&1){R(0,0,16,1,'#66728c');R(0,1,16,1,'#454e62');}
+    if(mask&8)R(0,0,1,top,'#4e5870');
+    if(mask&2)R(15,0,1,top,'#232833');
+    if(face){ // cliff face down to the cavern floor
+      R(0,top,16,face,'#1a1e28');
+      for(let x=0;x<16;x++){const n=hash2(x,7,v);if(n>.6)R(x,top+1,1,face-2,'#141720');else if(n<.15)R(x,top+1,1,face-3,'#232836');}
+      R(0,top,16,1,'#7d8aa6'); R(0,15,16,1,'#0a0c10');
+      if(v&1)P(3+v,14,'#3fd0e0');
+    }
   });
 }
 
@@ -2245,6 +2379,14 @@ const MACHINE_ART={
   rod_press(a,f,on){const{R,P}=a;chassis(a,32,32,'#283a2a');
     R(6,3,20,6,'#5a6a5a');const down=on?[0,3,6,3][f]:0;R(13,9,6,4+down,'#a8b8a8');R(10,13+down,12,3,'#8a9a8a');
     R(6,24,20,4,'#1a2a1a');R(9,22,14,2,'#6aff8a');},
+  quantum_chest(a,f,on){const{R,P,C}=a;R(1,3,14,12,'#2a1a4a');R(1,3,14,3,'#3a2a6a');R(1,8,14,1,'#120a24');
+    C(8,10,3,on?'#b388ff':'#4a3a6a');P(8,10,on?'#ffffff':'#7a6a9a');
+    if(on){P(3+(f*3)%10,5,'#ffd6ff');P(12-(f*2)%9,13,'#80deea');}
+    R(2,3,1,12,'#5a3a8a');R(13,3,1,12,'#5a3a8a');},
+  quantum_extractor(a,f,on){const{R,P,C,O}=a;chassis(a,32,32,'#24183a');
+    C(16,15,10,'#120a20');O(16,15,10,'#5a3a8a');C(16,15,6,on?'#b388ff':'#4a3a6a');C(16,15,3,on?'#ffffff':'#7a6a9a');
+    if(on)for(let k=0;k<6;k++){const t=k*1.047+f*.5;P(16+Math.round(Math.cos(t)*8),15+Math.round(Math.sin(t)*8),k%2?'#80deea':'#ffd6ff');}
+    R(4,27,24,2,'#3a2a5a');},
   lumen_panel(a,f,on){const{R,P}=a;R(0,0,32,32,'#101418');
     for(let y=0;y<3;y++)for(let x=0;x<3;x++){const bx=2+x*10,by=2+y*10;R(bx,by,8,8,on?'#2a8a9a':'#122a30');
       R(bx+1,by+1,3,1,on?'#b8fff0':'#1e3a40');if(on&&(x+y+f)%4===0)P(bx+5,by+5,'#ffffff');}},
@@ -2285,10 +2427,12 @@ function machineWorking(m){
   if(m.type==='combustion_gen')return (m.inBuf.refined_fuel||0)>0;
   if(m.type==='reactor')return (m.inBuf.lum_rod||0)>0&&!(m.scram>0);
   if(m.type==='lumen_panel')return glowBright();
+  if(m.type==='quantum_chest')return G.tick-(m._qt||-99)<8;
+  if(m.type==='quantum_extractor')return !!m.pick&&powerRatio()>0&&Object.values(m.outBuf).reduce((a,b)=>a+b,0)<50;
   if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
   if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
   if(m.type==='fluid_tank')return (m.fluid?.amt||0)>0.5;
-  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT&&!valveJammed(m);
+  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>reliefAt(m)&&!valveJammed(m);
   if(m.type==='accumulator')return (m.charge||0)>1;
   if(m.type==='chest')return Object.values(m.chestInv).some(v=>v>0);
   if(m.type==='heat_sink')return !!m._wet&&machineNeighbors(m).some(n=>n.type==='reactor'&&machineWorking(n));
@@ -2550,12 +2694,12 @@ function insBaseSpr(long){
 const INS_ARM_LEN={inserter:8,long_inserter:14};
 function insArmSpr(long,state){ // state 0 empty, 1 holding, 2 blocked
   const L=long?INS_ARM_LEN.long_inserter:INS_ARM_LEN.inserter;
-  return mkSpr(`insa:${long?1:0}:${state}`,L+2,5,({R,P})=>{
+  return mkSpr(`insa:${long?1:0}:${state}:${PAL.bad}`,L+2,5,({R,P})=>{
     const c=long?['#26c6a0','#b8fff0','#127a64']:['#f5a623','#ffd27a','#a86c08'];
     R(1,1,L-2,3,c[0]); R(1,1,L-2,1,c[1]); R(1,3,L-2,1,c[2]);
     for(let x=4;x<L-2;x+=4)P(x,2,c[2]);
     R(0,1,3,3,'#5a5a5a'); P(1,2,'#a0a0a0');                    // shoulder joint
-    const claw=state===2?'#e53935':'#b0b0b0';
+    const claw=state===2?PAL.bad:'#b0b0b0';
     R(L-1,1,1,3,claw);
     if(state===1){P(L,1,claw);P(L,3,claw);}                    // gripping
     else{P(L,0,claw);P(L+1,0,claw);P(L,4,claw);P(L+1,4,claw);} // open
@@ -2686,6 +2830,7 @@ const UI_ART={
   import({R}){R(2,11,12,3,'#7a7a7a');R(2,11,12,1,'#9a9a9a');R(7,1,2,6,'#f5a623');for(let k=0;k<4;k++)R(4+k,6+k,8-k*2,1,'#f5a623');},
   music({C,R}){C(5,12,2,'#26c6a0');C(11,10,2,'#26c6a0');R(6,3,1,9,'#26c6a0');R(12,1,1,9,'#26c6a0');R(6,2,7,2,'#8af0d0');},
   film({R,P}){R(1,3,14,10,'#2a2a2a');for(let x=2;x<15;x+=3){P(x,4,'#e8e8e8');P(x,11,'#e8e8e8');}R(2,6,5,4,'#5a7aa8');R(9,6,5,4,'#5a7aa8');P(3,7,'#9ad8ff');P(10,7,'#9ad8ff');},
+  colours({R,P,C}){R(2,3,12,10,'#c8b48a');R(3,4,10,8,'#e8d8b0');C(6,7,2,'#3d8bff');C(10,7,2,'#ff3d8b');C(8,10,2,'#f5a623');R(11,11,3,3,'#e8d8b0');P(12,12,'#8a7a5a');},
   picture({R,P}){R(1,2,14,12,'#8a5a2c');R(2,3,12,10,'#42a5f5');for(let i=0;i<6;i++)R(3+i,12-i,12-i*2>0?2:1,i+1,'#3f9a3f');R(11,4,2,2,'#ffd600');R(2,11,12,2,'#3f9a3f');},
   vibrate({R,P}){R(5,2,6,12,'#3a3a3a');R(6,3,4,9,'#26c6a0');R(7,13,2,1,'#7a7a7a');for(const[x,d]of[[2,1],[13,-1]])for(let y=4;y<12;y+=2){P(x,y,'#cfcfcf');P(x+d,y+1,'#cfcfcf');}},
   file({R,P}){R(3,1,8,14,'#e8e8e8');R(11,4,2,11,'#e8e8e8');P(11,1,'#9a9a9a');R(11,2,1,2,'#9a9a9a');R(12,3,1,1,'#9a9a9a');for(let y=5;y<14;y+=2)R(5,y,6,1,'#9a9a9a');},
@@ -2764,7 +2909,7 @@ const EMOJI_PIX={'⛏️':'ui:pick','⛏':'ui:pick','🔨':'ui:craft','🏗️':
   '⏩':'ui:fast','⚡':'ui:power','📦':'ui:inventory','🏆':'ui:achievements','💾':'ui:saves','🛟':'ui:backup','📖':'ui:recipes',
   '📐':'ui:blueprint','📲':'ui:install','🔒':'ui:devlock','⚙️':'ui:settings','🌸':'ui:bloom','🌌':'singularity',
   '🕳':'ui:cave','⏸':'ui:pause','✋':'ui:hand','⏱':'ui:clock','📤':'ui:export','📥':'ui:import','⬇':'ui:import','⬆':'ui:up',
-  '🎵':'ui:music','🔉':'ui:sound','🔊':'ui:sound','🎞':'ui:film','🖼':'ui:picture','📳':'ui:vibrate','📄':'ui:file','📋':'ui:copy',
+  '🎵':'ui:music','🎨':'ui:colours','🔉':'ui:sound','🔊':'ui:sound','🎞':'ui:film','🖼':'ui:picture','📳':'ui:vibrate','📄':'ui:file','📋':'ui:copy',
   '✕':'ui:close','✗':'ui:close','✓':'ui:check','☰':'ui:menu','→':'ui:ar','↓':'ui:ad','←':'ui:al','↑':'ui:au','▸':'ui:ar','▾':'ui:ad','↻':'ui:rotate','✥':'ui:move','👆':'ui:select','⬚':'ui:multisel','💚':'circuit','🌿':'ui:sprout','🔋':'accumulator','🗒':'sci_red'};
 // Every item's and machine's old emoji icon maps to its sprite too, so any leftover text emoji has a pixel twin
 const noVS=e=>e.replace(/\uFE0F/g,'');
@@ -2825,13 +2970,22 @@ function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cl
 // Lower values draw fewer pixels per frame, which is most of the battery cost.
 const PREFS_KEY='ebi_prefs';
 const RES_STEPS=[1,.75,.5,.35,.25,.1];
-const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true,cb:false,timer:false};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
 function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
   if(canvas)sizeCanvas();
   if(G&&!document.getElementById('mOverlay').classList.contains('hidden'))openSettings();
 }
+// Status colours for the canvas; colour-blind mode swaps them (CSS does the same for the panels via body.cb)
+const PAL_STD={ok:'#4caf50',warn:'#f5a623',bad:'#e53935',safe:'#26c6a0'}, PAL_CB={ok:'#3d8bff',warn:'#f5a623',bad:'#ff3d8b',safe:'#9af0ff'};
+let PAL=PAL_STD;
+function rgba(hex,a){return `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})`;}
+function applyColourBlind(){
+  PAL=PREFS.cb?PAL_CB:PAL_STD;
+  document.body&&document.body.classList.toggle('cb',!!PREFS.cb);
+}
+function setColourBlind(on){PREFS.cb=on;savePrefs();applyColourBlind();if(G&&!document.getElementById('mOverlay').classList.contains('hidden'))openSettings();}
 function batterySaver(on){PREFS.fps=on?30:60;PREFS.res=on?.5:1;savePrefs();if(canvas)sizeCanvas();openSettings();}
 
 // ═══════════════════════════════════════════════════
@@ -2848,7 +3002,8 @@ function titleRng(seed){let s=seed>>>0;return()=>{s=(s+0x6D2B79F5)>>>0;let t=Mat
 // Scene builder: deposits, machines, belt paths (with the items they carry), pipes
 function buildTitleScene(zone,seed){
   const W=46,H=28, rnd=titleRng(seed);
-  const S={zone,w:W,h:H,res:[...Array(H)].map(()=>Array(W).fill(null)),mach:[],belts:[],pipes:[],fx:zone};
+  const S={zone,w:W,h:H,res:[...Array(H)].map(()=>Array(W).fill(null)),wall:[...Array(H)].map(()=>Array(W).fill(false)),mach:[],belts:[],pipes:[],fx:zone};
+  const rock=(x,y,w,h)=>{for(let j=y;j<y+h&&j<H;j++)for(let i=x;i<x+w&&i<W;i++)S.wall[j][i]=true;};
   const dep=(r,x,y,w,h)=>{for(let j=y;j<y+h&&j<H;j++)for(let i=x;i<x+w&&i<W;i++)S.res[j][i]=r;};
   const M=(type,x,y,dir=0)=>S.mach.push({type,x,y,dir,ph:Math.floor(rnd()*4)});
   // Belt through corner points, carrying a cycle of items
@@ -2903,6 +3058,8 @@ function buildTitleScene(zone,seed){
     for(const x of[17,19,21,23])M('miner',x,22);
     B([[16,24],[30,24],[30,17],[44,17]],['quartz','silicon','quartz']);
     M('electric_smelter',36,13);M('electric_smelter',39,13);M('lab',42,13);
+    rock(0,0,W,2); rock(3,2,6,1); rock(22,2,9,1); rock(0,9,2,9); rock(0,11,3,4); // cave rock
+    rock(41,20,5,8); rock(43,18,3,2); rock(40,24,1,4);
   } else if(zone===4){
     dep('enzymes',2,3,8,5); dep('enzymes',2,19,7,5); dep('biomass',15,21,9,5); dep('spores',28,22,6,4); dep('luminite',38,3,6,5);
     M('enzyme_pump',2,3);M('enzyme_pump',4,3);M('enzyme_pump',6,3);M('enzyme_pump',2,19);
@@ -2933,7 +3090,10 @@ function titleGround(S){
   const g=c.getContext('2d');
   for(let y=0;y<S.h;y++)for(let x=0;x<S.w;x++){
     const r=S.res[y][x], v=(x*7+y*13)&3;
+    if(S.wall[y][x]){const open=(i,j)=>i>=0&&j>=0&&i<S.w&&j<S.h&&!S.wall[j][i];
+      g.drawImage(wallSpr((open(x,y-1)?1:0)|(open(x+1,y)?2:0)|(open(x,y+1)?4:0)|(open(x-1,y)?8:0),(x*31+y*17)%8),x*16,y*16);continue;}
     g.drawImage(r?resSpr(r,v,0):groundSpr(S.zone,v),x*16,y*16);
+    if(y>0&&S.wall[y-1][x]){g.fillStyle='rgba(0,0,0,.4)';g.fillRect(x*16,y*16,16,2);}
   }
   return c;
 }
@@ -3051,7 +3211,7 @@ const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',
 // Floor and still deposits never change after the map is built, so they are drawn
 // once into 16×16-tile canvases (16px per tile) and blitted as a few big images per
 // frame instead of thousands of tiles. Only animated pools are drawn per tile.
-const CHUNK=16;
+const CHUNK=16, CHUNK_MAX=96; // at most 96 baked 256×256 chunks (about 25 MB)
 const ANIM_RES=new Set(['oil','brine','enzymes','luminite','radiant_dust']);
 const chunkCache={key:'',map:null,c:new Map()};
 function invalidateChunks(){chunkCache.c.clear();chunkCache.key='';}
@@ -3060,13 +3220,16 @@ function groundChunk(cx,cy){
   if(chunkCache.map!==G.map||chunkCache.key!==key){chunkCache.c.clear();chunkCache.map=G.map;chunkCache.key=key;}
   const id=cy*1000+cx;
   let ch=chunkCache.c.get(id);
-  if(ch)return ch;
+  if(ch){chunkCache.c.delete(id);chunkCache.c.set(id,ch);return ch;} // most recently used last
+  while(chunkCache.c.size>=CHUNK_MAX)chunkCache.c.delete(chunkCache.c.keys().next().value); // a big Zone 5 map won't fill memory
   const cv=document.createElement('canvas'); cv.width=cv.height=CHUNK*16;
   const g=cv.getContext('2d'), anim=[];
   for(let y=0;y<CHUNK;y++)for(let x=0;x<CHUNK;x++){
     const tx=cx*CHUNK+x, ty=cy*CHUNK+y; if(tx>=MAP_W||ty>=MAP_H)continue;
     const tile=G.map[ty][tx], v=(tx*7+ty*13)&3, res=tile.type===T_RESOURCE?tile.res:null;
+    if(tile.type===T_WALL){g.drawImage(wallSpr(wallMask(tx,ty),(tx*31+ty*17)%8),x*16,y*16);continue;}
     g.drawImage(res?resSpr(res,v,0):groundSpr(G.zone,v),x*16,y*16);
+    if(ty>0&&G.map[ty-1][tx].type===T_WALL){g.fillStyle='rgba(0,0,0,.4)';g.fillRect(x*16,y*16,16,2);g.fillStyle='rgba(0,0,0,.2)';g.fillRect(x*16,y*16+2,16,2);} // the rock's shadow
     if(res&&ANIM_RES.has(res))anim.push(tx,ty);
   }
   ch={cv,anim};
@@ -3176,7 +3339,7 @@ function beltVisPass(){
     if(!g.entrance){
       const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
       if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
-      else if(!(nm&&nm.type==='chest'))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
+      else if(!(nm&&(nm.type==='chest'||nm.type==='quantum_chest')))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
     }
     const sp=base*beltTierMult(g.m);
     let mn=Infinity;
@@ -3253,6 +3416,7 @@ const PORTS = {
   evaporator:      { outputs:[{side:'right',pos:.5}] },
   separator:       { outputs:[{side:'right',pos:.5}] },
   rod_press:       { outputs:[{side:'right',pos:.5}] },
+  quantum_extractor:{ outputs:[{side:'right',pos:.5}] },
   algae_vat:       { outputs:[{side:'right',pos:.5}] }, // the Bloom's living machines had no output side until v2.0.17
   bioreactor:      { outputs:[{side:'right',pos:.5}] },
   spore_incubator: { outputs:[{side:'right',pos:.5}] },
@@ -3319,18 +3483,26 @@ function drawInsReach(type,x,y,dir,ts,cx,cy,now){
 }
 
 // A drawn belt or pipe line: ghosts in amber where they will be built, red where blocked or unaffordable
+// Colour-blind mode: a blocked spot also gets a cross, so it never depends on red alone
+function blockedCross(px,py,w,h){
+  if(!PREFS.cb)return;
+  const m=Math.min(w,h)*.22;
+  ctx.save(); ctx.strokeStyle=PAL.bad; ctx.lineWidth=Math.max(2,Math.min(w,h)/12); ctx.lineCap='square';
+  ctx.beginPath(); ctx.moveTo(px+m,py+m); ctx.lineTo(px+w-m,py+h-m); ctx.moveTo(px+w-m,py+m); ctx.lineTo(px+m,py+h-m); ctx.stroke(); ctx.restore();
+}
 function drawLineGhost(def,ts,cx,cy){
   const plan=linePlan(), isBelt=activeTool==='belt';
   for(const t of plan.tiles){
     const px=t.x*ts-cx, py=t.y*ts-cy;
     if(px+ts<0||py+ts<0||px>canvas.clientWidth||py>canvas.clientHeight)continue;
     const ok=t.state==='ok';
-    ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.16)'; ctx.fillRect(px,py,ts,ts);
+    ctx.fillStyle=ok?'rgba(245,166,35,.14)':rgba(PAL.bad,.16); ctx.fillRect(px,py,ts,ts);
     if(t.state!=='bad'){
       ctx.globalAlpha=ok?.55:.3; drawGhostIcon(def,px,py,ts,ts,t.dir); ctx.globalAlpha=1;
-      if(isBelt&&ts>12){const as=Math.floor(ts*.45);ctx.drawImage(arrowSpr(t.dir,ok?'#f5a623':'#e53935'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);}
+      if(isBelt&&ts>12){const as=Math.floor(ts*.45);ctx.drawImage(arrowSpr(t.dir,ok?'#f5a623':PAL.bad),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);}
     }
-    ctx.strokeStyle=ok?'#f5a623':'#e53935'; ctx.lineWidth=1.5; ctx.strokeRect(px+.75,py+.75,ts-1.5,ts-1.5);
+    ctx.strokeStyle=ok?'#f5a623':PAL.bad; ctx.lineWidth=1.5; ctx.strokeRect(px+.75,py+.75,ts-1.5,ts-1.5);
+    if(!ok)blockedCross(px,py,ts,ts);
   }
   // how many get built, in a badge just past the end of the line
   const end=plan.tiles[plan.tiles.length-1], n=plan.ok;
@@ -3338,7 +3510,7 @@ function drawLineGhost(def,ts,cx,cy){
     const fs=Math.max(7,Math.round(ts/5)), label=String(n), w=label.length*fs+fs*.8, [vx,vy]=D_VEC[end.dir];
     const bx=Math.round((end.x+vx+.5)*ts-cx-w/2), by=Math.round((end.y+vy+.5)*ts-cy-fs*.8);
     ctx.fillStyle='rgba(13,13,13,.85)'; ctx.fillRect(bx,by,Math.round(w),Math.round(fs*1.6));
-    ctx.fillStyle=plan.short||plan.bad?'#e53935':'#f5a623';
+    ctx.fillStyle=plan.short||plan.bad?PAL.bad:'#f5a623';
     ctx.font=`${fs}px 'Press Start 2P', monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText(label,bx+w/2,by+fs*.85);
   }
@@ -3392,8 +3564,8 @@ function draw(){
     }
     // Demolish hover
     if(activeTool==='demolish'&&tile.mid!==null&&hov.x===tx&&hov.y===ty){
-      ctx.fillStyle='rgba(229,57,53,.25)'; ctx.fillRect(px,py,ts,ts);
-      ctx.strokeStyle='#e53935'; ctx.lineWidth=2; ctx.strokeRect(px,py,ts,ts);
+      ctx.fillStyle=rgba(PAL.bad,.25); ctx.fillRect(px,py,ts,ts);
+      ctx.strokeStyle=PAL.bad; ctx.lineWidth=2; ctx.strokeRect(px,py,ts,ts);
     }
 
     // Belt tile
@@ -3495,7 +3667,7 @@ function draw(){
       ctx.fillRect(px+1,py+1,pw-2,ph-2); ctx.globalAlpha=1;
       // Green pulsing "running" indicator
       if(ts>14){
-        ctx.fillStyle='#4caf50'; ctx.globalAlpha=0.8+0.2*Math.sin(at*.4);
+        ctx.fillStyle=PAL.ok; ctx.globalAlpha=0.8+0.2*Math.sin(at*.4);
         ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+ph-12),8,8);
         ctx.globalAlpha=1;
       }
@@ -3503,15 +3675,15 @@ function draw(){
     // No-fuel indicator for burners/generators, red dot + dim overlay
     const isPowerBldg=(m.type==='generator'||m.type==='burner');
     if(isPowerBldg&&!isPowering&&m.active){
-      ctx.fillStyle='rgba(229,57,53,0.08)'; ctx.fillRect(px+1,py+1,pw-2,ph-2);
+      ctx.fillStyle=rgba(PAL.bad,0.08); ctx.fillRect(px+1,py+1,pw-2,ph-2);
       if(ts>14){
         // Blinking red dot, no fuel
         const blink=Math.floor(at/4)%2===0;
-        ctx.fillStyle=blink?'#e53935':'#8b0000';
+        ctx.fillStyle=blink?PAL.bad:'#8b0000';
         ctx.fillRect(Math.floor(px+pw-12),Math.floor(py+ph-12),8,8);
         // "No fuel" label at high zoom
         if(ts>28){
-          ctx.fillStyle='#e53935'; ctx.globalAlpha=0.9;
+          ctx.fillStyle=PAL.bad; ctx.globalAlpha=0.9;
           ctx.font=`${Math.max(6,Math.floor(ts*.1))}px 'Press Start 2P', monospace`;
           ctx.textAlign='center'; ctx.textBaseline='middle';
           ctx.fillText('NO COAL',Math.round(px+pw/2),Math.round(py+ph*.8));
@@ -3566,7 +3738,7 @@ function draw(){
       const bufTotal=Object.values(m.outBuf).reduce((a,b)=>a+b,0);
       if(bufTotal>0){
         const full=bufTotal>=50;
-        ctx.fillStyle=full?'#e53935':'#f5a623';
+        ctx.fillStyle=full?PAL.bad:'#f5a623';
         ctx.globalAlpha=full?1:.8;
         ctx.fillRect(px+4,py+4,Math.min(pw-8,(pw-8)*bufTotal/50),4);
         ctx.globalAlpha=1;
@@ -3581,7 +3753,7 @@ function draw(){
         // Background track
         ctx.fillStyle='#111'; ctx.fillRect(px+4,py+ph-11,pw-8,6);
         // Fill bar, green→amber→red
-        const barCol=pct>.8?'#e53935':pct>.5?'#f5a623':'#26c6a0';
+        const barCol=pct>.8?PAL.bad:pct>.5?'#f5a623':PAL.safe;
         ctx.fillStyle=barCol; ctx.globalAlpha=.9;
         ctx.fillRect(px+4,py+ph-11,Math.max(0,(pw-8)*pct),6);
         ctx.globalAlpha=1;
@@ -3597,7 +3769,7 @@ function draw(){
     // Fluid storage level / accumulator charge, bar along the bottom
     if(ts>14&&(def.fluidCap||m.type==='accumulator')){
       const pct=m.type==='accumulator'?(m.charge||0)/ACC_CAP:(m._net?pressureOf(m._net)/100:0);
-      const barCol=m.type==='accumulator'?'#ffd600':(m.strain>0?'#e53935':FLUID_COL[m.fluid?.type]||'#555');
+      const barCol=m.type==='accumulator'?'#ffd600':(m.strain>0?PAL.bad:FLUID_COL[m.fluid?.type]||'#555');
       ctx.fillStyle='#111'; ctx.fillRect(px+4,py+ph-9,pw-8,5);
       ctx.fillStyle=barCol; ctx.fillRect(px+4,py+ph-9,(pw-8)*pct,5);
     }
@@ -3609,19 +3781,19 @@ function draw(){
     // Relief Valve: a gasket-wear bar, and a red blinking frame when it is jammed
     if(m.type==='relief_valve'&&ts>12){
       const seal=m.seal===undefined?VALVE_SEAL:m.seal, spare=m.inBuf.gasket||0;
-      if(valveJammed(m)){ctx.strokeStyle=Math.floor(at/3)%2?'#e53935':'#5a1414';ctx.lineWidth=Math.max(2,ts/16);ctx.strokeRect(px+2,py+2,pw-4,ph-4);}
-      else{ctx.fillStyle='#111';ctx.fillRect(px+3,py+ph-6,pw-6,3);ctx.fillStyle=spare?'#26c6a0':seal<15?'#e53935':'#f5a623';ctx.fillRect(px+3,py+ph-6,(pw-6)*seal/VALVE_SEAL,3);}
+      if(valveJammed(m)){ctx.strokeStyle=Math.floor(at/3)%2?PAL.bad:'#5a1414';ctx.lineWidth=Math.max(2,ts/16);ctx.strokeRect(px+2,py+2,pw-4,ph-4);}
+      else{ctx.fillStyle='#111';ctx.fillRect(px+3,py+ph-6,pw-6,3);ctx.fillStyle=spare?PAL.safe:seal<15?PAL.bad:'#f5a623';ctx.fillRect(px+3,py+ph-6,(pw-6)*seal/VALVE_SEAL,3);}
     }
     // Living machines: vitality bar + stage badge; withered = grey
     if(def.living){
       const st=lifeStage(m);
       if(m.withered){ctx.fillStyle='rgba(60,60,60,.6)';ctx.fillRect(px+1,py+1,pw-2,ph-2);}
-      else{ctx.fillStyle='#4caf50';ctx.globalAlpha=.05+.04*Math.sin(at*.15+m.id);ctx.fillRect(px+1,py+1,pw-2,ph-2);ctx.globalAlpha=1;}
+      else{ctx.fillStyle=PAL.ok;ctx.globalAlpha=.05+.04*Math.sin(at*.15+m.id);ctx.fillRect(px+1,py+1,pw-2,ph-2);ctx.globalAlpha=1;}
       if(ts>14){
         const v=(m.vit||0)/100;
         // Vitality bar sits under the output-buffer strip; recipe progress keeps the bottom edge
         ctx.fillStyle='#111'; ctx.fillRect(px+4,py+10,pw-8,4);
-        ctx.fillStyle=v<.25?'#e53935':v>.8?'#f48fb1':'#4caf50'; ctx.fillRect(px+4,py+10,(pw-8)*v,4);
+        ctx.fillStyle=v<.25?PAL.bad:v>.8?(PREFS.cb?PAL.safe:'#f48fb1'):PAL.ok; ctx.fillRect(px+4,py+10,(pw-8)*v,4);
         if(TEX_PIXEL)ctx.drawImage(stageSpr(st.name),px+4,py+16,Math.max(8,ts*.28),Math.max(8,ts*.28));
         else{ctx.font=`${Math.max(8,Math.floor(ts*.24))}px serif`; ctx.textAlign='left'; ctx.textBaseline='top';
         ctx.fillText(st.icon,px+4,py+16);}
@@ -3648,8 +3820,8 @@ function draw(){
     if(m.type==='reactor'&&ts>14){
       const h=(m.heat||0)/100;
       ctx.fillStyle='#111'; ctx.fillRect(px+4,py+ph-9,pw-8,5);
-      ctx.fillStyle=h>.8?'#e53935':h>.5?'#f5a623':'#26c6a0'; ctx.fillRect(px+4,py+ph-9,(pw-8)*h,5);
-      if(m.scram>0){ctx.fillStyle=`rgba(229,57,53,${Math.floor(at/2)%2?.25:.08})`;ctx.fillRect(px+1,py+1,pw-2,ph-2);}
+      ctx.fillStyle=h>.8?PAL.bad:h>.5?'#f5a623':PAL.safe; ctx.fillRect(px+4,py+ph-9,(pw-8)*h,5);
+      if(m.scram>0){ctx.fillStyle=rgba(PAL.bad,Math.floor(at/2)%2?.25:.08);ctx.fillRect(px+1,py+1,pw-2,ph-2);}
       else if((m.inBuf.lum_rod||0)>0){ctx.fillStyle='#c6ff00';ctx.globalAlpha=.05+.04*Math.sin(at*.3);ctx.fillRect(px+1,py+1,pw-2,ph-2);ctx.globalAlpha=1;}
     }
     // Lumen panels go dark during the dim glow tide
@@ -3744,7 +3916,7 @@ function draw(){
     if(age>1){burstFx.splice(i,1);continue;}
     const rr=ts*(.3+age*1.2), bx=b.x*ts-cx+ts/2, by=b.y*ts-cy+ts/2;
     pixelFx(ctx,bx-rr-2,by-rr-2,rr*2+4,rr*2+4,ts,c=>{c.beginPath();c.arc(rr+2,rr+2,rr,0,Math.PI*2);
-      c.fillStyle=`rgba(127,219,255,${(1-age)*.5})`;c.fill();c.strokeStyle=`rgba(229,57,53,${1-age})`;c.lineWidth=ts*.08;c.stroke();});
+      c.fillStyle=`rgba(127,219,255,${(1-age)*.5})`;c.fill();c.strokeStyle=rgba(PAL.bad,1-age);c.lineWidth=ts*.08;c.stroke();});
   }
 
   // Belt tunnels
@@ -3786,10 +3958,11 @@ function draw(){
       const def=MDEFS[m.type]; const[mw,mh]=machSize(m);
       const px=hov.x*ts-cx, py=hov.y*ts-cy;
       const ok=canPlace(m.type,hov.x,hov.y,m.dir);
-      ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.14)';
+      ctx.fillStyle=ok?'rgba(245,166,35,.14)':rgba(PAL.bad,.14);
       ctx.fillRect(px,py,mw*ts,mh*ts);
-      ctx.strokeStyle=ok?'#f5a623':'#e53935';
+      ctx.strokeStyle=ok?'#f5a623':PAL.bad;
       ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
+      if(!ok)blockedCross(px,py,mw*ts,mh*ts);
       if(ts>10){
         ctx.font=`${Math.floor(Math.min(mw,mh)*ts*.35)}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -3804,18 +3977,19 @@ function draw(){
     if(def){
       const[mw,mh]=machSize(activeTool,placeDir);
       const px=hov.x*ts-cx, py=hov.y*ts-cy;
-      const ok=canPlace(activeTool,hov.x,hov.y);
-      ctx.fillStyle=ok?'rgba(245,166,35,.14)':'rgba(229,57,53,.14)';
+      const ok=canPlace(activeTool,hov.x,hov.y,undefined,true); // a splitter may go over belts
+      ctx.fillStyle=ok?'rgba(245,166,35,.14)':rgba(PAL.bad,.14);
       ctx.fillRect(px,py,mw*ts,mh*ts);
       ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts,placeDir); ctx.globalAlpha=1;
-      ctx.strokeStyle=ok?'#f5a623':'#e53935';
+      ctx.strokeStyle=ok?'#f5a623':PAL.bad;
       ctx.lineWidth=2; ctx.strokeRect(px,py,mw*ts,mh*ts);
+      if(!ok)blockedCross(px,py,mw*ts,mh*ts);
       // Output port indicators on ghost
       if(ts>20) drawPorts(ctx,activeTool,px,py,mw*ts,mh*ts,ts,placeDir);
       // Direction arrow for directional machines
       if(DIR_TYPES.has(activeTool)&&ts>12){
         const as=Math.floor(ts*.5);
-        ctx.drawImage(arrowSpr(placeDir,ok?'#f5a623':'#e53935'),Math.floor(px+mw*ts/2-as/2),Math.floor(py+mh*ts/2-as/2),as,as);
+        ctx.drawImage(arrowSpr(placeDir,ok?'#f5a623':PAL.bad),Math.floor(px+mw*ts/2-as/2),Math.floor(py+mh*ts/2-as/2),as,as);
       }
       if(activeTool==='long_inserter')drawInsReach(activeTool,hov.x,hov.y,placeDir,ts,cx,cy,now);
     }
@@ -3863,8 +4037,8 @@ function draw(){
           const[mw,mh]=machSize(e.type,e.dir);
           const px=(gx+e.rx)*ts-cx, py=(gy+e.ry)*ts-cy;
           const ok=canPlace(e.type,gx+e.rx,gy+e.ry,e.dir||0);
-          ctx.fillStyle=ok?'rgba(245,166,35,.12)':'rgba(229,57,53,.12)'; ctx.fillRect(px,py,mw*ts,mh*ts);
-          ctx.strokeStyle=ok?'#f5a623':'#e53935'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
+          ctx.fillStyle=ok?'rgba(245,166,35,.12)':rgba(PAL.bad,.12); ctx.fillRect(px,py,mw*ts,mh*ts);
+          ctx.strokeStyle=ok?'#f5a623':PAL.bad; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.strokeRect(px,py,mw*ts,mh*ts); ctx.setLineDash([]);
           if(ts>12)drawGhostEntry(e,def,px,py,mw*ts,mh*ts,ts);
         }
       }
@@ -3875,17 +4049,17 @@ function draw(){
     if(us.mode!=='idle'&&gx2>=0){
       const px1=Math.min(us.x1,gx2)*ts-cx, py1=Math.min(us.y1,gy2)*ts-cy;
       const pw=(Math.abs(gx2-us.x1)+1)*ts, ph=(Math.abs(gy2-us.y1)+1)*ts;
-      ctx.fillStyle='rgba(76,175,80,.08)'; ctx.fillRect(px1,py1,pw,ph);
-      ctx.strokeStyle='#4caf50'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.strokeRect(px1,py1,pw,ph); ctx.setLineDash([]);
+      ctx.fillStyle=rgba(PAL.ok,.08); ctx.fillRect(px1,py1,pw,ph);
+      ctx.strokeStyle=PAL.ok; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.strokeRect(px1,py1,pw,ph); ctx.setLineDash([]);
     }
     if(us.mode==='selected'){
       const will=new Set(upgPlan().list.map(m=>m.id));
       for(const id of us.ids){
         const m=G.machines[id]; if(!m)continue;
         const[mw,mh]=machSize(m), px=m.x*ts-cx, py=m.y*ts-cy, on=will.has(id);
-        ctx.fillStyle=on?'rgba(76,175,80,.2)':'rgba(0,0,0,.35)'; ctx.fillRect(px,py,mw*ts,mh*ts);
-        ctx.strokeStyle=on?'#4caf50':'#555'; ctx.lineWidth=2; ctx.strokeRect(px+1,py+1,mw*ts-2,mh*ts-2);
-        if(on&&ts>14){const as=Math.floor(Math.min(mw,mh)*ts*.4);ctx.drawImage(arrowSpr(3,'#4caf50'),Math.floor(px+mw*ts-as-2),Math.floor(py+mh*ts-as-2),as,as);}
+        ctx.fillStyle=on?rgba(PAL.ok,.2):'rgba(0,0,0,.35)'; ctx.fillRect(px,py,mw*ts,mh*ts);
+        ctx.strokeStyle=on?PAL.ok:'#555'; ctx.lineWidth=2; ctx.strokeRect(px+1,py+1,mw*ts-2,mh*ts-2);
+        if(on&&ts>14){const as=Math.floor(Math.min(mw,mh)*ts*.4);ctx.drawImage(arrowSpr(3,PAL.ok),Math.floor(px+mw*ts-as-2),Math.floor(py+mh*ts-as-2),as,as);}
       }
     }
   }
@@ -3947,7 +4121,6 @@ const ripples=[];
 // ═══════════════════════════════════════════════════
 let activeTool='select';
 let placeDir=D_RIGHT;
-const LOGISTICS_TOOLS=new Set(['belt','inserter','tunnel','splitter','chest']);
 let hov={x:-1,y:-1};
 let drag={on:false,sx:0,sy:0,cx:0,cy:0,moved:false};
 let pinch={on:false,d:0,mx:0,my:0,vel:0,lastT:0};
@@ -4205,6 +4378,7 @@ function handleTap(tile,isLong){
   }
   if(activeTool==='select'){
     if(t.mid!==null){openMachinePanel(G.machines[t.mid]);return;}
+    if(t.type===T_WALL){wallHint();return;}
     if(t.type===T_RESOURCE){openResInfo(t.res,x,y);return;}
     return;
   }
@@ -4345,12 +4519,12 @@ function handleTap(tile,isLong){
         if(mid===null||seen.has(mid))continue;
         seen.add(mid);
         const m=G.machines[mid];
-        captured.push({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1});
+        captured.push({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1,...(m.relief?{relief:m.relief}:{})});
       }
       if(!captured.length){toast('No machines in selection','wrn');bp.mode='idle';return;}
       bp.data=captured; bp.mode='idle';
       // Show save dialog with cost summary
-      const defaultName=`Blueprint ${(G.blueprints||[]).length+1}`;
+      const defaultName=`Blueprint ${BLUEPRINTS.length+1}`;
       showModal('💾 SAVE BLUEPRINT',
         `<div style="font-size:var(--f6);color:var(--text2);margin-bottom:8px">${captured.length} machine${captured.length!==1?'s':''} captured.</div>
          <input id="bpNameInput" type="text" value="${defaultName}" maxlength="24" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:var(--f6);padding:8px;margin-bottom:10px">
@@ -4469,7 +4643,7 @@ function machSize(typeOrM, dir){
 }
 
 // Machines that may sit on resource tiles (logistics only)
-const ON_RESOURCE_OK=new Set(['belt','inserter','long_inserter','chest','splitter','tunnel','pipe']);
+const ON_RESOURCE_OK=new Set(['belt','inserter','long_inserter','chest','quantum_chest','splitter','tunnel','pipe']);
 
 // Refuse a pipe/tank that would join networks holding different fluids
 function fluidsWouldMix(type,tx,ty,d){
@@ -4484,6 +4658,7 @@ function fluidsWouldMix(type,tx,ty,d){
 
 // Terrain rule for one tile of a machine (occupancy checked separately)
 function terrainOk(type,tile){
+  if(tile.type===T_WALL)return false; // cave rock
   if(type==='miner')return tile.type===T_RESOURCE&&!FLUID_RES[tile.res];
   if(type==='oil_pump')return tile.res==='oil';
   if(MDEFS[type].pumps)return tile.res===MDEFS[type].pumps;
@@ -4498,6 +4673,14 @@ function refreshMineRes(m){
 }
 // Link a tunnel to the nearest free tunnel facing the same way, ahead or behind, within 5 tiles.
 // Returns the distance linked, or 0. (Placing the exit before the entrance used to never link.)
+// Cave rock under any tile of this footprint?
+function onWall(type,tx,ty,dir){
+  const[mw,mh]=machSize(type,dir!==undefined?dir:placeDir);
+  for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)if(G.map[ty+dy]?.[tx+dx]?.type===T_WALL)return true;
+  return false;
+}
+let _wallHintAt=0;
+function wallHint(){const now=Date.now();if(now-_wallHintAt<2500)return;_wallHintAt=now;toast('Cave rock: build around it, or run a belt tunnel under it','wrn');}
 function linkTunnel(m){
   if(m.type!=='tunnel'||m.tunnelId!==null)return 0;
   const[dvx,dvy]=D_VEC[m.dir];
@@ -4560,11 +4743,17 @@ function undoLast(){
   // Rebuilds must fit and be affordable before anything changes
   const rebuilds=ops.filter(o=>o.op==='remove');
   if(rebuilds.length){
-    if(!rebuilds.every(o=>canPlace(o.snap.type,o.snap.x,o.snap.y,o.snap.dir))){toast('Cannot undo: something is built there now','bad');sfx('error');return;}
+    // machines this same step placed come up first (a splitter laid over belts), so their tiles and refunds count
+    const placed=ops.filter(o=>o.op==='place').map(o=>G.machines[o.id]).filter(Boolean), cleared=[], back={};
+    for(const pm of placed){const[w,h]=machSize(pm);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){const t=G.map[pm.y+dy]?.[pm.x+dx];if(t&&t.mid===pm.id){t.mid=null;cleared.push([t,pm.id]);}}
+      if(ops.find(o=>o.op==='place'&&o.id===pm.id).src==='inv')addCost(back,machineWorth(pm.type,pm.tier,pm.modules));}
+    const fits=rebuilds.every(o=>canPlace(o.snap.type,o.snap.x,o.snap.y,o.snap.dir));
+    for(const[t,id]of cleared)t.mid=id;
+    if(!fits){toast('Cannot undo: something is built there now','bad');sfx('error');return;}
     if(!G.devFreeBuild){
       const need={};
       for(const o of rebuilds)addCost(need,machineWorth(o.snap.type,o.snap.tier,o.snap.modules));
-      const miss=Object.entries(need).find(([k,n])=>(G.inv[k]||0)<n);
+      const miss=Object.entries(need).find(([k,n])=>(G.inv[k]||0)+(back[k]||0)<n);
       if(miss){toast(`Cannot undo: need ${miss[1]}× ${ITEMS[miss[0]]?.name||miss[0]}`,'bad');sfx('error');return;}
     }
   }
@@ -4604,6 +4793,7 @@ function stampMachine(e,x,y,src){
   const def=MDEFS[e.type]; if(!def||def.stub)return null;
   const m=mkMachine(e.type,x,y,e.dir);
   if(e.recipe!==undefined)m.recipe=e.recipe;
+  if(e.relief&&def.accepts)m.relief=e.relief; // a Relief Valve keeps its setting
   m.tier=e.tier||1;
   G.machines[m.id]=m;
   const[mw,mh]=machSize(m);
@@ -4614,26 +4804,49 @@ function stampMachine(e,x,y,src){
   return m;
 }
 
-function canPlace(type,tx,ty,dir){
+function canPlace(type,tx,ty,dir,replace){
   if(!MDEFS[type])return false;
   const d=(dir!==undefined)?dir:placeDir;
   const[mw,mh]=machSize(type,d);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
     const nx=tx+dx,ny=ty+dy;
     if(nx<0||ny<0||nx>=MAP_W||ny>=MAP_H)return false;
-    if(G.map[ny][nx].mid!==null)return false;
+    if(G.map[ny][nx].mid!==null&&!(replace&&REPLACES_BELTS.has(type)&&G.machines[G.map[ny][nx].mid]?.type==='belt'))return false;
     if(!terrainOk(type,G.map[ny][nx]))return false;
   }
   return !fluidsWouldMix(type,tx,ty,d);
 }
 
+// ── Splitters go straight onto belts (v2.0.31) ──
+// Placing a splitter over belt tiles takes those belts up first: each is refunded in full (machineWorth, so upgrades
+// too) and the items riding on it stay where they are, now on the splitter. Only placing by hand passes replace=true to
+// canPlace (tryPlace, completePlacement, confirmPlace and the build ghost); paste, blueprints, moves, lines and undo
+// still need empty ground. The belts and the splitter are one undo step.
+const REPLACES_BELTS=new Set(['splitter']);
+function beltsUnder(type,tx,ty,dir){
+  if(!REPLACES_BELTS.has(type))return [];
+  const[mw,mh]=machSize(type,dir!==undefined?dir:placeDir), ids=new Set();
+  for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){const t=G.map[ty+dy]?.[tx+dx], o=t&&t.mid!==null?G.machines[t.mid]:null; if(o&&o.type==='belt')ids.add(o.id);}
+  return [...ids].map(id=>G.machines[id]);
+}
+function liftBelts(belts){ // demolish quietly, keep their items to put back; returns [[x,y,items]]
+  const kept=[];
+  for(const b of belts){const t=G.map[b.y][b.x]; kept.push([b.x,b.y,t.items.map(it=>({...it}))]); tryRemove(b.x,b.y,true);}
+  return kept;
+}
+function restoreBeltItems(kept,m){ // the lifted items ride on the new splitter (they went to the inventory with the belt)
+  for(const[x,y,items]of kept){
+    const t=G.map[y][x]; if(t.mid!==m.id)continue;
+    for(const it of items.slice(0,BELT_CAP)){ if((G.inv[it.id]||0)<1)continue; G.inv[it.id]--; t.items.push({...it,side:x===m.x&&y===m.y?0:1}); }
+  }
+}
 function tryPlace(type,tx,ty){
   const def=MDEFS[type]; if(!def)return;
   if(def.stub){toast(`[FUTURE] ${def.name} is not active yet`,'wrn');hudSelect();return;}
   if(def.unlock&&!G.research.done.includes(def.unlock)){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); hudSelect(); return;
   }
-  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad'); sfx('error'); hudSelect(); return;}
+  if(!canPlace(type,tx,ty,undefined,true)){if(onWall(type,tx,ty))wallHint();else toast('Cannot place here','bad'); sfx('error'); return;}
 
   // Power warning, confirm if this machine will exceed available power
   if(def.power>0&&!G.devFreeBuild){
@@ -4662,11 +4875,13 @@ function tryPlace(type,tx,ty){
     G.crafted[type]--;
   } else {
     for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn'); sfx('error'); flashDrawerItem(); hudSelect(); return;}
+      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn'); sfx('error'); flashDrawerItem(); return;}
     }
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
 
+  const under=beltsUnder(type,tx,ty); if(under.length)undoBegin();
+  const kept=liftBelts(under);
   const m=mkMachine(type,tx,ty,placeDir);
   undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
@@ -4679,16 +4894,17 @@ function tryPlace(type,tx,ty){
     G.map[ty+dy][tx+dx].mid=m.id;
   const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
 
+  if(under.length){restoreBeltItems(kept,m);undoEnd();}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
-  toast(`Placed ${def.name}`,'ok');
+  toast(under.length?`Placed ${def.name}, replacing ${under.length} belt${under.length>1?'s':''}`:`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
-  if(!LOGISTICS_TOOLS.has(type)) hudSelect();
+  updateBuildHUD(); // every machine stays selected: keep placing until CANCEL (v2.0.30)
 }
 
 function completePlacement(type,tx,ty){
   // Called after player confirms power warning, skip power check and place
   const def=MDEFS[type]; if(!def)return;
-  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad');sfx('error');hudSelect();return;}
+  if(!canPlace(type,tx,ty,undefined,true)){toast('Cannot place here','bad');sfx('error');return;}
   const crafted=(G.crafted[type]||0)>0;
   if(G.devFreeBuild){
     // free
@@ -4696,10 +4912,12 @@ function completePlacement(type,tx,ty){
     G.crafted[type]--;
   } else {
     for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');flashDrawerItem();hudSelect();return;}
+      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');flashDrawerItem();return;}
     }
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
+  const under=beltsUnder(type,tx,ty); if(under.length)undoBegin();
+  const kept=liftBelts(under);
   const m=mkMachine(type,tx,ty,placeDir);
   undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
@@ -4709,16 +4927,17 @@ function completePlacement(type,tx,ty){
   const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++) G.map[ty+dy][tx+dx].mid=m.id;
   const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
+  if(under.length){restoreBeltItems(kept,m);undoEnd();}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
-  if(!LOGISTICS_TOOLS.has(type)) hudSelect();
+  updateBuildHUD();
 }
 function tryRemove(tx,ty,quiet){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
   const m=G.machines[mid]; if(!m)return;
   const def=MDEFS[m.type];
-  undoRec({op:'remove',snap:{type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])]}});
+  undoRec({op:'remove',snap:{type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])],...(m.relief?{relief:m.relief}:{})}});
   const[mw,mh]=machSize(m);
   unlinkTunnel(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
@@ -4797,6 +5016,8 @@ function gameTick(){
   runBelts();
   settleFluidNets();
   tickLiving();
+  tickProdLog();
+  if(G.devMode||G.devFreeBuild||G.devFreeCraft)G.timerDev=true; // dev tools: this zone can't set a best time
 
   // Smog tick, natural decay + clamp
   if(zoneHas('smog')){
@@ -4826,17 +5047,37 @@ function perkMult(){
   const s=G.perks?.spent||{}, o=PRESTIGE.owned;
   return {
     // Tiers stack: I +10%, II +25% more, III +15% more; Stardust upgrades multiply on top
-    yield: (s.yield3?1.50 : s.yield2?1.35 : s.yield1?1.10 : 1)*(o.cosmic_yield?1.15:1),
-    speed: (s.speed3?1.35 : s.speed2?1.20 : s.speed1?1.10 : 1)*(o.cosmic_speed?1.15:1),
-    belt:  s.belt2?1.40 : s.belt1?1.20 : 1,
-    power: (s.power2?0.70 : s.power1?0.85 : 1)*(o.cosmic_power?0.8:1), // multiplier on power draw
+    yield: (s.yield3?1.50 : s.yield2?1.35 : s.yield1?1.10 : 1)*(1+(plv('cosmic_yield')?.05+.1*plv('cosmic_yield'):0)),
+    speed: (s.speed3?1.35 : s.speed2?1.20 : s.speed1?1.10 : 1)*(1+(plv('cosmic_speed')?.05+.1*plv('cosmic_speed'):0)),
+    belt:  (s.belt2?1.40 : s.belt1?1.20 : 1)*(1+.1*plv('swift_belts')),
+    power: (s.power2?0.70 : s.power1?0.85 : 1)*(plv('cosmic_power')?1-(.15+.05*plv('cosmic_power')):1), // multiplier on power draw
   };
+}
+
+// ═══ PRODUCTION LOG (v2.0.28) ═══
+// What machines make, per item, in game time: 60 buckets of 10s (the last 10 minutes) and 60 of 1 minute (the last
+// hour), with the average power made and used in each. Kept in G.prodLog (per zone, saved). Hand mining and hand
+// crafting don't count. The Stats panel graphs it (statGraphsHtml, drawStatGraphs).
+const PL_SPANS={f:{ticks:40,label:'10 MIN'},c:{ticks:240,label:'1 HOUR'}}, PL_N=60;
+function prodLog(){const L=G.prodLog;if(L&&L.f&&L.cur)return L;return G.prodLog={f:[],c:[],cur:{f:{},c:{}},pw:{f:[0,0,0],c:[0,0,0]}};}
+function logProd(item,n){if(!G||!item||!n)return;const L=prodLog();for(const k of['f','c'])L.cur[k][item]=(L.cur[k][item]||0)+n;}
+function tickProdLog(){
+  const L=prodLog();
+  for(const k of['f','c']){
+    const pw=L.pw[k]; pw[0]+=G.power.out; pw[1]+=G.power.in; pw[2]++;
+    if(G.tick%PL_SPANS[k].ticks===0){
+      L[k].push({d:L.cur[k],po:Math.round(pw[0]/pw[2]),pi:Math.round(pw[1]/pw[2])});
+      if(L[k].length>PL_N)L[k].shift();
+      L.cur[k]={}; L.pw[k]=[0,0,0];
+    }
+  }
 }
 
 // Items-per-minute tracking, call once per completed output
 // Stores timestamps of last 60 completions per machine in a ring buffer
 const RATE_WINDOW_MS = 60000; // 1 minute window
-function recordOutput(m, count){
+function recordOutput(m, count, item){
+  logProd(item,count);
   if(!m._times) m._times=[];
   const now=Date.now();
   m._times.push({t:now,n:count});
@@ -4905,7 +5146,7 @@ function runMachine(m){
       m.prog-=MINE_TICKS;
       m.outBuf.crude_oil=(m.outBuf.crude_oil||0)+1;
       m.produced++;
-      recordOutput(m,1);
+      recordOutput(m,1,'crude_oil');
       addSmog(SMOG_PER.oil_pump/(TICKS_PER_MIN/MINE_TICKS)); // 20/min at 60 barrels/min
     }
     return;
@@ -4920,6 +5161,19 @@ function runMachine(m){
   if(def.living&&m.withered)return;
   if(def.pumps){runPump(m,def);return;}
   if(def.fluidCap||m.type==='accumulator')return; // pipes, tanks, valves: handled by settleFluidNets
+  if(m.type==='quantum_chest'){ // whatever inserters dropped in goes straight to the inventory
+    let n=0; for(const[k,v]of Object.entries(m.inBuf))if(v>0){G.inv[k]=(G.inv[k]||0)+v; n+=v;}
+    if(n){m.inBuf={}; m.produced+=n; m._qt=G.tick;}
+    return;
+  }
+  if(m.type==='quantum_extractor'){ // 1 of its chosen resource every 8 ticks (30 a minute) while powered, no deposit
+    if(!m.pick||powerRatio()===0)return; // it draws 400 kW
+    if(++m.prog>=EXTRACT_TICKS){
+      if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50){m.prog=EXTRACT_TICKS;return;}
+      m.prog=0; m.outBuf[m.pick]=(m.outBuf[m.pick]||0)+1; m.produced++; recordOutput(m,1,m.pick);
+    }
+    return;
+  }
   if(m.type==='scrubber'){
     // Burns refined_fuel to remove smog, every 4 ticks
     if(!zoneHas('smog')||G.tick%4!==0)return;
@@ -4947,7 +5201,7 @@ function runMachine(m){
       const n=Math.random()<(pm.yield*modYield-1)?2:1; // yield perks and Productivity Modules (tiers are speed)
       m.outBuf[m.mineRes]=(m.outBuf[m.mineRes]||0)+n;
       m.produced+=n;
-      recordOutput(m,n);
+      recordOutput(m,n,m.mineRes);
     }
     return;
   }
@@ -4964,7 +5218,7 @@ function runMachine(m){
   // Smog reduces efficiency in Zone 2 for all powered machines
   const smogEff=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
   const lifeMult=def.living?lifeStage(m).mult:1;
-  const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff*lifeMult;
+  const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff*lifeMult*labBoost(m);
 
   if(m.prog===0){
     if(canFill(m,rec)&&fluidReady(m,rec)){consumeInputs(m,rec);consumeFluid(m,rec);m.prog=1;}
@@ -4983,7 +5237,7 @@ function runMachine(m){
         const total=n+bonus;
         m.outBuf[item]=(m.outBuf[item]||0)+total;
         m.produced+=total;
-        recordOutput(m,total);
+        recordOutput(m,total,item);
       }
     }
   }
@@ -5012,8 +5266,14 @@ const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80;
 // Relief Valves (v2.0.17): each vents at most VALVE_VENT a tick (60 a minute, half of what a T1 pump pushes), and a
 // Gasket seals VALVE_SEAL units of venting. A valve comes with one fitted; with none left in its buffer it jams shut.
 const VALVE_VENT=0.25, VALVE_SEAL=60;
+// Relief Valve setting (v2.0.29): each valve opens at its own pressure, tapped in its panel (m.relief, default RELIEF_AT).
+// Lower vents sooner and wears Gaskets faster; 85% keeps a network fuller. Not 90%: strain starts at OVER_PRESSURE, so a
+// valve holding a network at 90% would let it burst.
+const RELIEF_STEPS=[60,70,80,85];
+const reliefAt=m=>RELIEF_STEPS.includes(m.relief)?m.relief:RELIEF_AT;
+function setRelief(id,v){const m=G.machines[id];if(!m||m.type!=='relief_valve'||!RELIEF_STEPS.includes(v))return;m.relief=v;sfx('click');saveGame();renderMachPanel();}
 function valveJammed(m){return (m.seal===undefined?VALVE_SEAL:m.seal)<=0&&!(m.inBuf.gasket>0);}
-function burstStrain(){return BURST_STRAIN*(G.perks?.spent?.pressure1?1.5:1);}
+function burstStrain(){return BURST_STRAIN*(G.perks?.spent?.pressure1?1.5:1)*(1+.15*plv('stable_reality'));}
 const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP',enzymes:'🧪 NEEDS ENZYME PUMP'};
 let FLUID_NETS=[];
 let burstFx=[];
@@ -5071,7 +5331,7 @@ function runPump(m,def){
   net.type=def.pumps;
   net.amt=Math.min(net.cap,net.amt+(m.tier===3?2:m.tier===2?1.5:1));
   net.inflow++;
-  m.produced++; recordOutput(m,1);
+  m.produced++; recordOutput(m,1,def.pumps);
 }
 
 function fluidReady(m,rec){
@@ -5094,17 +5354,17 @@ function consumeFluid(m,rec){
 function settleFluidNets(){
   for(const net of FLUID_NETS){
     if(!net.members.length)continue;
-    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active);
-    let excess=net.amt-net.cap*RELIEF_AT/100;
+    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active).sort((a,b)=>reliefAt(a)-reliefAt(b)); // the lowest setting opens first
     for(const v of valves){
       if(v.seal===undefined)v.seal=VALVE_SEAL; // a new valve comes with one gasket fitted
+      const excess=net.amt-net.cap*reliefAt(v)/100; // valves on one network share the excess above each one's setting
       if(excess<=0)continue;
       if(v.seal<=0){
         if((v.inBuf.gasket||0)>0){v.inBuf.gasket--;v.seal+=VALVE_SEAL;}
         else{ if(!v._jamWarned){v._jamWarned=true;toast('Relief Valve jammed: out of Gaskets','bad');} continue; }
       }
       const d=Math.min(VALVE_VENT,excess,v.seal);
-      v.seal-=d; excess-=d; net.amt-=d; v._jamWarned=false;
+      v.seal-=d; net.amt-=d; v._jamWarned=false;
     }
     // Strain builds while pumps push into an over-pressured network (pumps push every
     // other tick, so +2 per push ≈ +1/tick), holds between pushes, eases off below 90%
@@ -5159,7 +5419,7 @@ function lifeStage(m){
   return {name:'Mature',icon:'🌿',mult:1};
 }
 function tickLiving(){
-  const decay=VIT_DECAY*(G.perks?.spent?.vital1?0.75:1);
+  const decay=VIT_DECAY*(G.perks?.spent?.vital1?0.75:1)*hazardEase();
   for(const m of Object.values(G.machines)){
     if(!MDEFS[m.type]?.living||m.withered)continue;
     if(m.vit===undefined)m.vit=VIT_START;
@@ -5205,7 +5465,7 @@ function runReactor(m,def){
   if(m.scram>0){m.scram--;return;}
   if((m.inBuf.lum_rod||0)<=0)return;
   G.power.out+=Math.abs(def.power);
-  m.heat+=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1);
+  m.heat+=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1)*hazardEase();
   m.burn=(m.burn||0)+1;
   if(m.burn>=ROD_TICKS){m.burn=0;m.inBuf.lum_rod--;}
   if(m.heat>=100){
@@ -5219,7 +5479,12 @@ function runReactor(m,def){
 //  Inserters (any side) or the panel feed components into it. Once complete it
 //  draws SING_POWER; holding full power for SING_SUSTAIN ticks → Big Bang.
 // ═══════════════════════════════════════════════════
-const SING_REQS={grav_lens:20,stellar_casing:40,void_engine:20,quantum_mind:20};
+// The Singularity is a production goal (v2.0.23): hundreds of each component, and every Big Bang (the ascension
+// ladder) makes the next universe's 25% bigger. Power stays the same: it was never the hard part.
+const SING_BASE={grav_lens:500,stellar_casing:1000,void_engine:500,quantum_mind:500};
+function singReqsFor(bangs){const k=1+0.25*(bangs||0); return Object.fromEntries(Object.entries(SING_BASE).map(([id,n])=>[id,Math.round(n*k/10)*10]));}
+let SING_REQS=singReqsFor(0); // set for the current universe in startGame()
+function universeNum(){return (PRESTIGE.bangs||0)+(G&&G.bigBang?0:1);}
 const SING_POWER=5000, SING_SUSTAIN=240;
 function singularity(){return Object.values(G.machines).find(m=>m.type==='singularity')||null;}
 function runSingularity(m){
@@ -5277,14 +5542,34 @@ function singularityStatusHtml(compact){
 
 // ── Big Bang + Stardust prestige (stored in its own key, never wiped) ──
 const PRESTIGE_KEY='ebi_prestige';
+// Stardust upgrades (v2.0.23): most have levels with rising costs, and Echoes and the Quantum Extractor are unlocks
+// you can't get any other way. PRESTIGE.owned[id] holds the level (true from older saves counts as 1); plv(id) reads it.
+const pctS=n=>Math.round(n*100)+'%';
 const PRESTIGE_SHOP=[
-  {id:'cosmic_yield',   name:'Cosmic Yield',     desc:'+15% resource yield, every run',            cost:5},
-  {id:'cosmic_speed',   name:'Starlight Haste',  desc:'+15% machine speed, every run',             cost:5},
-  {id:'cosmic_power',   name:'Dark Energy',      desc:'-20% power draw, every run',                cost:5},
-  {id:'cosmic_perk',    name:'Starborn',         desc:'+1 perk point on every zone launch',        cost:8},
-  {id:'cosmic_start',   name:'Remembered Tools', desc:'Start every zone with 5 Miners, 5 Furnaces, 2 Burners ready to place', cost:8},
-  {id:'cosmic_research',name:'Echoes',           desc:'Start each run with Basic Automation + Advanced Logistics', cost:10},
+  {id:'cosmic_yield',   cat:'PRODUCTION', name:'Cosmic Yield',     max:5, costs:[5,12,25,45,80], fx:l=>`+${pctS(.05+.1*l)} resource yield`},
+  {id:'cosmic_speed',   cat:'PRODUCTION', name:'Starlight Haste',  max:5, costs:[5,12,25,45,80], fx:l=>`+${pctS(.05+.1*l)} machine speed`},
+  {id:'cosmic_power',   cat:'PRODUCTION', name:'Dark Energy',      max:5, costs:[5,12,25,45,80], fx:l=>`-${pctS(.15+.05*l)} power draw`},
+  {id:'bright_minds',   cat:'PRODUCTION', name:'Bright Minds',     max:5, costs:[6,14,28,50,90], fx:l=>`Labs research ${pctS(.2*l)} faster`},
+  {id:'swift_belts',    cat:'LOGISTICS',  name:'Swift Belts',      max:5, costs:[6,14,28,50,90], fx:l=>`Belts, splitters and tunnels ${pctS(.1*l)} faster`},
+  {id:'quick_hands',    cat:'LOGISTICS',  name:'Quick Hands',      max:5, costs:[6,14,28,50,90], fx:l=>`Inserters swing ${pctS(.1*l)} faster`},
+  {id:'cosmic_perk',    cat:'EVERY RUN',  name:'Starborn',         max:3, costs:[8,25,60],       fx:l=>`+${l} perk point${l>1?'s':''} on every zone launch`},
+  {id:'cosmic_start',   cat:'EVERY RUN',  name:'Remembered Tools', max:3, costs:[8,20,45],       fx:l=>`Every zone starts with ${toolsFor(l).map(([t,n])=>`${n} ${MDEFS[t].name}${n>1?'s':''}`).join(', ')} ready to place`},
+  {id:'cargo_hold',     cat:'EVERY RUN',  name:'Cargo Hold',       max:3, costs:[10,30,70],      fx:l=>`Carry ${10*l}% of your inventory to the next zone`},
+  {id:'stable_reality', cat:'EVERY RUN',  name:'Stable Reality',   max:3, costs:[10,30,70],      fx:l=>`Every hazard ${15*l}% weaker: less smog, tougher pipes, slower decay, cooler reactors`},
+  {id:'cosmic_research',cat:'UNIQUE',     name:'Echoes',           max:4, costs:[10,30,70,150],  fx:l=>['Start each run with Basic Automation and Advanced Logistics','Start each run with all of Ironfield\'s research except Rocket Science','Also arrive in every zone with its first era already researched','Arrive in every zone with everything researched except its launch tech'][l-1]},
+  {id:'quantum_storage',cat:'UNIQUE',   name:'Quantum Storage',  max:1, costs:[30],            fx:()=>'A new building: a chest that sends everything put into it straight to your inventory, so you never collect by hand'},
+  {id:'quantum_extractor',cat:'UNIQUE',   name:'Quantum Extractor',max:1, costs:[40],            fx:()=>'A new building: pulls any raw resource of the zone out of thin air, 30 a minute, on any open ground (draws 400 kW)'},
 ];
+function plv(id){const v=PRESTIGE.owned[id]; return v===true?1:(v|0);}
+const TOOLS_BY_LEVEL=[[['miner',5],['stone_furnace',5],['burner',2]],[['inserter',10],['belt',40],['assembler',2]],[['generator',2],['lab',1],['chest',2]]];
+function toolsFor(l){const t={}; for(let i=0;i<l;i++)for(const[k,n]of TOOLS_BY_LEVEL[i])t[k]=(t[k]||0)+n; return Object.entries(t);}
+const hazardEase=()=>1-0.15*plv('stable_reality');
+const EXTRACT_TICKS=8;
+function extractChoices(){ // raw resources this zone has, as items (oil pools give crude oil; brine and enzymes are fluids)
+  return [...rbResHere()].filter(r=>r!=='brine'&&r!=='enzymes').map(r=>r==='oil'?'crude_oil':r).filter(r=>ITEMS[r]);
+}
+function setExtract(id,res){const m=G.machines[id]; if(!m)return; m.pick=res; m.prog=0; renderMachPanel();}
+const labBoost=m=>m.type==='lab'?1+.2*plv('bright_minds'):1; // Bright Minds // Stable Reality: every hazard this much as strong
 const THEMES={
   default:{name:'Amber',   cost:0, amber:'#f5a623', teal:'#26c6a0'},
   violet: {name:'Nebula',  cost:3, amber:'#b388ff', teal:'#80deea'},
@@ -5306,17 +5591,26 @@ let bigBangAt=0;
 function triggerBigBang(){
   if(G.bigBang)return;
   G.bigBang=true;
-  const dust=achDust();
+  if(G.sandbox){ // the show, but no Stardust
+    bigBangAt=performance.now(); saveGame(); sfx('launch');
+    setTimeout(()=>showModal('💥 BIG BANG',`<div style="text-align:center;font-size:var(--f6);color:var(--text2);line-height:2.5">The Singularity holds, and the sandbox universe collapses to a point.<br><br><span style="color:var(--text3)">Sandbox games earn no Stardust.</span></div>`,
+      `<button class="btn btn-sm" onclick="closeModal();G.bigBang=false;const s=singularity();if(s)s.sustain=0;">KEEP BUILDING</button><button class="btn btn-teal btn-sm" onclick="closeModal();openSandboxMenu(true)">NEW SANDBOX</button>`),1800);
+    return;
+  }
+  const ascend=1+0.25*(PRESTIGE.bangs||0), base=achDust(), dust=Math.round(base*ascend); // each universe pays 25% more
   PRESTIGE.stardust+=dust; PRESTIGE.total+=dust; PRESTIGE.bangs++; savePrestige();
   bigBangAt=performance.now();
+  const split=recordSplit(5), run=recordRun(); // the run timer
   saveGame(); sfx('launch'); checkAchievements();
   setTimeout(()=>showModal('💥 BIG BANG',
     `<div style="text-align:center;font-size:var(--f6);color:var(--text2);line-height:2.5">
       <div style="font-size:30px;margin-bottom:10px">💥</div>
       The Singularity holds for sixty seconds.<br>Then everything, every belt, every world, collapses to a point.<br><br>
       <span style="color:var(--purple);font-size:var(--f7)">A NEW UNIVERSE BEGINS</span><br><br>
-      <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(10 + 1 per 2 achievements, up to +${ACH_DUST_MAX})</span><br>
+      <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(${base}: 10 + 1 per 2 achievements, up to +${ACH_DUST_MAX}${ascend>1?`, ×${ascend.toFixed(2)} for Universe ${PRESTIGE.bangs}`:''})</span><br>
+      <span style="color:var(--text3);font-size:var(--f5)">Universe ${PRESTIGE.bangs+1} next: the Singularity needs 25% more, and pays 25% more</span><br>
       <span style="color:var(--text3);font-size:var(--f5)">Big Bangs: ${PRESTIGE.bangs} · Stardust is permanent across runs</span>
+      ${PREFS.timer?`<br>${splitLine('The Singularity:',split)}${run?splitLine('Full run:',run):''}`:''}
     </div>`,
     `<button class="btn btn-sm" onclick="openStardustShop()">✨ SHOP</button>
      <button class="btn btn-teal btn-sm" onclick="beginNewUniverse()">BEGIN AGAIN →</button>`),1800);
@@ -5327,18 +5621,24 @@ function beginNewUniverse(){
   newGame();
 }
 function openStardustShop(){
+  const u=universeNum();
   let html=`<div class="card" style="margin-bottom:8px;text-align:center">
     <div style="font-size:var(--f5);color:var(--text3)">STARDUST</div>
     <div style="font-size:var(--f10);color:var(--amber)">✨ ${PRESTIGE.stardust}</div>
-    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}</div>
-  </div><span class="sec-label">PERMANENT UPGRADES</span>`;
+    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px;line-height:1.8">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}<br>${G&&G.bigBang?'Next: ':''}Universe ${G&&G.bigBang?u+1:u}: the Singularity needs ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} and pays ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} Stardust</div>
+  </div>`;
+  let cat='';
   for(const it of PRESTIGE_SHOP){
-    const owned=!!PRESTIGE.owned[it.id], can=!owned&&PRESTIGE.stardust>=it.cost;
-    html+=`<div style="border:1px solid ${owned?'var(--teal)':'var(--border)'};background:var(--bg3);padding:7px;margin-bottom:4px">
-      <div style="display:flex;justify-content:space-between;font-size:var(--f6)"><span style="color:${owned?'var(--teal)':'var(--text)'}">${it.name}</span>
-        <span style="color:var(--amber);font-size:var(--f5)">${owned?'✓':`✨${it.cost}`}</span></div>
-      <div style="font-size:var(--f5);color:var(--text3);margin:3px 0">${it.desc}</div>
-      ${can?`<button class="mini-btn amber" onclick="buyStardust('${it.id}')">BUY</button>`:''}
+    if(it.cat!==cat){cat=it.cat; html+=`<span class="sec-label" style="margin-top:6px">${cat}</span>`;}
+    const lv=plv(it.id), maxed=lv>=it.max, price=it.costs[lv], can=!maxed&&PRESTIGE.stardust>=price;
+    const pips=it.max>1?Array.from({length:it.max},(_,i)=>`<span style="display:inline-block;width:8px;height:8px;margin-right:2px;background:${i<lv?'var(--teal)':'var(--border2)'}"></span>`).join(''):'';
+    html+=`<div style="border:1px solid ${maxed?'var(--teal)':lv?'var(--border2)':'var(--border)'};background:var(--bg3);padding:7px;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:var(--f6)"><span style="color:${lv?'var(--teal)':'var(--text)'}">${it.name}${it.max>1?` <span style="color:var(--text3);font-size:var(--f4)">Lv ${lv}/${it.max}</span>`:''}</span>
+        <span style="color:${maxed?'var(--teal)':can?'var(--amber)':'var(--red)'};font-size:var(--f5)">${maxed?'MAX':`✨${price}`}</span></div>
+      ${pips?`<div style="margin:4px 0">${pips}</div>`:''}
+      ${lv?`<div style="font-size:var(--f5);color:var(--text2);margin:3px 0;line-height:1.7">Now: ${it.fx(lv)}</div>`:''}
+      ${maxed?'':`<div style="font-size:var(--f5);color:var(--text3);margin:3px 0;line-height:1.7">${lv?'Next':'Buy'}: ${it.fx(lv+1)}</div>`}
+      ${can?`<button class="mini-btn amber" onclick="buyStardust('${it.id}')">${lv?'UPGRADE':'BUY'}</button>`:''}
     </div>`;
   }
   html+=`<span class="sec-label" style="margin-top:8px">THEMES</span><div style="display:flex;flex-wrap:wrap;gap:4px">`;
@@ -5348,24 +5648,44 @@ function openStardustShop(){
       ${active?'● ':''}${t.name}${owned?'':` ✨${t.cost}`}</button>`;
   }
   html+='</div>';
+  const body=document.getElementById('mBody'), keep=body&&!document.getElementById('mOverlay').classList.contains('hidden')?body.scrollTop:0;
   showModal('✨ STARDUST',html,`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`);
+  if(keep)document.getElementById('mBody').scrollTop=keep; // buying keeps your place in the list
 }
 function buyStardust(id,cost){
-  const it=PRESTIGE_SHOP.find(x=>x.id===id); const price=it?it.cost:cost;
-  if(PRESTIGE.owned[id]||PRESTIGE.stardust<price){toast('Not enough Stardust','wrn');sfx('error');return;}
-  PRESTIGE.stardust-=price; PRESTIGE.owned[id]=true;
-  if(id.startsWith('theme_'))PRESTIGE.theme=id.slice(6);
-  savePrestige(); applyTheme(); sfx('research'); openStardustShop();
+  const it=PRESTIGE_SHOP.find(x=>x.id===id);
+  if(it){
+    const lv=plv(id), price=it.costs[lv];
+    if(lv>=it.max||PRESTIGE.stardust<price){toast('Not enough Stardust','wrn');sfx('error');return;}
+    PRESTIGE.stardust-=price; PRESTIGE.owned[id]=lv+1;
+  } else {
+    if(PRESTIGE.owned[id]||PRESTIGE.stardust<cost){toast('Not enough Stardust','wrn');sfx('error');return;}
+    PRESTIGE.stardust-=cost; PRESTIGE.owned[id]=true;
+    if(id.startsWith('theme_'))PRESTIGE.theme=id.slice(6);
+  }
+  savePrestige(); applyTheme(); sfx('research'); if(G&&activeTab)buildDrawer(); openStardustShop();
 }
 function useTheme(id){PRESTIGE.theme=id;savePrestige();applyTheme();openStardustShop();}
 // Prestige effects applied when a run / zone starts
 function applyRememberedTools(){
-  if(!PRESTIGE.owned.cosmic_start)return;
-  for(const[t,n]of [['miner',5],['stone_furnace',5],['burner',2]])G.crafted[t]=(G.crafted[t]||0)+n;
+  for(const[t,n]of toolsFor(plv('cosmic_start')))G.crafted[t]=(G.crafted[t]||0)+n;
+}
+// Echoes: research you start with (zone z's share), by level; levels add up
+function echoTechs(z){
+  const lv=plv('cosmic_research'), out=[], mine=Object.entries(TECHS).filter(([id,t])=>(t.zone||1)===z);
+  if(z===1&&lv>=1)out.push('automation','logistics');
+  if(z===1&&lv>=2)for(const[id]of mine)if(id!==ZONES[1].rocketTech)out.push(id);
+  if(lv>=3)for(const[id,t]of mine)if(/Era 1/.test(t.era))out.push(id);
+  if(lv>=4)for(const[id]of mine)if(id!==ZONES[z].rocketTech&&id!=='singularity')out.push(id);
+  return [...new Set(out)].filter(id=>TECHS[id]);
+}
+function applyEchoes(z){ // grants them (running any research hook, like a map Expansion) and returns how many
+  let n=0;
+  for(const id of echoTechs(z))if(!G.research.done.includes(id)){G.research.done.push(id); n++; if(TECHS[id].onResearch)TECHS[id].onResearch();}
+  return n;
 }
 function applyPrestigeStart(){
-  if(PRESTIGE.owned.cosmic_research)
-    for(const id of ['automation','logistics'])if(!G.research.done.includes(id))G.research.done.push(id);
+  applyEchoes(1);
   applyRememberedTools();
 }
 
@@ -5430,7 +5750,7 @@ function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on th
     if((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1]>0)return false; // entrance: items go underground
   }
   const nt=G.map[ty+D_VEC[m.dir][1]]?.[tx+D_VEC[m.dir][0]]; if(!nt||nt.mid===null)return true;
-  const nm=G.machines[nt.mid]; return !nm||!(beltLike(nm.type)||nm.type==='chest');
+  const nm=G.machines[nt.mid]; return !nm||!(beltLike(nm.type)||nm.type==='chest'||nm.type==='quantum_chest');
 }
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
@@ -5561,6 +5881,8 @@ function runBelts(){
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='chest'){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
+        } else if(nm.type==='quantum_chest'){
+          G.inv[it.id]=(G.inv[it.id]||0)+1; nm.produced++; nm._qt=G.tick;
         } else {
           // All other machines (assembler, furnace, etc), belts cannot feed directly, back-pressure
           hold(it);
@@ -5588,7 +5910,7 @@ function runBelts(){
   // so a 1.7s swing took 4s and an inserter moved 1 item per 4s.)
   buildTakers();
   for(const m of Object.values(G.machines)){
-    if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
+    if((m.type==='inserter'||m.type==='long_inserter')&&m.active)runInserter(m); // a paused inserter stops (v2.0.30)
   }
   beltVisPass();
 }
@@ -5636,7 +5958,7 @@ function beltDropPos(tile){
   return -1;
 }
 function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
-function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?INS_TIER_SPEED[m.tier||1]||1:1);}
+function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?(INS_TIER_SPEED[m.tier||1]||1)*(1+.1*plv('quick_hands')):1);}
 
 // ── Shared outputs ──
 // Several inserters on one machine's output side (or one chest) take turns: each item goes to the ready
@@ -5928,6 +6250,7 @@ function hudHazardsHtml(){
   let html='';
   // every gauge opens a live panel about it (v2.0.21); each shows in its zone even before there is anything to measure
   const gauge=(icon,val,col,tap,label)=>`<div class="hres hres-tap" style="margin-left:4px" onclick="${tap}" role="button" aria-label="${label}"><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
+  if(PREFS.timer)html+=gauge('clock',fmtClock(zoneTicks()),G.runSplits?.[G.zone]!=null?'var(--green)':'var(--text2)',"togglePanel('rocket')",'Run timer');
   if(zoneHas('smog')){
     const smog=Math.round(G.smog||0);
     html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)',"togglePanel('smog')",'Smog details');
@@ -6040,7 +6363,7 @@ function switchTab(tab){
 // The drawer groups for this zone: zone-only machines show in their zones, empty groups are hidden
 function drawerCats(tab){
   return (DRAWER_DEFS[tab]||[]).filter(c=>(!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)))
-    .map(c=>({...c,items:c.items.filter(i=>!i.zones||i.zones.includes(G.zone))})).filter(c=>c.items.length);
+    .map(c=>({...c,items:c.items.filter(i=>(!i.zones||i.zones.includes(G.zone))&&(!i.pr||plv(i.pr)>0||G.sandbox))})).filter(c=>c.items.length);
 }
 function buildDrawer(){
   const tab=activeTab;
@@ -6120,7 +6443,7 @@ function cancelBuild(){
 function confirmPlace(){
   if(lineActive()){placeLine();return;}
   if(hov.x<0||hov.y<0)return;
-  if(!canPlace(activeTool,hov.x,hov.y)){toast('Cannot place here','bad');sfx('error');return;}
+  if(!canPlace(activeTool,hov.x,hov.y,undefined,true)){toast('Cannot place here','bad');sfx('error');return;}
   tryPlace(activeTool,hov.x,hov.y);
 }
 
@@ -6363,7 +6686,9 @@ function machineRates(m){
     R.notes.push('Only burns while something is using power');
   } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
   else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
-  else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${RELIEF_AT}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
+  else if(m.type==='quantum_chest')R.notes.push('Sends whatever arrives straight to your inventory');
+  else if(m.type==='quantum_extractor'){if(m.pick)R.out[m.pick]=per(EXTRACT_TICKS); else R.notes.push('Pick a resource in its panel');}
+  else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${reliefAt(m)}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
   else if(m.type==='scrubber'){R.in.refined_fuel=per(SCRUBBER_FUEL_TICKS);R.notes.push(`Clears ${SCRUBBER_SMOG_MIN} smog/min while it has fuel, power and smog to clean`);}
   else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);R.notes.push('Needs 2 Heat Sinks with coolant piped in (30 enzymes or brine a minute each), or it overheats');}
   else if(m.type==='heat_sink'){R.notes.push(`Drinks ${SINK_DRAW*TICKS_PER_MIN} enzymes or brine a minute while its reactor runs`);}
@@ -6386,7 +6711,7 @@ function machineRates(m){
   } else if(m.recipe&&RECIPES[m.recipe]){
     const rec=RECIPES[m.recipe];
     const life=def.living?lifeStage(m).mult:1;
-    const c=per(Math.ceil(rec.time/Math.max(.01,ratio*pm.speed*tierMult*modSpeed*smog*life)));
+    const c=per(Math.ceil(rec.time/Math.max(.01,ratio*pm.speed*tierMult*modSpeed*smog*life*labBoost(m))));
     for(const[k,n]of Object.entries(rec.in))R.in[k]=(R.in[k]||0)+n*c;
     for(const[k,n]of Object.entries(rec.fluid||{}))R.in[k]=(R.in[k]||0)+n*c;
     for(const[k,n]of Object.entries(rec.out))R.out[k]=(n+(modYield-1))*c; // a Productivity Module adds a chance of +1
@@ -6749,14 +7074,6 @@ function renderMachPanel(){
     html+=`</div>`;
   }
 
-  // Action buttons, move, rotate, demolish
-  const canRotate=(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='tunnel'||m.type==='splitter');
-  const rotBtn2=canRotate?`<button class="full-btn teal" style="flex:1" onclick="rotateM(${m.id})">&#x21BB; ${D_ARR[m.dir]}</button>`:'';
-  html+=`<div style="display:flex;gap:4px;margin-bottom:5px">
-    <button class="full-btn teal" style="flex:1" onclick="moveSingleMachine(${m.id})">✥ MOVE</button>
-    ${rotBtn2}
-  </div>
-  <button class="full-btn red" onclick="tryRemove(${m.x},${m.y});togglePanel('machine')" style="margin-bottom:5px">&#x1F4A5; DEMOLISH</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
   const MODULE_DEFS={
@@ -6818,12 +7135,26 @@ function renderMachPanel(){
     }
   }
 
-  // Controls
-  html+=`<div style="display:flex;gap:6px;margin-top:6px">
-    <button class="mini-btn" style="flex:1;color:var(--text2);border-color:var(--border2)" onclick="toggleM(${m.id})">${m.active?'PAUSE':'RESUME'}</button>
-  </div>`; // DEMOLISH (with the MOVE row above) is the only remove button
-
-  setHtml(el,html);
+  setHtml(el,machActionsHtml(m)+html);
+}
+// ── The same action bar heads every machine panel (v2.0.30): ROTATE · MOVE · PAUSE · DEMOLISH, always in this order.
+// ROTATE is live wherever facing matters (directional machines, anything with output arrows, non-square ones) and dimmed
+// elsewhere; PAUSE is dimmed on machines with nothing to pause (belts move regardless, chests and pipes are passive).
+const NO_PAUSE=new Set(['belt','splitter','tunnel','chest','quantum_chest','pipe','fluid_tank','heat_sink']);
+function machFaces(type){const d=MDEFS[type];return DIR_TYPES.has(type)||!!PORTS[type]||d.size[0]!==d.size[1];}
+function machActionsHtml(m){
+  const face=machFaces(m.type), pause=!NO_PAUSE.has(m.type);
+  const b=(cls,on,icon,label)=>`<button class="ma-btn ${cls}" onclick="${on}"><span class="ma-ic">${icon}</span><span>${label}</span></button>`;
+  return `<div class="mach-actions">
+    ${b(face?'teal':'dim',face?`rotateM(${m.id})`:`machNoop(${m.id},'face')`,'↻',face?`ROTATE ${D_ARR[m.dir]}`:'ROTATE')}
+    ${b('teal',`moveSingleMachine(${m.id})`,'✥','MOVE')}
+    ${b(pause?'amber':'dim',pause?`toggleM(${m.id})`:`machNoop(${m.id},'pause')`,m.active||!pause?'⏸':'▶',m.active||!pause?'PAUSE':'RESUME')}
+    ${b('red',`tryRemove(${m.x},${m.y});togglePanel('machine')`,'💥','DEMOLISH')}
+  </div>`;
+}
+function machNoop(id,why){
+  const m=G.machines[id]; if(!m)return; const n=MDEFS[m.type].name;
+  toast(why==='face'?`${n}: works the same whichever way it faces`:`${n}: nothing to pause, it never uses power`,'wrn'); sfx('error');
 }
 
 // Pipe network, pump, accumulator and lumen details for the machine panel
@@ -6864,12 +7195,22 @@ function fluidPanelRows(m,def,rec){
     html+=irow('Fuel',`🔦 ${m.inBuf.lum_rod||0} rods · 1 rod / ${ROD_TICKS*TICK_MS/1000}s`);
   }
   if(m.type==='relief_valve'){
-    const seal=m.seal===undefined?VALVE_SEAL:m.seal, jam=valveJammed(m), hot=m._net&&pressureOf(m._net)>RELIEF_AT;
+    const seal=m.seal===undefined?VALVE_SEAL:m.seal, jam=valveJammed(m), at=reliefAt(m), hot=m._net&&pressureOf(m._net)>at;
+    html+=`<span class="sec-label" style="margin-top:6px">OPENS AT</span><div style="display:flex;gap:4px;margin-bottom:4px">${RELIEF_STEPS.map(v=>`<button class="mini-btn ${v===at?'amber':''}" style="flex:1;${v===at?'':'color:var(--text2)'}" onclick="setRelief(${m.id},${v})">${v}%</button>`).join('')}</div>
+      <div style="font-size:var(--f4);color:var(--text3);line-height:1.8;margin-bottom:6px">${at<=60?'Keeps the network low, far from bursting, but it vents fluid your machines could have used. The Rod Press needs 60%+.':at<=70?'Vents sooner: safer, but more fluid is thrown away.':at>=85?'Keeps more fluid in the pipes, closer to the 90% burst line.':'The default: a safe middle.'}</div>`;
     html+=irow('Gasket',jam?`<span style="color:var(--red)">✗ Worn out: valve jammed shut</span>`:`<span style="color:${seal<15?'var(--amber)':'var(--teal)'}">${Math.round(seal/VALVE_SEAL*100)}% left</span>`);
     html+=irow('Spares',`${iconHtml('gasket')} ${m.inBuf.gasket||0} / ${MDEFS.relief_valve.bufCap}`);
-    html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':'No (below 80%)');
+    html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':`No (below ${at}%)`);
     html+=`<button class="full-btn teal" style="margin:4px 0" onclick="loadGaskets(${m.id})">LOAD GASKETS (have ${G.inv.gasket||0})</button>
       <div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Each Gasket seals 60 units of venting. An inserter can keep it stocked.</div>`;
+  }
+  if(m.type==='quantum_chest'){
+    html+=irow('Sent to inventory',`<span style="color:var(--teal)">${fmt(m.produced)}</span>`);
+    html+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Everything a belt or inserter puts in goes straight to your inventory. It never fills up.</div>`;
+  }
+  if(m.type==='quantum_extractor'){
+    html+=irow('Pulling',m.pick?`${iconHtml(m.pick)} ${ITEMS[m.pick].name}`:'<span style="color:var(--amber)">Pick a resource</span>');
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0">${extractChoices().map(r=>`<button class="mini-btn ${m.pick===r?'teal':''}" style="color:var(--text2)" onclick="setExtract(${m.id},'${r}')">${iconHtml(r)} ${ITEMS[r].name}</button>`).join('')}</div>`;
   }
   if(m.type==='heat_sink'){
     const near=machineNeighbors(m).some(n=>n.type==='reactor');
@@ -6883,7 +7224,7 @@ function fluidPanelRows(m,def,rec){
 
 function irow(lbl,val){return `<div class="irow"><span class="lbl">${lbl}</span><span>${val}</span></div>`}
 function setRecipe(id,rid){const m=G.machines[id];if(!m)return;if(rid&&!zoneRecipeOk(rid))return;m.recipe=rid||null;m.prog=0;renderMachPanel();}
-function toggleM(id){const m=G.machines[id];if(!m)return;m.active=!m.active;renderMachPanel();}
+function toggleM(id){const m=G.machines[id];if(!m||NO_PAUSE.has(m.type))return;m.active=!m.active;saveGame();renderMachPanel();updateHUD();toast(`${MDEFS[m.type].name} ${m.active?'resumed':'paused'}`,'ok');}
 function rotateM(id){
   const m=G.machines[id];if(!m)return;
   const was=posSnap(m);
@@ -7001,18 +7342,96 @@ function blueprintCanAfford(data){
   const c=blueprintCost(data);
   return Object.entries(c).every(([k,v])=>(G.inv[k]||0)>=v);
 }
+// ═══ BLUEPRINT LIBRARY (v2.0.26) ═══
+// Kept once on the device (ebi_blueprints), shared by every save, slot, zone and Big Bang, and inside backup codes.
+// Blueprints that older saves held in G.blueprints move into it when they load (migrateSave). A blueprint code
+// (EBP1. + base64 of gzipped JSON, EBP0. without gzip) shares one blueprint or the whole library.
+const BP_KEY='ebi_blueprints', BP_MAX=30;
+function loadBlueprints(){try{const a=JSON.parse(localStorage.getItem(BP_KEY)||'[]');return Array.isArray(a)?a.filter(b=>b&&Array.isArray(b.data)):[];}catch(e){return [];}}
+let BLUEPRINTS=loadBlueprints();
+function saveBlueprints(){try{localStorage.setItem(BP_KEY,JSON.stringify(BLUEPRINTS));}catch(e){}}
+const bpKey=b=>b.name+'|'+JSON.stringify(b.data);
+function cleanBlueprint(b){ // only known machines and fields, and a name that is plain text
+  if(!b||!Array.isArray(b.data))return null;
+  const data=b.data.filter(e=>e&&MDEFS[e.type]&&isFinite(e.rx)&&isFinite(e.ry)).map(e=>({type:e.type,rx:e.rx|0,ry:e.ry|0,dir:(e.dir|0)&3,recipe:RECIPES[e.recipe]?e.recipe:null,tier:Math.min(3,Math.max(1,e.tier|0||1)),...(RELIEF_STEPS.includes(e.relief)?{relief:e.relief}:{})}));
+  return data.length?{name:String(b.name||'Blueprint').replace(/[<>&"'`]/g,'').trim().slice(0,24)||'Blueprint',data}:null;
+}
+function addBlueprints(list){ // merges into the library, skipping exact copies; returns {added,dupes,full}
+  const have=new Set(BLUEPRINTS.map(bpKey)); let added=0,dupes=0,full=0;
+  for(const raw of list||[]){
+    const b=cleanBlueprint(raw); if(!b)continue;
+    if(have.has(bpKey(b))){dupes++;continue;}
+    if(BLUEPRINTS.length>=BP_MAX){full++;continue;}
+    BLUEPRINTS.push(b); have.add(bpKey(b)); added++;
+  }
+  if(added)saveBlueprints();
+  return {added,dupes,full};
+}
+async function makeBlueprintCode(list){
+  const bytes=new TextEncoder().encode(JSON.stringify({v:1,bps:list}));
+  if(window.CompressionStream)return 'EBP1.'+b64(await zipBytes(bytes,CompressionStream));
+  return 'EBP0.'+b64(bytes);
+}
+async function readBlueprintCode(code){
+  const m=String(code||'').replace(/\s+/g,'').match(/^EBP([01])\.([A-Za-z0-9+/=]+)$/);
+  if(!m)throw new Error('That is not an 8-Bit Industry blueprint code');
+  let bytes=unb64(m[2]);
+  if(m[1]==='1'){if(!window.DecompressionStream)throw new Error('This browser cannot read compressed codes'); bytes=await zipBytes(bytes,DecompressionStream);}
+  const d=JSON.parse(new TextDecoder().decode(bytes));
+  const list=(d&&Array.isArray(d.bps)?d.bps:[]).map(cleanBlueprint).filter(Boolean);
+  if(!list.length)throw new Error('The code has no blueprints in it');
+  return list;
+}
+let bpCode='', bpCodeName='';
+async function exportBlueprints(idx){
+  const list=idx===undefined?BLUEPRINTS:[BLUEPRINTS[idx]].filter(Boolean);
+  if(!list.length){toast('No blueprints to export','wrn');return;}
+  bpCode=await makeBlueprintCode(list);
+  bpCodeName=idx===undefined?'blueprints':list[0].name.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()||'blueprint';
+  if(openPanel==='blueprint')closePanel('blueprint');
+  showModal('📤 EXPORT BLUEPRINTS',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">${idx===undefined?`All ${list.length} blueprint${list.length>1?'s':''}`:`"${list[0].name}"`} as a code. Send it to yourself or a friend, or save it as a file, then IMPORT it in any game.</div>
+    <textarea id="bpCode" class="bk-area" readonly>${bpCode}</textarea>`,
+    `<button class="btn btn-sm" onclick="closeModal();showPanel('blueprint')">◀</button>
+     <button class="btn btn-sm" onclick="copyBpCode()">📋 COPY</button>
+     <button class="btn btn-sm btn-teal" onclick="downloadBpCode()">⬇ FILE</button>`);
+}
+async function copyBpCode(){
+  let ok=false;
+  try{await navigator.clipboard.writeText(bpCode);ok=true;}catch(e){const t=document.getElementById('bpCode'); if(t){t.select();try{ok=document.execCommand('copy');}catch(e2){}}}
+  const b=[...document.querySelectorAll('#mFoot button')].find(x=>x.textContent.includes('COPY')); if(b)b.textContent=ok?'✓ COPIED':'SELECT + COPY';
+}
+function downloadBpCode(){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bpCode],{type:'text/plain'}));
+  a.download=`8bit-industry-${bpCodeName}.txt`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function importBlueprintsUI(msg){
+  if(openPanel==='blueprint')closePanel('blueprint');
+  showModal('📥 IMPORT BLUEPRINTS',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">Paste a blueprint code, or load a blueprint file. They are added to your library (up to ${BP_MAX}); nothing is replaced.</div>
+    ${msg?`<div style="font-size:var(--f5);color:var(--red);margin-bottom:8px">${msg}</div>`:''}
+    <textarea id="bpIn" class="bk-area" placeholder="EBP1.…"></textarea>
+    <input id="bpFile" type="file" accept=".txt,text/plain" style="display:none" onchange="readBpFile(this)">
+    <button class="full-btn" onclick="document.getElementById('bpFile').click()">📄 LOAD FROM FILE</button>`,
+    `<button class="btn btn-sm" onclick="closeModal();showPanel('blueprint')">◀</button>
+     <button class="btn btn-sm btn-teal" onclick="importBlueprints()">IMPORT</button>`);
+}
+function readBpFile(inp){const f=inp.files&&inp.files[0]; if(!f)return; f.text().then(t=>{const a=document.getElementById('bpIn');if(a)a.value=t.trim();});}
+async function importBlueprints(){
+  let list; try{list=await readBlueprintCode(document.getElementById('bpIn')?.value||'');}catch(e){importBlueprintsUI(e.message||'That code could not be read');return;}
+  const r=addBlueprints(list);
+  closeModal(); showPanel('blueprint'); sfx(r.added?'craft':'error');
+  toast(`Added ${r.added} blueprint${r.added!==1?'s':''}${r.dupes?` · ${r.dupes} already in your library`:''}${r.full?` · ${r.full} skipped: library full (${BP_MAX})`:''}`,r.added?'ok':'wrn');
+}
 function saveBlueprintFromModal(){
   const name=(document.getElementById('bpNameInput')?.value||'Blueprint').trim()||'Blueprint';
-  if(!G.blueprints)G.blueprints=[];
-  if(G.blueprints.length>=8){toast('Blueprint limit reached (8)','wrn');closeModal();return;}
-  G.blueprints.push({name, data:[...blueprintState.data]});
+  if(BLUEPRINTS.length>=BP_MAX){toast(`Blueprint library full (${BP_MAX})`,'wrn');closeModal();return;}
+  const b=cleanBlueprint({name,data:[...blueprintState.data]}); if(b){BLUEPRINTS.push(b); saveBlueprints();}
   blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
-  saveGame(); closeModal(); sfx('craft');
+  closeModal(); sfx('craft');
   toast('Blueprint saved!','ok');
   if(openPanel==='blueprint')renderBlueprintPanel();
 }
 function startPasteBlueprint(idx){
-  const b=(G.blueprints||[])[idx]; if(!b)return;
+  const b=BLUEPRINTS[idx]; if(!b)return;
   if(!blueprintCanAfford(b.data)){
     const missing=Object.entries(blueprintCost(b.data))
       .filter(([k,v])=>(G.inv[k]||0)<v)
@@ -7063,23 +7482,22 @@ function pasteBlueprintAt(data,x,y){
   const costs=G.devFreeBuild?{}:blueprintCost(data);
   for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
   undoBegin(); for(const e of data)stampMachine(e,x+e.rx,y+e.ry); undoEnd();
-  blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
-  document.getElementById('ghostBar')?.classList.add('hidden');
+  // the blueprint stays in hand for another copy until CANCEL (v2.0.30), like copy and paste
   updateHUD(); saveGame(); sfx('place');
   G.stats.pastes=(G.stats.pastes||0)+1;
   toast(`Placed ${data.length} machine${data.length!==1?'s':''}!`,'ok');
 }
 function deleteBlueprint(idx){
-  if(!G.blueprints)return;
-  G.blueprints.splice(idx,1);
-  saveGame(); renderBlueprintPanel();
+  if(!BLUEPRINTS[idx])return;
+  BLUEPRINTS.splice(idx,1);
+  saveBlueprints(); renderBlueprintPanel();
   toast('Blueprint deleted','ok');
 }
 
 // ── Blueprint Panel ─────────────────────────────────
 function renderBlueprintPanel(){
   const el=document.getElementById('pBlueprintBody'); if(!el)return;
-  const bps=G.blueprints||[];
+  const bps=BLUEPRINTS;
   const bp=blueprintState;
 
   let html=`<div style="font-size:var(--f6);color:var(--text2);line-height:2;margin-bottom:10px;padding:8px;border:1px solid var(--border2);background:var(--bg3)">
@@ -7097,7 +7515,12 @@ function renderBlueprintPanel(){
     <button class="full-btn" onclick="blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};document.getElementById('ghostBar')?.classList.add('hidden');setTool('select');renderBlueprintPanel()">CANCEL PASTE</button>`;
   }
 
-  html+=`<span class="sec-label">SAVED BLUEPRINTS (${bps.length}/8)</span>`;
+  html+=`<div style="display:flex;gap:4px;margin-bottom:10px">
+    <button class="mini-btn teal" style="flex:1" onclick="exportBlueprints()" ${bps.length?'':'disabled'}>📤 EXPORT ALL</button>
+    <button class="mini-btn amber" style="flex:1" onclick="importBlueprintsUI()">📥 IMPORT</button>
+  </div>
+  <span class="sec-label">YOUR BLUEPRINTS (${bps.length}/${BP_MAX})</span>
+  <div style="font-size:var(--f4);color:var(--text3);margin:-4px 0 8px;line-height:1.8">Shared by every save, zone and universe.</div>`;
   if(!bps.length){
     html+=`<div style="font-size:var(--f6);color:var(--text3);text-align:center;padding:12px;border:1px solid var(--border);line-height:2">No blueprints saved.<br><span style="font-size:var(--f5)">Use 📐 tool to capture a layout.</span></div>`;
   } else {
@@ -7118,7 +7541,8 @@ function renderBlueprintPanel(){
         <div style="font-size:var(--f5);color:var(--text3);margin-bottom:7px;line-height:1.9">${costLines}</div>
         <div style="display:flex;gap:4px">
           <button class="mini-btn ${canAfford?'teal':'dim'}" style="flex:1;font-size:var(--f5)" onclick="startPasteBlueprint(${i})" ${canAfford?'':'disabled'}>▶ PLACE</button>
-          <button class="mini-btn red" style="font-size:var(--f5)" onclick="deleteBlueprint(${i})">✕ DELETE</button>
+          <button class="mini-btn" style="font-size:var(--f5);color:var(--text2)" onclick="exportBlueprints(${i})">📤 SHARE</button>
+          <button class="mini-btn red" style="font-size:var(--f5)" onclick="deleteBlueprint(${i})">✕</button>
         </div>
       </div>`;
     }
@@ -7263,7 +7687,7 @@ function continueBtnHtml(){
 function goalHeaderHtml(){
   const zd=zoneDef(), fin=TUTORIALS[G.zone]?.steps.slice(-1)[0];
   return `<div class="goal-head"><div class="gh-zone">${zd.icon} ZONE ${G.zone} · ${zd.name.toUpperCase()}</div>
-    ${fin?`<div class="gh-text">${richText(fin.text)}</div>`:''}</div>`;
+    ${fin?`<div class="gh-text">${richText(fin.text)}</div>`:''}</div>${timerCardHtml()}`;
 }
 function renderRocketPanel(){
   const el=document.getElementById('pRocketBody');
@@ -7338,7 +7762,7 @@ function launchRocket(){
   const miss=rocketReqs().find(r=>r.have<r.need);
   if(miss){toast(`Need ${miss.need}× ${miss.name}`,'bad');sfx('error');return;}
   for(const r of rocketReqs())G.inv[r.id]-=r.need;
-  const award=awardLaunchPerks(G.zone);
+  const award=awardLaunchPerks(G.zone), split=recordSplit(G.zone);
   G.stats.launched=true;
   saveGame(); sfx('launch');
   const nz=nextZone();
@@ -7348,6 +7772,7 @@ function launchRocket(){
       ${zd.launchText}<br><br>
       <span style="color:var(--amber);font-size:var(--f7)">ZONE ${G.zone} COMPLETE</span><br><br>
       ${launchPerkLine(award)}
+      ${splitLine(`${zd.name}:`,split)}${PREFS.timer?'<br>':''}
       <span style="color:var(--text3);font-size:var(--f5)">${nz?zd.launchTease:'More zones coming soon...'}</span>
     </div>`,
     `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
@@ -7361,17 +7786,21 @@ function transitionToZone(n){
   const zd=ZONES[n]; if(!zd)return;
   const researchDone=[...G.research.done];
   const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
-  const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft};
+  const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft,sandbox:G.sandbox};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
   const achievements=[...(G.achievements||[])];
+  const timer={runSplits:{...(G.runSplits||{})},runDev:!!(G.runDev||G.timerDev)}; // the run timer's splits come along
+  // Cargo Hold: a share of the inventory comes along (not the old zone's rocket parts)
+  const carry=0.1*plv('cargo_hold'), oldParts=ZONES[G.zone]?.partsCat, cargo={};
+  if(carry)for(const[k,v]of Object.entries(G.inv||{})){const n=Math.floor(v*carry); if(n>0&&ITEMS[k]?.cat!==oldParts)cargo[k]=n;}
   G=defaultState();
-  Object.assign(G,dev);
+  Object.assign(G,dev,timer);
   G.zone=n;
   G.achievements=achievements;
   G.smog=0;
   G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
   G.tutorial={step:-1};                     // Zone 1 tutorial never repeats
-  G.zoneTut=TUTORIALS[n]?0:undefined;      // zone tutorial
+  G.zoneTut=TUTORIALS[n]&&!G.sandbox?0:undefined; // zone tutorial (none in a sandbox)
   G.research.done=researchDone;
   G.perks=perks;
   const quickStart=applyQuickStart();
@@ -7379,6 +7808,9 @@ function transitionToZone(n){
   [MAP_W,MAP_H]=zd.mapSize;
   G.map=addFactoryFloor(zd.buildMap()); G.floorY=zd.mapSize[1];
   if(zd.onArrive)zd.onArrive();
+  const echoed=applyEchoes(n);
+  for(const[k,v]of Object.entries(cargo))G.inv[k]=(G.inv[k]||0)+v;
+  const cargoN=Object.values(cargo).reduce((a,b)=>a+b,0);
   saveGame();
   initCanvas(); buildToolbar(); updateHUD(); updateRocketBtn();
   startTick(); updateSpeedBtn();
@@ -7390,11 +7822,68 @@ function transitionToZone(n){
   showModal(zd.arrivalTitle,
     `<div style="text-align:center;font-size:var(--f6);color:var(--text2);line-height:2.5">
       <div style="font-size:28px;margin-bottom:10px">${zd.icon}</div>
-      ${zd.arrivalHtml}${FLOOR_NOTE}
+      ${zd.arrivalHtml}
       ${quickStart?'<br><span style="color:var(--teal);font-size:var(--f5)">⭐ Quick Start: +50 of each basic resource salvaged</span>':''}
+      ${cargoN?`<br><span style="color:var(--teal);font-size:var(--f5)">Cargo Hold: ${fmt(cargoN)} items came with you</span>`:''}
+      ${echoed?`<br><span style="color:var(--teal);font-size:var(--f5)">Echoes: ${echoed} research already done</span>`:''}
     </div>`,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
   );
+}
+
+// ═══ RUN TIMER (v2.0.29) ═══
+// An optional clock (PREFS.timer, ☰ Settings → TIMER). A zone's time is game time since arrival: G.tick starts at 0 in
+// every zone and only counts while the game runs (never while the app is closed), the same clock the Express Launch award
+// uses. A launch freezes it into G.runSplits[zone]; the Big Bang freezes Zone 5 and the whole run. Personal bests for each
+// zone and the full run stay on the device (TIMES_KEY, never wiped, in backup codes). A zone played with dev mode, free
+// building or free crafting on at any point (G.timerDev, then G.runDev for the run), or a sandbox, never sets a best.
+// Splits are recorded even while the timer is hidden, so turning it on later shows the real times.
+const TIMES_KEY='ebi_times';
+let TIMES=loadTimes();
+function loadTimes(){try{const t=JSON.parse(localStorage.getItem(TIMES_KEY)||'{}');return {z:t.z&&typeof t.z==='object'?t.z:{},run:isFinite(t.run)&&t.run>0?t.run:null};}catch(e){return {z:{},run:null};}}
+function saveTimes(){try{localStorage.setItem(TIMES_KEY,JSON.stringify(TIMES));}catch(e){}}
+function fmtClock(ticks){const s=Math.max(0,Math.floor(ticks/4)),h=Math.floor(s/3600),m=Math.floor(s/60)%60,ss=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${ss}`:`${m}:${ss}`;}
+const zoneTicks=()=>G.runSplits?.[G.zone]??G.tick;
+function runTicks(){let t=zoneTicks();for(let z=1;z<G.zone;z++)t+=G.runSplits?.[z]||0;return t;}
+const runWhole=()=>{for(let z=1;z<G.zone;z++)if(G.runSplits?.[z]==null)return false;return true;}; // every earlier zone timed
+function recordSplit(z){ // freeze a zone's time at its launch; returns what the message shows
+  G.runSplits=G.runSplits||{};
+  if(G.runSplits[z]==null)G.runSplits[z]=G.tick;
+  if(G.timerDev)G.runDev=true;
+  const t=G.runSplits[z], eligible=!G.sandbox&&!G.timerDev, prev=TIMES.z[z]??null, nb=eligible&&(prev==null||t<prev);
+  if(nb){TIMES.z[z]=t;saveTimes();}
+  return {t,prev,nb,eligible};
+}
+function recordRun(){ // the whole run, at the Big Bang
+  if(![1,2,3,4,5].every(z=>G.runSplits?.[z]!=null))return null;
+  const t=[1,2,3,4,5].reduce((a,z)=>a+G.runSplits[z],0), eligible=!G.sandbox&&!G.runDev, prev=TIMES.run, nb=eligible&&(prev==null||t<prev);
+  if(nb){TIMES.run=t;saveTimes();}
+  return {t,prev,nb,eligible};
+}
+function splitLine(label,r){ // a line for the launch and Big Bang messages
+  if(!PREFS.timer||!r)return '';
+  const tail=!r.eligible?'<span style="color:var(--text3)">dev tools used: no best</span>'
+    :r.nb?`<span style="color:var(--green)">${r.prev!=null?`NEW BEST, ${fmtClock(r.prev-r.t)} faster`:'FIRST BEST'}</span>`
+    :`<span style="color:var(--text3)">best ${fmtClock(r.prev)} · +${fmtClock(r.t-r.prev)}</span>`;
+  return `<div style="font-size:var(--f5);line-height:2">⏱ ${label} <span style="color:var(--amber)">${fmtClock(r.t)}</span><br>${tail}</div>`;
+}
+function timerCardHtml(){
+  if(!PREFS.timer||!G)return '';
+  const frozen=G.runSplits?.[G.zone]!=null, best=TIMES.z[G.zone];
+  const rows=[1,2,3,4,5].map(z=>{
+    const t=z===G.zone?zoneTicks():G.runSplits?.[z], b=TIMES.z[z];
+    return `<div style="display:flex;gap:6px;font-size:var(--f4);line-height:2;color:${z===G.zone?'var(--text)':'var(--text2)'}"><span style="flex:1">${ZONES[z].name}</span>
+      <span style="min-width:62px;text-align:right">${t!=null&&z<=G.zone?fmtClock(t):'-'}</span><span style="min-width:62px;text-align:right;color:var(--text3)">${b!=null?fmtClock(b):'-'}</span></div>`;}).join('');
+  return `<div class="card" style="margin:8px 0">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sec-label" style="margin:0">⏱ RUN TIMER</span>
+      <span style="font-size:var(--f7);color:${frozen?'var(--green)':'var(--amber)'}">${fmtClock(zoneTicks())}</span></div>
+    <div style="font-size:var(--f4);color:var(--text3);line-height:2;margin:2px 0 6px">${frozen?'Launched: this zone is timed.':`This zone${best!=null?`, best ${fmtClock(best)}`:''}.`} Run so far ${fmtClock(runTicks())}${runWhole()?'':' (started before the timer, so no run best)'}${G.sandbox?' · Sandbox: no bests':G.timerDev?' · Dev tools used: no best':''}.</div>
+    <div style="display:flex;gap:6px;font-size:var(--f4);color:var(--text3);line-height:2"><span style="flex:1">ZONE</span><span style="min-width:62px;text-align:right">THIS RUN</span><span style="min-width:62px;text-align:right">BEST</span></div>
+    ${rows}
+    <div style="display:flex;gap:6px;font-size:var(--f4);line-height:2;border-top:1px solid var(--border);margin-top:4px;padding-top:2px"><span style="flex:1;color:var(--text)">Full run</span>
+      <span style="min-width:62px;text-align:right">${fmtClock(runTicks())}</span><span style="min-width:62px;text-align:right;color:var(--text3)">${TIMES.run!=null?fmtClock(TIMES.run):'-'}</span></div>
+    <div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin-top:4px">Game time: it only runs while the game is open. Bests are kept on this device.</div>
+  </div>`;
 }
 
 // ── Perks ──────────────────────────────────────────
@@ -7457,7 +7946,7 @@ function awardLaunchPerks(zone){
   if(!G.perks.awarded)G.perks.awarded={};
   if(G.perks.awarded[zone])return {pts:0,met:[]};
   const met=zone===G.zone?zoneMilestones(zone).filter(ms=>ms.met).map(ms=>ms.name):[];
-  const pts=(LAUNCH_PERK_POINTS[zone]||0)+met.length+(PRESTIGE.owned.cosmic_perk?1:0);
+  const pts=(LAUNCH_PERK_POINTS[zone]||0)+met.length+plv('cosmic_perk');
   G.perks.awarded[zone]=true;
   G.perks.points=(G.perks.points||0)+pts;
   return {pts,met};
@@ -7572,7 +8061,7 @@ function renderStatsPanel(){
 
   const allPaused=producers.length>0&&producers.every(m=>!m.active);
   const allActive=producers.length>0&&producers.every(m=>m.active);
-  let html=`<div class="card" style="margin-bottom:10px">
+  let html=statGraphsHtml()+`<div class="card" style="margin-bottom:10px">
     <span class="sec-label">OVERVIEW</span>
     ${irow('Machines placed',`<span style="color:var(--amber)">${machines.length}</span>`)}
     ${irow('Producers active',`<span style="color:var(--green)">${active.length}</span> / ${producers.length}`)}
@@ -7665,6 +8154,106 @@ function renderStatsPanel(){
   }
 
   setHtml(el,html);
+  drawStatGraphs();
+}
+
+// ── Stats graphs (v2.0.28) ──
+// Production per minute for the six items made most in the chosen span (10 minutes or an hour), and power made vs
+// used. Each item keeps its colour while it stays in the top six (colours follow the item, never its rank); chips
+// switch lines off; an item icon labels each line's end. Tap or drag on a graph to read one moment. The palette is the
+// validated colourblind-safe categorical set, so it needs no colourblind variant.
+const STAT_COLS=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300'];
+let statSpan='f', statSlots={}, statHov=null;
+const statOff=new Set();
+function statSeries(){
+  const B=prodLog()[statSpan], tot={};
+  for(const b of B)for(const[k,n]of Object.entries(b.d))tot[k]=(tot[k]||0)+n;
+  const all=Object.keys(tot).filter(k=>ITEMS[k]).sort((a,b)=>tot[b]-tot[a]), top=all.slice(0,6);
+  for(const k of Object.keys(statSlots))if(!top.includes(k))delete statSlots[k];
+  const used=new Set(Object.values(statSlots));
+  for(const k of top)if(statSlots[k]===undefined){let i=0;while(used.has(i))i++;statSlots[k]=i;used.add(i);}
+  return {B,top,more:all.length-top.length,per:TICKS_PER_MIN/PL_SPANS[statSpan].ticks};
+}
+function setStatSpan(k){statSpan=k;statHov=null;renderStatsPanel();}
+function statToggle(k){if(statOff.has(k))statOff.delete(k);else statOff.add(k);renderStatsPanel();}
+function statGraphsHtml(){
+  const {B,top,more,per}=statSeries(), span=PL_SPANS[statSpan];
+  const tabs=Object.keys(PL_SPANS).map(k=>`<button class="mini-btn ${k===statSpan?'amber':''}" style="min-height:28px;padding:4px 8px;${k===statSpan?'':'color:var(--text2)'}" onclick="setStatSpan('${k}')">${PL_SPANS[k].label}</button>`).join('');
+  const head=t=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px"><span class="sec-label" style="margin:0">${t}</span>${t==='PRODUCTION'?`<div style="display:flex;gap:4px">${tabs}</div>`:''}</div>`;
+  if(B.length<2){
+    const secs=Math.ceil(((2-B.length)*span.ticks-(G.tick%span.ticks))/4);
+    return `<div class="card" style="margin-bottom:10px">${head('PRODUCTION')}<div class="stat-empty">Collecting data: the graphs start in about ${fmtSecs(secs)}.</div></div>`;
+  }
+  const last=B[B.length-1];
+  const chips=top.map(k=>`<button class="stat-chip${statOff.has(k)?' off':''}" onclick="statToggle('${k}')"><i style="background:${STAT_COLS[statSlots[k]]}"></i>${iconHtml(k)}<span>${ITEMS[k].name}</span><b>${fmt(Math.round((last.d[k]||0)*per))}</b></button>`).join('');
+  return `<div class="card" style="margin-bottom:10px">${head('PRODUCTION')}
+    ${top.length?`<canvas id="statCvP" class="stat-cv" onpointerdown="statHover(event,'p')" onpointermove="statHover(event,'p')"></canvas>
+    <div id="statReadP" class="stat-read"></div><div class="stat-chips">${chips}</div>
+    <div class="stat-note">Per minute, from machines only (not hand mining or crafting). Tap an item to hide its line.${more?` ${more} more item${more>1?'s':''} made, not shown.`:''}</div>`
+    :`<div class="stat-empty">No machine has made anything in the last ${span.label.toLowerCase()}.</div>`}
+  </div>
+  <div class="card" style="margin-bottom:10px">${head('POWER')}
+    <canvas id="statCvW" class="stat-cv" onpointerdown="statHover(event,'w')" onpointermove="statHover(event,'w')"></canvas>
+    <div id="statReadW" class="stat-read"></div>
+    <div class="stat-chips"><span class="stat-chip"><i style="background:${STAT_COLS[0]}"></i><span>MADE</span><b>${fmtKW(last.po)}</b></span><span class="stat-chip"><i style="background:${STAT_COLS[1]}"></i><span>USED</span><b>${fmtKW(last.pi)}</b></span></div>
+  </div>`;
+}
+function fmtSecs(s){s=Math.round(s);return s<60?`${s}s`:`${Math.floor(s/60)}m${s%60?` ${s%60}s`:''}`;}
+const STAT_PAD={l:38,r:18,t:8,b:18};
+function statHover(e,g){
+  const cv=e.currentTarget, r=cv.getBoundingClientRect(), n=prodLog()[statSpan].length;
+  const f=(e.clientX-r.left-STAT_PAD.l)/Math.max(1,r.width-STAT_PAD.l-STAT_PAD.r);
+  statHov={g,i:Math.max(0,Math.min(n-1,Math.round(f*(n-1))))};
+  drawStatGraphs();
+}
+function drawStatGraphs(){
+  if(!document.getElementById('statCvW'))return;
+  const {B,top,per}=statSeries();
+  drawStatChart('statCvP','statReadP','p',top.map(k=>({key:k,col:STAT_COLS[statSlots[k]],name:ITEMS[k].name,off:statOff.has(k),vals:B.map(b=>(b.d[k]||0)*per)})),v=>`${fmt(Math.round(v))}/min`);
+  drawStatChart('statCvW','statReadW','w',[{col:STAT_COLS[0],name:'Made',vals:B.map(b=>b.po)},{col:STAT_COLS[1],name:'Used',vals:B.map(b=>b.pi)}],v=>fmtKW(Math.round(v)));
+}
+function statNice(v){ // a round grid step so three steps cover v
+  const raw=Math.max(v,1)/3, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  for(const m of[1,2,2.5,5,10])if(m*mag>=raw)return m*mag;
+  return 10*mag;
+}
+function drawStatChart(cid,rid,gk,series,fmtV){
+  const cv=document.getElementById(cid); if(!cv)return;
+  const W=Math.max(200,cv.clientWidth||300), H=130, dpr=Math.min(2,window.devicePixelRatio||1);
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  cv.style.height=H+'px';
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.imageSmoothingEnabled=false;
+  const P=STAT_PAD, pw=W-P.l-P.r, ph=H-P.t-P.b, n=series[0]?series[0].vals.length:0; if(n<2)return;
+  let max=0; for(const s of series)if(!s.off)for(const v of s.vals)max=Math.max(max,v);
+  const step=statNice(max), top=step*Math.max(1,Math.ceil(max/step));
+  const X=i=>P.l+i*pw/(n-1), Y=v=>P.t+(1-v/top)*ph;
+  g.font="7px 'Press Start 2P', monospace"; g.textBaseline='middle';
+  for(let v=0;v<=top+1e-9;v+=step){ // recessive grid, labelled on the left
+    const y=Math.round(Y(v))+.5; g.fillStyle=v?'#262626':'#3a3a3a'; g.fillRect(P.l,y-.5,pw,1);
+    g.fillStyle='#777'; g.textAlign='right'; g.fillText(fmt(v),P.l-5,y);
+  }
+  const spanS=PL_SPANS[statSpan].ticks/4, ago=i=>(n-1-i)*spanS;
+  g.fillStyle='#777'; g.textBaseline='alphabetic';
+  g.textAlign='left'; g.fillText(`-${fmtSecs(ago(0))}`,P.l,H-4); g.textAlign='right'; g.fillText('now',P.l+pw,H-4);
+  g.lineWidth=2; g.lineJoin='round'; g.lineCap='round';
+  const ends=[];
+  for(const s of series){
+    if(s.off)continue;
+    g.strokeStyle=s.col; g.beginPath();
+    s.vals.forEach((v,i)=>{const x=X(i),y=Y(v); if(i)g.lineTo(x,y); else g.moveTo(x,y);}); g.stroke();
+    if(s.key)ends.push({key:s.key,y:Y(s.vals[n-1])});
+  }
+  // an item icon at each line's end, nudged apart so they don't overlap
+  ends.sort((a,b)=>a.y-b.y); for(let i=1;i<ends.length;i++)ends[i].y=Math.max(ends[i].y,ends[i-1].y+11);
+  for(const e of ends)drawItem(g,e.key,W-P.r+10,Math.min(H-P.b,e.y),11);
+  const rd=document.getElementById(rid);
+  if(statHov&&statHov.g===gk&&statHov.i<n){
+    const i=statHov.i, x=Math.round(X(i))+.5;
+    g.fillStyle='#555'; g.fillRect(x-.5,P.t,1,ph);
+    for(const s of series){if(s.off)continue; const y=Y(s.vals[i]);
+      g.beginPath(); g.arc(x,y,4,0,Math.PI*2); g.fillStyle=s.col; g.fill(); g.lineWidth=2; g.strokeStyle='#1a1a1a'; g.stroke();}
+    if(rd)rd.innerHTML=`<span style="color:var(--text3)">${ago(i)?fmtSecs(ago(i))+' ago':'Latest'}</span> `+series.filter(s=>!s.off).map(s=>`<span class="stat-rv"><i style="background:${s.col}"></i>${s.key?iconHtml(s.key):s.name} ${fmtV(s.vals[i])}</span>`).join(' ');
+  } else if(rd)rd.innerHTML='<span style="color:var(--text3)">Tap or drag on the graph to read a moment</span>';
 }
 
 // Selection count in the multi-select bar
@@ -7772,7 +8361,7 @@ function multiselCopy(){
   const machines=ms.ids.map(id=>G.machines[id]).filter(Boolean);
   const minX=Math.min(...machines.map(m=>m.x));
   const minY=Math.min(...machines.map(m=>m.y));
-  ms.clipboard=machines.map(m=>({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1}));
+  ms.clipboard=machines.map(m=>({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1,...(m.relief?{relief:m.relief}:{})}));
   sfx('craft');
   // Auto-enter paste mode immediately
   multiselStartPaste();
@@ -8107,7 +8696,7 @@ function renderHazPanel(){
 }
 function hazPressureHtml(){
   const nets=FLUID_NETS.filter(n=>n.members.length);
-  let html=`<div class="card" style="font-size:var(--f5);color:var(--text2);line-height:1.8">Keep each pipe network between <span style="color:var(--blue)">${LOW_PRESSURE}%</span> (machines can draw) and <span style="color:var(--amber)">${OVER_PRESSURE}%</span>. Above ${OVER_PRESSURE}% with a pump still pushing, strain builds and a pipe bursts. Relief Valves vent above ${RELIEF_AT}%.</div>`;
+  let html=`<div class="card" style="font-size:var(--f5);color:var(--text2);line-height:1.8">Keep each pipe network between <span style="color:var(--blue)">${LOW_PRESSURE}%</span> (machines can draw) and <span style="color:var(--amber)">${OVER_PRESSURE}%</span>. Above ${OVER_PRESSURE}% with a pump still pushing, strain builds and a pipe bursts. Relief Valves vent above the pressure each one is set to (${RELIEF_AT}% unless you change it in its panel).</div>`;
   if(!nets.length)return html+hzCard('NETWORKS',`<div style="${hzSmall};line-height:1.8">No pipe networks yet. Place a pump on a pool and connect pipes to it.</div>`);
   const sorted=[...nets].sort((a,b)=>(b.strain-a.strain)||(pressureOf(b)-pressureOf(a)));
   sorted.forEach((n,i)=>{
@@ -8127,7 +8716,7 @@ function hazPressureHtml(){
         <span style="font-size:var(--f7);color:${col}">${p}%</span>${hzFind(n.members.map(m=>m.id))}
       </div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${p}%;background:${col}"></div></div>
-      <div style="${hzSmall};line-height:1.8;margin-top:4px">${Math.round(n.amt)}/${n.cap} · ${n.members.length} pipe parts · ${pumps.length} pump${pumps.length!==1?'s':''} (${fmtRate(pushMin)}/min in) · ${users.length} user${users.length!==1?'s':''} · ${valves.length} valve${valves.length!==1?'s':''}${jammed.length?` <span style="color:var(--red)">(${jammed.length} jammed)</span>`:''}</div>
+      <div style="${hzSmall};line-height:1.8;margin-top:4px">${Math.round(n.amt)}/${n.cap} · ${n.members.length} pipe parts · ${pumps.length} pump${pumps.length!==1?'s':''} (${fmtRate(pushMin)}/min in) · ${users.length} user${users.length!==1?'s':''} · ${valves.length} valve${valves.length!==1?'s':''}${valves.length?` (open at ${[...new Set(valves.map(reliefAt))].sort((x,y)=>x-y).join('/')}%)`:''}${jammed.length?` <span style="color:var(--red)">(${jammed.length} jammed)</span>`:''}</div>
       <div style="font-size:var(--f5);line-height:1.8;margin-top:4px">${advice}</div>
       ${jammed.length?`<div style="margin-top:4px">${hzFind(jammed.map(m=>m.id),'FIND JAMMED VALVES')}</div>`:''}
     </div>`;
@@ -8169,7 +8758,7 @@ function hazHeatHtml(){
   reactors.forEach((r,i)=>{
     const ns=machineNeighbors(r).filter(n=>n.type==='heat_sink'), wet=ns.filter(n=>n._wet), dry=ns.filter(n=>!n._wet);
     const h=Math.round(r.heat||0), col=r.scram>0||h>80?'var(--red)':h>50?'var(--amber)':'var(--teal)', rods=r.inBuf.lum_rod||0;
-    const cool=REACTOR_COOL+wet.length*SINK_COOL, gain=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1), net=gain-cool;
+    const cool=REACTOR_COOL+wet.length*SINK_COOL, gain=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1)*hazardEase(), net=gain-cool;
     let st;
     if(r.scram>0)st=`<span style="color:var(--red)">SCRAM: back in ${Math.ceil(r.scram*TICK_MS/1000)}s</span>`;
     else if(!rods)st=`<span style="color:var(--red)">Out of Luminite Rods</span>`;
@@ -8358,6 +8947,7 @@ function achDust(){
 }
 function checkAchievements(){
   if(!G.achievements)G.achievements=[];
+  if(G.sandbox)return; // nothing to earn in a sandbox
   const earned=new Set(G.achievements);
   const machines=Object.values(G.machines);
   const totalOre=(G.inv.iron_ore||0)+(G.inv.copper_ore||0)+(G.inv.coal||0)+(G.inv.stone||0)+G.stats.taps;
@@ -8500,8 +9090,8 @@ function checkAchievements(){
     t3:           ()=>machines.some(m=>(m.tier||1)>=3),
     first_module: ()=>machines.some(m=>(m.modules||[]).filter(Boolean).length>0),
     modules_5:    ()=>machines.reduce((a,m)=>a+(m.modules||[]).filter(Boolean).length,0)>=5,
-    first_blueprint:()=>(G.blueprints||[]).length>=1,
-    blueprints_4: ()=>(G.blueprints||[]).length>=4,
+    first_blueprint:()=>BLUEPRINTS.length>=1,
+    blueprints_4: ()=>BLUEPRINTS.length>=4,
     first_paste:  ()=>(G.stats.pastes||0)>=1,
     first_flip:   ()=>(G.stats.flips||0)>=1,
     first_undo:   ()=>(G.stats.undos||0)>=1,
@@ -8612,6 +9202,8 @@ function rbSources(id){ // ways to get an item that are not recipes: mining and 
   const out=[], here=rbResHere();
   for(const[res,[item,pump]]of Object.entries(RB_PUMPED))if(item===id&&here.has(res))
     out.push(`${iconHtml(pump)} <b>${MDEFS[pump].name}</b> on a ${res} pool: 60 a minute at T1${res==='oil'?'':', into a pipe network'}`);
+  if(plv('quantum_extractor')&&extractChoices().includes(id))
+    out.push(`${iconHtml('quantum_extractor')} <b>Quantum Extractor</b> on open ground: 30 a minute for 400 kW (Stardust unlock)`);
   if(here.has(id)&&!RB_PUMPED[id])
     out.push(`${iconHtml('miner')} <b>Miner</b> on a ${rbName(id)} deposit: ${id==='radiant_dust'?'30':'60'} a minute at T1. You can also tap the deposit to mine by hand.`);
   return out;
@@ -8825,7 +9417,7 @@ const TUTORIALS={
      done:()=>hasM('lumen_panel')},
     {text:'The glow dims for 1 minute in every 4 🌑. Research Energy Storage and add [[accumulator]] Accumulators to bank power.',
      done:()=>hasM('accumulator')},
-    {text:'Research Pressure Control for [[relief_valve]] Relief Valves and the [[separator]] Separator. A valve vents above 80% (half a pump each) and wears out [[gasket]] Gaskets, so keep it stocked.',
+    {text:'Research Pressure Control for [[relief_valve]] Relief Valves and the [[separator]] Separator. A valve vents above 80% (tap it to change that; half a pump each) and wears out [[gasket]] Gaskets, so keep it stocked.',
      done:()=>researched('pressure_control')},
     {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build the 5 kinds of escape part, then launch from 🚀 GOAL.',
      final:true},
@@ -9017,7 +9609,7 @@ const MENU_ROUTES={
   achievements:()=>showPanel('achieve'), recipes:()=>showPanel('recipes'), blueprints:()=>showPanel('blueprint'),
   dev:()=>showPanel('dev'), devlock:()=>promptDevUnlock(),
   backup:()=>openBackup(), install:()=>installApp(),
-  stardust:()=>openStardustShop(), settings:()=>openSettings(), saves:()=>openSaves(),
+  stardust:()=>openStardustShop(), settings:()=>openSettings(), saves:()=>openSaves(), sandbox:()=>openSandboxMenu(),
 };
 function openBigMenu(section){
   if(section&&MENU_ROUTES[section]){closeModal();MENU_ROUTES[section]();return;}
@@ -9034,6 +9626,7 @@ function openBigMenu(section){
     ['saves','💾','SAVES',''],
     ['backup','🛟','BACKUP',''],
     ...(canInstall()?[['install','📲','INSTALL','']]:[]),
+    ...(G.sandbox?[['sandbox','🏗️','SANDBOX','']]:[]),
     G.devMode?['dev','🛠','DEV','ON']:['devlock','🔒','DEV',''],
   ];
   const body=`<div class="menu-zone">
@@ -9075,6 +9668,8 @@ function openSettings(){
   settingsHtml+=row('🎞️ FPS',[30,60].map(f=>`<button class="mini-btn ${PREFS.fps===f?'amber':'dim'}" onclick="setPref('fps',${f})">${f}</button>`).join(''));
   settingsHtml+=row('🖼️ RES',RES_STEPS.map(r=>`<button class="mini-btn ${PREFS.res===r?'amber':'dim'}" onclick="setPref('res',${r})">${Math.round(r*100)}%</button>`).join(''));
   settingsHtml+=row('🔋 SAVER',`<button class="mini-btn ${saver?'teal':'dim'}" onclick="batterySaver(${!saver})">${saver?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">30 FPS + 50% resolution</span>`);
+  settingsHtml+=row('⏱ TIMER',`<button class="mini-btn ${PREFS.timer?'teal':'dim'}" onclick="setPref('timer',${!PREFS.timer});if(G)updateHUD()">${PREFS.timer?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">A clock for each zone and the whole run, with your best times (GOAL tab)</span>`);
+  settingsHtml+=row('🎨 COLOURS',`<button class="mini-btn ${PREFS.cb?'teal':'dim'}" onclick="setColourBlind(${!PREFS.cb})">${PREFS.cb?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">Colour-blind mode: blue for good, pink for bad, and a cross on blocked spots</span>`);
   settingsHtml+=row('📳 HAPTICS',navigator.vibrate?`<button class="mini-btn ${PREFS.haptics!==false?'teal':'dim'}" onclick="setPref('haptics',${PREFS.haptics===false});haptic('place')">${PREFS.haptics!==false?'ON':'OFF'}</button>`:`<span style="font-size:var(--f4);color:var(--text3)">Not supported in this browser</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
 
@@ -9108,7 +9703,7 @@ function unb64(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.len
 const zipBytes=(u8,Stream)=>new Response(new Blob([u8]).stream().pipeThrough(new Stream('gzip'))).arrayBuffer().then(b=>new Uint8Array(b));
 async function makeBackupCode(){
   if(G&&tickId)saveGame();
-  const data={v:1,at:Date.now(),save:localStorage.getItem(SAVE_KEY),prestige:localStorage.getItem(PRESTIGE_KEY),
+  const data={v:1,at:Date.now(),save:localStorage.getItem(SAVE_KEY),prestige:localStorage.getItem(PRESTIGE_KEY),blueprints:localStorage.getItem(BP_KEY),times:localStorage.getItem(TIMES_KEY),
     slots:[1,2,3].map(n=>localStorage.getItem(`ebi_save_slot${n}`))};
   const bytes=new TextEncoder().encode(JSON.stringify(data));
   if(window.CompressionStream)return 'EBI1.'+b64(await zipBytes(bytes,CompressionStream));
@@ -9124,7 +9719,7 @@ async function readBackupCode(code){
   }
   const d=JSON.parse(new TextDecoder().decode(bytes));
   if(!d||d.v!==1||!(d.save||d.prestige||(d.slots||[]).some(Boolean)))throw new Error('The backup is empty');
-  for(const raw of[d.save,d.prestige,...(d.slots||[])])if(raw)JSON.parse(raw);
+  for(const raw of[d.save,d.prestige,d.blueprints,...(d.slots||[])])if(raw)JSON.parse(raw);
   return d;
 }
 let backupCode='';
@@ -9134,7 +9729,7 @@ async function openBackup(){
   const close=G?backToMenu:`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`;
   showModal('🛟 BACKUP',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:10px">
       Your progress lives only in this browser. Clearing site data deletes it, and so can a phone tidying its storage.
-      Keep a backup code somewhere safe: it holds your game, your save slots and your Stardust.
+      Keep a backup code somewhere safe: it holds your game, your save slots, your Stardust and your blueprints.
       ${prot?`<br><span style="color:var(--text3)">${prot}</span>`:''}</div>
     <button class="full-btn" onclick="exportBackup()">📤 EXPORT BACKUP</button>
     <button class="full-btn" onclick="importBackupUI()">📥 IMPORT BACKUP</button>`,close);
@@ -9191,6 +9786,8 @@ function applyBackup(){
   noSave=true; if(tickId){clearInterval(tickId);tickId=null;}
   const put=(k,v)=>{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k);};
   put(SAVE_KEY,d.save); put(PRESTIGE_KEY,d.prestige);
+  if(d.blueprints!==undefined)put(BP_KEY,d.blueprints); // older backups had none: keep this device's library
+  if(d.times!==undefined)put(TIMES_KEY,d.times);         // best times (v2.0.29), the same
   (d.slots||[]).forEach((v,i)=>put(`ebi_save_slot${i+1}`,v));
   location.reload();
 }
@@ -9218,6 +9815,7 @@ async function installApp(){
 }
 
 function saveToSlot(s){
+  if(G.sandbox){toast('A sandbox keeps its own save; slots are for your real game','wrn');sfx('error');return;}
   try{
     G._savedAt=Date.now();
     localStorage.setItem(`ebi_save_slot${s}`,serializeG());
@@ -9235,7 +9833,6 @@ function loadFromSlot(s){
     if(!G.perks)G.perks={points:0,spent:{},awarded:{}};
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
-    if(!G.blueprints)G.blueprints=[];
     if(!G.zone)G.zone=1;
     migrateSave();
     G.power={out:0,in:0};
@@ -9414,7 +10011,7 @@ function devCompleteZone(){
 function devReset(){
   showModal('RESET SAVE?',
     '<div style="font-size:var(--f6);color:var(--red)">This will wipe everything and start a new game.</div>',
-    `<button class="btn btn-sm btn-red" onclick="noSave=true;localStorage.removeItem('${SAVE_KEY}');location.reload()">RESET</button>
+    `<button class="btn btn-sm btn-red" onclick="noSave=true;localStorage.removeItem('${saveKey()}');location.reload()">RESET</button>
      <button class="btn btn-sm" onclick="closeModal()">CANCEL</button>`
   );
 }
@@ -9476,7 +10073,7 @@ function quitToTitle(){
   rafId=null; tickId=null;
   document.getElementById('sGame').classList.add('hidden');
   document.getElementById('sTitle').classList.remove('hidden');
-  buildTitleSlots(); startTitleScene();
+  buildTitleSlots(); startTitleScene(); updateSandboxBtn();
   setTimeout(()=>{if(onTitle())titleMusic();},600); // after the game track fades out
 }
 
@@ -9494,7 +10091,7 @@ function packMap(map){
   for(let y=0;y<map.length;y++)for(let x=0;x<map[y].length;x++){
     const t=map[y][x];
     if(t.res){if(idx[t.res]===undefined){idx[t.res]=codes.length;codes.push(t.res);}res+=String.fromCharCode(65+idx[t.res]);}
-    else res+='.';
+    else res+=t.type===T_WALL?'#':'.';
     if(t.items&&t.items.length)items.push([x,y,t.items]);
   }
   return {packed:1,w:map[0].length,h:map.length,codes,res,items};
@@ -9502,8 +10099,8 @@ function packMap(map){
 function unpackMap(pk,machines){
   const map=[];
   for(let y=0;y<pk.h;y++){map[y]=[];for(let x=0;x<pk.w;x++){
-    const c=pk.res[y*pk.w+x], r=c&&c!=='.'?pk.codes[c.charCodeAt(0)-65]:null;
-    map[y][x]={type:r?T_RESOURCE:T_FLOOR,res:r,mid:null,items:[]};
+    const c=pk.res[y*pk.w+x], r=c&&c!=='.'&&c!=='#'?pk.codes[c.charCodeAt(0)-65]:null;
+    map[y][x]=c==='#'?{type:T_WALL,res:null,mid:null,items:[]}:{type:r?T_RESOURCE:T_FLOOR,res:r,mid:null,items:[]};
   }}
   for(const[x,y,its]of pk.items)if(map[y]?.[x])map[y][x].items=its;
   for(const m of Object.values(machines)){
@@ -9531,6 +10128,12 @@ function migrateSave(){
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
+  if(Array.isArray(G.blueprints)){addBlueprints(G.blueprints); delete G.blueprints;} // blueprints used to live in each save
+  if(G.zone===5&&G.map&&G.floorY!==undefined){ // a Zone 5 save expanded by the old, smaller step gets the rest of the room
+    MAP_W=G.map[0].length; MAP_H=G.map.length;
+    const n=expansionsDone(), w=ZONES[5].mapSize[0]+EXPAND_W*n, h=G.floorY+FLOOR_ROWS+EXPAND_H*n;
+    if(n&&MAP_W>ZONES[5].mapSize[0]&&(MAP_W<w||MAP_H<h))expandMap(Math.max(0,w-MAP_W),Math.max(0,h-MAP_H)); // only maps that really grew
+  }
   tidyBeltItems();
   // version-gated notices: G.ver is the build that last loaded this save (it used to stay at the build that started it)
   const older=v=>{const a=String(G.ver||'0').split('.').map(Number), b=v.split('.').map(Number); for(let i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)<(b[i]||0);} return false;};
@@ -9544,22 +10147,22 @@ function migrateSave(){
 // noSave is set while a reset or a backup import reloads the page,
 // so the save-on-hide can't write the old game back over it
 let noSave=false;
+const saveKey=()=>G&&G.sandbox?SANDBOX_KEY:SAVE_KEY; // a sandbox never writes over the real game
 function saveGame(){
   if(noSave||!G)return;
-  try{localStorage.setItem(SAVE_KEY,serializeG());}catch(e){}
+  try{localStorage.setItem(saveKey(),serializeG());}catch(e){}
 }
 window.addEventListener('pagehide',()=>{if(G&&tickId)saveGame();});
-function continueGame(){
+function continueGame(key){
   try{
-    const raw=localStorage.getItem(SAVE_KEY);
-    if(!raw){newGame();return;}
+    const raw=localStorage.getItem(key||SAVE_KEY);
+    if(!raw){if(key)startSandbox(1);else newGame();return;}
     G=JSON.parse(raw);
     if(!G||!G.ver){newGame();return;}
     if(!G.crafted)G.crafted={};
     if(!G.perks)G.perks={points:0,spent:{},awarded:{}};
     if(!G.achievements)G.achievements=[];
     if(!G.tutorial)G.tutorial={step:0};
-    if(!G.blueprints)G.blueprints=[];
     if(!G.zone)G.zone=1;
     if(G.smog===undefined)G.smog=0;
     migrateSave();
@@ -9567,6 +10170,49 @@ function continueGame(){
     startGame(false);
   }catch(e){newGame();return;}
   backfillLaunchPerks();
+}
+
+// ═══ SANDBOX (v2.0.27) ═══
+// Unlocks after the first Big Bang (PRESTIGE.bangs). Pick any zone: all research done, building and crafting free
+// (the dev free-build and free-craft switches), the Stardust-only buildings available, no tutorials, and the dev
+// panel for resources and speed. It keeps its own save (SANDBOX_KEY), never touches the real game, and earns no
+// achievements or Stardust. From the title screen, or ☰ → SANDBOX inside one to switch zone.
+const SANDBOX_KEY='ebi_sandbox';
+const sandboxUnlocked=()=>(PRESTIGE.bangs||0)>=1;
+function updateSandboxBtn(){
+  const b=document.getElementById('titleSandbox'); if(!b)return;
+  b.classList.toggle('dim',!sandboxUnlocked());
+  b.innerHTML=`${uiIcon('build')}SANDBOX${sandboxUnlocked()?'':' <span style="font-size:var(--f4)">(after your first Big Bang)</span>'}`;
+}
+function openSandboxMenu(fresh){
+  if(!sandboxUnlocked()){toast('Sandbox unlocks after your first Big Bang','wrn');sfx('error');return;}
+  const inSandbox=!!(G&&G.sandbox&&!onTitle()), raw=localStorage.getItem(SANDBOX_KEY);
+  let saved=null; try{saved=raw?JSON.parse(raw):null;}catch(e){}
+  const zones=[1,2,3,4,5].map(z=>`<button class="full-btn" style="margin-bottom:4px" onclick="${inSandbox?`sandboxZone(${z})`:`startSandbox(${z})`}">${uiIcon('goal')} ZONE ${z} · ${ZONES[z].name.toUpperCase()}</button>`).join('');
+  showModal('🏗️ SANDBOX',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:10px">Everything researched, building and crafting free, Stardust buildings included. A separate save: your real game is never touched. Sandboxes earn no achievements or Stardust.</div>
+    ${!inSandbox&&saved&&!fresh?`<button class="full-btn teal" style="margin-bottom:10px" onclick="closeModal();continueGame(SANDBOX_KEY)">▶ CONTINUE SANDBOX · ZONE ${saved.zone||1}</button>`:''}
+    <span class="sec-label">${inSandbox?'SWITCH TO ZONE':saved?'NEW SANDBOX (replaces the old one)':'START IN ZONE'}</span>${zones}`,
+    inSandbox?backToMenu:`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`);
+}
+function sandboxSetup(){ // everything unlocked and free
+  G.sandbox=true; G.devFreeBuild=true; G.devFreeCraft=true; G.devMode=true;
+  G.research.done=[...new Set([...G.research.done,...Object.keys(TECHS)])];
+  G.tutorial={step:-1}; G.zoneTut=undefined;
+}
+function sandboxExpand(){ // Zone 5's Expansions are researched, so grow the map like they would
+  if(G.zone===5&&MAP_W===ZONES[5].mapSize[0])for(const id of ['expansion_1','expansion_2'])TECHS[id].onResearch();
+}
+function startSandbox(z){
+  closeModal(); if(openPanel)closePanel(openPanel);
+  G=defaultState(); sandboxSetup();
+  startGame(false); // no tutorial or arrival message
+  if(z>1)sandboxZone(z); else saveGame();
+  toast('Sandbox: everything is unlocked and free','ok');
+}
+function sandboxZone(z){
+  closeModal(); if(openPanel)closePanel(openPanel);
+  G.perks.awarded=G.perks.awarded||{};
+  transitionToZone(z); sandboxSetup(); sandboxExpand(); updateZoneTabs(); buildToolbar(); saveGame();
 }
 
 // ═══════════════════════════════════════════════════
@@ -9580,6 +10226,7 @@ function newGame(){
 
 function startGame(isNew){
   stopTitleScene(); clearUndo();
+  SING_REQS=singReqsFor(PRESTIGE.bangs); // this universe's Singularity (25% bigger per Big Bang)
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
   if(G._coolant){delete G._coolant;setTimeout(()=>toast('New: Heat Sinks need coolant. Pipe enzymes or brine to them, or reactors overheat','wrn'),3000);}
   if(G._gaskets){delete G._gaskets;setTimeout(()=>toast('New: Relief Valves wear out Gaskets. Yours have 4 spares each: tap a valve to see','wrn'),2600);}
@@ -9624,7 +10271,7 @@ function startGame(isNew){
     if(G.zone===1){G.tutorial={step:0};G.zoneTut=undefined;}
     const zd=zoneDef();
     setTimeout(()=>showModal(zd.arrivalTitle,
-      `<div style="font-size:var(--f6);color:var(--text2);line-height:2.4">${zd.arrivalHtml}${FLOOR_NOTE}</div>`,
+      `<div style="font-size:var(--f6);color:var(--text2);line-height:2.4">${zd.arrivalHtml}</div>`,
       `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
     ),700);
   }
@@ -9634,11 +10281,11 @@ function startGame(isNew){
 //  BOOTSTRAP
 // ═══════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded',()=>{
-  applyTheme();
+  applyTheme(); applyColourBlind();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
   document.querySelectorAll('[data-ui]').forEach(e=>{e.innerHTML=uiIcon(e.dataset.ui);});
   watchEmoji();
-  buildTitleSlots(); startTitleScene(); updateInstallBtn(); tryTitleAutoplay();
+  buildTitleSlots(); startTitleScene(); updateInstallBtn(); tryTitleAutoplay(); updateSandboxBtn();
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
   document.addEventListener('contextmenu',e=>e.preventDefault());
