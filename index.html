@@ -251,7 +251,11 @@ select.game-sel:focus{outline:none;border-color:var(--amber)}
 
 /* ── NEW SHELL: zone chip, tab badges, bottom sheets, menu grid ── */
 .hud-zone{font-family:var(--font);font-size:var(--f6);color:var(--amber);background:rgba(245,166,35,.08);border:1px solid var(--amberDim);padding:8px 10px;min-height:36px;cursor:pointer;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
-#hudRes{flex:1;min-width:0;overflow:hidden}
+#hudRes{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x}
+#hudRes::-webkit-scrollbar{display:none}
+#hudRes.more-r{-webkit-mask-image:linear-gradient(to right,#000 80%,transparent);mask-image:linear-gradient(to right,#000 80%,transparent)}
+#hudRes.more-l{-webkit-mask-image:linear-gradient(to left,#000 80%,transparent);mask-image:linear-gradient(to left,#000 80%,transparent)}
+#hudRes.more-l.more-r{-webkit-mask-image:linear-gradient(to right,transparent,#000 15%,#000 85%,transparent);mask-image:linear-gradient(to right,transparent,#000 15%,#000 85%,transparent)}
 .hbtn-speed{width:auto!important;padding:0 8px!important;font-size:var(--f6)!important;color:var(--purple)!important;border-color:var(--purple)!important}
 .hbtn-speed.on{background:rgba(171,71,188,.18)!important}
 .tab-btn{position:relative;min-width:0}
@@ -509,7 +513,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.20 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.21 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -627,6 +631,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   <div class="pbody" id="pPowerBody"></div>
 </div>
 
+<div id="pHaz" class="spanel">
+  <div class="ph"><span class="ph-title" id="pHazTitle">HAZARD</span><button class="ph-x" onclick="togglePanel('haz')">✕</button></div>
+  <div class="pbody" id="pHazBody"></div>
+</div>
+
 <div id="pSmog" class="spanel">
   <div class="ph"><span class="ph-title"><span data-ui="smog"></span>SMOG</span><button class="ph-x" onclick="togglePanel('smog')">✕</button></div>
   <div class="pbody" id="pSmogBody"></div>
@@ -688,7 +697,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.20';
+const VER      = '2.0.21';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -5903,37 +5912,44 @@ function updateHUD(){
   let html=`<div class="hres hres-tap" onclick="togglePanel('power')" role="button" aria-label="Power details"><span class="hres-icon">${uiIcon('power')}</span><span class="hres-val" style="color:${pwrCol()}">${pwrLabel}</span></div>`;
   html+=hudHazardsHtml();
   setHtml(el,html);
+  hudScrollHint();
   updateInvStrip();
 }
 
+// Gauges that don't fit (a phone in portrait) scroll sideways; a faded edge shows there are more that way
+function hudScrollHint(){
+  const el=document.getElementById('hudRes'); if(!el)return;
+  if(!el._hint){el._hint=true; el.addEventListener('scroll',hudScrollHint,{passive:true});}
+  el.classList.toggle('more-r',el.scrollLeft+el.clientWidth<el.scrollWidth-2);
+  el.classList.toggle('more-l',el.scrollLeft>2);
+}
 // Zone hazard gauges shown next to power in the HUD
 function hudHazardsHtml(){
   let html='';
-  const gauge=(icon,val,col,tap)=>`<div class="hres${tap?' hres-tap':''}" style="margin-left:4px"${tap?` onclick="${tap}" role="button" aria-label="Smog details"`:''}><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
+  // every gauge opens a live panel about it (v2.0.21); each shows in its zone even before there is anything to measure
+  const gauge=(icon,val,col,tap,label)=>`<div class="hres hres-tap" style="margin-left:4px" onclick="${tap}" role="button" aria-label="${label}"><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
   if(zoneHas('smog')){
     const smog=Math.round(G.smog||0);
-    html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)',"togglePanel('smog')");
+    html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)',"togglePanel('smog')",'Smog details');
   }
   if(zoneHas('pressure')){
-    const n=worstNet();
-    if(n){const pr=Math.round(pressureOf(n));html+=gauge('pressure',`${pr}%`,n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)');}
+    const n=worstNet(), pr=n?Math.round(pressureOf(n)):null;
+    html+=gauge('pressure',n?`${pr}%`:'-',!n?'var(--text3)':n.strain>0?'var(--red)':pr>=RELIEF_AT?'var(--amber)':'var(--teal)',"openHazard('pressure')",'Pressure details');
   }
   if(zoneHas('decay')){
     const living=Object.values(G.machines).filter(m=>MDEFS[m.type]?.living);
     const sick=living.filter(m=>m.withered||(m.vit||0)<25).length;
-    if(living.length)html+=gauge(sick?'wilt':'sprout',sick?`${sick}`:`${living.length}`,sick?'var(--red)':'var(--green)');
+    html+=gauge(sick?'wilt':'sprout',sick?`${sick}`:`${living.length}`,sick?'var(--red)':living.length?'var(--green)':'var(--text3)',"openHazard('decay')",'Living machine details');
   }
   if(zoneHas('heat')){
     const reactors=Object.values(G.machines).filter(m=>m.type==='reactor');
-    if(reactors.length){
-      const hot=Math.round(Math.max(...reactors.map(m=>m.heat||0)));
-      const scram=reactors.some(m=>m.scram>0);
-      html+=gauge('heat',scram?'SCRAM':`${hot}%`,scram||hot>80?'var(--red)':hot>50?'var(--amber)':'var(--teal)');
-    }
+    const hot=reactors.length?Math.round(Math.max(...reactors.map(m=>m.heat||0))):null;
+    const scram=reactors.some(m=>m.scram>0);
+    html+=gauge('heat',!reactors.length?'-':scram?'SCRAM':`${hot}%`,!reactors.length?'var(--text3)':scram||hot>80?'var(--red)':hot>50?'var(--amber)':'var(--teal)',"openHazard('heat')",'Reactor details');
   }
   if(zoneHas('glow')){
     const secs=glowSecsLeft();
-    html+=gauge(glowBright()?'sun':'moon',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)');
+    html+=gauge(glowBright()?'sun':'moon',`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`,glowBright()?'var(--amber)':'var(--text3)',"openHazard('glow')",'Glow tide details');
   }
   return html;
 }
@@ -6283,6 +6299,7 @@ function togglePanel(id){
   if(id==='dev')     renderDevPanel();
   if(id==='stats')   renderStatsPanel();
   if(id==='smog')    renderSmogPanel();
+  if(id==='haz')     renderHazPanel();
   if(id==='power')   renderPowerPanel();
   if(id==='achieve') renderAchievePanel();
   if(id==='blueprint') renderBlueprintPanel();
@@ -6313,6 +6330,7 @@ function refreshOpenPanel(){
   if(openPanel==='dev')     renderDevPanel();
   if(openPanel==='stats')   renderStatsPanel();
   if(openPanel==='smog')    renderSmogPanel();
+  if(openPanel==='haz')     renderHazPanel();
   if(openPanel==='power')   renderPowerPanel();
   if(openPanel==='achieve') renderAchievePanel();
   if(openPanel==='blueprint') renderBlueprintPanel();
@@ -8069,6 +8087,125 @@ function renderPowerPanel(){
     ${opts.length?`<div style="${small};line-height:1.8;margin-top:6px">${opts.map(t=>{const f=GEN_FUEL[t];return `${iconHtml(t)} ${MDEFS[t].name}: ${fmtKW(-MDEFS[t].power)}${f?`, ${fmtRate(TICKS_PER_MIN/f[1])} ${ITEMS[f[0]].name.toLowerCase()}/min`:''}`;}).join('<br>')}</div>`:''}
   </div>`;
   setHtml(el,html);
+}
+// ── Hazard panels (v2.0.21): tap the pressure, living, heat or glow gauge ──
+let hazKind='pressure';
+const HAZ_TITLE={pressure:['pressure','PRESSURE'],decay:['sprout','LIVING MACHINES'],heat:['heat','REACTORS'],glow:['sun','GLOW TIDE']};
+function openHazard(kind){
+  if(openPanel==='haz'&&hazKind===kind){closePanel('haz');return;}
+  hazKind=kind;
+  const t=HAZ_TITLE[kind]; document.getElementById('pHazTitle').innerHTML=`${uiIcon(kind==='glow'&&!glowBright()?'moon':t[0])} ${t[1]}`;
+  if(openPanel==='haz')renderHazPanel(); else togglePanel('haz');
+}
+const hzSmall='font-size:var(--f4);color:var(--text3)';
+const hzFind=(ids,label)=>ids.length?`<button class="mini-btn" style="min-height:28px;padding:4px 6px;color:var(--text2)" onclick="findMachines('${ids.join(',')}')">${label||'FIND'}</button>`:'';
+function hzCard(title,body){return `<div class="card"><span class="sec-label">${title}</span>${body}</div>`;}
+function renderHazPanel(){
+  const el=document.getElementById('pHazBody'); if(!el)return;
+  const fn={pressure:hazPressureHtml,decay:hazLivingHtml,heat:hazHeatHtml,glow:hazGlowHtml}[hazKind];
+  setHtml(el,fn?fn():'');
+}
+function hazPressureHtml(){
+  const nets=FLUID_NETS.filter(n=>n.members.length);
+  let html=`<div class="card" style="font-size:var(--f5);color:var(--text2);line-height:1.8">Keep each pipe network between <span style="color:var(--blue)">${LOW_PRESSURE}%</span> (machines can draw) and <span style="color:var(--amber)">${OVER_PRESSURE}%</span>. Above ${OVER_PRESSURE}% with a pump still pushing, strain builds and a pipe bursts. Relief Valves vent above ${RELIEF_AT}%.</div>`;
+  if(!nets.length)return html+hzCard('NETWORKS',`<div style="${hzSmall};line-height:1.8">No pipe networks yet. Place a pump on a pool and connect pipes to it.</div>`);
+  const sorted=[...nets].sort((a,b)=>(b.strain-a.strain)||(pressureOf(b)-pressureOf(a)));
+  sorted.forEach((n,i)=>{
+    const p=Math.round(pressureOf(n)), ports=[...n.ports];
+    const pumps=ports.filter(m=>MDEFS[m.type].pumps), users=ports.filter(m=>!MDEFS[m.type].pumps);
+    const valves=n.members.filter(m=>m.type==='relief_valve'), jammed=valves.filter(valveJammed);
+    const pushMin=pumps.reduce((a,m)=>a+(m.mineRes===MDEFS[m.type].pumps&&m.active?(m.tier===3?2:m.tier===2?1.5:1)*TICKS_PER_MIN/2:0),0);
+    const col=n.strain>0?'var(--red)':p>=RELIEF_AT?'var(--amber)':p<LOW_PRESSURE?'var(--blue)':'var(--teal)';
+    let advice;
+    if(n.strain>0)advice=`<span style="color:var(--red)">Strain ${Math.round(n.strain/burstStrain()*100)}%: a pipe will burst.</span> Add a Relief Valve${jammed.length?`, load Gaskets into the ${jammed.length} jammed one${jammed.length>1?'s':''}`:''}, or add machines that use it.`;
+    else if(p<LOW_PRESSURE)advice=`<span style="color:var(--blue)">Too low for machines to draw.</span> ${pumps.length?'Add another pump or fewer users.':'Connect a pump.'}`;
+    else if(p>=RELIEF_AT)advice=`<span style="color:var(--amber)">High.</span> ${valves.length?'Valves are venting.':'A Relief Valve would keep it safe.'}`;
+    else advice=`<span style="color:var(--green)">In the safe range.</span>`;
+    html+=`<div class="card">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="flex:1;font-size:var(--f6);color:var(--text)">${n.type?iconHtml(n.type):''} ${n.type?ITEMS[n.type]?.name:'Empty'} <span style="color:var(--text3)">#${i+1}</span></span>
+        <span style="font-size:var(--f7);color:${col}">${p}%</span>${hzFind(n.members.map(m=>m.id))}
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${p}%;background:${col}"></div></div>
+      <div style="${hzSmall};line-height:1.8;margin-top:4px">${Math.round(n.amt)}/${n.cap} · ${n.members.length} pipe parts · ${pumps.length} pump${pumps.length!==1?'s':''} (${fmtRate(pushMin)}/min in) · ${users.length} user${users.length!==1?'s':''} · ${valves.length} valve${valves.length!==1?'s':''}${jammed.length?` <span style="color:var(--red)">(${jammed.length} jammed)</span>`:''}</div>
+      <div style="font-size:var(--f5);line-height:1.8;margin-top:4px">${advice}</div>
+      ${jammed.length?`<div style="margin-top:4px">${hzFind(jammed.map(m=>m.id),'FIND JAMMED VALVES')}</div>`:''}
+    </div>`;
+  });
+  html+=`<div style="${hzSmall};line-height:1.8">Bursts this zone: ${G.stats.bursts||0}${G.perks?.spent?.pressure1?' · Reinforced Pipes: pipes take 50% more strain':''}</div>`;
+  return html;
+}
+function hazLivingHtml(){
+  const living=Object.values(G.machines).filter(m=>MDEFS[m.type]?.living);
+  let html=`<div class="card" style="font-size:var(--f5);color:var(--text2);line-height:1.8">Living machines lose vitality over time and eat 1 Nutrient Paste every ${FEED_EVERY*TICK_MS/1000}s from their buffer (+${FEED_GAIN}). Sprout <30% runs at ×0.5, Mature ×1, Bloom >80% ×1.5. At 0 a machine withers and stops until replanted (${REPLANT_COST} biomass).</div>`;
+  if(!living.length)return html+hzCard('MACHINES',`<div style="${hzSmall};line-height:1.8">No living machines yet. Algae Vats, Bioreactors, Spore Incubators and Hyperfuel Synths are alive.</div>`);
+  const withered=living.filter(m=>m.withered), low=living.filter(m=>!m.withered&&(m.vit||0)<25), hungry=living.filter(m=>!m.withered&&!(m.inBuf.nutrient>0));
+  const types={}; for(const m of living)(types[m.type]||(types[m.type]=[])).push(m);
+  let rows='';
+  for(const[t,ms]of Object.entries(types)){
+    const st={Sprout:0,Mature:0,Bloom:0}; let w=0, vit=0;
+    for(const m of ms){if(m.withered)w++; else st[lifeStage(m).name]=(st[lifeStage(m).name]||0)+1; vit+=m.vit||0;}
+    rows+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <div style="flex:1;min-width:0"><div style="font-size:var(--f5);color:var(--text2)">${iconHtml(t)} ${MDEFS[t].name} <span style="color:var(--text3)">×${ms.length}</span></div>
+      <div style="${hzSmall};margin-top:3px;line-height:1.6">${st.Bloom} bloom · ${st.Mature} mature · ${st.Sprout} sprout${w?` · <span style="color:var(--red)">${w} withered</span>`:''} · avg ${Math.round(vit/ms.length)}%</div></div>
+      ${hzFind(ms.map(m=>m.id))}</div>`;
+  }
+  html+=hzCard('MACHINES',rows);
+  const paste=living.reduce((a,m)=>a+(m.inBuf.nutrient||0),0), use=living.filter(m=>!m.withered).length*TICKS_PER_MIN/FEED_EVERY;
+  html+=hzCard('FOOD',`${irow('Paste in buffers',`${iconHtml('nutrient')} ${paste}`)}${irow('Eaten',`${fmtRate(use)}/min`)}${irow('In your inventory',`${G.inv.nutrient||0}`)}
+    <div style="${hzSmall};line-height:1.8">Nutrient Paste: 3 biomass by hand, or an Assembler. Inserters can feed it in.</div>`);
+  let warn='';
+  if(withered.length)warn+=`<div style="font-size:var(--f5);color:var(--red);line-height:1.8">${withered.length} withered: tap REPLANT in its panel (${REPLANT_COST} biomass).</div>${hzFind(withered.map(m=>m.id),'FIND WITHERED')}`;
+  if(low.length)warn+=`<div style="font-size:var(--f5);color:var(--amber);line-height:1.8;margin-top:6px">${low.length} below 25% vitality.</div>${hzFind(low.map(m=>m.id),'FIND WEAK')}`;
+  if(hungry.length)warn+=`<div style="font-size:var(--f5);color:var(--amber);line-height:1.8;margin-top:6px">${hungry.length} with no paste in its buffer.</div>${hzFind(hungry.map(m=>m.id),'FIND HUNGRY')}`;
+  html+=hzCard('NEEDS ATTENTION',warn||`<div style="font-size:var(--f5);color:var(--green)">All fed and healthy.</div>`);
+  html+=`<div style="${hzSmall}">Withered this zone: ${G.stats.withered||0}</div>`;
+  return html;
+}
+function hazHeatHtml(){
+  const reactors=Object.values(G.machines).filter(m=>m.type==='reactor');
+  let html=`<div class="card" style="font-size:var(--f5);color:var(--text2);line-height:1.8">A running reactor heats up ${REACTOR_HEAT}/tick and cools ${REACTOR_COOL} by itself. Each Heat Sink touching it cools ${SINK_COOL} more, but only while it drinks coolant (enzymes or brine, ${SINK_DRAW*TICKS_PER_MIN}/min) from a pipe. Two cooled sinks hold it steady. At 100% it SCRAMs: off for ${REACTOR_SCRAM*TICK_MS/1000}s.</div>`;
+  if(!reactors.length)return html+hzCard('REACTORS',`<div style="${hzSmall};line-height:1.8">No reactors yet (Nuclear Power research).</div>`);
+  reactors.forEach((r,i)=>{
+    const ns=machineNeighbors(r).filter(n=>n.type==='heat_sink'), wet=ns.filter(n=>n._wet), dry=ns.filter(n=>!n._wet);
+    const h=Math.round(r.heat||0), col=r.scram>0||h>80?'var(--red)':h>50?'var(--amber)':'var(--teal)', rods=r.inBuf.lum_rod||0;
+    const cool=REACTOR_COOL+wet.length*SINK_COOL, gain=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1), net=gain-cool;
+    let st;
+    if(r.scram>0)st=`<span style="color:var(--red)">SCRAM: back in ${Math.ceil(r.scram*TICK_MS/1000)}s</span>`;
+    else if(!rods)st=`<span style="color:var(--red)">Out of Luminite Rods</span>`;
+    else if(net>0.001)st=`<span style="color:var(--red)">Heating ${fmtRate(net*4)}%/s: SCRAM in ${fmtMins((100-h)/net/TICKS_PER_MIN)}</span>`;
+    else st=`<span style="color:var(--green)">Stable · 2,000 kW</span>`;
+    html+=`<div class="card">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="flex:1;font-size:var(--f6)">${iconHtml('reactor')} Reactor #${i+1}</span><span style="font-size:var(--f7);color:${col}">${r.scram>0?'SCRAM':h+'%'}</span>${hzFind([r.id])}</div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${h}%;background:${col}"></div></div>
+      <div style="font-size:var(--f5);line-height:1.8;margin-top:4px">${st}</div>
+      <div style="${hzSmall};line-height:1.8">${wet.length} cooled sink${wet.length!==1?'s':''}${dry.length?` · <span style="color:var(--red)">${dry.length} dry</span>`:''}${ns.length<2?` · <span style="color:var(--amber)">needs ${2-ns.length} more sink${2-ns.length>1?'s':''}</span>`:''} · ${rods} rod${rods!==1?'s':''} (${Math.floor(rods*ROD_TICKS*TICK_MS/60000)} min)</div>
+      ${dry.length?`<div style="margin-top:4px">${hzFind(dry.map(n=>n.id),'FIND DRY SINKS')}</div>`:''}
+    </div>`;
+  });
+  const sinks=reactors.reduce((a,r)=>a+machineNeighbors(r).filter(n=>n.type==='heat_sink').length,0);
+  html+=hzCard('SUPPLIES',`${irow('Rods used',`${iconHtml('lum_rod')} ${reactors.length}/min`)}${irow('Coolant drunk',`up to ${fmtRate(sinks*SINK_DRAW*TICKS_PER_MIN)}/min`)}${irow('Rods in inventory',`${G.inv.lum_rod||0}`)}`);
+  html+=`<div style="${hzSmall}">SCRAMs this zone: ${G.stats.scrams||0}${G.perks?.spent?.cool1?' · Coolant Lines: reactors heat 20% slower':''}</div>`;
+  return html;
+}
+function hazGlowHtml(){
+  const bright=glowBright(), secs=glowSecsLeft(), dimS=(GLOW_CYCLE-GLOW_BRIGHT)*TICK_MS/1000, brightS=GLOW_BRIGHT*TICK_MS/1000;
+  const panels=Object.values(G.machines).filter(m=>m.type==='lumen_panel'), accs=Object.values(G.machines).filter(m=>m.type==='accumulator'&&m.active);
+  const kw=panels.filter(m=>m.active).length*(-MDEFS.lumen_panel.power), stored=accs.reduce((a,m)=>a+(m.charge||0),0), cap=accs.length*ACC_CAP;
+  const needKJ=kw*dimS, needAcc=Math.ceil(needKJ/ACC_CAP);
+  let html=`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:var(--f9);color:${bright?'var(--amber)':'var(--text2)'}">${bright?'BRIGHT':'DIM'}</span><span style="font-size:var(--f7);color:var(--text2)">${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')} left</span></div>
+    <div class="prog-wrap" style="margin-top:6px"><div class="prog-fill amber" style="width:${Math.round((bright?1-secs/brightS:secs/dimS)*100)}%"></div></div>
+    <div style="font-size:var(--f5);color:var(--text2);line-height:1.8;margin-top:6px">The cave glow is bright for ${brightS/60} minutes, then dim for ${dimS/60}. Lumen Panels only make power while it is bright.</div></div>`;
+  html+=hzCard('LUMEN PANELS',`${irow(`${iconHtml('lumen_panel')} Panels`,`${panels.length}${panels.length?` ${hzFind(panels.map(m=>m.id))}`:''}`)}${irow('Making now',`<span style="color:${bright&&kw?'var(--green)':'var(--text3)'}">${fmtKW(bright?kw:0)}</span>`)}${irow('While bright',fmtKW(kw))}`);
+  let adv;
+  if(!kw)adv='Build Lumen Panels for free power in the bright part of the tide.';
+  else if(cap>=needKJ)adv=`<span style="color:var(--green)">Your Accumulators can cover the dim spell.</span>`;
+  else adv=`<span style="color:var(--amber)">To cover ${fmtKW(kw)} through the ${dimS}s dim spell you need ${needAcc} Accumulator${needAcc>1?'s':''} (you have ${accs.length}), or other power.</span>`;
+  html+=hzCard('ACCUMULATORS',`${irow(`${iconHtml('accumulator')} Accumulators`,`${accs.length}${accs.length?` ${hzFind(accs.map(m=>m.id))}`:''}`)}${irow('Stored',`${Math.round(stored)} / ${cap} kJ`)}
+    <div style="font-size:var(--f5);line-height:1.8;margin-top:4px">${adv}</div>
+    <div style="${hzSmall};line-height:1.8">They charge from spare power and cover a shortfall only if they can cover all of it.</div>`);
+  return html;
 }
 function refineryFuelMin(){const rid=(MDEFS.refinery.recipes||[]).find(id=>RECIPES[id]?.out?.refined_fuel); const rec=RECIPES[rid]; return rec?rec.out.refined_fuel*TICKS_PER_MIN/rec.time:0;}
 
