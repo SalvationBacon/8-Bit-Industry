@@ -692,6 +692,46 @@ const r=await p.evaluate(async()=>{
     const migrated=MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&MAP_H===G.floorY+FLOOR_ROWS+2*EXPAND_H&&G.map.every(r=>r.length===MAP_W);
     PRESTIGE=JSON.parse(saved); savePrestige();
     ok('stardust_upgrades',oldOwned&&lv&&echo&&hidden&&shown&&unpowered&&Math.abs(qn-30)<=1&&sz&&arrive&&paid===want&&migrated,{oldOwned,lv,echo,hidden,shown,unpowered,qn,sz,arrive,paid,want,migrated,w:MAP_W,h:MAP_H}); }
+  // ── Relief Valve setting: each valve opens at 60/70/80/85%, the lowest opens first, layouts and undo keep it
+  { const z0=G.zone;
+    const net=(at)=>{ reset(); G.zone=3; G.research.done=Object.keys(TECHS); power(2,2); G.stats.bursts=0;
+      res(10,40,2,2,'brine'); put('brine_pump',10,40); for(let x=12;x<22;x++)put('pipe',x,40);
+      const vs=[0,1].map(i=>{const v=put('relief_valve',12+i*3,41); v.inBuf.gasket=10; return v;}); vs.forEach(v=>setRelief(v.id,at)); return vs; };
+    let vs=net(60); run(240*3); const p60=pressureOf(vs[0]._net), b60=G.stats.bursts;
+    vs=net(85); run(240*3); const p85=pressureOf(vs[0]._net), b85=G.stats.bursts;
+    vs=net(80); setRelief(vs[1].id,70); run(240*2); const s0=vs[0].seal, s1=vs[1].seal, mixed=s1<VALVE_SEAL, vented=v=>(10-v.inBuf.gasket)*VALVE_SEAL+VALVE_SEAL-v.seal, onlyLow=vented(vs[1])>vented(vs[0]); // the 70% valve opens first and vents more
+    const bad=(setRelief(vs[0].id,90),vs[0].relief===80);
+    openMachinePanel(vs[1]); const panel=document.getElementById('pMachBody')?.innerText||''; closePanel('machine');
+    const bp=cleanBlueprint({name:'v',data:[{type:'relief_valve',rx:0,ry:0,dir:0,relief:70},{type:'relief_valve',rx:1,ry:0,dir:0,relief:90}]});
+    const st=stampMachine(bp.data[0],40,G.floorY+10); const kept=bp.data[0].relief===70&&bp.data[1].relief===undefined&&st.relief===70;
+    tryRemove(st.x,st.y); undoLast(); const back=Object.values(G.machines).find(m=>m.type==='relief_valve'&&m.x===40&&m.y===G.floorY+10);
+    G.zone=z0;
+    ok('valve_threshold',p60<=61&&p60>=58&&p85>84&&p85<=86&&b60===0&&b85===0&&mixed&&onlyLow&&bad&&/OPENS AT/.test(panel)&&kept&&back?.relief===70,
+      {p60:+p60.toFixed(1),p85:+p85.toFixed(1),b60,b85,s0,s1,mixed,onlyLow,bad,panel:/OPENS AT/.test(panel),kept,back:back?.relief}); }
+  // ── Run timer: an optional clock per zone and run, frozen at each launch, bests on the device, never with dev tools
+  { const savedT=localStorage.getItem(TIMES_KEY), savedPref=PREFS.timer, z0=G.zone;
+    TIMES={z:{},run:null}; saveTimes(); reset(); G.zone=1; G.runSplits={}; G.runDev=false;
+    PREFS.timer=false; const hidden=!hudHazardsHtml().includes('Run timer')&&timerCardHtml()==='';
+    PREFS.timer=true; G.devFreeBuild=false; G.devFreeCraft=false; G.devMode=false; G.timerDev=false; G.tick=4*90; run(4);
+    const shown=hudHazardsHtml().includes('Run timer')&&hudHazardsHtml().includes('1:31')&&timerCardHtml().includes('RUN TIMER');
+    // launch Zone 1: the split freezes and sets the first best
+    for(const r of rocketReqs())G.inv[r.id]=(G.inv[r.id]||0)+r.need;
+    launchRocket(); const msg=document.getElementById('mBody')?.innerText||''; closeModal();
+    const t1=G.runSplits[1]; run(40); const frozen=zoneTicks()===t1&&TIMES.z[1]===t1&&/FIRST BEST/.test(msg)&&/1:31/.test(msg);
+    // a slower go doesn't beat it; a faster one does
+    G.runSplits={}; G.tick=t1+400; const slow=recordSplit(1); G.runSplits={}; G.tick=t1-40; const fast=recordSplit(1);
+    const bests=!slow.nb&&slow.prev===t1&&fast.nb&&TIMES.z[1]===t1-40&&/\+1:40/.test(splitLine('x',slow))&&/faster/.test(splitLine('x',fast));
+    // dev tools taint the zone and the run
+    G.runSplits={}; G.devFreeBuild=true; run(1); G.devFreeBuild=false; const dev=recordSplit(1); const noBest=!dev.eligible&&TIMES.z[1]===t1-40&&G.runDev;
+    // splits ride along to the next zone; a full clean run sets a run best
+    G.runDev=false; G.timerDev=false; G.runSplits={1:400}; G.perks.awarded[1]=true; transitionToZone(2); closeModal(); clearInterval(tickId);
+    const carried=G.runSplits[1]===400&&G.tick===0&&runWhole();
+    G.runSplits={1:400,2:500,3:600,4:700}; G.tick=800; G.devFreeBuild=false; G.devFreeCraft=false; G.devMode=false; G.timerDev=false; recordSplit(5); const rr=recordRun();
+    const runBest=rr&&rr.t===3000&&rr.nb&&TIMES.run===3000;
+    const bk=await readBackupCode(await makeBackupCode()); const inBackup=JSON.parse(bk.times).run===3000;
+    openSettings(); const st=document.getElementById('mBody')?.innerText||''; closeModal();
+    if(savedT)localStorage.setItem(TIMES_KEY,savedT);else localStorage.removeItem(TIMES_KEY); TIMES=loadTimes(); PREFS.timer=savedPref; savePrefs(); G.zone=z0;
+    ok('run_timer',hidden&&shown&&frozen&&bests&&noBest&&carried&&runBest&&inBackup&&/TIMER/.test(st),{hidden,shown,frozen,t1,bests,noBest,carried,runBest,inBackup,settings:/TIMER/.test(st)}); }
   // ── Stats graphs: machine output per item per 10s and per minute, power made and used, drawn in the Stats panel
   { reset(); G.prodLog=null; G.tick=0; power(2,2); res(10,G.floorY+4,1,1,'iron_ore'); const mi=put('miner',10,G.floorY+4); put('chest',11,G.floorY+4);
     G.inv.iron_ore=0; run(480);

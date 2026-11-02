@@ -528,7 +528,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.28 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.29 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -712,7 +712,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.28';
+const VER      = '2.0.29';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -2042,6 +2042,7 @@ function defaultState(){
     ver:VER, tick:0,
     zone:1,
     prodLog:null, // production history for the Stats graphs (prodLog())
+    runSplits:{}, timerDev:false, runDev:false, // run timer: zone times frozen at each launch, dev tools used (RUN TIMER)
     sfx:true,
     music:true,
     musicVol:0.7,
@@ -2424,7 +2425,7 @@ function machineWorking(m){
   if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
   if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
   if(m.type==='fluid_tank')return (m.fluid?.amt||0)>0.5;
-  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>RELIEF_AT&&!valveJammed(m);
+  if(m.type==='relief_valve')return !!m._net&&pressureOf(m._net)>reliefAt(m)&&!valveJammed(m);
   if(m.type==='accumulator')return (m.charge||0)>1;
   if(m.type==='chest')return Object.values(m.chestInv).some(v=>v>0);
   if(m.type==='heat_sink')return !!m._wet&&machineNeighbors(m).some(n=>n.type==='reactor'&&machineWorking(n));
@@ -2962,7 +2963,7 @@ function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cl
 // Lower values draw fewer pixels per frame, which is most of the battery cost.
 const PREFS_KEY='ebi_prefs';
 const RES_STEPS=[1,.75,.5,.35,.25,.1];
-const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true,cb:false};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true,cb:false,timer:false};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
 function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
@@ -4512,7 +4513,7 @@ function handleTap(tile,isLong){
         if(mid===null||seen.has(mid))continue;
         seen.add(mid);
         const m=G.machines[mid];
-        captured.push({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1});
+        captured.push({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1,...(m.relief?{relief:m.relief}:{})});
       }
       if(!captured.length){toast('No machines in selection','wrn');bp.mode='idle';return;}
       bp.data=captured; bp.mode='idle';
@@ -4780,6 +4781,7 @@ function stampMachine(e,x,y,src){
   const def=MDEFS[e.type]; if(!def||def.stub)return null;
   const m=mkMachine(e.type,x,y,e.dir);
   if(e.recipe!==undefined)m.recipe=e.recipe;
+  if(e.relief&&def.accepts)m.relief=e.relief; // a Relief Valve keeps its setting
   m.tier=e.tier||1;
   G.machines[m.id]=m;
   const[mw,mh]=machSize(m);
@@ -4894,7 +4896,7 @@ function tryRemove(tx,ty,quiet){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
   const m=G.machines[mid]; if(!m)return;
   const def=MDEFS[m.type];
-  undoRec({op:'remove',snap:{type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])]}});
+  undoRec({op:'remove',snap:{type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])],...(m.relief?{relief:m.relief}:{})}});
   const[mw,mh]=machSize(m);
   unlinkTunnel(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
@@ -4974,6 +4976,7 @@ function gameTick(){
   settleFluidNets();
   tickLiving();
   tickProdLog();
+  if(G.devMode||G.devFreeBuild||G.devFreeCraft)G.timerDev=true; // dev tools: this zone can't set a best time
 
   // Smog tick, natural decay + clamp
   if(zoneHas('smog')){
@@ -5222,6 +5225,12 @@ const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80;
 // Relief Valves (v2.0.17): each vents at most VALVE_VENT a tick (60 a minute, half of what a T1 pump pushes), and a
 // Gasket seals VALVE_SEAL units of venting. A valve comes with one fitted; with none left in its buffer it jams shut.
 const VALVE_VENT=0.25, VALVE_SEAL=60;
+// Relief Valve setting (v2.0.29): each valve opens at its own pressure, tapped in its panel (m.relief, default RELIEF_AT).
+// Lower vents sooner and wears Gaskets faster; 85% keeps a network fuller. Not 90%: strain starts at OVER_PRESSURE, so a
+// valve holding a network at 90% would let it burst.
+const RELIEF_STEPS=[60,70,80,85];
+const reliefAt=m=>RELIEF_STEPS.includes(m.relief)?m.relief:RELIEF_AT;
+function setRelief(id,v){const m=G.machines[id];if(!m||m.type!=='relief_valve'||!RELIEF_STEPS.includes(v))return;m.relief=v;sfx('click');saveGame();renderMachPanel();}
 function valveJammed(m){return (m.seal===undefined?VALVE_SEAL:m.seal)<=0&&!(m.inBuf.gasket>0);}
 function burstStrain(){return BURST_STRAIN*(G.perks?.spent?.pressure1?1.5:1)*(1+.15*plv('stable_reality'));}
 const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP',enzymes:'🧪 NEEDS ENZYME PUMP'};
@@ -5304,17 +5313,17 @@ function consumeFluid(m,rec){
 function settleFluidNets(){
   for(const net of FLUID_NETS){
     if(!net.members.length)continue;
-    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active);
-    let excess=net.amt-net.cap*RELIEF_AT/100;
+    const valves=net.members.filter(m=>m.type==='relief_valve'&&m.active).sort((a,b)=>reliefAt(a)-reliefAt(b)); // the lowest setting opens first
     for(const v of valves){
       if(v.seal===undefined)v.seal=VALVE_SEAL; // a new valve comes with one gasket fitted
+      const excess=net.amt-net.cap*reliefAt(v)/100; // valves on one network share the excess above each one's setting
       if(excess<=0)continue;
       if(v.seal<=0){
         if((v.inBuf.gasket||0)>0){v.inBuf.gasket--;v.seal+=VALVE_SEAL;}
         else{ if(!v._jamWarned){v._jamWarned=true;toast('Relief Valve jammed: out of Gaskets','bad');} continue; }
       }
       const d=Math.min(VALVE_VENT,excess,v.seal);
-      v.seal-=d; excess-=d; net.amt-=d; v._jamWarned=false;
+      v.seal-=d; net.amt-=d; v._jamWarned=false;
     }
     // Strain builds while pumps push into an over-pressured network (pumps push every
     // other tick, so +2 per push ≈ +1/tick), holds between pushes, eases off below 90%
@@ -5550,6 +5559,7 @@ function triggerBigBang(){
   const ascend=1+0.25*(PRESTIGE.bangs||0), base=achDust(), dust=Math.round(base*ascend); // each universe pays 25% more
   PRESTIGE.stardust+=dust; PRESTIGE.total+=dust; PRESTIGE.bangs++; savePrestige();
   bigBangAt=performance.now();
+  const split=recordSplit(5), run=recordRun(); // the run timer
   saveGame(); sfx('launch'); checkAchievements();
   setTimeout(()=>showModal('💥 BIG BANG',
     `<div style="text-align:center;font-size:var(--f6);color:var(--text2);line-height:2.5">
@@ -5559,6 +5569,7 @@ function triggerBigBang(){
       <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(${base}: 10 + 1 per 2 achievements, up to +${ACH_DUST_MAX}${ascend>1?`, ×${ascend.toFixed(2)} for Universe ${PRESTIGE.bangs}`:''})</span><br>
       <span style="color:var(--text3);font-size:var(--f5)">Universe ${PRESTIGE.bangs+1} next: the Singularity needs 25% more, and pays 25% more</span><br>
       <span style="color:var(--text3);font-size:var(--f5)">Big Bangs: ${PRESTIGE.bangs} · Stardust is permanent across runs</span>
+      ${PREFS.timer?`<br>${splitLine('The Singularity:',split)}${run?splitLine('Full run:',run):''}`:''}
     </div>`,
     `<button class="btn btn-sm" onclick="openStardustShop()">✨ SHOP</button>
      <button class="btn btn-teal btn-sm" onclick="beginNewUniverse()">BEGIN AGAIN →</button>`),1800);
@@ -6198,6 +6209,7 @@ function hudHazardsHtml(){
   let html='';
   // every gauge opens a live panel about it (v2.0.21); each shows in its zone even before there is anything to measure
   const gauge=(icon,val,col,tap,label)=>`<div class="hres hres-tap" style="margin-left:4px" onclick="${tap}" role="button" aria-label="${label}"><span class="hres-icon">${UI_ART[icon]?uiIcon(icon):icon}</span><span class="hres-val" style="color:${col}">${val}</span></div>`;
+  if(PREFS.timer)html+=gauge('clock',fmtClock(zoneTicks()),G.runSplits?.[G.zone]!=null?'var(--green)':'var(--text2)',"togglePanel('rocket')",'Run timer');
   if(zoneHas('smog')){
     const smog=Math.round(G.smog||0);
     html+=gauge('smog',`${smog}%`,smog>70?'var(--red)':smog>40?'var(--amber)':'var(--teal)',"togglePanel('smog')",'Smog details');
@@ -6635,7 +6647,7 @@ function machineRates(m){
   else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
   else if(m.type==='quantum_chest')R.notes.push('Sends whatever arrives straight to your inventory');
   else if(m.type==='quantum_extractor'){if(m.pick)R.out[m.pick]=per(EXTRACT_TICKS); else R.notes.push('Pick a resource in its panel');}
-  else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${RELIEF_AT}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
+  else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${reliefAt(m)}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
   else if(m.type==='scrubber'){R.in.refined_fuel=per(SCRUBBER_FUEL_TICKS);R.notes.push(`Clears ${SCRUBBER_SMOG_MIN} smog/min while it has fuel, power and smog to clean`);}
   else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);R.notes.push('Needs 2 Heat Sinks with coolant piped in (30 enzymes or brine a minute each), or it overheats');}
   else if(m.type==='heat_sink'){R.notes.push(`Drinks ${SINK_DRAW*TICKS_PER_MIN} enzymes or brine a minute while its reactor runs`);}
@@ -7136,10 +7148,12 @@ function fluidPanelRows(m,def,rec){
     html+=irow('Fuel',`🔦 ${m.inBuf.lum_rod||0} rods · 1 rod / ${ROD_TICKS*TICK_MS/1000}s`);
   }
   if(m.type==='relief_valve'){
-    const seal=m.seal===undefined?VALVE_SEAL:m.seal, jam=valveJammed(m), hot=m._net&&pressureOf(m._net)>RELIEF_AT;
+    const seal=m.seal===undefined?VALVE_SEAL:m.seal, jam=valveJammed(m), at=reliefAt(m), hot=m._net&&pressureOf(m._net)>at;
+    html+=`<span class="sec-label" style="margin-top:6px">OPENS AT</span><div style="display:flex;gap:4px;margin-bottom:4px">${RELIEF_STEPS.map(v=>`<button class="mini-btn ${v===at?'amber':''}" style="flex:1;${v===at?'':'color:var(--text2)'}" onclick="setRelief(${m.id},${v})">${v}%</button>`).join('')}</div>
+      <div style="font-size:var(--f4);color:var(--text3);line-height:1.8;margin-bottom:6px">${at<=60?'Keeps the network low, far from bursting, but it vents fluid your machines could have used. The Rod Press needs 60%+.':at<=70?'Vents sooner: safer, but more fluid is thrown away.':at>=85?'Keeps more fluid in the pipes, closer to the 90% burst line.':'The default: a safe middle.'}</div>`;
     html+=irow('Gasket',jam?`<span style="color:var(--red)">✗ Worn out: valve jammed shut</span>`:`<span style="color:${seal<15?'var(--amber)':'var(--teal)'}">${Math.round(seal/VALVE_SEAL*100)}% left</span>`);
     html+=irow('Spares',`${iconHtml('gasket')} ${m.inBuf.gasket||0} / ${MDEFS.relief_valve.bufCap}`);
-    html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':'No (below 80%)');
+    html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':`No (below ${at}%)`);
     html+=`<button class="full-btn teal" style="margin:4px 0" onclick="loadGaskets(${m.id})">LOAD GASKETS (have ${G.inv.gasket||0})</button>
       <div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Each Gasket seals 60 units of venting. An inserter can keep it stocked.</div>`;
   }
@@ -7292,7 +7306,7 @@ function saveBlueprints(){try{localStorage.setItem(BP_KEY,JSON.stringify(BLUEPRI
 const bpKey=b=>b.name+'|'+JSON.stringify(b.data);
 function cleanBlueprint(b){ // only known machines and fields, and a name that is plain text
   if(!b||!Array.isArray(b.data))return null;
-  const data=b.data.filter(e=>e&&MDEFS[e.type]&&isFinite(e.rx)&&isFinite(e.ry)).map(e=>({type:e.type,rx:e.rx|0,ry:e.ry|0,dir:(e.dir|0)&3,recipe:RECIPES[e.recipe]?e.recipe:null,tier:Math.min(3,Math.max(1,e.tier|0||1))}));
+  const data=b.data.filter(e=>e&&MDEFS[e.type]&&isFinite(e.rx)&&isFinite(e.ry)).map(e=>({type:e.type,rx:e.rx|0,ry:e.ry|0,dir:(e.dir|0)&3,recipe:RECIPES[e.recipe]?e.recipe:null,tier:Math.min(3,Math.max(1,e.tier|0||1)),...(RELIEF_STEPS.includes(e.relief)?{relief:e.relief}:{})}));
   return data.length?{name:String(b.name||'Blueprint').replace(/[<>&"'`]/g,'').trim().slice(0,24)||'Blueprint',data}:null;
 }
 function addBlueprints(list){ // merges into the library, skipping exact copies; returns {added,dupes,full}
@@ -7627,7 +7641,7 @@ function continueBtnHtml(){
 function goalHeaderHtml(){
   const zd=zoneDef(), fin=TUTORIALS[G.zone]?.steps.slice(-1)[0];
   return `<div class="goal-head"><div class="gh-zone">${zd.icon} ZONE ${G.zone} · ${zd.name.toUpperCase()}</div>
-    ${fin?`<div class="gh-text">${richText(fin.text)}</div>`:''}</div>`;
+    ${fin?`<div class="gh-text">${richText(fin.text)}</div>`:''}</div>${timerCardHtml()}`;
 }
 function renderRocketPanel(){
   const el=document.getElementById('pRocketBody');
@@ -7702,7 +7716,7 @@ function launchRocket(){
   const miss=rocketReqs().find(r=>r.have<r.need);
   if(miss){toast(`Need ${miss.need}× ${miss.name}`,'bad');sfx('error');return;}
   for(const r of rocketReqs())G.inv[r.id]-=r.need;
-  const award=awardLaunchPerks(G.zone);
+  const award=awardLaunchPerks(G.zone), split=recordSplit(G.zone);
   G.stats.launched=true;
   saveGame(); sfx('launch');
   const nz=nextZone();
@@ -7712,6 +7726,7 @@ function launchRocket(){
       ${zd.launchText}<br><br>
       <span style="color:var(--amber);font-size:var(--f7)">ZONE ${G.zone} COMPLETE</span><br><br>
       ${launchPerkLine(award)}
+      ${splitLine(`${zd.name}:`,split)}${PREFS.timer?'<br>':''}
       <span style="color:var(--text3);font-size:var(--f5)">${nz?zd.launchTease:'More zones coming soon...'}</span>
     </div>`,
     `<button class="btn btn-sm" onclick="closeModal();togglePanel('perks')">⭐ PERKS</button>
@@ -7728,11 +7743,12 @@ function transitionToZone(n){
   const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft,sandbox:G.sandbox};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
   const achievements=[...(G.achievements||[])];
+  const timer={runSplits:{...(G.runSplits||{})},runDev:!!(G.runDev||G.timerDev)}; // the run timer's splits come along
   // Cargo Hold: a share of the inventory comes along (not the old zone's rocket parts)
   const carry=0.1*plv('cargo_hold'), oldParts=ZONES[G.zone]?.partsCat, cargo={};
   if(carry)for(const[k,v]of Object.entries(G.inv||{})){const n=Math.floor(v*carry); if(n>0&&ITEMS[k]?.cat!==oldParts)cargo[k]=n;}
   G=defaultState();
-  Object.assign(G,dev);
+  Object.assign(G,dev,timer);
   G.zone=n;
   G.achievements=achievements;
   G.smog=0;
@@ -7767,6 +7783,61 @@ function transitionToZone(n){
     </div>`,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
   );
+}
+
+// ═══ RUN TIMER (v2.0.29) ═══
+// An optional clock (PREFS.timer, ☰ Settings → TIMER). A zone's time is game time since arrival: G.tick starts at 0 in
+// every zone and only counts while the game runs (never while the app is closed), the same clock the Express Launch award
+// uses. A launch freezes it into G.runSplits[zone]; the Big Bang freezes Zone 5 and the whole run. Personal bests for each
+// zone and the full run stay on the device (TIMES_KEY, never wiped, in backup codes). A zone played with dev mode, free
+// building or free crafting on at any point (G.timerDev, then G.runDev for the run), or a sandbox, never sets a best.
+// Splits are recorded even while the timer is hidden, so turning it on later shows the real times.
+const TIMES_KEY='ebi_times';
+let TIMES=loadTimes();
+function loadTimes(){try{const t=JSON.parse(localStorage.getItem(TIMES_KEY)||'{}');return {z:t.z&&typeof t.z==='object'?t.z:{},run:isFinite(t.run)&&t.run>0?t.run:null};}catch(e){return {z:{},run:null};}}
+function saveTimes(){try{localStorage.setItem(TIMES_KEY,JSON.stringify(TIMES));}catch(e){}}
+function fmtClock(ticks){const s=Math.max(0,Math.floor(ticks/4)),h=Math.floor(s/3600),m=Math.floor(s/60)%60,ss=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${ss}`:`${m}:${ss}`;}
+const zoneTicks=()=>G.runSplits?.[G.zone]??G.tick;
+function runTicks(){let t=zoneTicks();for(let z=1;z<G.zone;z++)t+=G.runSplits?.[z]||0;return t;}
+const runWhole=()=>{for(let z=1;z<G.zone;z++)if(G.runSplits?.[z]==null)return false;return true;}; // every earlier zone timed
+function recordSplit(z){ // freeze a zone's time at its launch; returns what the message shows
+  G.runSplits=G.runSplits||{};
+  if(G.runSplits[z]==null)G.runSplits[z]=G.tick;
+  if(G.timerDev)G.runDev=true;
+  const t=G.runSplits[z], eligible=!G.sandbox&&!G.timerDev, prev=TIMES.z[z]??null, nb=eligible&&(prev==null||t<prev);
+  if(nb){TIMES.z[z]=t;saveTimes();}
+  return {t,prev,nb,eligible};
+}
+function recordRun(){ // the whole run, at the Big Bang
+  if(![1,2,3,4,5].every(z=>G.runSplits?.[z]!=null))return null;
+  const t=[1,2,3,4,5].reduce((a,z)=>a+G.runSplits[z],0), eligible=!G.sandbox&&!G.runDev, prev=TIMES.run, nb=eligible&&(prev==null||t<prev);
+  if(nb){TIMES.run=t;saveTimes();}
+  return {t,prev,nb,eligible};
+}
+function splitLine(label,r){ // a line for the launch and Big Bang messages
+  if(!PREFS.timer||!r)return '';
+  const tail=!r.eligible?'<span style="color:var(--text3)">dev tools used: no best</span>'
+    :r.nb?`<span style="color:var(--green)">${r.prev!=null?`NEW BEST, ${fmtClock(r.prev-r.t)} faster`:'FIRST BEST'}</span>`
+    :`<span style="color:var(--text3)">best ${fmtClock(r.prev)} · +${fmtClock(r.t-r.prev)}</span>`;
+  return `<div style="font-size:var(--f5);line-height:2">⏱ ${label} <span style="color:var(--amber)">${fmtClock(r.t)}</span><br>${tail}</div>`;
+}
+function timerCardHtml(){
+  if(!PREFS.timer||!G)return '';
+  const frozen=G.runSplits?.[G.zone]!=null, best=TIMES.z[G.zone];
+  const rows=[1,2,3,4,5].map(z=>{
+    const t=z===G.zone?zoneTicks():G.runSplits?.[z], b=TIMES.z[z];
+    return `<div style="display:flex;gap:6px;font-size:var(--f4);line-height:2;color:${z===G.zone?'var(--text)':'var(--text2)'}"><span style="flex:1">${ZONES[z].name}</span>
+      <span style="min-width:62px;text-align:right">${t!=null&&z<=G.zone?fmtClock(t):'-'}</span><span style="min-width:62px;text-align:right;color:var(--text3)">${b!=null?fmtClock(b):'-'}</span></div>`;}).join('');
+  return `<div class="card" style="margin:8px 0">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sec-label" style="margin:0">⏱ RUN TIMER</span>
+      <span style="font-size:var(--f7);color:${frozen?'var(--green)':'var(--amber)'}">${fmtClock(zoneTicks())}</span></div>
+    <div style="font-size:var(--f4);color:var(--text3);line-height:2;margin:2px 0 6px">${frozen?'Launched: this zone is timed.':`This zone${best!=null?`, best ${fmtClock(best)}`:''}.`} Run so far ${fmtClock(runTicks())}${runWhole()?'':' (started before the timer, so no run best)'}${G.sandbox?' · Sandbox: no bests':G.timerDev?' · Dev tools used: no best':''}.</div>
+    <div style="display:flex;gap:6px;font-size:var(--f4);color:var(--text3);line-height:2"><span style="flex:1">ZONE</span><span style="min-width:62px;text-align:right">THIS RUN</span><span style="min-width:62px;text-align:right">BEST</span></div>
+    ${rows}
+    <div style="display:flex;gap:6px;font-size:var(--f4);line-height:2;border-top:1px solid var(--border);margin-top:4px;padding-top:2px"><span style="flex:1;color:var(--text)">Full run</span>
+      <span style="min-width:62px;text-align:right">${fmtClock(runTicks())}</span><span style="min-width:62px;text-align:right;color:var(--text3)">${TIMES.run!=null?fmtClock(TIMES.run):'-'}</span></div>
+    <div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin-top:4px">Game time: it only runs while the game is open. Bests are kept on this device.</div>
+  </div>`;
 }
 
 // ── Perks ──────────────────────────────────────────
@@ -8244,7 +8315,7 @@ function multiselCopy(){
   const machines=ms.ids.map(id=>G.machines[id]).filter(Boolean);
   const minX=Math.min(...machines.map(m=>m.x));
   const minY=Math.min(...machines.map(m=>m.y));
-  ms.clipboard=machines.map(m=>({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1}));
+  ms.clipboard=machines.map(m=>({type:m.type,rx:m.x-minX,ry:m.y-minY,dir:m.dir,recipe:m.recipe,tier:m.tier||1,...(m.relief?{relief:m.relief}:{})}));
   sfx('craft');
   // Auto-enter paste mode immediately
   multiselStartPaste();
@@ -8579,7 +8650,7 @@ function renderHazPanel(){
 }
 function hazPressureHtml(){
   const nets=FLUID_NETS.filter(n=>n.members.length);
-  let html=`<div class="card" style="font-size:var(--f5);color:var(--text2);line-height:1.8">Keep each pipe network between <span style="color:var(--blue)">${LOW_PRESSURE}%</span> (machines can draw) and <span style="color:var(--amber)">${OVER_PRESSURE}%</span>. Above ${OVER_PRESSURE}% with a pump still pushing, strain builds and a pipe bursts. Relief Valves vent above ${RELIEF_AT}%.</div>`;
+  let html=`<div class="card" style="font-size:var(--f5);color:var(--text2);line-height:1.8">Keep each pipe network between <span style="color:var(--blue)">${LOW_PRESSURE}%</span> (machines can draw) and <span style="color:var(--amber)">${OVER_PRESSURE}%</span>. Above ${OVER_PRESSURE}% with a pump still pushing, strain builds and a pipe bursts. Relief Valves vent above the pressure each one is set to (${RELIEF_AT}% unless you change it in its panel).</div>`;
   if(!nets.length)return html+hzCard('NETWORKS',`<div style="${hzSmall};line-height:1.8">No pipe networks yet. Place a pump on a pool and connect pipes to it.</div>`);
   const sorted=[...nets].sort((a,b)=>(b.strain-a.strain)||(pressureOf(b)-pressureOf(a)));
   sorted.forEach((n,i)=>{
@@ -8599,7 +8670,7 @@ function hazPressureHtml(){
         <span style="font-size:var(--f7);color:${col}">${p}%</span>${hzFind(n.members.map(m=>m.id))}
       </div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${p}%;background:${col}"></div></div>
-      <div style="${hzSmall};line-height:1.8;margin-top:4px">${Math.round(n.amt)}/${n.cap} · ${n.members.length} pipe parts · ${pumps.length} pump${pumps.length!==1?'s':''} (${fmtRate(pushMin)}/min in) · ${users.length} user${users.length!==1?'s':''} · ${valves.length} valve${valves.length!==1?'s':''}${jammed.length?` <span style="color:var(--red)">(${jammed.length} jammed)</span>`:''}</div>
+      <div style="${hzSmall};line-height:1.8;margin-top:4px">${Math.round(n.amt)}/${n.cap} · ${n.members.length} pipe parts · ${pumps.length} pump${pumps.length!==1?'s':''} (${fmtRate(pushMin)}/min in) · ${users.length} user${users.length!==1?'s':''} · ${valves.length} valve${valves.length!==1?'s':''}${valves.length?` (open at ${[...new Set(valves.map(reliefAt))].sort((x,y)=>x-y).join('/')}%)`:''}${jammed.length?` <span style="color:var(--red)">(${jammed.length} jammed)</span>`:''}</div>
       <div style="font-size:var(--f5);line-height:1.8;margin-top:4px">${advice}</div>
       ${jammed.length?`<div style="margin-top:4px">${hzFind(jammed.map(m=>m.id),'FIND JAMMED VALVES')}</div>`:''}
     </div>`;
@@ -9300,7 +9371,7 @@ const TUTORIALS={
      done:()=>hasM('lumen_panel')},
     {text:'The glow dims for 1 minute in every 4 🌑. Research Energy Storage and add [[accumulator]] Accumulators to bank power.',
      done:()=>hasM('accumulator')},
-    {text:'Research Pressure Control for [[relief_valve]] Relief Valves and the [[separator]] Separator. A valve vents above 80% (half a pump each) and wears out [[gasket]] Gaskets, so keep it stocked.',
+    {text:'Research Pressure Control for [[relief_valve]] Relief Valves and the [[separator]] Separator. A valve vents above 80% (tap it to change that; half a pump each) and wears out [[gasket]] Gaskets, so keep it stocked.',
      done:()=>researched('pressure_control')},
     {text:'Goal: research Lattice Fuel. The [[rod_press]] Rod Press needs 60%+ pressure. Build the 5 kinds of escape part, then launch from 🚀 GOAL.',
      final:true},
@@ -9551,6 +9622,7 @@ function openSettings(){
   settingsHtml+=row('🎞️ FPS',[30,60].map(f=>`<button class="mini-btn ${PREFS.fps===f?'amber':'dim'}" onclick="setPref('fps',${f})">${f}</button>`).join(''));
   settingsHtml+=row('🖼️ RES',RES_STEPS.map(r=>`<button class="mini-btn ${PREFS.res===r?'amber':'dim'}" onclick="setPref('res',${r})">${Math.round(r*100)}%</button>`).join(''));
   settingsHtml+=row('🔋 SAVER',`<button class="mini-btn ${saver?'teal':'dim'}" onclick="batterySaver(${!saver})">${saver?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">30 FPS + 50% resolution</span>`);
+  settingsHtml+=row('⏱ TIMER',`<button class="mini-btn ${PREFS.timer?'teal':'dim'}" onclick="setPref('timer',${!PREFS.timer});if(G)updateHUD()">${PREFS.timer?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">A clock for each zone and the whole run, with your best times (GOAL tab)</span>`);
   settingsHtml+=row('🎨 COLOURS',`<button class="mini-btn ${PREFS.cb?'teal':'dim'}" onclick="setColourBlind(${!PREFS.cb})">${PREFS.cb?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">Colour-blind mode: blue for good, pink for bad, and a cross on blocked spots</span>`);
   settingsHtml+=row('📳 HAPTICS',navigator.vibrate?`<button class="mini-btn ${PREFS.haptics!==false?'teal':'dim'}" onclick="setPref('haptics',${PREFS.haptics===false});haptic('place')">${PREFS.haptics!==false?'ON':'OFF'}</button>`:`<span style="font-size:var(--f4);color:var(--text3)">Not supported in this browser</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
@@ -9585,7 +9657,7 @@ function unb64(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.len
 const zipBytes=(u8,Stream)=>new Response(new Blob([u8]).stream().pipeThrough(new Stream('gzip'))).arrayBuffer().then(b=>new Uint8Array(b));
 async function makeBackupCode(){
   if(G&&tickId)saveGame();
-  const data={v:1,at:Date.now(),save:localStorage.getItem(SAVE_KEY),prestige:localStorage.getItem(PRESTIGE_KEY),blueprints:localStorage.getItem(BP_KEY),
+  const data={v:1,at:Date.now(),save:localStorage.getItem(SAVE_KEY),prestige:localStorage.getItem(PRESTIGE_KEY),blueprints:localStorage.getItem(BP_KEY),times:localStorage.getItem(TIMES_KEY),
     slots:[1,2,3].map(n=>localStorage.getItem(`ebi_save_slot${n}`))};
   const bytes=new TextEncoder().encode(JSON.stringify(data));
   if(window.CompressionStream)return 'EBI1.'+b64(await zipBytes(bytes,CompressionStream));
@@ -9669,6 +9741,7 @@ function applyBackup(){
   const put=(k,v)=>{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k);};
   put(SAVE_KEY,d.save); put(PRESTIGE_KEY,d.prestige);
   if(d.blueprints!==undefined)put(BP_KEY,d.blueprints); // older backups had none: keep this device's library
+  if(d.times!==undefined)put(TIMES_KEY,d.times);         // best times (v2.0.29), the same
   (d.slots||[]).forEach((v,i)=>put(`ebi_save_slot${i+1}`,v));
   location.reload();
 }
