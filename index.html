@@ -536,7 +536,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       </div>
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
     </div>
-    <p class="v-num">v2.0.32 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.33 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -720,7 +720,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.32';
+const VER      = '2.0.33';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -771,7 +771,7 @@ function haptic(type){
 }
 function sfx(type) {
   haptic(type);
-  if (!G || !G.sfx) return;
+  if (PREFS.sfx===false) return; // a device setting (v2.0.33), not per save
   try {
     const ctx = ac();
     const g = ctx.createGain();
@@ -1081,7 +1081,7 @@ function musicStart(){
   if(_music.running)return;
   try{
     const c=ac();
-    const mg=c.createGain(); mg.gain.setValueAtTime(G&&G.musicVol!==undefined?G.musicVol:0.7,c.currentTime); mg.connect(c.destination);
+    const mg=c.createGain(); mg.gain.setValueAtTime(PREFS.musicVol??0.7,c.currentTime); mg.connect(c.destination);
     const comp=c.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4; comp.connect(mg);
     const bus=c.createGain(); bus.connect(comp);
     const send=c.createGain(), dl=c.createDelay(1), fb=c.createGain(), wet=c.createGain();
@@ -1109,24 +1109,27 @@ function nowPlayingText(){
   return `${_music.cur.name} · ${key==='title'?'Title':ZONES[key]?.name||''} ${i}/${list.length}`;
 }
 
+// Sound is one setting for the whole device (v2.0.33): PREFS.sfx, PREFS.music and PREFS.musicVol, the same in every
+// save, slot, zone, sandbox and on the title screen. (They were per save, G.sfx / G.music / G.musicVol, before.)
 function toggleMusic(){
-  G.music=!G.music; saveGame();
-  PREFS.music=G.music; savePrefs(); // the title screen follows your last choice
-  if(G.music) musicStart(); else musicStop();
-  openSettings();
+  try{if(_ac&&_ac.state!=='running')_ac.resume().catch(()=>{});}catch(e){}
+  PREFS.music=PREFS.music===false; PREFS.audioSet=true; savePrefs();
+  if(PREFS.music) musicStart(); else musicStop();
+  updateTitleMute(); refreshSettings();
 }
+function toggleSfx(){PREFS.sfx=PREFS.sfx===false; PREFS.audioSet=true; savePrefs(); sfx('click'); refreshSettings();}
 
 function setMusicVol(v){
-  G.musicVol=parseFloat(v);
+  PREFS.musicVol=parseFloat(v); PREFS.audioSet=true;
   if(_music.gain){
-    try{_music.gain.gain.setValueAtTime(G.musicVol,ac().currentTime);}catch(e){}
+    try{_music.gain.gain.setValueAtTime(PREFS.musicVol,ac().currentTime);}catch(e){}
   }
-  saveGame();
+  savePrefs();
   // Update slider display without reopening modal
   const sl=document.getElementById('musicVolSlider');
-  if(sl)sl.value=G.musicVol;
+  if(sl)sl.value=PREFS.musicVol;
   const lbl=document.getElementById('musicVolLabel');
-  if(lbl)lbl.textContent=Math.round(G.musicVol*100)+'%';
+  if(lbl)lbl.textContent=Math.round(PREFS.musicVol*100)+'%';
 }
 // Title screen music: browsers only allow audio after a tap, so it starts on the first one
 function onTitle(){const t=document.getElementById('sTitle');return !!t&&!t.classList.contains('hidden');}
@@ -1153,18 +1156,14 @@ function toggleTitleMusic(){
   try{if(_ac&&_ac.state!=='running')_ac.resume().catch(()=>{});}catch(e){}
   // Music on but not actually playing (blocked or stopped): this tap starts it rather than muting
   if(PREFS.music!==false&&!_music.running){musicStart();updateTitleMute();return;}
-  PREFS.music=PREFS.music===false; savePrefs();
+  PREFS.music=PREFS.music===false; PREFS.audioSet=true; savePrefs();
   if(PREFS.music)musicStart(); else musicStop();
-  updateTitleMute();
+  updateTitleMute(); refreshSettings();
 }
 function updateTitleMute(){
   const b=document.getElementById('titleMute');if(b)b.innerHTML=uiIcon(PREFS.music===false?'mute':'sound');
   const h=document.getElementById('titleSoundHint');
   if(h)h.classList.toggle('hidden',PREFS.music===false||(!!_ac&&_ac.state==='running'&&_music.running));
-}
-function toggleSfxMenu(){
-  G.sfx=!G.sfx; saveGame();
-  openSettings();
 }
 
 // Visibility change, pause/resume music
@@ -1176,7 +1175,7 @@ document.addEventListener('visibilitychange',()=>{
   } else {
     try{if(_ac&&_ac.state!=='running')_ac.resume().catch(()=>{});}catch(e){}
     if(onTitle())titleMusic();
-    else if(G&&G.music&&_music&&!_music.running) musicStart();
+    else if(G&&PREFS.music!==false&&_music&&!_music.running) musicStart();
   }
 });
 
@@ -2051,9 +2050,6 @@ function defaultState(){
     zone:1,
     prodLog:null, // production history for the Stats graphs (prodLog())
     runSplits:{}, timerDev:false, runDev:false, // run timer: zone times frozen at each launch, dev tools used (RUN TIMER)
-    sfx:true,
-    music:true,
-    musicVol:0.7,
     smog:0,
     inv:{
       iron_ore:0,copper_ore:0,coal:0,stone:0,
@@ -2971,7 +2967,7 @@ function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cl
 // Lower values draw fewer pixels per frame, which is most of the battery cost.
 const PREFS_KEY='ebi_prefs';
 const RES_STEPS=[1,.75,.5,.35,.25,.1];
-const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true,cb:false,timer:false};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true,sfx:true,musicVol:0.7,cb:false,timer:false};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
 function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
@@ -7786,7 +7782,6 @@ function launchRocket(){
 function transitionToZone(n){
   const zd=ZONES[n]; if(!zd)return;
   const researchDone=[...G.research.done];
-  const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
   const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft,sandbox:G.sandbox};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
   const achievements=[...(G.achievements||[])];
@@ -7799,7 +7794,6 @@ function transitionToZone(n){
   G.zone=n;
   G.achievements=achievements;
   G.smog=0;
-  G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
   G.tutorial={step:-1};                     // Zone 1 tutorial never repeats
   G.zoneTut=TUTORIALS[n]&&!G.sandbox?0:undefined; // zone tutorial (none in a sandbox)
   G.research.done=researchDone;
@@ -9642,38 +9636,29 @@ function openBigMenu(section){
 }
 const backToMenu=`<button class="btn btn-sm" onclick="openBigMenu()">◀ MENU</button>`;
 function openSettings(){
-  // From the title screen (v2.0.32) there is no game loaded: only the device settings show (music, display, timer,
-  // colours, haptics). Sound effects, volume and the tutorial belong to a save, so they stay in-game.
+  // Every setting here is for the whole device (sound too, since v2.0.33), so the title screen shows the same window;
+  // only RESTART TUTORIAL needs a game loaded.
   const title=onTitle()||!G;
-  let settingsHtml=title?`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
-      <span style="font-size:var(--f6);color:var(--text2)">🎵 Title music</span>
-      <button class="mini-btn ${PREFS.music!==false?'teal':'dim'}" onclick="toggleTitleMusic();openSettings()">${PREFS.music!==false?'ON':'OFF'}</button>
+  let settingsHtml=`
+    <div style="display:flex;gap:8px;margin-bottom:6px">
+      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <span style="font-size:var(--f6);color:var(--text2)">🔊 SFX</span>
+        <button class="mini-btn ${PREFS.sfx!==false?'teal':'dim'}" onclick="toggleSfx()">${PREFS.sfx!==false?'ON':'OFF'}</button>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
+        <span style="font-size:var(--f6);color:var(--text2)">🎵 Music</span>
+        <button class="mini-btn ${PREFS.music!==false?'teal':'dim'}" onclick="toggleMusic()">${PREFS.music!==false?'ON':'OFF'}</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
+      <span style="font-size:var(--f6);color:var(--text2);flex-shrink:0">🔉 Vol</span>
+      <input id="musicVolSlider" type="range" min="0" max="1" step="0.05" value="${PREFS.musicVol??0.7}" oninput="setMusicVol(this.value)" style="flex:1;accent-color:var(--amber)">
+      <span id="musicVolLabel" style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((PREFS.musicVol??0.7)*100)}%</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
       <span style="flex-shrink:0">${uiIcon('sound')}</span>
       <span id="nowPlaying" style="flex:1;font-size:var(--f5);color:var(--text2);line-height:1.6">${nowPlayingText()}</span>
       <button class="mini-btn ${_music.running?'teal':'dim'}" onclick="musicNext()" ${_music.running?'':'disabled'}>NEXT</button>
-    </div>`:`
-    <div style="display:flex;gap:8px;margin-bottom:6px">
-      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <span style="font-size:var(--f6);color:var(--text2)">🔊 SFX</span>
-        <button class="mini-btn ${G.sfx?'teal':'dim'}" onclick="G.sfx=!G.sfx;saveGame();openSettings()">${G.sfx?'ON':'OFF'}</button>
-      </div>
-      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
-        <span style="font-size:var(--f6);color:var(--text2)">🎵 Music</span>
-        <button class="mini-btn ${G.music?'teal':'dim'}" onclick="toggleMusic()">${G.music?'ON':'OFF'}</button>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
-      <span style="font-size:var(--f6);color:var(--text2);flex-shrink:0">🔉 Vol</span>
-      <input id="musicVolSlider" type="range" min="0" max="1" step="0.05" value="${G.musicVol!==undefined?G.musicVol:0.7}" oninput="setMusicVol(this.value)" style="flex:1;accent-color:var(--amber)">
-      <span id="musicVolLabel" style="font-size:var(--f6);color:var(--amber);min-width:28px;text-align:right">${Math.round((G.musicVol!==undefined?G.musicVol:0.7)*100)}%</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
-      <span style="flex-shrink:0">${uiIcon('sound')}</span>
-      <span id="nowPlaying" style="flex:1;font-size:var(--f5);color:var(--text2);line-height:1.6">${nowPlayingText()}</span>
-      <button class="mini-btn ${G.music?'teal':'dim'}" onclick="musicNext()" ${G.music?'':'disabled'}>NEXT</button>
     </div>`;
 
   const saver=PREFS.fps===30&&PREFS.res===.5;
@@ -9686,8 +9671,8 @@ function openSettings(){
   settingsHtml+=row('📳 HAPTICS',navigator.vibrate?`<button class="mini-btn ${PREFS.haptics!==false?'teal':'dim'}" onclick="setPref('haptics',${PREFS.haptics===false});haptic('place')">${PREFS.haptics!==false?'ON':'OFF'}</button>`:`<span style="font-size:var(--f4);color:var(--text3)">Not supported in this browser</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
 
-  if(title)settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9">Sound effects, volume and the tutorial are in the in-game settings (☰ → SETTINGS).</div>`;
-  else settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
+  settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin-bottom:6px">These settings are for this device: every save, slot and sandbox shares them.</div>`;
+  if(!title)settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
 
   showModal('⚙️ SETTINGS',`<div id="settingsRoot">${settingsHtml}</div>`,title?`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`:backToMenu);
 }
@@ -10140,6 +10125,12 @@ function resetArmClocks(){
   }
 }
 function migrateSave(){
+  // v2.0.33: sound moved from the save to the device. The first save loaded hands its choices over once
+  // (unless sound was already set on this build); then the keys leave the save.
+  if(G&&(G.sfx!==undefined||G.musicVol!==undefined||G.music!==undefined)){
+    if(!PREFS.audioSet){ if(G.sfx!==undefined)PREFS.sfx=G.sfx!==false; if(G.musicVol!==undefined)PREFS.musicVol=+G.musicVol; if(G.music!==undefined)PREFS.music=G.music!==false; PREFS.audioSet=true; savePrefs(); }
+    delete G.sfx; delete G.music; delete G.musicVol;
+  }
   resetArmClocks();
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
@@ -10235,6 +10226,7 @@ function sandboxZone(z){
 //  GAME INIT
 // ═══════════════════════════════════════════════════
 function newGame(){
+  if(!PREFS.audioSet){PREFS.audioSet=true;savePrefs();} // sound is set on this device now: an older save won't override it
   G=defaultState();
   applyPrestigeStart();
   startGame(true);
@@ -10274,7 +10266,7 @@ function startGame(isNew){
   updateZoneTabs();
   updateHUD(); updateRocketBtn();
   startTick(); startRender();
-  if(G.music!==false) musicStart(); else musicStop(); // the title track carries straight on
+  if(PREFS.music!==false) musicStart(); else musicStop(); // the title track carries straight on
   // Defer cam to next frame so canvas has final dimensions
   requestAnimationFrame(()=>{
     sizeCanvas();
