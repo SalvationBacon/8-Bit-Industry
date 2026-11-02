@@ -692,6 +692,45 @@ const r=await p.evaluate(async()=>{
     const migrated=MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&MAP_H===G.floorY+FLOOR_ROWS+2*EXPAND_H&&G.map.every(r=>r.length===MAP_W);
     PRESTIGE=JSON.parse(saved); savePrestige();
     ok('stardust_upgrades',oldOwned&&lv&&echo&&hidden&&shown&&unpowered&&Math.abs(qn-30)<=1&&sz&&arrive&&paid===want&&migrated,{oldOwned,lv,echo,hidden,shown,unpowered,qn,sz,arrive,paid,want,migrated,w:MAP_W,h:MAP_H}); }
+  // ── Stats graphs: machine output per item per 10s and per minute, power made and used, drawn in the Stats panel
+  { reset(); G.prodLog=null; G.tick=0; power(2,2); res(10,G.floorY+4,1,1,'iron_ore'); const mi=put('miner',10,G.floorY+4); put('chest',11,G.floorY+4);
+    G.inv.iron_ore=0; run(480);
+    const L=prodLog(), f=L.f, c=L.c, sumF=f.reduce((a,b)=>a+(b.d.iron_ore||0),0);
+    const logged=f.length===12&&c.length===2&&sumF===mi.produced&&f.every(b=>b.po===60)&&f[f.length-1].pi>0;
+    showPanel('stats'); const cv=document.getElementById('statCvP'), body=document.getElementById('pStatsBody').innerText;
+    const drawn=!!cv&&cv.width>0&&!!document.getElementById('statCvW')&&body.includes('Iron Ore')&&body.includes('10 MIN');
+    statToggle('iron_ore'); const hid=document.querySelector('.stat-chip.off')!==null; statToggle('iron_ore');
+    setStatSpan('c'); const hour=document.getElementById('pStatsBody').innerText.includes('Iron Ore'); setStatSpan('f');
+    statHover({currentTarget:cv,clientX:cv.getBoundingClientRect().right-20},'p'); const read=document.getElementById('statReadP').innerText.includes('/min');
+    closePanel('stats'); statHov=null;
+    const back=JSON.parse(serializeG()).prodLog; const saved=back&&back.f.length===12;
+    ok('stats_graph',logged&&drawn&&hid&&hour&&read&&saved,{logged,f:f.length,c:c.length,sumF,made:mi.produced,po:f.map(b=>b.po).slice(0,3),drawn,hid,hour,read,saved}); }
+  // ── Colour-blind mode: a device setting that swaps the status colours in the panels (CSS) and on the map (PAL)
+  { setColourBlind(true);
+    const css=getComputedStyle(document.body), on=document.body.classList.contains('cb')&&PAL===PAL_CB&&css.getPropertyValue('--green').trim()==='#3d8bff'&&css.getPropertyValue('--red').trim()==='#ff3d8b'
+      &&JSON.parse(localStorage.getItem(PREFS_KEY)).cb===true&&insArmSpr(false,2)!==insArmSpr(false,0);
+    openSettings(); const row=document.getElementById('mBody')?.innerText||document.body.innerText; closeModal();
+    setColourBlind(false); const off=!document.body.classList.contains('cb')&&PAL===PAL_STD&&getComputedStyle(document.body).getPropertyValue('--green').trim()==='#4caf50';
+    ok('colour_blind_mode',on&&off&&/COLOURS/.test(row),{on,off,settings:/COLOURS/.test(row)}); }
+  // ── Cave walls in The Deep: caverns all joined, deposits clear, the floor open, nothing builds on rock, tunnels pass under, saves keep it
+  { const z0=[MAP_W,MAP_H]; let gen=true, fr=[];
+    for(let k=0;k<6;k++){ MAP_W=96;MAP_H=64; const m=carveCaves(buildZoneMap(DEPOSITS_Z3,0x0dee9+k*977),0x5ca7e+k*31);
+      let walls=0,open=0; for(const row of m)for(const t of row){if(t.type===T_WALL)walls++;else open++;}
+      const seen=new Set(), q=[[CAVE_START[0],CAVE_START[1]]]; seen.add(CAVE_START[1]*96+CAVE_START[0]);
+      for(let x=0;x<96;x++)if(m[63][x].type!==T_WALL){seen.add(63*96+x);q.push([x,63]);} // the bottom row opens onto the floor
+      while(q.length){const[x,y]=q.pop();for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=96||ny>=64)continue;const i=ny*96+nx;if(seen.has(i)||m[ny][nx].type===T_WALL)continue;seen.add(i);q.push([nx,ny]);}}
+      const f=walls/(96*64); fr.push(+f.toFixed(2)); if(!(f>.15&&f<.45&&seen.size===open))gen=false; }
+    MAP_W=96;MAP_H=64; const zm=addFactoryFloor(ZONES[3].buildMap());
+    const floorClear=zm.length===96&&zm.slice(64).every(r=>r.every(t=>t.type!==T_WALL))&&zm.slice(0,64).some(r=>r.some(t=>t.type===T_WALL));
+    [MAP_W,MAP_H]=z0;
+    reset(); power(2,2); const wy=G.floorY+6;
+    for(let y=wy-2;y<=wy+2;y++)for(let x=14;x<17;x++)G.map[y][x].type=T_WALL;
+    const blocked=!canPlace('belt',15,wy)&&!canPlace('pipe',15,wy)&&!canPlace('assembler',13,wy)&&!canPlace('quantum_extractor',15,wy)&&canPlace('belt',13,wy);
+    const src=put('chest',10,wy); src.chestInv.iron_plate=20; put('inserter',11,wy,0); put('belt',12,wy,0); const t1=put('tunnel',13,wy,0); const t2=put('tunnel',17,wy,0); put('belt',18,wy,0); put('inserter',19,wy,0); const dst=put('chest',20,wy);
+    run(400); const under=!!(t1&&t2&&t1.tunnelId===t2.id&&(dst.chestInv.iron_plate||0)>=5);
+    const back=unpackMap(JSON.parse(JSON.stringify(packMap(G.map))),G.machines); const kept=back[wy][15].type===T_WALL&&back[wy][13].mid===t1.id&&back[wy][15].mid===null&&back[wy][12].type===T_FLOOR;
+    reset();
+    ok('cave_walls',gen&&floorClear&&blocked&&under&&kept,{gen,fr,floorClear,blocked,under,dst:dst?.chestInv,kept}); }
   // ── Sandbox: locked until the first Big Bang; any zone, everything researched and free, its own save, no rewards
   { const saved=JSON.stringify(PRESTIGE), realSave=localStorage.getItem(SAVE_KEY);
     PRESTIGE.bangs=0; const locked=!sandboxUnlocked(); openSandboxMenu(); closeModal();

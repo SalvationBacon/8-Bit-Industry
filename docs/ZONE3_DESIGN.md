@@ -2,10 +2,10 @@
 
 > **Status: IMPLEMENTED in v1.2.0.** The user said to build the whole game, so the open questions in §12 were settled with this draft's defaults:
 > 1. Bursts destroy **only the pipe** (and half the fluid).
-> 2. **No cave walls** (still an idea; see CLAUDE.md roadmap).
+> 2. **Cave walls: added in v2.0.28** (`carveCaves()`; see CLAUDE.md, Zone 3). Belt tunnels pass under them, pipes go round.
 > 3. **Accumulators: yes.** They cover a shortfall only when they can cover all of it, so the hard power cutoff stays.
 > 4. **Lumen Panel glow tide: yes**, 180s bright / 60s dim.
-> 5. Zone 2 crude oil **stays as belt items**.
+> 5. Zone 2 crude oil **stays as belt items** (confirmed by the user in v2.0.28).
 > 6. Relief Valve threshold **fixed at 80%**.
 > 7. Zones stay **one-way**.
 >

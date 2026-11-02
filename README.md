@@ -53,8 +53,14 @@ After your first Big Bang, SANDBOX on the title screen opens a creative mode: pi
 ## Backups
 ☰ menu → 🛟 Backup (or BACKUP on the title screen): export a code or file holding your game, save slots and Stardust, and import it on any device.
 
+## Statistics
+☰ menu → Stats graphs what your machines make per minute for each item over the last 10 minutes or the last hour, and power made against power used. Tap or drag on a graph to read one moment, and tap an item to hide its line.
+
+## Accessibility
+☰ menu → Settings → COLOURS turns on colour-blind mode: blue for good, pink for bad, light cyan for safe, and a cross on spots you can't build on. The colours stay distinct for red-green and blue-yellow colour blindness.
+
 ## Battery
 ☰ menu → Settings: FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.27: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.28: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
