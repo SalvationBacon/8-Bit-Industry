@@ -446,8 +446,9 @@ const r=await p.evaluate(async()=>{
     const missing=Object.keys(MDEFS).filter(t=>!MDEFS[t].stub&&!all.includes(t));
     const at={}; for(const z of[1,2,3,4,5]){G.zone=z; at[z]=Object.fromEntries(drawerCats('build').map(c=>[c.label,c.items.map(i=>i.id)]));}
     G.zone=z0;
-    const okZ=!at[1].Pipes&&!at[1]['Clean Air']&&at[1].Power.join()==='burner,generator'&&at[2].Power.includes('combustion_gen')&&at[2]['Clean Air']
-      &&at[3].Power.includes('lumen_panel')&&at[4].Power.includes('reactor')&&!at[4].Refining&&at[5].Mining.length===4;
+    const okZ=!at[1].Liquids&&!at[1]['Clean Air']&&at[1].Power.join()==='burner,generator'&&at[2].Power.includes('combustion_gen')&&at[2]['Clean Air']
+      &&at[2].Liquids.join()==='oil_pump'&&at[3].Liquids.join()==='brine_pump,pipe,fluid_tank,relief_valve'
+      &&at[3].Power.includes('lumen_panel')&&at[4].Power.includes('reactor')&&!at[4].Refining&&at[5].Mining.join()==='miner'&&at[5].Liquids.length===6;
     ok('build_menu_groups',!dupes.length&&!missing.length&&okZ,{dupes,missing,z1:Object.keys(at[1]),z2:at[2].Power}); }
   // ── recipe book: every recipe and resource of the zone, search, item pages, icons that open them
   { const z0=G.zone; reset(); G.zone=3; G.research.done=Object.keys(TECHS);

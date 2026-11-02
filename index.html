@@ -513,7 +513,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.21 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.22 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -697,7 +697,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.21';
+const VER      = '2.0.22';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -1439,9 +1439,6 @@ const DRAWER_DEFS = {
     ]},
     {label:'Mining', items:[
       {id:'miner',name:'Miner',icon:'⛏️'},
-      {id:'oil_pump',name:'Oil Pump',icon:'🛢️',zones:[2,5]},
-      {id:'brine_pump',name:'Brine Pump',icon:'⛲',zones:[3,4,5]},
-      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶',zones:[4,5]},
     ]},
     {label:'Smelting', items:[
       {id:'stone_furnace',name:'Furnace',icon:'⚱️'},
@@ -1461,7 +1458,10 @@ const DRAWER_DEFS = {
       {id:'reactor',name:'Reactor',icon:'☢️',zones:[4,5]},
       {id:'heat_sink',name:'Heat Sink',icon:'❄️',zones:[4,5]},
     ]},
-    {label:'Pipes', items:[
+    {label:'Liquids', items:[ // every pump, and the pipes, tanks and valves they fill (v2.0.22)
+      {id:'oil_pump',name:'Oil Pump',icon:'🛢️',zones:[2,5]},
+      {id:'brine_pump',name:'Brine Pump',icon:'⛲',zones:[3,4,5]},
+      {id:'enzyme_pump',name:'Enz. Pump',icon:'🍶',zones:[4,5]},
       {id:'pipe',name:'Pipe',icon:'🔗',zones:[3,4,5]},
       {id:'fluid_tank',name:'Tank',icon:'🥫',zones:[3,4,5]},
       {id:'relief_valve',name:'Valve',icon:'🚿',zones:[3,4,5]},
