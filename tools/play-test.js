@@ -637,6 +637,29 @@ const r=await p.evaluate(async()=>{
   let bad=''; try{await readBackupCode('EBI1.nope');}catch(e){bad=e.message;} ok('backup_rejects_garbage',!!bad,bad);
   const tk=G.tick; G.tick=tk+12345; tickId=tickId||1; document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('pagehide'));
   ok('save_on_hide',JSON.parse(localStorage.getItem(SAVE_KEY)).tick===tk+12345,{});
+  // ── Stardust upgrades with levels, the unique unlocks, the big Singularity and the ascension ladder (runs last: moves to Zone 5)
+  { const saved=JSON.stringify(PRESTIGE); G.perks.spent={};
+    PRESTIGE.owned={}; const y0=perkMult().yield, b0=beltBaseSpeed();
+    PRESTIGE.owned={cosmic_yield:true}; const oldOwned=Math.abs(perkMult().yield/y0-1.15)<1e-9;           // an upgrade bought before levels counts as level 1
+    PRESTIGE.owned={cosmic_yield:5,swift_belts:5,quick_hands:5,bright_minds:5,stable_reality:3,cosmic_perk:3,cosmic_start:3};
+    const lv=Math.abs(perkMult().yield/y0-1.55)<1e-9&&Math.abs(beltBaseSpeed()/b0-1.5)<1e-9&&Math.abs(insMs(460,{tier:1})-460/1.5)<1e-9
+      &&labBoost({type:'lab'})===2&&Math.abs(hazardEase()-.55)<1e-9&&toolsFor(3).length===9;
+    const before=new Set(echoTechs(5)); PRESTIGE.owned.cosmic_research=3; const e3=echoTechs(5); PRESTIGE.owned.cosmic_research=4; const e4=echoTechs(5);
+    const echo=!before.size&&e3.includes('expansion_1')&&!e3.includes('expansion_2')&&e4.includes('expansion_2')&&!e4.includes('singularity')&&echoTechs(1).length===Object.keys(TECHS).filter(k=>!TECHS[k].zone).length-1;
+    // the Quantum Extractor: only in the build menu once bought; pulls 30 a minute
+    const hidden=!drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_extractor'));
+    PRESTIGE.owned.quantum_extractor=1; const shown=drawerCats('build').find(c=>c.label==='Mining').items.some(i=>i.id==='quantum_extractor');
+    reset(); G.zone=1; const qx=put('quantum_extractor',40,G.floorY+4); setExtract(qx.id,'iron_ore'); const q0=qx.produced; run(240); const qn=qx.produced-q0;
+    // Singularity sizes per universe
+    const sz=singReqsFor(0).stellar_casing===1000&&singReqsFor(0).grav_lens===500&&singReqsFor(2).grav_lens===750;
+    // Echoes and the Cargo Hold on arrival: Zone 5 starts with its Expansions done (map grown) and a share of the inventory
+    PRESTIGE.owned.cargo_hold=3; G.inv={iron_plate:1000};
+    transitionToZone(5); closeModal(); clearInterval(tickId);
+    const arrive=G.research.done.includes('expansion_2')&&!G.research.done.includes('singularity')&&MAP_W===ZONES[5].mapSize[0]+64&&(G.inv.iron_plate||0)>=300;
+    // ascension: Universe 3 pays 1.5x
+    PRESTIGE.bangs=2; const d0=PRESTIGE.stardust, want=Math.round(achDust()*1.5); G.bigBang=false; triggerBigBang(); const paid=PRESTIGE.stardust-d0;
+    PRESTIGE=JSON.parse(saved); savePrestige();
+    ok('stardust_upgrades',oldOwned&&lv&&echo&&hidden&&shown&&Math.abs(qn-30)<=1&&sz&&arrive&&paid===want,{oldOwned,lv,echo,hidden,shown,qn,sz,arrive,paid,want}); }
   return R;
 });
 for(const[k,v]of Object.entries(r))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);

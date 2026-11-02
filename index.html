@@ -513,7 +513,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.22 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.23 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -697,7 +697,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.22';
+const VER      = '2.0.23';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -708,7 +708,7 @@ const SCRUBBER_FUEL_TICKS=16; // a Scrubber burns 1 refined fuel per 4s (15/min)
 function machineSmog(m){ // smog/min this machine makes when working
   const base=SMOG_PER[m.type]; if(!base)return 0;
   const sp=m.type==='oil_pump'?MINER_TIER_SPEED[m.tier||1]||1:m.type==='combustion_gen'?1:MACHINE_TIER_SPEED[m.tier||1]||1;
-  return base*sp*(G.perks?.spent?.smog1?0.7:1);
+  return base*sp*(G.perks?.spent?.smog1?0.7:1)*hazardEase();
 }
 function smogBudget(){ // what is making and clearing smog right now, per minute
   let make=0, clear=SMOG_DECAY_MIN, makers=0, scrubbers=0;
@@ -718,7 +718,7 @@ function smogBudget(){ // what is making and clearing smog right now, per minute
   }
   return {make,clear,makers,scrubbers};
 }
-function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(100,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1));} // Clean Burn: -30%
+function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(100,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1)*hazardEase());} // Clean Burn: -30%
 
 const T_FLOOR    = 0;
 const T_RESOURCE = 1;
@@ -1365,6 +1365,7 @@ const MDEFS = {
   evaporator:     {name:'Evaporator',       icon:'♨️', size:[2,2], power:14,  cost:{iron_plate:12,iron_gear:6,circuit:3},            unlock:'fluid_handling', recipes:['z3_evap'], fluidPort:true, desc:'Evaporates brine into lithium salt'},
   separator:      {name:'Separator',        icon:'🌀', size:[2,2], power:16,  cost:{iron_plate:14,circuit:4,steel_plate:4},          unlock:'pressure_control', recipes:['z3_separate'], fluidPort:true, desc:'Separates rare earth ore using brine'},
   rod_press:      {name:'Rod Press',        icon:'🧰', size:[2,2], power:24,  cost:{steel_plate:10,circuit:6,magnet:4},              unlock:'lattice_fuel', recipes:['z3_rod'], fluidPort:true, desc:'Presses lattice fuel rods. Needs 60%+ pipe pressure'},
+  quantum_extractor:{name:'Quantum Extractor',icon:'🌠', size:[2,2], power:0, cost:{steel_plate:10,circuit:10,iron_gear:10}, unlock:null, prestige:'quantum_extractor', recipes:[], desc:'Pulls a raw resource of this zone out of thin air: 30 a minute, anywhere, no power. A Stardust unlock'},
   lumen_panel:    {name:'Lumen Panel',      icon:'💡', size:[2,2], power:-40, cost:{silicon:6,steel_plate:4,copper_wire:6},          unlock:'crystal_refining', recipes:[], noItems:true, desc:'40kW from the cave glow, nothing while the glow tide is dim'},
   accumulator:    {name:'Accumulator',      icon:'🔋', size:[1,1], power:0,   cost:{battery:4,steel_plate:2,circuit:2},              unlock:'energy_storage', recipes:[], noItems:true, desc:'Stores surplus power and releases it during shortfalls'},
   // Zone 4 machines, living:true machines grow/decay (see LIVING), fed Nutrient Paste
@@ -1417,7 +1418,7 @@ const MACHINE_BUILDS = [
   'blast_furnace','electric_smelter','assembler','lab',
   'oil_pump','cracker','refinery','combustion_gen','scrubber',
   'pipe','brine_pump','fluid_tank','relief_valve','evaporator','separator','rod_press','lumen_panel','accumulator',
-  'enzyme_pump','algae_vat','bioreactor','spore_incubator','hyper_synth','reactor','heat_sink','singularity',
+  'enzyme_pump','algae_vat','bioreactor','spore_incubator','hyper_synth','reactor','heat_sink','singularity','quantum_extractor',
 ];
 // ═══════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════
@@ -1439,6 +1440,7 @@ const DRAWER_DEFS = {
     ]},
     {label:'Mining', items:[
       {id:'miner',name:'Miner',icon:'⛏️'},
+      {id:'quantum_extractor',name:'Q. Extractor',icon:'🌠',pr:'quantum_extractor'}, // only once bought with Stardust
     ]},
     {label:'Smelting', items:[
       {id:'stone_furnace',name:'Furnace',icon:'⚱️'},
@@ -2245,6 +2247,10 @@ const MACHINE_ART={
   rod_press(a,f,on){const{R,P}=a;chassis(a,32,32,'#283a2a');
     R(6,3,20,6,'#5a6a5a');const down=on?[0,3,6,3][f]:0;R(13,9,6,4+down,'#a8b8a8');R(10,13+down,12,3,'#8a9a8a');
     R(6,24,20,4,'#1a2a1a');R(9,22,14,2,'#6aff8a');},
+  quantum_extractor(a,f,on){const{R,P,C,O}=a;chassis(a,32,32,'#24183a');
+    C(16,15,10,'#120a20');O(16,15,10,'#5a3a8a');C(16,15,6,on?'#b388ff':'#4a3a6a');C(16,15,3,on?'#ffffff':'#7a6a9a');
+    if(on)for(let k=0;k<6;k++){const t=k*1.047+f*.5;P(16+Math.round(Math.cos(t)*8),15+Math.round(Math.sin(t)*8),k%2?'#80deea':'#ffd6ff');}
+    R(4,27,24,2,'#3a2a5a');},
   lumen_panel(a,f,on){const{R,P}=a;R(0,0,32,32,'#101418');
     for(let y=0;y<3;y++)for(let x=0;x<3;x++){const bx=2+x*10,by=2+y*10;R(bx,by,8,8,on?'#2a8a9a':'#122a30');
       R(bx+1,by+1,3,1,on?'#b8fff0':'#1e3a40');if(on&&(x+y+f)%4===0)P(bx+5,by+5,'#ffffff');}},
@@ -2285,6 +2291,7 @@ function machineWorking(m){
   if(m.type==='combustion_gen')return (m.inBuf.refined_fuel||0)>0;
   if(m.type==='reactor')return (m.inBuf.lum_rod||0)>0&&!(m.scram>0);
   if(m.type==='lumen_panel')return glowBright();
+  if(m.type==='quantum_extractor')return !!m.pick&&Object.values(m.outBuf).reduce((a,b)=>a+b,0)<50;
   if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
   if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
   if(m.type==='fluid_tank')return (m.fluid?.amt||0)>0.5;
@@ -3253,6 +3260,7 @@ const PORTS = {
   evaporator:      { outputs:[{side:'right',pos:.5}] },
   separator:       { outputs:[{side:'right',pos:.5}] },
   rod_press:       { outputs:[{side:'right',pos:.5}] },
+  quantum_extractor:{ outputs:[{side:'right',pos:.5}] },
   algae_vat:       { outputs:[{side:'right',pos:.5}] }, // the Bloom's living machines had no output side until v2.0.17
   bioreactor:      { outputs:[{side:'right',pos:.5}] },
   spore_incubator: { outputs:[{side:'right',pos:.5}] },
@@ -4826,10 +4834,10 @@ function perkMult(){
   const s=G.perks?.spent||{}, o=PRESTIGE.owned;
   return {
     // Tiers stack: I +10%, II +25% more, III +15% more; Stardust upgrades multiply on top
-    yield: (s.yield3?1.50 : s.yield2?1.35 : s.yield1?1.10 : 1)*(o.cosmic_yield?1.15:1),
-    speed: (s.speed3?1.35 : s.speed2?1.20 : s.speed1?1.10 : 1)*(o.cosmic_speed?1.15:1),
-    belt:  s.belt2?1.40 : s.belt1?1.20 : 1,
-    power: (s.power2?0.70 : s.power1?0.85 : 1)*(o.cosmic_power?0.8:1), // multiplier on power draw
+    yield: (s.yield3?1.50 : s.yield2?1.35 : s.yield1?1.10 : 1)*(1+(plv('cosmic_yield')?.05+.1*plv('cosmic_yield'):0)),
+    speed: (s.speed3?1.35 : s.speed2?1.20 : s.speed1?1.10 : 1)*(1+(plv('cosmic_speed')?.05+.1*plv('cosmic_speed'):0)),
+    belt:  (s.belt2?1.40 : s.belt1?1.20 : 1)*(1+.1*plv('swift_belts')),
+    power: (s.power2?0.70 : s.power1?0.85 : 1)*(plv('cosmic_power')?1-(.15+.05*plv('cosmic_power')):1), // multiplier on power draw
   };
 }
 
@@ -4920,6 +4928,14 @@ function runMachine(m){
   if(def.living&&m.withered)return;
   if(def.pumps){runPump(m,def);return;}
   if(def.fluidCap||m.type==='accumulator')return; // pipes, tanks, valves: handled by settleFluidNets
+  if(m.type==='quantum_extractor'){ // 1 of its chosen resource every 8 ticks (30 a minute), no power, no deposit
+    if(!m.pick)return;
+    if(++m.prog>=EXTRACT_TICKS){
+      if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50){m.prog=EXTRACT_TICKS;return;}
+      m.prog=0; m.outBuf[m.pick]=(m.outBuf[m.pick]||0)+1; m.produced++; recordOutput(m,1);
+    }
+    return;
+  }
   if(m.type==='scrubber'){
     // Burns refined_fuel to remove smog, every 4 ticks
     if(!zoneHas('smog')||G.tick%4!==0)return;
@@ -4964,7 +4980,7 @@ function runMachine(m){
   // Smog reduces efficiency in Zone 2 for all powered machines
   const smogEff=zoneHas('smog')?Math.max(0.1,(100-(G.smog||0))/100):1;
   const lifeMult=def.living?lifeStage(m).mult:1;
-  const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff*lifeMult;
+  const speedMult=ratio*pm.speed*tierMult*modSpeed*smogEff*lifeMult*labBoost(m);
 
   if(m.prog===0){
     if(canFill(m,rec)&&fluidReady(m,rec)){consumeInputs(m,rec);consumeFluid(m,rec);m.prog=1;}
@@ -5013,7 +5029,7 @@ const LOW_PRESSURE=20, OVER_PRESSURE=90, RELIEF_AT=80, BURST_STRAIN=80;
 // Gasket seals VALVE_SEAL units of venting. A valve comes with one fitted; with none left in its buffer it jams shut.
 const VALVE_VENT=0.25, VALVE_SEAL=60;
 function valveJammed(m){return (m.seal===undefined?VALVE_SEAL:m.seal)<=0&&!(m.inBuf.gasket>0);}
-function burstStrain(){return BURST_STRAIN*(G.perks?.spent?.pressure1?1.5:1);}
+function burstStrain(){return BURST_STRAIN*(G.perks?.spent?.pressure1?1.5:1)*(1+.15*plv('stable_reality'));}
 const FLUID_RES={oil:'🛢️ NEEDS OIL PUMP',brine:'💧 NEEDS BRINE PUMP',enzymes:'🧪 NEEDS ENZYME PUMP'};
 let FLUID_NETS=[];
 let burstFx=[];
@@ -5159,7 +5175,7 @@ function lifeStage(m){
   return {name:'Mature',icon:'🌿',mult:1};
 }
 function tickLiving(){
-  const decay=VIT_DECAY*(G.perks?.spent?.vital1?0.75:1);
+  const decay=VIT_DECAY*(G.perks?.spent?.vital1?0.75:1)*hazardEase();
   for(const m of Object.values(G.machines)){
     if(!MDEFS[m.type]?.living||m.withered)continue;
     if(m.vit===undefined)m.vit=VIT_START;
@@ -5205,7 +5221,7 @@ function runReactor(m,def){
   if(m.scram>0){m.scram--;return;}
   if((m.inBuf.lum_rod||0)<=0)return;
   G.power.out+=Math.abs(def.power);
-  m.heat+=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1);
+  m.heat+=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1)*hazardEase();
   m.burn=(m.burn||0)+1;
   if(m.burn>=ROD_TICKS){m.burn=0;m.inBuf.lum_rod--;}
   if(m.heat>=100){
@@ -5219,7 +5235,12 @@ function runReactor(m,def){
 //  Inserters (any side) or the panel feed components into it. Once complete it
 //  draws SING_POWER; holding full power for SING_SUSTAIN ticks → Big Bang.
 // ═══════════════════════════════════════════════════
-const SING_REQS={grav_lens:20,stellar_casing:40,void_engine:20,quantum_mind:20};
+// The Singularity is a production goal (v2.0.23): hundreds of each component, and every Big Bang (the ascension
+// ladder) makes the next universe's 25% bigger. Power stays the same: it was never the hard part.
+const SING_BASE={grav_lens:500,stellar_casing:1000,void_engine:500,quantum_mind:500};
+function singReqsFor(bangs){const k=1+0.25*(bangs||0); return Object.fromEntries(Object.entries(SING_BASE).map(([id,n])=>[id,Math.round(n*k/10)*10]));}
+let SING_REQS=singReqsFor(0); // set for the current universe in startGame()
+function universeNum(){return (PRESTIGE.bangs||0)+(G&&G.bigBang?0:1);}
 const SING_POWER=5000, SING_SUSTAIN=240;
 function singularity(){return Object.values(G.machines).find(m=>m.type==='singularity')||null;}
 function runSingularity(m){
@@ -5277,14 +5298,33 @@ function singularityStatusHtml(compact){
 
 // ── Big Bang + Stardust prestige (stored in its own key, never wiped) ──
 const PRESTIGE_KEY='ebi_prestige';
+// Stardust upgrades (v2.0.23): most have levels with rising costs, and Echoes and the Quantum Extractor are unlocks
+// you can't get any other way. PRESTIGE.owned[id] holds the level (true from older saves counts as 1); plv(id) reads it.
+const pctS=n=>Math.round(n*100)+'%';
 const PRESTIGE_SHOP=[
-  {id:'cosmic_yield',   name:'Cosmic Yield',     desc:'+15% resource yield, every run',            cost:5},
-  {id:'cosmic_speed',   name:'Starlight Haste',  desc:'+15% machine speed, every run',             cost:5},
-  {id:'cosmic_power',   name:'Dark Energy',      desc:'-20% power draw, every run',                cost:5},
-  {id:'cosmic_perk',    name:'Starborn',         desc:'+1 perk point on every zone launch',        cost:8},
-  {id:'cosmic_start',   name:'Remembered Tools', desc:'Start every zone with 5 Miners, 5 Furnaces, 2 Burners ready to place', cost:8},
-  {id:'cosmic_research',name:'Echoes',           desc:'Start each run with Basic Automation + Advanced Logistics', cost:10},
+  {id:'cosmic_yield',   cat:'PRODUCTION', name:'Cosmic Yield',     max:5, costs:[5,12,25,45,80], fx:l=>`+${pctS(.05+.1*l)} resource yield`},
+  {id:'cosmic_speed',   cat:'PRODUCTION', name:'Starlight Haste',  max:5, costs:[5,12,25,45,80], fx:l=>`+${pctS(.05+.1*l)} machine speed`},
+  {id:'cosmic_power',   cat:'PRODUCTION', name:'Dark Energy',      max:5, costs:[5,12,25,45,80], fx:l=>`-${pctS(.15+.05*l)} power draw`},
+  {id:'bright_minds',   cat:'PRODUCTION', name:'Bright Minds',     max:5, costs:[6,14,28,50,90], fx:l=>`Labs research ${pctS(.2*l)} faster`},
+  {id:'swift_belts',    cat:'LOGISTICS',  name:'Swift Belts',      max:5, costs:[6,14,28,50,90], fx:l=>`Belts, splitters and tunnels ${pctS(.1*l)} faster`},
+  {id:'quick_hands',    cat:'LOGISTICS',  name:'Quick Hands',      max:5, costs:[6,14,28,50,90], fx:l=>`Inserters swing ${pctS(.1*l)} faster`},
+  {id:'cosmic_perk',    cat:'EVERY RUN',  name:'Starborn',         max:3, costs:[8,25,60],       fx:l=>`+${l} perk point${l>1?'s':''} on every zone launch`},
+  {id:'cosmic_start',   cat:'EVERY RUN',  name:'Remembered Tools', max:3, costs:[8,20,45],       fx:l=>`Every zone starts with ${toolsFor(l).map(([t,n])=>`${n} ${MDEFS[t].name}${n>1?'s':''}`).join(', ')} ready to place`},
+  {id:'cargo_hold',     cat:'EVERY RUN',  name:'Cargo Hold',       max:3, costs:[10,30,70],      fx:l=>`Carry ${10*l}% of your inventory to the next zone`},
+  {id:'stable_reality', cat:'EVERY RUN',  name:'Stable Reality',   max:3, costs:[10,30,70],      fx:l=>`Every hazard ${15*l}% weaker: less smog, tougher pipes, slower decay, cooler reactors`},
+  {id:'cosmic_research',cat:'UNIQUE',     name:'Echoes',           max:4, costs:[10,30,70,150],  fx:l=>['Start each run with Basic Automation and Advanced Logistics','Start each run with all of Ironfield\'s research except Rocket Science','Also arrive in every zone with its first era already researched','Arrive in every zone with everything researched except its launch tech'][l-1]},
+  {id:'quantum_extractor',cat:'UNIQUE',   name:'Quantum Extractor',max:1, costs:[40],            fx:()=>'A new building: pulls any raw resource of the zone out of thin air, 30 a minute, placed anywhere, no power'},
 ];
+function plv(id){const v=PRESTIGE.owned[id]; return v===true?1:(v|0);}
+const TOOLS_BY_LEVEL=[[['miner',5],['stone_furnace',5],['burner',2]],[['inserter',10],['belt',40],['assembler',2]],[['generator',2],['lab',1],['chest',2]]];
+function toolsFor(l){const t={}; for(let i=0;i<l;i++)for(const[k,n]of TOOLS_BY_LEVEL[i])t[k]=(t[k]||0)+n; return Object.entries(t);}
+const hazardEase=()=>1-0.15*plv('stable_reality');
+const EXTRACT_TICKS=8;
+function extractChoices(){ // raw resources this zone has, as items (oil pools give crude oil; brine and enzymes are fluids)
+  return [...rbResHere()].filter(r=>r!=='brine'&&r!=='enzymes').map(r=>r==='oil'?'crude_oil':r).filter(r=>ITEMS[r]);
+}
+function setExtract(id,res){const m=G.machines[id]; if(!m)return; m.pick=res; m.prog=0; renderMachPanel();}
+const labBoost=m=>m.type==='lab'?1+.2*plv('bright_minds'):1; // Bright Minds // Stable Reality: every hazard this much as strong
 const THEMES={
   default:{name:'Amber',   cost:0, amber:'#f5a623', teal:'#26c6a0'},
   violet: {name:'Nebula',  cost:3, amber:'#b388ff', teal:'#80deea'},
@@ -5306,7 +5346,7 @@ let bigBangAt=0;
 function triggerBigBang(){
   if(G.bigBang)return;
   G.bigBang=true;
-  const dust=achDust();
+  const ascend=1+0.25*(PRESTIGE.bangs||0), base=achDust(), dust=Math.round(base*ascend); // each universe pays 25% more
   PRESTIGE.stardust+=dust; PRESTIGE.total+=dust; PRESTIGE.bangs++; savePrestige();
   bigBangAt=performance.now();
   saveGame(); sfx('launch'); checkAchievements();
@@ -5315,7 +5355,8 @@ function triggerBigBang(){
       <div style="font-size:30px;margin-bottom:10px">💥</div>
       The Singularity holds for sixty seconds.<br>Then everything, every belt, every world, collapses to a point.<br><br>
       <span style="color:var(--purple);font-size:var(--f7)">A NEW UNIVERSE BEGINS</span><br><br>
-      <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(10 + 1 per 2 achievements, up to +${ACH_DUST_MAX})</span><br>
+      <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(${base}: 10 + 1 per 2 achievements, up to +${ACH_DUST_MAX}${ascend>1?`, ×${ascend.toFixed(2)} for Universe ${PRESTIGE.bangs}`:''})</span><br>
+      <span style="color:var(--text3);font-size:var(--f5)">Universe ${PRESTIGE.bangs+1} next: the Singularity needs 25% more, and pays 25% more</span><br>
       <span style="color:var(--text3);font-size:var(--f5)">Big Bangs: ${PRESTIGE.bangs} · Stardust is permanent across runs</span>
     </div>`,
     `<button class="btn btn-sm" onclick="openStardustShop()">✨ SHOP</button>
@@ -5327,18 +5368,24 @@ function beginNewUniverse(){
   newGame();
 }
 function openStardustShop(){
+  const u=universeNum();
   let html=`<div class="card" style="margin-bottom:8px;text-align:center">
     <div style="font-size:var(--f5);color:var(--text3)">STARDUST</div>
     <div style="font-size:var(--f10);color:var(--amber)">✨ ${PRESTIGE.stardust}</div>
-    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}</div>
-  </div><span class="sec-label">PERMANENT UPGRADES</span>`;
+    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px;line-height:1.8">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}<br>${G&&G.bigBang?'Next: ':''}Universe ${G&&G.bigBang?u+1:u}: the Singularity needs ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} and pays ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} Stardust</div>
+  </div>`;
+  let cat='';
   for(const it of PRESTIGE_SHOP){
-    const owned=!!PRESTIGE.owned[it.id], can=!owned&&PRESTIGE.stardust>=it.cost;
-    html+=`<div style="border:1px solid ${owned?'var(--teal)':'var(--border)'};background:var(--bg3);padding:7px;margin-bottom:4px">
-      <div style="display:flex;justify-content:space-between;font-size:var(--f6)"><span style="color:${owned?'var(--teal)':'var(--text)'}">${it.name}</span>
-        <span style="color:var(--amber);font-size:var(--f5)">${owned?'✓':`✨${it.cost}`}</span></div>
-      <div style="font-size:var(--f5);color:var(--text3);margin:3px 0">${it.desc}</div>
-      ${can?`<button class="mini-btn amber" onclick="buyStardust('${it.id}')">BUY</button>`:''}
+    if(it.cat!==cat){cat=it.cat; html+=`<span class="sec-label" style="margin-top:6px">${cat}</span>`;}
+    const lv=plv(it.id), maxed=lv>=it.max, price=it.costs[lv], can=!maxed&&PRESTIGE.stardust>=price;
+    const pips=it.max>1?Array.from({length:it.max},(_,i)=>`<span style="display:inline-block;width:8px;height:8px;margin-right:2px;background:${i<lv?'var(--teal)':'var(--border2)'}"></span>`).join(''):'';
+    html+=`<div style="border:1px solid ${maxed?'var(--teal)':lv?'var(--border2)':'var(--border)'};background:var(--bg3);padding:7px;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:var(--f6)"><span style="color:${lv?'var(--teal)':'var(--text)'}">${it.name}${it.max>1?` <span style="color:var(--text3);font-size:var(--f4)">Lv ${lv}/${it.max}</span>`:''}</span>
+        <span style="color:${maxed?'var(--teal)':can?'var(--amber)':'var(--red)'};font-size:var(--f5)">${maxed?'MAX':`✨${price}`}</span></div>
+      ${pips?`<div style="margin:4px 0">${pips}</div>`:''}
+      ${lv?`<div style="font-size:var(--f5);color:var(--text2);margin:3px 0;line-height:1.7">Now: ${it.fx(lv)}</div>`:''}
+      ${maxed?'':`<div style="font-size:var(--f5);color:var(--text3);margin:3px 0;line-height:1.7">${lv?'Next':'Buy'}: ${it.fx(lv+1)}</div>`}
+      ${can?`<button class="mini-btn amber" onclick="buyStardust('${it.id}')">${lv?'UPGRADE':'BUY'}</button>`:''}
     </div>`;
   }
   html+=`<span class="sec-label" style="margin-top:8px">THEMES</span><div style="display:flex;flex-wrap:wrap;gap:4px">`;
@@ -5348,24 +5395,44 @@ function openStardustShop(){
       ${active?'● ':''}${t.name}${owned?'':` ✨${t.cost}`}</button>`;
   }
   html+='</div>';
+  const body=document.getElementById('mBody'), keep=body&&!document.getElementById('mOverlay').classList.contains('hidden')?body.scrollTop:0;
   showModal('✨ STARDUST',html,`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`);
+  if(keep)document.getElementById('mBody').scrollTop=keep; // buying keeps your place in the list
 }
 function buyStardust(id,cost){
-  const it=PRESTIGE_SHOP.find(x=>x.id===id); const price=it?it.cost:cost;
-  if(PRESTIGE.owned[id]||PRESTIGE.stardust<price){toast('Not enough Stardust','wrn');sfx('error');return;}
-  PRESTIGE.stardust-=price; PRESTIGE.owned[id]=true;
-  if(id.startsWith('theme_'))PRESTIGE.theme=id.slice(6);
-  savePrestige(); applyTheme(); sfx('research'); openStardustShop();
+  const it=PRESTIGE_SHOP.find(x=>x.id===id);
+  if(it){
+    const lv=plv(id), price=it.costs[lv];
+    if(lv>=it.max||PRESTIGE.stardust<price){toast('Not enough Stardust','wrn');sfx('error');return;}
+    PRESTIGE.stardust-=price; PRESTIGE.owned[id]=lv+1;
+  } else {
+    if(PRESTIGE.owned[id]||PRESTIGE.stardust<cost){toast('Not enough Stardust','wrn');sfx('error');return;}
+    PRESTIGE.stardust-=cost; PRESTIGE.owned[id]=true;
+    if(id.startsWith('theme_'))PRESTIGE.theme=id.slice(6);
+  }
+  savePrestige(); applyTheme(); sfx('research'); if(G&&activeTab)buildDrawer(); openStardustShop();
 }
 function useTheme(id){PRESTIGE.theme=id;savePrestige();applyTheme();openStardustShop();}
 // Prestige effects applied when a run / zone starts
 function applyRememberedTools(){
-  if(!PRESTIGE.owned.cosmic_start)return;
-  for(const[t,n]of [['miner',5],['stone_furnace',5],['burner',2]])G.crafted[t]=(G.crafted[t]||0)+n;
+  for(const[t,n]of toolsFor(plv('cosmic_start')))G.crafted[t]=(G.crafted[t]||0)+n;
+}
+// Echoes: research you start with (zone z's share), by level; levels add up
+function echoTechs(z){
+  const lv=plv('cosmic_research'), out=[], mine=Object.entries(TECHS).filter(([id,t])=>(t.zone||1)===z);
+  if(z===1&&lv>=1)out.push('automation','logistics');
+  if(z===1&&lv>=2)for(const[id]of mine)if(id!==ZONES[1].rocketTech)out.push(id);
+  if(lv>=3)for(const[id,t]of mine)if(/Era 1/.test(t.era))out.push(id);
+  if(lv>=4)for(const[id]of mine)if(id!==ZONES[z].rocketTech&&id!=='singularity')out.push(id);
+  return [...new Set(out)].filter(id=>TECHS[id]);
+}
+function applyEchoes(z){ // grants them (running any research hook, like a map Expansion) and returns how many
+  let n=0;
+  for(const id of echoTechs(z))if(!G.research.done.includes(id)){G.research.done.push(id); n++; if(TECHS[id].onResearch)TECHS[id].onResearch();}
+  return n;
 }
 function applyPrestigeStart(){
-  if(PRESTIGE.owned.cosmic_research)
-    for(const id of ['automation','logistics'])if(!G.research.done.includes(id))G.research.done.push(id);
+  applyEchoes(1);
   applyRememberedTools();
 }
 
@@ -5636,7 +5703,7 @@ function beltDropPos(tile){
   return -1;
 }
 function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
-function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?INS_TIER_SPEED[m.tier||1]||1:1);}
+function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?(INS_TIER_SPEED[m.tier||1]||1)*(1+.1*plv('quick_hands')):1);}
 
 // ── Shared outputs ──
 // Several inserters on one machine's output side (or one chest) take turns: each item goes to the ready
@@ -6040,7 +6107,7 @@ function switchTab(tab){
 // The drawer groups for this zone: zone-only machines show in their zones, empty groups are hidden
 function drawerCats(tab){
   return (DRAWER_DEFS[tab]||[]).filter(c=>(!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)))
-    .map(c=>({...c,items:c.items.filter(i=>!i.zones||i.zones.includes(G.zone))})).filter(c=>c.items.length);
+    .map(c=>({...c,items:c.items.filter(i=>(!i.zones||i.zones.includes(G.zone))&&(!i.pr||plv(i.pr)>0))})).filter(c=>c.items.length);
 }
 function buildDrawer(){
   const tab=activeTab;
@@ -6363,6 +6430,7 @@ function machineRates(m){
     R.notes.push('Only burns while something is using power');
   } else if(m.type==='generator'){R.in.coal=per(16);R.notes.push('Only burns while something is using power');}
   else if(m.type==='combustion_gen'){R.in.refined_fuel=per(32);R.notes.push('Only burns while something is using power');}
+  else if(m.type==='quantum_extractor'){if(m.pick)R.out[m.pick]=per(EXTRACT_TICKS); else R.notes.push('Pick a resource in its panel');}
   else if(m.type==='relief_valve')R.notes.push(`Vents up to ${VALVE_VENT*TICKS_PER_MIN}/min above ${RELIEF_AT}% pressure, wearing out 1 Gasket per ${VALVE_SEAL} vented (1 a minute flat out)`);
   else if(m.type==='scrubber'){R.in.refined_fuel=per(SCRUBBER_FUEL_TICKS);R.notes.push(`Clears ${SCRUBBER_SMOG_MIN} smog/min while it has fuel, power and smog to clean`);}
   else if(m.type==='reactor'){R.in.lum_rod=per(ROD_TICKS);R.notes.push('Needs 2 Heat Sinks with coolant piped in (30 enzymes or brine a minute each), or it overheats');}
@@ -6386,7 +6454,7 @@ function machineRates(m){
   } else if(m.recipe&&RECIPES[m.recipe]){
     const rec=RECIPES[m.recipe];
     const life=def.living?lifeStage(m).mult:1;
-    const c=per(Math.ceil(rec.time/Math.max(.01,ratio*pm.speed*tierMult*modSpeed*smog*life)));
+    const c=per(Math.ceil(rec.time/Math.max(.01,ratio*pm.speed*tierMult*modSpeed*smog*life*labBoost(m))));
     for(const[k,n]of Object.entries(rec.in))R.in[k]=(R.in[k]||0)+n*c;
     for(const[k,n]of Object.entries(rec.fluid||{}))R.in[k]=(R.in[k]||0)+n*c;
     for(const[k,n]of Object.entries(rec.out))R.out[k]=(n+(modYield-1))*c; // a Productivity Module adds a chance of +1
@@ -6870,6 +6938,10 @@ function fluidPanelRows(m,def,rec){
     html+=irow('Venting',jam?(hot?'<span style="color:var(--red)">Needed, but jammed</span>':'Jammed'):hot?'<span style="color:var(--amber)">Yes, up to 60/min</span>':'No (below 80%)');
     html+=`<button class="full-btn teal" style="margin:4px 0" onclick="loadGaskets(${m.id})">LOAD GASKETS (have ${G.inv.gasket||0})</button>
       <div style="font-size:var(--f4);color:var(--text3);line-height:1.8">Each Gasket seals 60 units of venting. An inserter can keep it stocked.</div>`;
+  }
+  if(m.type==='quantum_extractor'){
+    html+=irow('Pulling',m.pick?`${iconHtml(m.pick)} ${ITEMS[m.pick].name}`:'<span style="color:var(--amber)">Pick a resource</span>');
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0">${extractChoices().map(r=>`<button class="mini-btn ${m.pick===r?'teal':''}" style="color:var(--text2)" onclick="setExtract(${m.id},'${r}')">${iconHtml(r)} ${ITEMS[r].name}</button>`).join('')}</div>`;
   }
   if(m.type==='heat_sink'){
     const near=machineNeighbors(m).some(n=>n.type==='reactor');
@@ -7364,6 +7436,9 @@ function transitionToZone(n){
   const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
   const achievements=[...(G.achievements||[])];
+  // Cargo Hold: a share of the inventory comes along (not the old zone's rocket parts)
+  const carry=0.1*plv('cargo_hold'), oldParts=ZONES[G.zone]?.partsCat, cargo={};
+  if(carry)for(const[k,v]of Object.entries(G.inv||{})){const n=Math.floor(v*carry); if(n>0&&ITEMS[k]?.cat!==oldParts)cargo[k]=n;}
   G=defaultState();
   Object.assign(G,dev);
   G.zone=n;
@@ -7379,6 +7454,9 @@ function transitionToZone(n){
   [MAP_W,MAP_H]=zd.mapSize;
   G.map=addFactoryFloor(zd.buildMap()); G.floorY=zd.mapSize[1];
   if(zd.onArrive)zd.onArrive();
+  const echoed=applyEchoes(n);
+  for(const[k,v]of Object.entries(cargo))G.inv[k]=(G.inv[k]||0)+v;
+  const cargoN=Object.values(cargo).reduce((a,b)=>a+b,0);
   saveGame();
   initCanvas(); buildToolbar(); updateHUD(); updateRocketBtn();
   startTick(); updateSpeedBtn();
@@ -7392,6 +7470,8 @@ function transitionToZone(n){
       <div style="font-size:28px;margin-bottom:10px">${zd.icon}</div>
       ${zd.arrivalHtml}${FLOOR_NOTE}
       ${quickStart?'<br><span style="color:var(--teal);font-size:var(--f5)">⭐ Quick Start: +50 of each basic resource salvaged</span>':''}
+      ${cargoN?`<br><span style="color:var(--teal);font-size:var(--f5)">Cargo Hold: ${fmt(cargoN)} items came with you</span>`:''}
+      ${echoed?`<br><span style="color:var(--teal);font-size:var(--f5)">Echoes: ${echoed} research already done</span>`:''}
     </div>`,
     `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
   );
@@ -7457,7 +7537,7 @@ function awardLaunchPerks(zone){
   if(!G.perks.awarded)G.perks.awarded={};
   if(G.perks.awarded[zone])return {pts:0,met:[]};
   const met=zone===G.zone?zoneMilestones(zone).filter(ms=>ms.met).map(ms=>ms.name):[];
-  const pts=(LAUNCH_PERK_POINTS[zone]||0)+met.length+(PRESTIGE.owned.cosmic_perk?1:0);
+  const pts=(LAUNCH_PERK_POINTS[zone]||0)+met.length+plv('cosmic_perk');
   G.perks.awarded[zone]=true;
   G.perks.points=(G.perks.points||0)+pts;
   return {pts,met};
@@ -8169,7 +8249,7 @@ function hazHeatHtml(){
   reactors.forEach((r,i)=>{
     const ns=machineNeighbors(r).filter(n=>n.type==='heat_sink'), wet=ns.filter(n=>n._wet), dry=ns.filter(n=>!n._wet);
     const h=Math.round(r.heat||0), col=r.scram>0||h>80?'var(--red)':h>50?'var(--amber)':'var(--teal)', rods=r.inBuf.lum_rod||0;
-    const cool=REACTOR_COOL+wet.length*SINK_COOL, gain=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1), net=gain-cool;
+    const cool=REACTOR_COOL+wet.length*SINK_COOL, gain=REACTOR_HEAT*(G.perks?.spent?.cool1?0.8:1)*hazardEase(), net=gain-cool;
     let st;
     if(r.scram>0)st=`<span style="color:var(--red)">SCRAM: back in ${Math.ceil(r.scram*TICK_MS/1000)}s</span>`;
     else if(!rods)st=`<span style="color:var(--red)">Out of Luminite Rods</span>`;
@@ -8612,6 +8692,8 @@ function rbSources(id){ // ways to get an item that are not recipes: mining and 
   const out=[], here=rbResHere();
   for(const[res,[item,pump]]of Object.entries(RB_PUMPED))if(item===id&&here.has(res))
     out.push(`${iconHtml(pump)} <b>${MDEFS[pump].name}</b> on a ${res} pool: 60 a minute at T1${res==='oil'?'':', into a pipe network'}`);
+  if(plv('quantum_extractor')&&extractChoices().includes(id))
+    out.push(`${iconHtml('quantum_extractor')} <b>Quantum Extractor</b> anywhere: 30 a minute (Stardust unlock)`);
   if(here.has(id)&&!RB_PUMPED[id])
     out.push(`${iconHtml('miner')} <b>Miner</b> on a ${rbName(id)} deposit: ${id==='radiant_dust'?'30':'60'} a minute at T1. You can also tap the deposit to mine by hand.`);
   return out;
@@ -9580,6 +9662,7 @@ function newGame(){
 
 function startGame(isNew){
   stopTitleScene(); clearUndo();
+  SING_REQS=singReqsFor(PRESTIGE.bangs); // this universe's Singularity (25% bigger per Big Bang)
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
   if(G._coolant){delete G._coolant;setTimeout(()=>toast('New: Heat Sinks need coolant. Pipe enzymes or brine to them, or reactors overheat','wrn'),3000);}
   if(G._gaskets){delete G._gaskets;setTimeout(()=>toast('New: Relief Valves wear out Gaskets. Yours have 4 spares each: tap a valve to see','wrn'),2600);}
