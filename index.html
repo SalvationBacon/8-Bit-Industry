@@ -119,6 +119,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .rb-big{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .rb-big img.ico{width:40px;height:40px}
 .inv-chip{cursor:pointer}
+.sandbox #hudZone{border-color:var(--purple);color:var(--purple)}
 .hres-tap{cursor:pointer;border:1px solid var(--border2);padding:2px 4px;margin:-3px 0}
 .hres-tap:active{background:var(--bg3)}
 .hres-icon{font-size:14px;line-height:1}
@@ -507,13 +508,14 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:320px;margin:0 auto">
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
+      <button class="btn" id="titleSandbox" onclick="openSandboxMenu()" style="width:100%"><span data-ui="build"></span>SANDBOX</button>
       <button class="btn" id="titleStardust" onclick="openStardustShop()" style="width:100%;display:none"><span data-ui="stardust"></span>STARDUST</button>
       <div style="display:flex;gap:8px;width:100%">
         <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none"><span data-ui="install"></span>INSTALL</button>
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.26 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.27 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -697,7 +699,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.26';
+const VER      = '2.0.27';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -1748,7 +1750,8 @@ function zoneTechs(z){return Object.entries(TECHS).filter(([,t])=>(t.zone||1)===
 function syncMapSize(){if(G?.map?.length){MAP_H=G.map.length;MAP_W=G.map[0].length;}}
 function updateZoneTabs(){
   const el=document.getElementById('hudZone');
-  if(el)el.textContent=`Z${G.zone} ${zoneDef().name.toUpperCase()}`;
+  if(el)el.textContent=`${G.sandbox?'SANDBOX ':''}Z${G.zone} ${zoneDef().name.toUpperCase()}`;
+  document.body.classList.toggle('sandbox',!!G.sandbox);
 }
 
 // ═══════════════════════════════════════════════════
@@ -5378,6 +5381,12 @@ let bigBangAt=0;
 function triggerBigBang(){
   if(G.bigBang)return;
   G.bigBang=true;
+  if(G.sandbox){ // the show, but no Stardust
+    bigBangAt=performance.now(); saveGame(); sfx('launch');
+    setTimeout(()=>showModal('💥 BIG BANG',`<div style="text-align:center;font-size:var(--f6);color:var(--text2);line-height:2.5">The Singularity holds, and the sandbox universe collapses to a point.<br><br><span style="color:var(--text3)">Sandbox games earn no Stardust.</span></div>`,
+      `<button class="btn btn-sm" onclick="closeModal();G.bigBang=false;const s=singularity();if(s)s.sustain=0;">KEEP BUILDING</button><button class="btn btn-teal btn-sm" onclick="closeModal();openSandboxMenu(true)">NEW SANDBOX</button>`),1800);
+    return;
+  }
   const ascend=1+0.25*(PRESTIGE.bangs||0), base=achDust(), dust=Math.round(base*ascend); // each universe pays 25% more
   PRESTIGE.stardust+=dust; PRESTIGE.total+=dust; PRESTIGE.bangs++; savePrestige();
   bigBangAt=performance.now();
@@ -6141,7 +6150,7 @@ function switchTab(tab){
 // The drawer groups for this zone: zone-only machines show in their zones, empty groups are hidden
 function drawerCats(tab){
   return (DRAWER_DEFS[tab]||[]).filter(c=>(!c.zones||c.zones.includes(G.zone))&&(!c.unlock||G.research.done.includes(c.unlock)))
-    .map(c=>({...c,items:c.items.filter(i=>(!i.zones||i.zones.includes(G.zone))&&(!i.pr||plv(i.pr)>0))})).filter(c=>c.items.length);
+    .map(c=>({...c,items:c.items.filter(i=>(!i.zones||i.zones.includes(G.zone))&&(!i.pr||plv(i.pr)>0||G.sandbox))})).filter(c=>c.items.length);
 }
 function buildDrawer(){
   const tab=activeTab;
@@ -7556,7 +7565,7 @@ function transitionToZone(n){
   const zd=ZONES[n]; if(!zd)return;
   const researchDone=[...G.research.done];
   const sfxOn=G.sfx; const musicOn=G.music; const musicVol=G.musicVol;
-  const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft};
+  const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft,sandbox:G.sandbox};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
   const achievements=[...(G.achievements||[])];
   // Cargo Hold: a share of the inventory comes along (not the old zone's rocket parts)
@@ -7569,7 +7578,7 @@ function transitionToZone(n){
   G.smog=0;
   G.sfx=sfxOn; G.music=musicOn; G.musicVol=musicVol;
   G.tutorial={step:-1};                     // Zone 1 tutorial never repeats
-  G.zoneTut=TUTORIALS[n]?0:undefined;      // zone tutorial
+  G.zoneTut=TUTORIALS[n]&&!G.sandbox?0:undefined; // zone tutorial (none in a sandbox)
   G.research.done=researchDone;
   G.perks=perks;
   const quickStart=applyQuickStart();
@@ -8561,6 +8570,7 @@ function achDust(){
 }
 function checkAchievements(){
   if(!G.achievements)G.achievements=[];
+  if(G.sandbox)return; // nothing to earn in a sandbox
   const earned=new Set(G.achievements);
   const machines=Object.values(G.machines);
   const totalOre=(G.inv.iron_ore||0)+(G.inv.copper_ore||0)+(G.inv.coal||0)+(G.inv.stone||0)+G.stats.taps;
@@ -9222,7 +9232,7 @@ const MENU_ROUTES={
   achievements:()=>showPanel('achieve'), recipes:()=>showPanel('recipes'), blueprints:()=>showPanel('blueprint'),
   dev:()=>showPanel('dev'), devlock:()=>promptDevUnlock(),
   backup:()=>openBackup(), install:()=>installApp(),
-  stardust:()=>openStardustShop(), settings:()=>openSettings(), saves:()=>openSaves(),
+  stardust:()=>openStardustShop(), settings:()=>openSettings(), saves:()=>openSaves(), sandbox:()=>openSandboxMenu(),
 };
 function openBigMenu(section){
   if(section&&MENU_ROUTES[section]){closeModal();MENU_ROUTES[section]();return;}
@@ -9239,6 +9249,7 @@ function openBigMenu(section){
     ['saves','💾','SAVES',''],
     ['backup','🛟','BACKUP',''],
     ...(canInstall()?[['install','📲','INSTALL','']]:[]),
+    ...(G.sandbox?[['sandbox','🏗️','SANDBOX','']]:[]),
     G.devMode?['dev','🛠','DEV','ON']:['devlock','🔒','DEV',''],
   ];
   const body=`<div class="menu-zone">
@@ -9424,6 +9435,7 @@ async function installApp(){
 }
 
 function saveToSlot(s){
+  if(G.sandbox){toast('A sandbox keeps its own save; slots are for your real game','wrn');sfx('error');return;}
   try{
     G._savedAt=Date.now();
     localStorage.setItem(`ebi_save_slot${s}`,serializeG());
@@ -9619,7 +9631,7 @@ function devCompleteZone(){
 function devReset(){
   showModal('RESET SAVE?',
     '<div style="font-size:var(--f6);color:var(--red)">This will wipe everything and start a new game.</div>',
-    `<button class="btn btn-sm btn-red" onclick="noSave=true;localStorage.removeItem('${SAVE_KEY}');location.reload()">RESET</button>
+    `<button class="btn btn-sm btn-red" onclick="noSave=true;localStorage.removeItem('${saveKey()}');location.reload()">RESET</button>
      <button class="btn btn-sm" onclick="closeModal()">CANCEL</button>`
   );
 }
@@ -9681,7 +9693,7 @@ function quitToTitle(){
   rafId=null; tickId=null;
   document.getElementById('sGame').classList.add('hidden');
   document.getElementById('sTitle').classList.remove('hidden');
-  buildTitleSlots(); startTitleScene();
+  buildTitleSlots(); startTitleScene(); updateSandboxBtn();
   setTimeout(()=>{if(onTitle())titleMusic();},600); // after the game track fades out
 }
 
@@ -9755,15 +9767,16 @@ function migrateSave(){
 // noSave is set while a reset or a backup import reloads the page,
 // so the save-on-hide can't write the old game back over it
 let noSave=false;
+const saveKey=()=>G&&G.sandbox?SANDBOX_KEY:SAVE_KEY; // a sandbox never writes over the real game
 function saveGame(){
   if(noSave||!G)return;
-  try{localStorage.setItem(SAVE_KEY,serializeG());}catch(e){}
+  try{localStorage.setItem(saveKey(),serializeG());}catch(e){}
 }
 window.addEventListener('pagehide',()=>{if(G&&tickId)saveGame();});
-function continueGame(){
+function continueGame(key){
   try{
-    const raw=localStorage.getItem(SAVE_KEY);
-    if(!raw){newGame();return;}
+    const raw=localStorage.getItem(key||SAVE_KEY);
+    if(!raw){if(key)startSandbox(1);else newGame();return;}
     G=JSON.parse(raw);
     if(!G||!G.ver){newGame();return;}
     if(!G.crafted)G.crafted={};
@@ -9777,6 +9790,49 @@ function continueGame(){
     startGame(false);
   }catch(e){newGame();return;}
   backfillLaunchPerks();
+}
+
+// ═══ SANDBOX (v2.0.27) ═══
+// Unlocks after the first Big Bang (PRESTIGE.bangs). Pick any zone: all research done, building and crafting free
+// (the dev free-build and free-craft switches), the Stardust-only buildings available, no tutorials, and the dev
+// panel for resources and speed. It keeps its own save (SANDBOX_KEY), never touches the real game, and earns no
+// achievements or Stardust. From the title screen, or ☰ → SANDBOX inside one to switch zone.
+const SANDBOX_KEY='ebi_sandbox';
+const sandboxUnlocked=()=>(PRESTIGE.bangs||0)>=1;
+function updateSandboxBtn(){
+  const b=document.getElementById('titleSandbox'); if(!b)return;
+  b.classList.toggle('dim',!sandboxUnlocked());
+  b.innerHTML=`${uiIcon('build')}SANDBOX${sandboxUnlocked()?'':' <span style="font-size:var(--f4)">(after your first Big Bang)</span>'}`;
+}
+function openSandboxMenu(fresh){
+  if(!sandboxUnlocked()){toast('Sandbox unlocks after your first Big Bang','wrn');sfx('error');return;}
+  const inSandbox=!!(G&&G.sandbox&&!onTitle()), raw=localStorage.getItem(SANDBOX_KEY);
+  let saved=null; try{saved=raw?JSON.parse(raw):null;}catch(e){}
+  const zones=[1,2,3,4,5].map(z=>`<button class="full-btn" style="margin-bottom:4px" onclick="${inSandbox?`sandboxZone(${z})`:`startSandbox(${z})`}">${uiIcon('goal')} ZONE ${z} · ${ZONES[z].name.toUpperCase()}</button>`).join('');
+  showModal('🏗️ SANDBOX',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:10px">Everything researched, building and crafting free, Stardust buildings included. A separate save: your real game is never touched. Sandboxes earn no achievements or Stardust.</div>
+    ${!inSandbox&&saved&&!fresh?`<button class="full-btn teal" style="margin-bottom:10px" onclick="closeModal();continueGame(SANDBOX_KEY)">▶ CONTINUE SANDBOX · ZONE ${saved.zone||1}</button>`:''}
+    <span class="sec-label">${inSandbox?'SWITCH TO ZONE':saved?'NEW SANDBOX (replaces the old one)':'START IN ZONE'}</span>${zones}`,
+    inSandbox?backToMenu:`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`);
+}
+function sandboxSetup(){ // everything unlocked and free
+  G.sandbox=true; G.devFreeBuild=true; G.devFreeCraft=true; G.devMode=true;
+  G.research.done=[...new Set([...G.research.done,...Object.keys(TECHS)])];
+  G.tutorial={step:-1}; G.zoneTut=undefined;
+}
+function sandboxExpand(){ // Zone 5's Expansions are researched, so grow the map like they would
+  if(G.zone===5&&MAP_W===ZONES[5].mapSize[0])for(const id of ['expansion_1','expansion_2'])TECHS[id].onResearch();
+}
+function startSandbox(z){
+  closeModal(); if(openPanel)closePanel(openPanel);
+  G=defaultState(); sandboxSetup();
+  startGame(false); // no tutorial or arrival message
+  if(z>1)sandboxZone(z); else saveGame();
+  toast('Sandbox: everything is unlocked and free','ok');
+}
+function sandboxZone(z){
+  closeModal(); if(openPanel)closePanel(openPanel);
+  G.perks.awarded=G.perks.awarded||{};
+  transitionToZone(z); sandboxSetup(); sandboxExpand(); updateZoneTabs(); buildToolbar(); saveGame();
 }
 
 // ═══════════════════════════════════════════════════
@@ -9849,7 +9905,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
   document.querySelectorAll('[data-ui]').forEach(e=>{e.innerHTML=uiIcon(e.dataset.ui);});
   watchEmoji();
-  buildTitleSlots(); startTitleScene(); updateInstallBtn(); tryTitleAutoplay();
+  buildTitleSlots(); startTitleScene(); updateInstallBtn(); tryTitleAutoplay(); updateSandboxBtn();
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
   document.addEventListener('contextmenu',e=>e.preventDefault());

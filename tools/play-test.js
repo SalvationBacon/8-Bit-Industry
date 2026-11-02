@@ -692,6 +692,23 @@ const r=await p.evaluate(async()=>{
     const migrated=MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&MAP_H===G.floorY+FLOOR_ROWS+2*EXPAND_H&&G.map.every(r=>r.length===MAP_W);
     PRESTIGE=JSON.parse(saved); savePrestige();
     ok('stardust_upgrades',oldOwned&&lv&&echo&&hidden&&shown&&unpowered&&Math.abs(qn-30)<=1&&sz&&arrive&&paid===want&&migrated,{oldOwned,lv,echo,hidden,shown,unpowered,qn,sz,arrive,paid,want,migrated,w:MAP_W,h:MAP_H}); }
+  // ── Sandbox: locked until the first Big Bang; any zone, everything researched and free, its own save, no rewards
+  { const saved=JSON.stringify(PRESTIGE), realSave=localStorage.getItem(SAVE_KEY);
+    PRESTIGE.bangs=0; const locked=!sandboxUnlocked(); openSandboxMenu(); closeModal();
+    PRESTIGE.bangs=1; localStorage.removeItem(SANDBOX_KEY);
+    startSandbox(3); closeModal(); clearInterval(tickId);
+    const z3=G.zone===3&&G.sandbox&&G.devFreeBuild&&G.devFreeCraft&&Object.keys(TECHS).every(t=>G.research.done.includes(t))&&G.zoneTut===undefined;
+    const quantum=drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_extractor'))&&drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_chest'));
+    saveGame(); const own=JSON.parse(localStorage.getItem(SANDBOX_KEY)||'{}').zone===3&&localStorage.getItem(SAVE_KEY)===realSave;
+    G.stats.placed=999; G.stats.launched=5; const a0=G.achievements.length; checkAchievements(); const noAch=G.achievements.length===a0;
+    sandboxZone(5); closeModal(); clearInterval(tickId);
+    const z5=G.zone===5&&G.sandbox&&MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&G.research.done.includes('singularity');
+    const d0=PRESTIGE.stardust, b0=PRESTIGE.bangs; G.bigBang=false; triggerBigBang(); const noDust=PRESTIGE.stardust===d0&&PRESTIGE.bangs===b0;
+    G.bigBang=false; saveGame(); G=null; continueGame(SANDBOX_KEY); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const back=G.sandbox&&G.zone===5&&localStorage.getItem(SAVE_KEY)===realSave;
+    startSandbox(1); closeModal(); clearInterval(tickId); const z1=G.zone===1&&G.tutorial.step===-1&&G.sandbox;
+    localStorage.removeItem(SANDBOX_KEY); PRESTIGE=JSON.parse(saved); savePrestige();
+    ok('sandbox_mode',locked&&z3&&quantum&&own&&noAch&&z5&&noDust&&back&&z1,{locked,z3,quantum,own,noAch,z5,noDust,back,z1,w:MAP_W}); }
   return R;
 });
 for(const[k,v]of Object.entries(r))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);

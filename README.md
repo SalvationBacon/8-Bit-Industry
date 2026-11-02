@@ -44,6 +44,9 @@ Each Big Bang earns Stardust for permanent upgrades: levelled boosts (yield, spe
 ## Blueprints
 Blueprints are shared by every save, zone and universe on a device, and travel in backup codes. The Blueprints panel can export them all, or share one, as a code or file, and import codes from anyone.
 
+## Sandbox
+After your first Big Bang, SANDBOX on the title screen opens a creative mode: pick any zone, with every tech researched, building and crafting free and the Stardust buildings available. It keeps its own save, never touches your real game, and earns no achievements or Stardust. Switch zone from ☰ → SANDBOX.
+
 ## Recipe Book
 ☰ menu → Recipes lists every recipe and resource in your zone, with a search box. Tap any item icon in a menu to see how it is made and what uses it.
 
@@ -54,4 +57,4 @@ Blueprints are shared by every save, zone and universe on a device, and travel i
 ☰ menu → Settings: FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.26: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.27: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
