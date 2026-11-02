@@ -513,7 +513,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.24 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.25 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -697,7 +697,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.24';
+const VER      = '2.0.25';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -1366,7 +1366,7 @@ const MDEFS = {
   separator:      {name:'Separator',        icon:'🌀', size:[2,2], power:16,  cost:{iron_plate:14,circuit:4,steel_plate:4},          unlock:'pressure_control', recipes:['z3_separate'], fluidPort:true, desc:'Separates rare earth ore using brine'},
   rod_press:      {name:'Rod Press',        icon:'🧰', size:[2,2], power:24,  cost:{steel_plate:10,circuit:6,magnet:4},              unlock:'lattice_fuel', recipes:['z3_rod'], fluidPort:true, desc:'Presses lattice fuel rods. Needs 60%+ pipe pressure'},
   quantum_chest:  {name:'Quantum Storage', icon:'🫙', size:[1,1], power:0, cost:{steel_plate:6,circuit:6}, unlock:null, prestige:'quantum_storage', recipes:[], desc:'A chest that sends everything put into it (by belt or inserter) straight to your inventory. A Stardust unlock'},
-  quantum_extractor:{name:'Quantum Extractor',icon:'🌠', size:[2,2], power:0, cost:{steel_plate:10,circuit:10,iron_gear:10}, unlock:null, prestige:'quantum_extractor', recipes:[], desc:'Pulls a raw resource of this zone out of thin air: 30 a minute, anywhere, no power. A Stardust unlock'},
+  quantum_extractor:{name:'Quantum Extractor',icon:'🌠', size:[2,2], power:400, cost:{steel_plate:10,circuit:10,iron_gear:10}, unlock:null, prestige:'quantum_extractor', recipes:[], desc:'Pulls a raw resource of this zone out of thin air: 30 a minute, on any open ground, for 400 kW. A Stardust unlock'},
   lumen_panel:    {name:'Lumen Panel',      icon:'💡', size:[2,2], power:-40, cost:{silicon:6,steel_plate:4,copper_wire:6},          unlock:'crystal_refining', recipes:[], noItems:true, desc:'40kW from the cave glow, nothing while the glow tide is dim'},
   accumulator:    {name:'Accumulator',      icon:'🔋', size:[1,1], power:0,   cost:{battery:4,steel_plate:2,circuit:2},              unlock:'energy_storage', recipes:[], noItems:true, desc:'Stores surplus power and releases it during shortfalls'},
   // Zone 4 machines, living:true machines grow/decay (see LIVING), fed Nutrient Paste
@@ -1622,7 +1622,7 @@ const TECHS = {
     name:'Expansion I', icon:'🗺️', era:'The Singularity · Era 1',
     cost:{sci_red:120,sci_scar:60,sci_deep:60,sci_bloom:60}, req:[],
     desc:'The merged world grows: +32 columns, +16 rows of new territory',
-    zone:5, onResearch:()=>expandMap(32,16),
+    zone:5, onResearch:()=>expandMap(EXPAND_W,EXPAND_H),
   },
   void_theory: {
     name:'Void Theory', icon:'📕', era:'The Singularity · Era 1',
@@ -1634,7 +1634,7 @@ const TECHS = {
     name:'Expansion II', icon:'🗺️', era:'The Singularity · Era 2',
     cost:{sci_void:48}, req:['expansion_1'],
     desc:'The world grows again: +32 columns, +16 rows',
-    zone:5, onResearch:()=>expandMap(32,16),
+    zone:5, onResearch:()=>expandMap(EXPAND_W,EXPAND_H),
   },
   singularity: {
     name:'The Singularity', icon:'🌌', era:'The Singularity · Era 2',
@@ -1926,7 +1926,7 @@ function addFactoryFloor(map){
 // Saves from v2.0.0 to v2.0.2 had a 64-row floor: drop the empty rows past the new size (never a row in use)
 function trimFactoryFloor(){
   if(!G.map||G.floorY===undefined)return;
-  const grown=G.zone===5?16*['expansion_1','expansion_2'].filter(t=>G.research?.done?.includes(t)).length:0;
+  const grown=G.zone===5?EXPAND_H*expansionsDone():0;
   const want=G.floorY+FLOOR_ROWS+grown;
   while(G.map.length>want&&G.map[G.map.length-1].every(t=>t.mid===null&&!t.res&&!t.items.length))G.map.pop();
   MAP_H=G.map.length;
@@ -1946,6 +1946,10 @@ function tidyBeltItems(){
   for(const m of Object.values(G.machines||{}))if(m.type==='splitter')for(const[k,n]of Object.entries(m.inBuf||{}))if(n>0){G.inv[k]=(G.inv[k]||0)+n;back+=n;m.inBuf[k]=0;}
   if(back)G._tidied=back;
 }
+// Zone 5 Expansions (v2.0.25): each adds 64 columns of ore fields and 32 rows of floor (was 32 and 16), so the map goes
+// 128×80 → 192×112 → 256×144 (plus the floor): room for a Singularity-sized factory
+const EXPAND_W=64, EXPAND_H=32;
+function expansionsDone(){return ['expansion_1','expansion_2'].filter(t=>G.research?.done?.includes(t)).length;}
 function expandMap(dw,dh){
   const oldW=MAP_W, oldH=MAP_H, nw=oldW+dw, nh=oldH+dh;
   // fresh deposits only in the new columns of the ore fields; the floor stays clear (new rows are more floor)
@@ -2313,7 +2317,7 @@ function machineWorking(m){
   if(m.type==='reactor')return (m.inBuf.lum_rod||0)>0&&!(m.scram>0);
   if(m.type==='lumen_panel')return glowBright();
   if(m.type==='quantum_chest')return G.tick-(m._qt||-99)<8;
-  if(m.type==='quantum_extractor')return !!m.pick&&Object.values(m.outBuf).reduce((a,b)=>a+b,0)<50;
+  if(m.type==='quantum_extractor')return !!m.pick&&powerRatio()>0&&Object.values(m.outBuf).reduce((a,b)=>a+b,0)<50;
   if(m.type==='miner'||m.type==='oil_pump'||def.pumps)return !!m.mineRes&&powerRatio()>0;
   if(m.type==='scrubber')return (m.inBuf.refined_fuel||0)>0&&(G.smog||0)>0;
   if(m.type==='fluid_tank')return (m.fluid?.amt||0)>0.5;
@@ -3080,7 +3084,7 @@ const MACH_COL={miner:'#f5a623',stone_furnace:'#dd6b20',blast_furnace:'#e53935',
 // Floor and still deposits never change after the map is built, so they are drawn
 // once into 16×16-tile canvases (16px per tile) and blitted as a few big images per
 // frame instead of thousands of tiles. Only animated pools are drawn per tile.
-const CHUNK=16;
+const CHUNK=16, CHUNK_MAX=96; // at most 96 baked 256×256 chunks (about 25 MB)
 const ANIM_RES=new Set(['oil','brine','enzymes','luminite','radiant_dust']);
 const chunkCache={key:'',map:null,c:new Map()};
 function invalidateChunks(){chunkCache.c.clear();chunkCache.key='';}
@@ -3089,7 +3093,8 @@ function groundChunk(cx,cy){
   if(chunkCache.map!==G.map||chunkCache.key!==key){chunkCache.c.clear();chunkCache.map=G.map;chunkCache.key=key;}
   const id=cy*1000+cx;
   let ch=chunkCache.c.get(id);
-  if(ch)return ch;
+  if(ch){chunkCache.c.delete(id);chunkCache.c.set(id,ch);return ch;} // most recently used last
+  while(chunkCache.c.size>=CHUNK_MAX)chunkCache.c.delete(chunkCache.c.keys().next().value); // a big Zone 5 map won't fill memory
   const cv=document.createElement('canvas'); cv.width=cv.height=CHUNK*16;
   const g=cv.getContext('2d'), anim=[];
   for(let y=0;y<CHUNK;y++)for(let x=0;x<CHUNK;x++){
@@ -4955,8 +4960,8 @@ function runMachine(m){
     if(n){m.inBuf={}; m.produced+=n; m._qt=G.tick;}
     return;
   }
-  if(m.type==='quantum_extractor'){ // 1 of its chosen resource every 8 ticks (30 a minute), no power, no deposit
-    if(!m.pick)return;
+  if(m.type==='quantum_extractor'){ // 1 of its chosen resource every 8 ticks (30 a minute) while powered, no deposit
+    if(!m.pick||powerRatio()===0)return; // it draws 400 kW
     if(++m.prog>=EXTRACT_TICKS){
       if(Object.values(m.outBuf).reduce((a,b)=>a+b,0)>=50){m.prog=EXTRACT_TICKS;return;}
       m.prog=0; m.outBuf[m.pick]=(m.outBuf[m.pick]||0)+1; m.produced++; recordOutput(m,1);
@@ -5341,7 +5346,7 @@ const PRESTIGE_SHOP=[
   {id:'stable_reality', cat:'EVERY RUN',  name:'Stable Reality',   max:3, costs:[10,30,70],      fx:l=>`Every hazard ${15*l}% weaker: less smog, tougher pipes, slower decay, cooler reactors`},
   {id:'cosmic_research',cat:'UNIQUE',     name:'Echoes',           max:4, costs:[10,30,70,150],  fx:l=>['Start each run with Basic Automation and Advanced Logistics','Start each run with all of Ironfield\'s research except Rocket Science','Also arrive in every zone with its first era already researched','Arrive in every zone with everything researched except its launch tech'][l-1]},
   {id:'quantum_storage',cat:'UNIQUE',   name:'Quantum Storage',  max:1, costs:[30],            fx:()=>'A new building: a chest that sends everything put into it straight to your inventory, so you never collect by hand'},
-  {id:'quantum_extractor',cat:'UNIQUE',   name:'Quantum Extractor',max:1, costs:[40],            fx:()=>'A new building: pulls any raw resource of the zone out of thin air, 30 a minute, placed anywhere, no power'},
+  {id:'quantum_extractor',cat:'UNIQUE',   name:'Quantum Extractor',max:1, costs:[40],            fx:()=>'A new building: pulls any raw resource of the zone out of thin air, 30 a minute, on any open ground (draws 400 kW)'},
 ];
 function plv(id){const v=PRESTIGE.owned[id]; return v===true?1:(v|0);}
 const TOOLS_BY_LEVEL=[[['miner',5],['stone_furnace',5],['burner',2]],[['inserter',10],['belt',40],['assembler',2]],[['generator',2],['lab',1],['chest',2]]];
@@ -8728,7 +8733,7 @@ function rbSources(id){ // ways to get an item that are not recipes: mining and 
   for(const[res,[item,pump]]of Object.entries(RB_PUMPED))if(item===id&&here.has(res))
     out.push(`${iconHtml(pump)} <b>${MDEFS[pump].name}</b> on a ${res} pool: 60 a minute at T1${res==='oil'?'':', into a pipe network'}`);
   if(plv('quantum_extractor')&&extractChoices().includes(id))
-    out.push(`${iconHtml('quantum_extractor')} <b>Quantum Extractor</b> anywhere: 30 a minute (Stardust unlock)`);
+    out.push(`${iconHtml('quantum_extractor')} <b>Quantum Extractor</b> on open ground: 30 a minute for 400 kW (Stardust unlock)`);
   if(here.has(id)&&!RB_PUMPED[id])
     out.push(`${iconHtml('miner')} <b>Miner</b> on a ${rbName(id)} deposit: ${id==='radiant_dust'?'30':'60'} a minute at T1. You can also tap the deposit to mine by hand.`);
   return out;
@@ -9648,6 +9653,11 @@ function migrateSave(){
   if(G.map&&G.map.packed)G.map=unpackMap(G.map,G.machines||{});
   if(G.map&&G.floorY===undefined){G.floorY=G.map.length;addFactoryFloor(G.map);G._newFloor=true;} // saves from before v2.0.0
   trimFactoryFloor();
+  if(G.zone===5&&G.map&&G.floorY!==undefined){ // a Zone 5 save expanded by the old, smaller step gets the rest of the room
+    MAP_W=G.map[0].length; MAP_H=G.map.length;
+    const n=expansionsDone(), w=ZONES[5].mapSize[0]+EXPAND_W*n, h=G.floorY+FLOOR_ROWS+EXPAND_H*n;
+    if(n&&MAP_W>ZONES[5].mapSize[0]&&(MAP_W<w||MAP_H<h))expandMap(Math.max(0,w-MAP_W),Math.max(0,h-MAP_H)); // only maps that really grew
+  }
   tidyBeltItems();
   // version-gated notices: G.ver is the build that last loaded this save (it used to stay at the build that started it)
   const older=v=>{const a=String(G.ver||'0').split('.').map(Number), b=v.split('.').map(Number); for(let i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)<(b[i]||0);} return false;};

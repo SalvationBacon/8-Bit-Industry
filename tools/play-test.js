@@ -661,17 +661,22 @@ const r=await p.evaluate(async()=>{
     // the Quantum Extractor: only in the build menu once bought; pulls 30 a minute
     const hidden=!drawerCats('build').some(c=>c.items.some(i=>i.id==='quantum_extractor'));
     PRESTIGE.owned.quantum_extractor=1; const shown=drawerCats('build').find(c=>c.label==='Mining').items.some(i=>i.id==='quantum_extractor');
-    reset(); G.zone=1; const qx=put('quantum_extractor',40,G.floorY+4); setExtract(qx.id,'iron_ore'); const q0=qx.produced; run(240); const qn=qx.produced-q0;
+    reset(); G.zone=1; const qx=put('quantum_extractor',40,G.floorY+4); setExtract(qx.id,'iron_ore'); run(40); const unpowered=qx.produced===0;   // 400 kW: nothing without power
+    for(let k=0;k<7;k++)power(2+k*3,G.floorY+10); const q0=qx.produced; run(240); const qn=qx.produced-q0;
     // Singularity sizes per universe
     const sz=singReqsFor(0).stellar_casing===1000&&singReqsFor(0).grav_lens===500&&singReqsFor(2).grav_lens===750;
     // Echoes and the Cargo Hold on arrival: Zone 5 starts with its Expansions done (map grown) and a share of the inventory
     PRESTIGE.owned.cargo_hold=3; G.inv={iron_plate:1000};
     transitionToZone(5); closeModal(); clearInterval(tickId);
-    const arrive=G.research.done.includes('expansion_2')&&!G.research.done.includes('singularity')&&MAP_W===ZONES[5].mapSize[0]+64&&(G.inv.iron_plate||0)>=300;
+    const arrive=G.research.done.includes('expansion_2')&&!G.research.done.includes('singularity')&&MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&MAP_H===G.floorY+FLOOR_ROWS+2*EXPAND_H&&(G.inv.iron_plate||0)>=300;
     // ascension: Universe 3 pays 1.5x
     PRESTIGE.bangs=2; const d0=PRESTIGE.stardust, want=Math.round(achDust()*1.5); G.bigBang=false; triggerBigBang(); const paid=PRESTIGE.stardust-d0;
+    // a Zone 5 save that expanded by the old step (32 columns, 16 rows each) is topped up to the new size on load
+    G.bigBang=false; G.map=G.map.slice(0,G.floorY+FLOOR_ROWS+32).map(r=>r.slice(0,ZONES[5].mapSize[0]+64)); MAP_W=G.map[0].length; MAP_H=G.map.length;
+    saveGame(); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const migrated=MAP_W===ZONES[5].mapSize[0]+2*EXPAND_W&&MAP_H===G.floorY+FLOOR_ROWS+2*EXPAND_H&&G.map.every(r=>r.length===MAP_W);
     PRESTIGE=JSON.parse(saved); savePrestige();
-    ok('stardust_upgrades',oldOwned&&lv&&echo&&hidden&&shown&&Math.abs(qn-30)<=1&&sz&&arrive&&paid===want,{oldOwned,lv,echo,hidden,shown,qn,sz,arrive,paid,want}); }
+    ok('stardust_upgrades',oldOwned&&lv&&echo&&hidden&&shown&&unpowered&&Math.abs(qn-30)<=1&&sz&&arrive&&paid===want&&migrated,{oldOwned,lv,echo,hidden,shown,unpowered,qn,sz,arrive,paid,want,migrated,w:MAP_W,h:MAP_H}); }
   return R;
 });
 for(const[k,v]of Object.entries(r))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);
