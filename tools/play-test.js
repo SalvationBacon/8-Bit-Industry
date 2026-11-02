@@ -732,6 +732,33 @@ const r=await p.evaluate(async()=>{
     openSettings(); const st=document.getElementById('mBody')?.innerText||''; closeModal();
     if(savedT)localStorage.setItem(TIMES_KEY,savedT);else localStorage.removeItem(TIMES_KEY); TIMES=loadTimes(); PREFS.timer=savedPref; savePrefs(); G.zone=z0;
     ok('run_timer',hidden&&shown&&frozen&&bests&&noBest&&carried&&runBest&&inBackup&&/TIMER/.test(st),{hidden,shown,frozen,t1,bests,noBest,carried,runBest,inBackup,settings:/TIMER/.test(st)}); }
+  // ── Every machine panel has the same action bar; every build keeps going until CANCEL; paused inserters stop
+  { reset(); power(2,2); const y=G.floorY+6; let x=8; const bad=[];
+    for(const t of Object.keys(MDEFS)){ if(MDEFS[t].stub)continue;
+      const m=mkMachine(t,x,y,0); G.machines[m.id]=m; x+=12; inspectId=m.id; renderMachPanel();
+      const btns=[...document.querySelectorAll('#pMachBody .mach-actions .ma-btn')].map(b=>b.innerText.replace(/\s+/g,' ').trim());
+      const body=document.getElementById('pMachBody').innerText, demolish=(body.match(/DEMOLISH/g)||[]).length;
+      const order=btns.length===4&&/ROTATE/.test(btns[0])&&/MOVE/.test(btns[1])&&/PAUSE|RESUME/.test(btns[2])&&/DEMOLISH/.test(btns[3]);
+      if(!order||demolish!==1)bad.push(t);
+      delete G.machines[m.id]; }
+    inspectId=null;
+    // the bar's ROTATE works on an assembler (it used to have none) and is dimmed on a pipe
+    reset(); power(2,2); const asm=put('assembler',20,y); inspectId=asm.id; renderMachPanel(); document.querySelector('#pMachBody .ma-btn').click(); const turned=asm.dir===1;
+    const pp=put('pipe',30,y); inspectId=pp.id; renderMachPanel(); const pipeDim=document.querySelector('#pMachBody .ma-btn').classList.contains('dim'); inspectId=null;
+    // keep building: two placements, a blocked one and a short one all keep the tool
+    reset(); power(2,2); G.devFreeBuild=false; G.inv.iron_plate=1000; G.inv.iron_gear=1000; G.inv.circuit=1000; G.inv.copper_wire=1000;
+    setTool('stone_furnace'); G.inv.stone=10; placeDir=0; tryPlace('stone_furnace',20,y); tryPlace('stone_furnace',22,y); const two=activeTool==='stone_furnace';
+    tryPlace('stone_furnace',20,y); const blocked=activeTool==='stone_furnace'; G.inv.stone=0; tryPlace('stone_furnace',24,y); const short=activeTool==='stone_furnace';
+    cancelBuild(); const cancelled=activeTool==='select'; G.devFreeBuild=true;
+    // a blueprint stays in hand after a paste
+    blueprintState={mode:'holding',data:[{type:'chest',rx:0,ry:0,dir:0}]}; pasteBlueprintAt(blueprintState.data,40,y); const held=blueprintState.mode==='holding';
+    pasteBlueprintAt(blueprintState.data,42,y); const chests=Object.values(G.machines).filter(m=>m.type==='chest').length===2; ghostCancel();
+    // a paused inserter moves nothing
+    reset(); power(2,2); const c1=put('chest',10,y); c1.chestInv.coal=20; const ins=put('inserter',11,y,0); const c2=put('chest',12,y);
+    toggleM(ins.id); run(80); const stopped=!c2.chestInv.coal; toggleM(ins.id); run(80); const resumed=(c2.chestInv.coal||0)>0;
+    const belt=put('belt',14,y); toggleM(belt.id); const beltStays=belt.active;
+    ok('machine_actions_and_building',!bad.length&&turned&&pipeDim&&two&&blocked&&short&&cancelled&&held&&chests&&stopped&&resumed&&beltStays,
+      {bad,turned,pipeDim,two,blocked,short,cancelled,held,chests,stopped,resumed,beltStays}); }
   // ── Stats graphs: machine output per item per 10s and per minute, power made and used, drawn in the Stats panel
   { reset(); G.prodLog=null; G.tick=0; power(2,2); res(10,G.floorY+4,1,1,'iron_ore'); const mi=put('miner',10,G.floorY+4); put('chest',11,G.floorY+4);
     G.inv.iron_ore=0; run(480);

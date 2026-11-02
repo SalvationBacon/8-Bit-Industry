@@ -216,6 +216,13 @@ button .uico{vertical-align:-3px}
 .inv-item .iv{font-size:var(--f6);color:var(--amber)}
 .inv-item .in{font-size:var(--f5);color:var(--text2);text-align:center;line-height:1.4}
 .craft-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:5px}
+.mach-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}
+.ma-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:52px;padding:6px 2px;font-family:var(--font);font-size:var(--f4);line-height:1.3;text-align:center;background:transparent;border:1px solid var(--border2);color:var(--text2);cursor:pointer}
+.ma-btn .ma-ic{font-size:var(--f8);line-height:1}
+.ma-btn.teal{border-color:var(--teal);color:var(--teal)}.ma-btn.amber{border-color:var(--amber);color:var(--amber)}.ma-btn.red{border-color:var(--red);color:var(--red)}
+.ma-btn.dim{border-color:var(--border);color:var(--text3)}
+.ma-btn.dim .ma-ic{opacity:.35}
+.ma-btn:active{transform:translateY(1px)}
 .stat-cv{display:block;width:100%;height:130px;touch-action:pan-y;cursor:crosshair}
 .stat-read{min-height:22px;font-size:var(--f4);color:var(--text2);line-height:2;margin:4px 0}
 .stat-rv{white-space:nowrap;margin-right:8px}
@@ -528,7 +535,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
     </div>
-    <p class="v-num">v2.0.29 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.30 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -712,7 +719,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.29';
+const VER      = '2.0.30';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -4114,7 +4121,6 @@ const ripples=[];
 // ═══════════════════════════════════════════════════
 let activeTool='select';
 let placeDir=D_RIGHT;
-const LOGISTICS_TOOLS=new Set(['belt','inserter','tunnel','splitter','chest']);
 let hov={x:-1,y:-1};
 let drag={on:false,sx:0,sy:0,cx:0,cy:0,moved:false};
 let pinch={on:false,d:0,mx:0,my:0,vel:0,lastT:0};
@@ -4811,7 +4817,7 @@ function tryPlace(type,tx,ty){
   if(def.unlock&&!G.research.done.includes(def.unlock)){
     toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn'); sfx('error'); hudSelect(); return;
   }
-  if(!canPlace(type,tx,ty)){if(onWall(type,tx,ty))wallHint();else toast('Cannot place here','bad'); sfx('error'); hudSelect(); return;}
+  if(!canPlace(type,tx,ty)){if(onWall(type,tx,ty))wallHint();else toast('Cannot place here','bad'); sfx('error'); return;}
 
   // Power warning, confirm if this machine will exceed available power
   if(def.power>0&&!G.devFreeBuild){
@@ -4840,7 +4846,7 @@ function tryPlace(type,tx,ty){
     G.crafted[type]--;
   } else {
     for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn'); sfx('error'); flashDrawerItem(); hudSelect(); return;}
+      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn'); sfx('error'); flashDrawerItem(); return;}
     }
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
@@ -4860,13 +4866,13 @@ function tryPlace(type,tx,ty){
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
-  if(!LOGISTICS_TOOLS.has(type)) hudSelect();
+  updateBuildHUD(); // every machine stays selected: keep placing until CANCEL (v2.0.30)
 }
 
 function completePlacement(type,tx,ty){
   // Called after player confirms power warning, skip power check and place
   const def=MDEFS[type]; if(!def)return;
-  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad');sfx('error');hudSelect();return;}
+  if(!canPlace(type,tx,ty)){toast('Cannot place here','bad');sfx('error');return;}
   const crafted=(G.crafted[type]||0)>0;
   if(G.devFreeBuild){
     // free
@@ -4874,7 +4880,7 @@ function completePlacement(type,tx,ty){
     G.crafted[type]--;
   } else {
     for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');flashDrawerItem();hudSelect();return;}
+      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');flashDrawerItem();return;}
     }
     for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
   }
@@ -4890,7 +4896,7 @@ function completePlacement(type,tx,ty){
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
-  if(!LOGISTICS_TOOLS.has(type)) hudSelect();
+  updateBuildHUD();
 }
 function tryRemove(tx,ty,quiet){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
@@ -5869,7 +5875,7 @@ function runBelts(){
   // so a 1.7s swing took 4s and an inserter moved 1 item per 4s.)
   buildTakers();
   for(const m of Object.values(G.machines)){
-    if(m.type==='inserter'||m.type==='long_inserter')runInserter(m);
+    if((m.type==='inserter'||m.type==='long_inserter')&&m.active)runInserter(m); // a paused inserter stops (v2.0.30)
   }
   beltVisPass();
 }
@@ -7033,14 +7039,6 @@ function renderMachPanel(){
     html+=`</div>`;
   }
 
-  // Action buttons, move, rotate, demolish
-  const canRotate=(m.type==='belt'||m.type==='inserter'||m.type==='long_inserter'||m.type==='tunnel'||m.type==='splitter');
-  const rotBtn2=canRotate?`<button class="full-btn teal" style="flex:1" onclick="rotateM(${m.id})">&#x21BB; ${D_ARR[m.dir]}</button>`:'';
-  html+=`<div style="display:flex;gap:4px;margin-bottom:5px">
-    <button class="full-btn teal" style="flex:1" onclick="moveSingleMachine(${m.id})">✥ MOVE</button>
-    ${rotBtn2}
-  </div>
-  <button class="full-btn red" onclick="tryRemove(${m.x},${m.y});togglePanel('machine')" style="margin-bottom:5px">&#x1F4A5; DEMOLISH</button>`;
 
   // Module slots (T2 = 1 slot, T3 = 2 slots)
   const MODULE_DEFS={
@@ -7102,12 +7100,26 @@ function renderMachPanel(){
     }
   }
 
-  // Controls
-  html+=`<div style="display:flex;gap:6px;margin-top:6px">
-    <button class="mini-btn" style="flex:1;color:var(--text2);border-color:var(--border2)" onclick="toggleM(${m.id})">${m.active?'PAUSE':'RESUME'}</button>
-  </div>`; // DEMOLISH (with the MOVE row above) is the only remove button
-
-  setHtml(el,html);
+  setHtml(el,machActionsHtml(m)+html);
+}
+// ── The same action bar heads every machine panel (v2.0.30): ROTATE · MOVE · PAUSE · DEMOLISH, always in this order.
+// ROTATE is live wherever facing matters (directional machines, anything with output arrows, non-square ones) and dimmed
+// elsewhere; PAUSE is dimmed on machines with nothing to pause (belts move regardless, chests and pipes are passive).
+const NO_PAUSE=new Set(['belt','splitter','tunnel','chest','quantum_chest','pipe','fluid_tank','heat_sink']);
+function machFaces(type){const d=MDEFS[type];return DIR_TYPES.has(type)||!!PORTS[type]||d.size[0]!==d.size[1];}
+function machActionsHtml(m){
+  const face=machFaces(m.type), pause=!NO_PAUSE.has(m.type);
+  const b=(cls,on,icon,label)=>`<button class="ma-btn ${cls}" onclick="${on}"><span class="ma-ic">${icon}</span><span>${label}</span></button>`;
+  return `<div class="mach-actions">
+    ${b(face?'teal':'dim',face?`rotateM(${m.id})`:`machNoop(${m.id},'face')`,'↻',face?`ROTATE ${D_ARR[m.dir]}`:'ROTATE')}
+    ${b('teal',`moveSingleMachine(${m.id})`,'✥','MOVE')}
+    ${b(pause?'amber':'dim',pause?`toggleM(${m.id})`:`machNoop(${m.id},'pause')`,m.active||!pause?'⏸':'▶',m.active||!pause?'PAUSE':'RESUME')}
+    ${b('red',`tryRemove(${m.x},${m.y});togglePanel('machine')`,'💥','DEMOLISH')}
+  </div>`;
+}
+function machNoop(id,why){
+  const m=G.machines[id]; if(!m)return; const n=MDEFS[m.type].name;
+  toast(why==='face'?`${n}: works the same whichever way it faces`:`${n}: nothing to pause, it never uses power`,'wrn'); sfx('error');
 }
 
 // Pipe network, pump, accumulator and lumen details for the machine panel
@@ -7177,7 +7189,7 @@ function fluidPanelRows(m,def,rec){
 
 function irow(lbl,val){return `<div class="irow"><span class="lbl">${lbl}</span><span>${val}</span></div>`}
 function setRecipe(id,rid){const m=G.machines[id];if(!m)return;if(rid&&!zoneRecipeOk(rid))return;m.recipe=rid||null;m.prog=0;renderMachPanel();}
-function toggleM(id){const m=G.machines[id];if(!m)return;m.active=!m.active;renderMachPanel();}
+function toggleM(id){const m=G.machines[id];if(!m||NO_PAUSE.has(m.type))return;m.active=!m.active;saveGame();renderMachPanel();updateHUD();toast(`${MDEFS[m.type].name} ${m.active?'resumed':'paused'}`,'ok');}
 function rotateM(id){
   const m=G.machines[id];if(!m)return;
   const was=posSnap(m);
@@ -7435,8 +7447,7 @@ function pasteBlueprintAt(data,x,y){
   const costs=G.devFreeBuild?{}:blueprintCost(data);
   for(const[item,n]of Object.entries(costs)) G.inv[item]-=n;
   undoBegin(); for(const e of data)stampMachine(e,x+e.rx,y+e.ry); undoEnd();
-  blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
-  document.getElementById('ghostBar')?.classList.add('hidden');
+  // the blueprint stays in hand for another copy until CANCEL (v2.0.30), like copy and paste
   updateHUD(); saveGame(); sfx('place');
   G.stats.pastes=(G.stats.pastes||0)+1;
   toast(`Placed ${data.length} machine${data.length!==1?'s':''}!`,'ok');
