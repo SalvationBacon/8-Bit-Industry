@@ -63,7 +63,7 @@ After your first Big Bang, SANDBOX on the title screen opens a creative mode: pi
 ☰ menu → Settings → COLOURS turns on colour-blind mode: blue for good, pink for bad, light cyan for safe, and a cross on spots you can't build on. The colours stay distinct for red-green and blue-yellow colour blindness.
 
 ## Battery
-☰ menu → Settings: FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
+☰ menu → Settings (or SETTINGS on the title screen): FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.31: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.32: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige

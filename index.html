@@ -534,8 +534,9 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
         <button class="btn btn-sm" id="titleInstall" onclick="installApp()" style="flex:1;display:none"><span data-ui="install"></span>INSTALL</button>
         <button class="btn btn-sm" onclick="openBackup()" style="flex:1"><span data-ui="backup"></span>BACKUP</button>
       </div>
+      <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
     </div>
-    <p class="v-num">v2.0.31 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.32 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -719,7 +720,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.31';
+const VER      = '2.0.32';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -2975,7 +2976,7 @@ function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
   if(canvas)sizeCanvas();
-  if(G&&!document.getElementById('mOverlay').classList.contains('hidden'))openSettings();
+  refreshSettings();
 }
 // Status colours for the canvas; colour-blind mode swaps them (CSS does the same for the panels via body.cb)
 const PAL_STD={ok:'#4caf50',warn:'#f5a623',bad:'#e53935',safe:'#26c6a0'}, PAL_CB={ok:'#3d8bff',warn:'#f5a623',bad:'#ff3d8b',safe:'#9af0ff'};
@@ -2985,8 +2986,8 @@ function applyColourBlind(){
   PAL=PREFS.cb?PAL_CB:PAL_STD;
   document.body&&document.body.classList.toggle('cb',!!PREFS.cb);
 }
-function setColourBlind(on){PREFS.cb=on;savePrefs();applyColourBlind();if(G&&!document.getElementById('mOverlay').classList.contains('hidden'))openSettings();}
-function batterySaver(on){PREFS.fps=on?30:60;PREFS.res=on?.5:1;savePrefs();if(canvas)sizeCanvas();openSettings();}
+function setColourBlind(on){PREFS.cb=on;savePrefs();applyColourBlind();refreshSettings();}
+function batterySaver(on){PREFS.fps=on?30:60;PREFS.res=on?.5:1;savePrefs();if(canvas)sizeCanvas();refreshSettings();}
 
 // ═══════════════════════════════════════════════════
 //  TITLE SCREEN: a living factory behind the menu
@@ -9641,7 +9642,19 @@ function openBigMenu(section){
 }
 const backToMenu=`<button class="btn btn-sm" onclick="openBigMenu()">◀ MENU</button>`;
 function openSettings(){
-  let settingsHtml=`
+  // From the title screen (v2.0.32) there is no game loaded: only the device settings show (music, display, timer,
+  // colours, haptics). Sound effects, volume and the tutorial belong to a save, so they stay in-game.
+  const title=onTitle()||!G;
+  let settingsHtml=title?`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
+      <span style="font-size:var(--f6);color:var(--text2)">🎵 Title music</span>
+      <button class="mini-btn ${PREFS.music!==false?'teal':'dim'}" onclick="toggleTitleMusic();openSettings()">${PREFS.music!==false?'ON':'OFF'}</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px">
+      <span style="flex-shrink:0">${uiIcon('sound')}</span>
+      <span id="nowPlaying" style="flex:1;font-size:var(--f5);color:var(--text2);line-height:1.6">${nowPlayingText()}</span>
+      <button class="mini-btn ${_music.running?'teal':'dim'}" onclick="musicNext()" ${_music.running?'':'disabled'}>NEXT</button>
+    </div>`:`
     <div style="display:flex;gap:8px;margin-bottom:6px">
       <div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg3);border:1px solid var(--border)">
         <span style="font-size:var(--f6);color:var(--text2)">🔊 SFX</span>
@@ -9668,15 +9681,18 @@ function openSettings(){
   settingsHtml+=row('🎞️ FPS',[30,60].map(f=>`<button class="mini-btn ${PREFS.fps===f?'amber':'dim'}" onclick="setPref('fps',${f})">${f}</button>`).join(''));
   settingsHtml+=row('🖼️ RES',RES_STEPS.map(r=>`<button class="mini-btn ${PREFS.res===r?'amber':'dim'}" onclick="setPref('res',${r})">${Math.round(r*100)}%</button>`).join(''));
   settingsHtml+=row('🔋 SAVER',`<button class="mini-btn ${saver?'teal':'dim'}" onclick="batterySaver(${!saver})">${saver?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">30 FPS + 50% resolution</span>`);
-  settingsHtml+=row('⏱ TIMER',`<button class="mini-btn ${PREFS.timer?'teal':'dim'}" onclick="setPref('timer',${!PREFS.timer});if(G)updateHUD()">${PREFS.timer?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">A clock for each zone and the whole run, with your best times (GOAL tab)</span>`);
+  settingsHtml+=row('⏱ TIMER',`<button class="mini-btn ${PREFS.timer?'teal':'dim'}" onclick="setPref('timer',${!PREFS.timer});if(G&&!onTitle())updateHUD()">${PREFS.timer?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">A clock for each zone and the whole run, with your best times (GOAL tab)</span>`);
   settingsHtml+=row('🎨 COLOURS',`<button class="mini-btn ${PREFS.cb?'teal':'dim'}" onclick="setColourBlind(${!PREFS.cb})">${PREFS.cb?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">Colour-blind mode: blue for good, pink for bad, and a cross on blocked spots</span>`);
   settingsHtml+=row('📳 HAPTICS',navigator.vibrate?`<button class="mini-btn ${PREFS.haptics!==false?'teal':'dim'}" onclick="setPref('haptics',${PREFS.haptics===false});haptic('place')">${PREFS.haptics!==false?'ON':'OFF'}</button>`:`<span style="font-size:var(--f4);color:var(--text3)">Not supported in this browser</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
 
-  settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
+  if(title)settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9">Sound effects, volume and the tutorial are in the in-game settings (☰ → SETTINGS).</div>`;
+  else settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
 
-  showModal('⚙️ SETTINGS',settingsHtml,backToMenu);
+  showModal('⚙️ SETTINGS',`<div id="settingsRoot">${settingsHtml}</div>`,title?`<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>`:backToMenu);
 }
+// Redraw the settings window after a change, if it is the one showing (in-game or on the title screen)
+function refreshSettings(){if(document.getElementById('settingsRoot')&&!document.getElementById('mOverlay').classList.contains('hidden'))openSettings();}
 function openSaves(){
   let slotsHtml='';
   for(let s=1;s<=3;s++){

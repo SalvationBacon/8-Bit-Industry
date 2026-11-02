@@ -830,6 +830,13 @@ const r=await p.evaluate(async()=>{
     startSandbox(1); closeModal(); clearInterval(tickId); const z1=G.zone===1&&G.tutorial.step===-1&&G.sandbox;
     localStorage.removeItem(SANDBOX_KEY); PRESTIGE=JSON.parse(saved); savePrestige();
     ok('sandbox_mode',locked&&z3&&quantum&&own&&noAch&&z5&&noDust&&back&&z1,{locked,z3,quantum,own,noAch,z5,noDust,back,z1,w:MAP_W}); }
+  // ── Settings from the title screen: device settings only, changes redraw the window (runs last: leaves the game)
+  { const cb0=PREFS.cb; quitToTitle(); closeModal();
+    document.getElementById('titleSettings').click(); const t1=document.getElementById('mBody').innerText;
+    const devOnly=/FPS/.test(t1)&&/COLOURS/.test(t1)&&/TIMER/.test(t1)&&/Title music/.test(t1)&&!/RESTART ZONE/.test(t1)&&!/SFX/.test(t1);
+    setColourBlind(!cb0); const t2=document.getElementById('mBody')?.innerText||''; const redrawn=!!document.getElementById('settingsRoot')&&/COLOURS/.test(t2)&&PREFS.cb===!cb0;
+    setPref('fps',30); const stays=!!document.getElementById('settingsRoot'); setPref('fps',60); setColourBlind(cb0); closeModal();
+    ok('title_settings',devOnly&&redrawn&&stays,{devOnly,redrawn,stays}); }
   return R;
 });
 for(const[k,v]of Object.entries(r))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);
