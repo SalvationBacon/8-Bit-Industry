@@ -141,8 +141,14 @@ const r=await p.evaluate(async()=>{
   const vat=put('algae_vat',14,10); const pc=put('chest',14,13); pc.chestInv.nutrient=40; put('inserter',14,12,3);
   const v0=vat.vit; run(400); ok('z4_vat_fed_grows',vat.vit>v0&&(vat.outBuf.algae||0)>0,{v0,v:vat.vit,algae:vat.outBuf.algae,st:vat._fluidStatus});
   // reactor with 2 sinks stays below SCRAM for long
-  const re=put('reactor',20,20); re.inBuf.lum_rod=20; put('heat_sink',23,20); put('heat_sink',23,21); run(1200);
-  ok('z4_reactor_two_sinks_stable',!(re.scram>0)&&re.heat<100,{heat:re.heat,scram:re.scram});
+  // reactor with 2 sinks fed coolant (an enzyme pump, pipes and a stocked Relief Valve) stays below SCRAM for long
+  res(26,20,2,2,'enzymes'); put('enzyme_pump',26,20); put('pipe',24,20); put('pipe',24,21); put('pipe',25,20); put('pipe',25,21);
+  const rv=put('relief_valve',24,22); rv.inBuf.gasket=10;
+  const re=put('reactor',20,20); re.inBuf.lum_rod=20; const s1=put('heat_sink',23,20), s2=put('heat_sink',23,21); const burst0=G.stats.bursts||0; run(1200);
+  ok('z4_reactor_two_sinks_stable',!(re.scram>0)&&re.heat<100&&s1._wet&&s2._wet&&(G.stats.bursts||0)===burst0,{heat:re.heat,scram:re.scram,wet:[s1._wet,s2._wet],bursts:(G.stats.bursts||0)-burst0});
+  // dry sinks (no coolant) don't cool: the same reactor SCRAMs
+  const re2=put('reactor',40,30); re2.inBuf.lum_rod=20; put('heat_sink',43,30); put('heat_sink',43,31); run(400);
+  ok('z4_dry_sinks_scram',(G.stats.scrams||0)>0&&machineRates(re2).notes.join(' ').includes('coolant'),{heat:re2.heat,scram:re2.scram,scrams:G.stats.scrams});
   // ── Z5: singularity fed by inserter
   G.perks.awarded[4]=true; transitionToZone(5); closeModal(); clearInterval(tickId); reset(); power(2,2);
   const sg=put('singularity',20,20); const feed=put('chest',18,22); Object.assign(feed.chestInv,{grav_lens:10,stellar_casing:20}); put('inserter',19,22,0);
@@ -491,6 +497,23 @@ const r=await p.evaluate(async()=>{
     const av2=put('algae_vat',20,44); av2.outBuf.algae=6; put('inserter',22,44,0); const ch2=put('chest',23,44);
     run(120); G.zone=z0;
     ok('living_machines_output',!missing.length&&(ch.chestInv.algae||0)>=4&&(ch2.chestInv.algae||0)>=4,{missing,belt:ch.chestInv,ins:ch2.chestInv}); }
+  // ── every top-bar gauge opens its own live panel (Zone 5 shows them all), and the gauge row scrolls
+  { const z0=G.zone; reset(); G.zone=5; G.research.done=Object.keys(TECHS); power(2,2);
+    res(10,40,2,2,'brine'); put('brine_pump',10,40); for(let x=12;x<16;x++)put('pipe',x,40);
+    const r=put('reactor',30,40); r.inBuf.lum_rod=5; put('heat_sink',33,40);
+    const v=put('algae_vat',40,40); v.vit=10; put('lumen_panel',50,40);
+    run(8); updateHUD();
+    const got={};
+    for(const[label,kind,word]of[['Smog details','smog','MAKING SMOG'],['Pressure details','pressure','pump'],['Living machine details','decay','Algae Vat'],['Reactor details','heat','Reactor #1'],['Glow tide details','glow','Lumen Panels']]){
+      document.querySelector(`#hudRes [aria-label="${label}"]`)?.click();
+      const body=document.getElementById(kind==='smog'?'pSmogBody':'pHazBody').innerText;
+      got[kind]=(kind==='smog'?openPanel==='smog':openPanel==='haz'&&hazKind===kind)&&body.toLowerCase().includes(word.toLowerCase());
+    }
+    const heatBody=(openHazard('heat'),document.getElementById('pHazBody').innerText); const needs=heatBody.includes('needs 1 more sink');
+    openHazard('heat'); const toggled=openPanel!=='haz';
+    const scroll=getComputedStyle(document.getElementById('hudRes')).overflowX;
+    G.zone=z0;
+    ok('hud_gauges_open_panels',Object.values(got).every(Boolean)&&needs&&toggled&&scroll==='auto',{got,needs,toggled,scroll}); }
   // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
     res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);
