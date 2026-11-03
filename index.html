@@ -527,6 +527,16 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   #resInfo{left:auto;width:min(400px,40vw)}
   #toolTip .tt-recipes,#toolTip .tt-desc{display:block}
 }
+/* Key hints (v2.0.35): a Shapez-style bar along the bottom of the map with the keys for what you're doing right now.
+   Mouse and keyboard only (body.kh, set by updateKeyHints); the build buttons, paste bar and toasts sit above it. */
+#keyHints{position:fixed;left:var(--cl);right:var(--cr);bottom:var(--cb);z-index:590;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;
+  padding:7px 12px;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.82),rgba(0,0,0,.55));border-top:1px solid rgba(255,255,255,.06)}
+#keyHints .kh{display:inline-flex;align-items:center;gap:6px;font-size:var(--f4);color:var(--text2);white-space:nowrap}
+#keyHints kbd{font-family:var(--font);font-size:var(--f4);color:var(--amber);background:#1d1d1d;border:1px solid #444;border-bottom-width:2px;padding:3px 6px;min-width:12px;text-align:center}
+#keyHints .kh-ctx{color:var(--teal);font-size:var(--f4);margin-right:4px}
+body.kh #buildHUD{bottom:calc(var(--cb) + 44px)}
+body.kh #ghostBar{bottom:calc(var(--cb) + 34px)}
+body.kh #toasts{bottom:calc(var(--cb) + 112px)}
 /* Desktop (mouse): the base type scale was set for phones held close; a monitor needs it larger */
 @media (min-width:768px) and (min-height:601px) and (pointer:fine){
   :root{--f3:8px;--f4:8px;--f5:9px;--f6:10px;--f7:11px;--f8:12px;--f9:13px;--f10:15px}
@@ -567,7 +577,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       </div>
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
     </div>
-    <p class="v-num">v2.0.34 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.35 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -584,6 +594,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   </div>
   <!-- Build mode controls, fixed, outside canvas touch zone, same pattern as ghostBar -->
   <div id="invStrip" onclick="showPanel('inv')" title="Inventory"></div>
+  <div id="keyHints" class="hidden" aria-live="off"></div>
   <div id="buildHUD" class="hidden">
     <div id="buildCost"></div>
     <button id="buildRotateBtn" title="Rotate (R)" onclick="cycleDir()" style="display:none">↻ →</button>
@@ -751,7 +762,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.34';
+const VER      = '2.0.35';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -2999,7 +3010,7 @@ function uiIcon(name,cls=''){const s=uiSpr(name);return s?`<img class="uico ${cl
 // Lower values draw fewer pixels per frame, which is most of the battery cost.
 const PREFS_KEY='ebi_prefs';
 const RES_STEPS=[1,.75,.5,.35,.25,.1];
-const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true,sfx:true,musicVol:0.7,cb:false,timer:false};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
+const PREFS=(()=>{const d={fps:60,res:1,haptics:true,music:true,sfx:true,musicVol:0.7,cb:false,timer:false,keyHints:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'));}catch(e){return d;}})();
 function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch(e){}}
 function setPref(k,v){
   PREFS[k]=v; savePrefs();
@@ -4279,7 +4290,7 @@ function placeLine(){
 // ── Keyboard (v2.0.34): for tablets with keyboards and desktops. Ignored while typing in a text box.
 // R rotate · Enter or Space place · Esc cancel / close · Ctrl+Z undo · 1-5 the tabs · WASD or arrows pan · + and - zoom ·
 // Q select · M menu
-const KEY_HELP='R rotate · Enter place · Esc cancel or close · Ctrl+Z undo · 1-5 tabs · WASD or arrows move the map · + and - zoom · Q select · M menu';
+const KEY_HELP='R rotate · Enter place · Esc cancel or close · Q pick the building under the mouse (or stop building) · Del or X demolish under the mouse · F and V flip a paste · Ctrl+Z undo · 1-5 tabs · WASD or arrows move the map · + and - zoom · M menu · H show or hide the key hints';
 function onKey(e){
   if(!G||onTitle())return;
   const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
@@ -4311,7 +4322,18 @@ function onKey(e){
   }
   const tabs={'1':'build','2':'tools','3':'craft','4':'research','5':'goal'};
   if(tabs[k]){switchTab(tabs[k]);return;}
-  if(k==='q'||k==='Q'){if(MDEFS[activeTool])cancelBuild();else{setTool('select');updateBuildHUD();}return;}
+  if(k==='q'||k==='Q'){ // Shapez's pipette: Q on a building picks it to build another (same facing); Q while building stops
+    if(MDEFS[activeTool]){cancelBuild();updateKeyHints();return;}
+    const hm=hoverMachine(); if(hm){pickBuilding(hm);updateKeyHints();return;}
+    setTool('select');updateBuildHUD();updateKeyHints();return;
+  }
+  if(k==='Delete'||k==='x'||k==='X'){ // demolish what's under the mouse (Ctrl+Z brings it back)
+    const hm=hoverMachine(); if(hm&&!pasting){tryRemove(hm.x,hm.y);updateKeyHints();}
+    return;
+  }
+  if(pasting&&(k==='f'||k==='F')){transformGhost('h');return;}
+  if(pasting&&(k==='v'||k==='V')){transformGhost('v');return;}
+  if(k==='h'||k==='H'){PREFS.keyHints=PREFS.keyHints===false;savePrefs();updateKeyHints();refreshSettings();toast(PREFS.keyHints?'Key hints on':'Key hints hidden (H shows them)','ok');return;}
   if(k==='m'||k==='M'){openBigMenu();return;}
   const w=canvas?canvas.clientWidth:600, h=canvas?canvas.clientHeight:600, step=Math.round(Math.min(w,h)/6);
   const pan={ArrowLeft:[-1,0],a:[-1,0],A:[-1,0],ArrowRight:[1,0],d:[1,0],D:[1,0],ArrowUp:[0,-1],w:[0,-1],W:[0,-1],ArrowDown:[0,1],s:[0,1],S:[0,1]}[k];
@@ -4319,7 +4341,51 @@ function onKey(e){
   if(k==='+'||k==='='){zoomAt(w/2,h/2,1.2);return;}
   if(k==='-'||k==='_'){zoomAt(w/2,h/2,1/1.2);return;}
 }
-document.addEventListener('keydown',onKey);
+document.addEventListener('keydown',e=>{onKey(e);updateKeyHints();});
+// ── Key hints (v2.0.35): what each key does right now, Shapez-style, along the bottom of the map. Only with a mouse and
+// keyboard (KH_MQ) and while PREFS.keyHints isn't false (H or Settings → KEY HINTS). Rebuilt on every mouse move, key
+// and UI refresh; setHtml only touches the DOM when the hints change.
+const KH_MQ=window.matchMedia('(hover:hover) and (pointer:fine)');
+let mouseIn=false;
+const DIR_WORD=['right','down','left','up'];
+function hoverMachine(){if(!G||!mouseIn||hov.x<0)return null;const t=G.map[hov.y]?.[hov.x];return t&&t.mid!==null?G.machines[t.mid]||null:null;}
+function pickBuilding(m){
+  const def=MDEFS[m.type]; if(!def||def.stub||m.type==='singularity'){toast(`${def?.name||'That'} can't be picked`,'wrn');return;}
+  if(def.unlock&&!G.research.done.includes(def.unlock)){toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn');return;}
+  setTool(m.type); placeDir=m.dir; updateBuildHUD(); toast(`Building ${def.name}`,'ok');
+}
+function keyHintList(){
+  const H=(k,l)=>[k,l];
+  if(!document.getElementById('mOverlay').classList.contains('hidden'))return['MENU',[H('Esc','Close')]];
+  const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting';
+  if(pasting)return['PASTING',[H('Click','Position'),H('Enter','Paste'),H('R','Rotate'),H('F','Flip sideways'),H('V','Flip up-down'),H('Esc','Stop')]];
+  const def=MDEFS[activeTool];
+  if(def&&lineActive())return['LINE',[H('Drag','Extend'),H('Enter','Place line'),H('R','Flip'),H('Esc','Drop the line')]];
+  if(def)return[def.name.toUpperCase(),[H('Click','Aim'),H('Enter','Place'),...(DIR_TYPES.has(activeTool)||PORTS[activeTool]||def.size[0]!==def.size[1]?[H('R',`Rotate (${DIR_WORD[placeDir]})`)]:[]),
+    ...(LINE_TOOLS.has(activeTool)?[H('Drag ghost','Draw a line')]:[]),H('Q','Stop building'),H('Ctrl+Z','Undo')]];
+  const tool={demolish:['DEMOLISH',[H('Click','Demolish'),H('Ctrl+Z','Undo'),H('Esc','Done')]],
+    rotate:['ROTATE',[H('Click','Rotate'),H('Esc','Done')]],
+    move:['MOVE',[H('Click',moveState.active?'Put down':'Pick up'),H('Enter','Place'),H('R','Rotate'),H('Esc','Cancel')]],
+    multisel:['SELECT AREA',[H('Click','Corners'),H('Esc','Done')]],
+    upgrade:['UPGRADE',[H('Click','Corners'),H('Esc','Done')]],
+    blueprint:['BLUEPRINT',[H('Click','Corners'),H('Esc','Done')]]}[activeTool];
+  if(tool)return tool;
+  const hm=hoverMachine();
+  if(hm){const d=MDEFS[hm.type],f=machFaces(hm.type);
+    return[d.name.toUpperCase(),[H('Click','Open'),...(f?[H('R','Rotate')]:[]),...(hm.type!=='singularity'?[H('Q','Build another')]:[]),H('X','Demolish'),...(undoStack.length?[H('Ctrl+Z','Undo')]:[])]];}
+  const t=mouseIn&&hov.x>=0?G.map[hov.y]?.[hov.x]:null;
+  const base=[H('1-5','Tabs'),H('WASD','Move'),H('Scroll','Zoom'),H('M','Menu')];
+  if(t&&t.type===T_RESOURCE)return[ITEMS[t.res]?.name?.toUpperCase()||'DEPOSIT',[H('Click','Mine'),...base]];
+  return['',[...(openPanel?[H('Esc','Close panel')]:activeTab?[H('Esc','Close')]:[]),...base,...(undoStack.length?[H('Ctrl+Z','Undo')]:[])]];
+}
+function updateKeyHints(){
+  const el=document.getElementById('keyHints'); if(!el)return;
+  const on=!!G&&!onTitle()&&KH_MQ.matches&&PREFS.keyHints!==false;
+  el.classList.toggle('hidden',!on); document.body.classList.toggle('kh',on);
+  if(!on)return;
+  const[ctx,list]=keyHintList();
+  setHtml(el,(ctx?`<span class="kh-ctx">${ctx}</span>`:'')+[...list,['H','Hide hints']].map(([k,l])=>`<span class="kh"><kbd>${k}</kbd>${l}</span>`).join(''));
+}
 
 let inputReady=false;
 function setupInput(){
@@ -4330,7 +4396,8 @@ function setupInput(){
   const isTouch=()=>Date.now()-lastTouch<500;
 
   el.addEventListener('mousedown', e=>{if(!isTouch())onDown(e.clientX,e.clientY,e.button);});
-  el.addEventListener('mousemove', e=>{if(!isTouch())onMov(e.clientX,e.clientY);});
+  el.addEventListener('mousemove', e=>{if(!isTouch()){mouseIn=true;onMov(e.clientX,e.clientY);updateKeyHints();}});
+  el.addEventListener('mouseleave',()=>{mouseIn=false;updateKeyHints();});
   el.addEventListener('mouseup',   e=>{if(!isTouch())onUp(e.clientX,e.clientY);});
   el.addEventListener('wheel',     e=>{e.preventDefault();const r=wrapRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY>0?.88:1.14);},{passive:false});
   el.addEventListener('touchstart',e=>{e.preventDefault();lastTouch=Date.now();onTouchStart(e);},{passive:false});
@@ -5117,7 +5184,7 @@ function gameTick(){
   const nowMs=performance.now();
   // Skipped while a finger/button is down: rebuilding a panel mid-tap swaps the
   // button under the finger and the tap is silently lost
-  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();refreshOpenPanel();buildToolbar();updateRocketBtn();if(MDEFS[activeTool])updateBuildHUD();if(activeTool==='upgrade')updateUpgradeBar();}
+  if(!uiPress&&nowMs-lastUiMs>=220){lastUiMs=nowMs;updateHUD();updateKeyHints();refreshOpenPanel();buildToolbar();updateRocketBtn();if(MDEFS[activeTool])updateBuildHUD();if(activeTool==='upgrade')updateUpgradeBar();}
   if(G.tick%120===0&&nowMs-lastSaveMs>=8000){lastSaveMs=nowMs;saveGame();}
 }
 
@@ -9761,6 +9828,7 @@ function openSettings(){
   settingsHtml+=row('📳 HAPTICS',navigator.vibrate?`<button class="mini-btn ${PREFS.haptics!==false?'teal':'dim'}" onclick="setPref('haptics',${PREFS.haptics===false});haptic('place')">${PREFS.haptics!==false?'ON':'OFF'}</button>`:`<span style="font-size:var(--f4);color:var(--text3)">Not supported in this browser</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
 
+  if(window.matchMedia('(pointer:fine)').matches)settingsHtml+=row('⌨ HINTS',`<button class="mini-btn ${PREFS.keyHints!==false?'teal':'dim'}" onclick="PREFS.keyHints=${PREFS.keyHints===false};savePrefs();updateKeyHints();refreshSettings()">${PREFS.keyHints!==false?'ON':'OFF'}</button><span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.8">The keys for what you're doing, along the bottom of the map (H)</span>`);
   if(window.matchMedia('(pointer:fine)').matches)settingsHtml+=row('⌨ KEYS',`<span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.9">${KEY_HELP}</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin-bottom:6px">These settings are for this device: every save, slot and sandbox shares them.</div>`;
   if(!title)settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
@@ -10159,7 +10227,7 @@ function deleteSlotTitle(s){
   buildTitleSlots();
 }
 function quitToTitle(){
-  musicStop();
+  musicStop(); setTimeout(updateKeyHints,0);
   saveGame(); closeModal();
   clearInterval(tickId); cancelAnimationFrame(rafId);
   rafId=null; tickId=null;
@@ -10355,7 +10423,7 @@ function startGame(isNew){
     }
   }
   updateZoneTabs();
-  updateHUD(); updateRocketBtn();
+  updateHUD(); updateRocketBtn(); updateKeyHints();
   startTick(); startRender();
   if(PREFS.music!==false) musicStart(); else musicStop(); // the title track carries straight on
   // Defer cam to next frame so canvas has final dimensions
