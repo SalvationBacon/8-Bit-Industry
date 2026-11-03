@@ -595,7 +595,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.39 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.40 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -781,7 +781,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.39';
+const VER      = '2.0.40';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -10631,8 +10631,8 @@ function updateSupportUI(){
   const b=document.getElementById('titleSupport'); if(b)b.style.display=STORE_BUILD?'':'none';
   const s=document.getElementById('titleSupporter'); if(s)s.style.display=supporter()?'':'none';
 }
-function initBilling(){
-  const CP=window.CdvPurchase; if(!STORE_BUILD||!CP||billing.init)return; billing.init=true;
+function initBilling(){ // true once set up. CdvPurchase appears before its store does, so this waits for CP.store
+  const CP=window.CdvPurchase; if(billing.init)return true; if(!STORE_BUILD||!CP||!CP.store)return false; billing.init=true;
   const {store,ProductType,Platform,LogLevel}=CP;
   try{store.verbosity=LogLevel.WARNING;}catch(e){}
   store.register([{id:SUPPORT_ID,type:ProductType.NON_CONSUMABLE,platform:Platform.GOOGLE_PLAY}]);
@@ -10643,6 +10643,7 @@ function initBilling(){
     .receiptUpdated(()=>refreshSupporter());
   store.error(e=>{billing.err=(e&&e.message)||'Google Play is not available'; billing.busy=false; refreshSupportModal();});
   store.initialize([Platform.GOOGLE_PLAY]).then(()=>{billing.ready=true;refreshSupporter();}).catch(()=>{});
+  return true;
 }
 function refreshSupporter(){
   const st=billingStore(); if(!st)return;
@@ -10778,9 +10779,12 @@ function initNative(){ // every part guarded, so one failing never stops the oth
   mirrorSync();
   const App=window.Capacitor?.Plugins?.App;
   try{if(App){App.addListener('backButton',androidBack);App.addListener('pause',appHidden);App.addListener('resume',appShown);}}catch(e){appError(e);}
-  const bill=()=>{try{initBilling();}catch(e){appError(e);}};
-  document.addEventListener('deviceready',bill,false);
-  if(window.CdvPurchase)bill();
+  // Billing: on deviceready, and meanwhile every half second for 20s, until the plugin's store exists (v2.0.40:
+  // calling it as soon as window.CdvPurchase appeared read an undefined store, threw, and billing never started)
+  let tries=0;
+  const bill=()=>{try{if(initBilling())return;}catch(e){appError(e);return;} if(++tries<40)setTimeout(bill,500);};
+  document.addEventListener('deviceready',()=>{try{initBilling();}catch(e){appError(e);}},false);
+  bill();
 }
 
 // ═══════════════════════════════════════════════════

@@ -121,6 +121,13 @@ const MOCK=()=>{ // Capacitor App plugin + CdvPurchase, just enough of each
     const t=await q.evaluate(()=>({icons:document.querySelectorAll('#tabBar [data-ui] img').length,slots:/AUTO/.test(document.getElementById('titleSlots').innerText),
       toast:document.getElementById('toasts').innerText}));
     ok('startup_survives_plugin_error',t.icons>0&&t.slots&&/billing exploded/.test(t.toast),t); await q.close(); }
+  // ── the billing plugin shows up before its store does (as on a real phone): billing waits, no error, the price arrives
+  { const q=await b.newPage({viewport:{width:400,height:800}}); const pe=[]; q.on('pageerror',e=>pe.push(e.message));
+    await q.addInitScript(MOCK);
+    await q.addInitScript(()=>{const st=window.CdvPurchase.store; delete window.CdvPurchase.store; setTimeout(()=>{window.CdvPurchase.store=st;},1200);});
+    await q.goto('file://'+path.resolve(__dirname,'..','www','index.html')); await q.waitForTimeout(2600);
+    const t=await q.evaluate(()=>({ready:billing.ready,price:billing.price,toast:document.getElementById('toasts').innerText}));
+    ok('billing_waits_for_store',t.ready&&t.price==='£2.99'&&!/Error/.test(t.toast)&&!pe.length,{t,pe}); await q.close(); }
   // ── a save that won't load is kept, never replaced by a new game
   { const q=await b.newPage({viewport:{width:400,height:800}}); q.on('pageerror',e=>errs.push('broken: '+e.message));
     await q.goto('file://'+path.resolve(__dirname,'..','index.html')); await q.waitForTimeout(300);
