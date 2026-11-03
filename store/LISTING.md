@@ -76,6 +76,7 @@ Simulation, Strategy, Casual, Offline, Pixel art
 | Name | Supporter Pack |
 | Description | A one-time thank you: unlocks the Golden Hour theme and Gilded Machines. Cosmetic only. |
 | Price | your choice (£2.99 / $2.99 suggested) |
+| Icon | `store/supporter-pack-icon.png` (512×512) |
 
 ## App content answers
 - **Privacy policy:** the URL above

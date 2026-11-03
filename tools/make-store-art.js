@@ -1,6 +1,7 @@
 // Google Play graphics drawn from the game itself. Usage: node tools/build-app.js && node tools/make-store-art.js
 //   store/feature-graphic.png       1024x500  phone/tablet listing banner (logo card over the Singularity title scene)
 //   store/pc-feature-graphic.png    1920x1080 Google Play Games on PC feature graphic (game card background: scene only, no text)
+//   store/supporter-pack-icon.png   512x512   the Supporter Pack product image (gilded assembler + heart)
 //   store/pc-logo.png               600x400   Google Play Games on PC logo (transparent; Google lays it over the PC feature graphic)
 const {chromium}=require('playwright'),path=require('path');
 process.chdir(path.join(__dirname,'..'));
@@ -33,4 +34,19 @@ body::after{display:none!important}
   await p.waitForTimeout(300);
   await p.screenshot({path:'store/pc-logo.png',omitBackground:true}); await p.close();
   await b.close(); console.log('store art written');
+})();
+// store/supporter-pack-icon.png  512x512  the Supporter Pack product image: a gilded assembler and the supporter heart
+(async()=>{const b=await chromium.launch(); const p=await b.newPage();
+  await p.goto('file://'+path.resolve('www/index.html')); await p.waitForTimeout(500);
+  const url=await p.evaluate(()=>{
+    const c=document.createElement('canvas'); c.width=c.height=512; const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+    x.fillStyle='#0d0d0d'; x.fillRect(0,0,512,512);
+    for(let r=15;r>0;r--){x.fillStyle=`rgba(255,200,70,${0.035})`;x.beginPath();x.arc(256,268,r*16,0,Math.PI*2);x.fill();} // warm glow in pixel steps
+    const old=GILD; GILD=true; const m=machineSpr('assembler',1,true); GILD=old;
+    x.drawImage(m,256-144,268-144,288,288);                    // 32px sprite at 9x
+    const h=uiSpr('support'); x.drawImage(h,512-48-128,48,128,128); // heart badge, 16px at 8x
+    x.fillStyle='#f5a623'; for(const[sx,sy]of[[70,96],[96,70],[430,420],[404,446],[84,430]]){x.fillRect(sx,sy,8,8);x.fillRect(sx-8,sy+8,24,8);x.fillRect(sx,sy+16,8,8);} // sparkles
+    return c.toDataURL('image/png');});
+  require('fs').writeFileSync('store/supporter-pack-icon.png',Buffer.from(url.split(',')[1],'base64'));
+  await b.close(); console.log('supporter icon written');
 })();
