@@ -58,12 +58,18 @@ jobs:
         if: ${{ env.HAS_KEY == 'true' }}
         env:
           EBI_KEYSTORE_BASE64: ${{ secrets.EBI_KEYSTORE_BASE64 }}
-          EBI_KEYSTORE_PASSWORD: ${{ secrets.EBI_KEYSTORE_PASSWORD }}
-          EBI_KEY_ALIAS: ${{ secrets.EBI_KEY_ALIAS || 'upload' }}
-          EBI_KEY_PASSWORD: ${{ secrets.EBI_KEY_PASSWORD || secrets.EBI_KEYSTORE_PASSWORD }}
+          PW_RAW: ${{ secrets.EBI_KEYSTORE_PASSWORD }}
+          ALIAS_RAW: ${{ secrets.EBI_KEY_ALIAS }}
+          KEYPW_RAW: ${{ secrets.EBI_KEY_PASSWORD }}
         working-directory: android
         run: |
-          echo "$EBI_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          # Secrets pasted on a phone often pick up a stray space or line break: trim them.
+          trim() { printf %s "$1" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; }
+          export EBI_KEYSTORE_PASSWORD="$(trim "$PW_RAW")"
+          export EBI_KEY_ALIAS="$(trim "$ALIAS_RAW")"; [ -n "$EBI_KEY_ALIAS" ] || EBI_KEY_ALIAS=upload
+          export EBI_KEY_PASSWORD="$(trim "$KEYPW_RAW")"; [ -n "$EBI_KEY_PASSWORD" ] || EBI_KEY_PASSWORD="$EBI_KEYSTORE_PASSWORD"
+          echo "Keystore password: ${#EBI_KEYSTORE_PASSWORD} characters. Alias: $EBI_KEY_ALIAS. Separate EBI_KEY_PASSWORD secret: $([ -n "$KEYPW_RAW" ] && echo yes || echo no)"
+          printf %s "$EBI_KEYSTORE_BASE64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/upload.jks"
           EBI_KEYSTORE="$RUNNER_TEMP/upload.jks" ./gradlew --no-daemon bundleRelease
           rm -f "$RUNNER_TEMP/upload.jks"
 
