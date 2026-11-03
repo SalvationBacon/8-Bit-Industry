@@ -1,7 +1,7 @@
 // Headless touch test for 8-Bit Industry. Usage: node tools/touch-test.js  (Playwright + Chromium)
 const {chromium}=require('playwright');
 (async()=>{const b=await chromium.launch();
-for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
+for(const [name,w,h] of [['portrait',390,844],['landscape',844,390],['tablet',1180,820]]){ // tablet: an iPad held sideways, the side layout
   const p=await b.newPage({viewport:{width:w,height:h},deviceScaleFactor:2,hasTouch:true,isMobile:true});
   const errs=[]; p.on('pageerror',e=>errs.push('PAGEERR '+e.message+' @ '+(e.stack||'').split('\n')[1]));
   await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')); await p.waitForTimeout(400);
@@ -104,4 +104,46 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390]]){
   for(const[k,v]of Object.entries(R))console.log(name.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
   console.log(name, errs.join('\n')||'no page errors'); await p.close();
 }
+// ── Desktop (v2.0.34): mouse and keyboard on a 1440×900 screen, the side layout sized for a monitor
+{ const p=await b.newPage({viewport:{width:1440,height:900}});
+  const errs=[]; p.on('pageerror',e=>errs.push('PAGEERR '+e.message+' @ '+(e.stack||'').split('\n')[1]));
+  await p.goto('file://'+require('path').resolve(__dirname,'..','index.html')); await p.waitForTimeout(400);
+  await p.evaluate(()=>{localStorage.clear();});
+  const R={}; const ok=(k,v,i)=>R[k]=v?'PASS':'FAIL '+JSON.stringify(i);
+  await p.click('button:has-text("NEW GAME")'); await p.waitForTimeout(1000); await p.click('#mFoot button'); await p.waitForTimeout(300);
+  const lay=await p.evaluate(()=>{const tb=document.getElementById('tabBar').getBoundingClientRect(), w=document.getElementById('wrap').getBoundingClientRect();
+    return{rail:tb.width<120&&tb.height>600, strip:document.getElementById('invStrip').parentElement.id==='hud', font:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--f6')), mapW:w.width};});
+  ok('desktop_side_layout',lay.rail&&lay.strip&&lay.font>=10&&lay.mapW>1200,lay);
+  await p.keyboard.press('4'); await p.waitForTimeout(250);
+  const pan=await p.evaluate(()=>{const r=document.getElementById('pResearch').getBoundingClientRect();return{open:openPanel==='research',left:r.left,w:r.width};});
+  ok('desktop_panel_on_right',pan.open&&pan.left>800&&pan.w<620,pan);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  ok('esc_closes_panel',await p.evaluate(()=>!openPanel));
+  // build with the keyboard: 1 opens BUILD, hover a tile, R turns, Enter places, the tool stays, Esc leaves, Ctrl+Z undoes
+  await p.keyboard.press('1'); await p.waitForTimeout(200);
+  const drawer=await p.evaluate(()=>document.getElementById('tabDrawer').classList.contains('open'));
+  const tgt=await p.evaluate(()=>{G.inv.iron_plate=200; G.inv.iron_gear=20; setTool('inserter'); const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
+    const tx=Math.floor((G.cam.x+r.width*.6)/ts), ty=Math.floor((G.cam.y+r.height*.6)/ts); G.map[ty][tx]={type:0,res:null,mid:null,items:[]};
+    return{tx,ty,x:r.left+tx*ts-G.cam.x+ts/2,y:r.top+ty*ts-G.cam.y+ts/2};});
+  await p.mouse.move(tgt.x,tgt.y); await p.waitForTimeout(100);
+  const d0=await p.evaluate(()=>placeDir); await p.keyboard.press('r'); const d1=await p.evaluate(()=>placeDir);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  const placed=await p.evaluate(([x,y])=>{const m=G.machines[G.map[y][x].mid];return m?{type:m.type,dir:m.dir,tool:activeTool}:null;},[tgt.tx,tgt.ty]);
+  ok('keys_build',drawer&&d1===(d0+1)%4&&placed?.type==='inserter'&&placed.dir===d1&&placed.tool==='inserter',{drawer,d0,d1,placed});
+  await p.keyboard.press('Escape'); const esc=await p.evaluate(()=>activeTool);
+  await p.keyboard.press('Control+z'); await p.waitForTimeout(150);
+  ok('keys_cancel_and_undo',esc==='select'&&await p.evaluate(([x,y])=>G.map[y][x].mid===null,[tgt.tx,tgt.ty]),{esc});
+  // move and zoom: arrows / WASD pan, + and - and the wheel zoom
+  const c0=await p.evaluate(()=>({x:G.cam.x,y:G.cam.y,z:G.cam.zoom}));
+  await p.keyboard.press('ArrowRight'); await p.keyboard.press('s'); await p.keyboard.press('+');
+  const c1=await p.evaluate(()=>({x:G.cam.x,y:G.cam.y,z:G.cam.zoom}));
+  await p.mouse.move(800,450); await p.mouse.wheel(0,300); await p.waitForTimeout(100); const z2=await p.evaluate(()=>G.cam.zoom);
+  ok('keys_pan_zoom',c1.x>c0.x&&c1.y>c0.y&&c1.z>c0.z&&z2<c1.z,{c0,c1,z2});
+  // M opens the menu; settings list the keys; Esc closes
+  await p.keyboard.press('m'); await p.waitForTimeout(200); const menu=await p.evaluate(()=>!document.getElementById('mOverlay').classList.contains('hidden'));
+  await p.evaluate(()=>openSettings()); const keys=await p.evaluate(()=>/Ctrl\+Z undo/.test(document.getElementById('mBody').innerText));
+  await p.keyboard.press('Escape'); const closed=await p.evaluate(()=>document.getElementById('mOverlay').classList.contains('hidden'));
+  ok('keys_menu_settings',menu&&keys&&closed,{menu,keys,closed});
+  for(const[k,v]of Object.entries(R))console.log('desktop'.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
+  console.log('desktop', errs.join('\n')||'no page errors'); await p.close(); }
 await b.close();})();
