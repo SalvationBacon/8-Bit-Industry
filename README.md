@@ -2,7 +2,9 @@
 
 > Start with nothing · Automate everything · Launch
 
-A factory automation game for mobile. Built as a single HTML file PWA.
+A factory automation game for phones, tablets and computers. Built as a single HTML file PWA.
+
+On a computer: R rotates, Enter places, Esc cancels or closes, Ctrl+Z undoes, 1 to 5 pick the tabs, WASD or the arrow keys move the map, + and - (or the mouse wheel) zoom, Q selects and M opens the menu.
 
 ## Play
 https://salvationbacon.github.io/8-Bit-Industry/
@@ -66,4 +68,4 @@ After your first Big Bang, SANDBOX on the title screen opens a creative mode: pi
 ☰ menu → Settings (or SETTINGS on the title screen), shared by every save on the device: sound effects, music and volume, FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.33: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.34: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige

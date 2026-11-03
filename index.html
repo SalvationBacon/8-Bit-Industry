@@ -323,7 +323,7 @@ body.sheet-open #tutMini{display:block}
 .gh-zone{font-size:var(--f7);color:var(--amber);margin-bottom:6px}
 .gh-text{font-size:var(--f6);color:var(--text2);line-height:2}
 /* Portrait phones: every panel is a bottom sheet so the map stays visible above */
-@media not ((orientation:landscape) and (max-height:600px)){
+@media not (((orientation:landscape) and (max-height:600px)) or ((min-width:768px) and (min-height:601px))){
   .spanel{top:auto;left:0;right:0;width:auto;height:min(64vh,calc(100% - var(--hud-h) - var(--sat) - var(--tab-h) - var(--sab) - 40px));
     border-left:none;border-top:3px solid var(--border2);transform:translateY(calc(100% + var(--tab-h) + var(--sab)))}
   .spanel.open{transform:translateY(0);box-shadow:0 -10px 30px rgba(0,0,0,.6)} /* shadow only when open: a closed sheet sits under the tab bar and darkened it */
@@ -364,8 +364,8 @@ body.sheet-open #tutMini{display:block}
 .inv-chip{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;background:var(--bg3);border:1px solid var(--border);text-align:center}
 .inv-chip .n{font-size:var(--f4);color:var(--text3);line-height:1.4}
 
-/* ── LANDSCAPE PHONES: tab bar becomes a left rail, drawer a side column ── */
-@media (orientation:landscape) and (max-height:600px){
+/* ── LANDSCAPE PHONES, TABLETS AND DESKTOP: tab bar becomes a left rail, drawer a side column ── */
+@media (orientation:landscape) and (max-height:600px), (min-width:768px) and (min-height:601px){
   :root{--hud-h:42px;--tab-h:0px}
   #sGame{display:grid;grid-template-columns:calc(76px + var(--sal)) auto minmax(0,1fr);grid-template-rows:calc(var(--hud-h) + var(--sat)) minmax(0,1fr)}
   #hud{grid-column:2/4;grid-row:1;padding-left:6px!important}
@@ -507,6 +507,37 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   .mh{padding:6px 10px} .mb{padding:8px 10px} .mf{padding:6px 10px} .menu-zone{padding:6px 8px;margin-bottom:6px}
   .mf .btn{padding:6px 14px}
 }
+/* ── TABLETS AND DESKTOP (v2.0.34): the side layout above, sized for a big screen ──
+   Anything at least 768px wide and over 600px tall (an iPad either way round, a laptop, a monitor). Resources sit in the
+   top bar, the build drawer shows three columns, panels open on the right and leave most of the map in view. */
+@media (min-width:768px) and (min-height:601px){
+  :root{--hud-h:50px;--rail:88px}
+  #sGame{grid-template-columns:calc(var(--rail) + var(--sal)) auto minmax(0,1fr)}
+  #tabBar{justify-content:flex-start;gap:2px}
+  .tab-btn{flex:0 0 auto;min-height:86px;padding:10px 0}
+  #tabDrawer.open{width:min(320px,30vw)}
+  #drawerItems{grid-template-columns:repeat(2,1fr);gap:5px;padding:8px}
+  .ditem{min-height:74px;overflow:hidden}
+  .dcat-btn{padding:9px 10px}
+  .spanel{width:min(470px,40vw)}
+  #hud #invStrip{position:static;flex:1 1 auto;min-width:0;height:34px;background:none;border:none;padding:0 6px;z-index:auto}
+  #hudRes{flex:0 0 auto}
+  #tutHint{top:calc(var(--ct) + 10px);max-width:min(560px,60vw)}
+  .modal{width:min(580px,70vw)}
+  #resInfo{left:auto;width:min(400px,40vw)}
+  #toolTip .tt-recipes,#toolTip .tt-desc{display:block}
+}
+/* Desktop (mouse): the base type scale was set for phones held close; a monitor needs it larger */
+@media (min-width:768px) and (min-height:601px) and (pointer:fine){
+  :root{--f3:8px;--f4:8px;--f5:9px;--f6:10px;--f7:11px;--f8:12px;--f9:13px;--f10:15px}
+  .tab-btn{font-size:var(--f5)}
+}
+@media (min-width:1500px) and (min-height:850px) and (pointer:fine){
+  :root{--f3:9px;--f4:9px;--f5:10px;--f6:11px;--f7:12px;--f8:13px;--f9:14px;--f10:16px}
+  #tabDrawer.open{width:min(420px,28vw)}
+  #drawerItems{grid-template-columns:repeat(3,1fr)}
+  .spanel{width:min(540px,36vw)}
+}
 </style>
 </head>
 <body>
@@ -536,7 +567,7 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
       </div>
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
     </div>
-    <p class="v-num">v2.0.33 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.34 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -555,9 +586,9 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   <div id="invStrip" onclick="showPanel('inv')" title="Inventory"></div>
   <div id="buildHUD" class="hidden">
     <div id="buildCost"></div>
-    <button id="buildRotateBtn" onclick="cycleDir()" style="display:none">↻ →</button>
-    <button id="buildConfirmBtn" onclick="confirmPlace()" style="display:none">✓ PLACE</button>
-    <button id="buildCancelBtn" onclick="cancelBuild()">✕ CANCEL</button>
+    <button id="buildRotateBtn" title="Rotate (R)" onclick="cycleDir()" style="display:none">↻ →</button>
+    <button id="buildConfirmBtn" title="Place (Enter)" onclick="confirmPlace()" style="display:none">✓ PLACE</button>
+    <button id="buildCancelBtn" title="Cancel (Esc)" onclick="cancelBuild()">✕ CANCEL</button>
   </div>
   <div id="tutHint" class="hidden">
     <span id="tutText"></span>
@@ -720,7 +751,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.33';
+const VER      = '2.0.34';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -2827,6 +2858,7 @@ const UI_ART={
   import({R}){R(2,11,12,3,'#7a7a7a');R(2,11,12,1,'#9a9a9a');R(7,1,2,6,'#f5a623');for(let k=0;k<4;k++)R(4+k,6+k,8-k*2,1,'#f5a623');},
   music({C,R}){C(5,12,2,'#26c6a0');C(11,10,2,'#26c6a0');R(6,3,1,9,'#26c6a0');R(12,1,1,9,'#26c6a0');R(6,2,7,2,'#8af0d0');},
   film({R,P}){R(1,3,14,10,'#2a2a2a');for(let x=2;x<15;x+=3){P(x,4,'#e8e8e8');P(x,11,'#e8e8e8');}R(2,6,5,4,'#5a7aa8');R(9,6,5,4,'#5a7aa8');P(3,7,'#9ad8ff');P(10,7,'#9ad8ff');},
+  keys({R,P}){R(1,4,14,9,'#5a5a5a');R(2,5,12,7,'#2a2a2a');for(let y=6;y<10;y+=2)for(let x=3;x<13;x+=2)R(x,y,1,1,'#cfcfcf');R(5,10,6,1,'#cfcfcf');P(8,3,'#7a7a7a');P(8,2,'#7a7a7a');},
   colours({R,P,C}){R(2,3,12,10,'#c8b48a');R(3,4,10,8,'#e8d8b0');C(6,7,2,'#3d8bff');C(10,7,2,'#ff3d8b');C(8,10,2,'#f5a623');R(11,11,3,3,'#e8d8b0');P(12,12,'#8a7a5a');},
   picture({R,P}){R(1,2,14,12,'#8a5a2c');R(2,3,12,10,'#42a5f5');for(let i=0;i<6;i++)R(3+i,12-i,12-i*2>0?2:1,i+1,'#3f9a3f');R(11,4,2,2,'#ffd600');R(2,11,12,2,'#3f9a3f');},
   vibrate({R,P}){R(5,2,6,12,'#3a3a3a');R(6,3,4,9,'#26c6a0');R(7,13,2,1,'#7a7a7a');for(const[x,d]of[[2,1],[13,-1]])for(let y=4;y<12;y+=2){P(x,y,'#cfcfcf');P(x+d,y+1,'#cfcfcf');}},
@@ -2906,7 +2938,7 @@ const EMOJI_PIX={'⛏️':'ui:pick','⛏':'ui:pick','🔨':'ui:craft','🏗️':
   '⏩':'ui:fast','⚡':'ui:power','📦':'ui:inventory','🏆':'ui:achievements','💾':'ui:saves','🛟':'ui:backup','📖':'ui:recipes',
   '📐':'ui:blueprint','📲':'ui:install','🔒':'ui:devlock','⚙️':'ui:settings','🌸':'ui:bloom','🌌':'singularity',
   '🕳':'ui:cave','⏸':'ui:pause','✋':'ui:hand','⏱':'ui:clock','📤':'ui:export','📥':'ui:import','⬇':'ui:import','⬆':'ui:up',
-  '🎵':'ui:music','🎨':'ui:colours','🔉':'ui:sound','🔊':'ui:sound','🎞':'ui:film','🖼':'ui:picture','📳':'ui:vibrate','📄':'ui:file','📋':'ui:copy',
+  '🎵':'ui:music','🎨':'ui:colours','⌨':'ui:keys','🔉':'ui:sound','🔊':'ui:sound','🎞':'ui:film','🖼':'ui:picture','📳':'ui:vibrate','📄':'ui:file','📋':'ui:copy',
   '✕':'ui:close','✗':'ui:close','✓':'ui:check','☰':'ui:menu','→':'ui:ar','↓':'ui:ad','←':'ui:al','↑':'ui:au','▸':'ui:ar','▾':'ui:ad','↻':'ui:rotate','✥':'ui:move','👆':'ui:select','⬚':'ui:multisel','💚':'circuit','🌿':'ui:sprout','🔋':'accumulator','🗒':'sci_red'};
 // Every item's and machine's old emoji icon maps to its sprite too, so any leftover text emoji has a pixel twin
 const noVS=e=>e.replace(/\uFE0F/g,'');
@@ -3255,7 +3287,7 @@ function sizeCanvas(){
   if(G)clampCam();
 }
 // Landscape phones: the resource strip rides in the top bar's spare space instead of covering the map
-const LANDSCAPE_MQ=window.matchMedia('(orientation:landscape) and (max-height:600px)');
+const LANDSCAPE_MQ=window.matchMedia('(orientation:landscape) and (max-height:600px), (min-width:768px) and (min-height:601px)'); // the side layout (v2.0.34: tablets and desktop too)
 function placeInvStrip(){
   const st=document.getElementById('invStrip'), hud=document.getElementById('hud'); if(!st||!hud)return;
   if(LANDSCAPE_MQ.matches){if(st.parentElement!==hud)hud.insertBefore(st,document.getElementById('btnSpeed'));}
@@ -4244,6 +4276,51 @@ function placeLine(){
   updateHUD(); saveGame(); sfx('place'); buildDrawer(); updateBuildHUD();
 }
 
+// ── Keyboard (v2.0.34): for tablets with keyboards and desktops. Ignored while typing in a text box.
+// R rotate · Enter or Space place · Esc cancel / close · Ctrl+Z undo · 1-5 the tabs · WASD or arrows pan · + and - zoom ·
+// Q select · M menu
+const KEY_HELP='R rotate · Enter place · Esc cancel or close · Ctrl+Z undo · 1-5 tabs · WASD or arrows move the map · + and - zoom · Q select · M menu';
+function onKey(e){
+  if(!G||onTitle())return;
+  const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  const k=e.key, modalOpen=!document.getElementById('mOverlay').classList.contains('hidden');
+  if(k==='Escape'){
+    e.preventDefault();
+    if(modalOpen){closeModal();return;}
+    if(blueprintState.mode==='holding'||multiselState.mode==='pasting'){ghostCancel();return;}
+    if(MDEFS[activeTool]){cancelBuild();return;}
+    if(activeTool!=='select'){setTool('select');updateBuildHUD();return;}
+    if(openPanel){closePanel(openPanel);return;}
+    if(activeTab)switchTab(activeTab);
+    return;
+  }
+  if(modalOpen)return;
+  if((e.ctrlKey||e.metaKey)&&(k==='z'||k==='Z')){e.preventDefault();undoLast();return;}
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting';
+  if(k==='r'||k==='R'){
+    if(pasting){transformGhost('rot');return;}
+    if(MDEFS[activeTool]){cycleDir();return;}
+    const tile=hov.x>=0&&G.map[hov.y]?.[hov.x]; if(tile&&tile.mid!==null){rotateM(tile.mid);sfx('place');}
+    return;
+  }
+  if(k==='Enter'||k===' '){
+    if(pasting){e.preventDefault();ghostConfirm();return;}
+    if(MDEFS[activeTool]){e.preventDefault();confirmPlace();}
+    return;
+  }
+  const tabs={'1':'build','2':'tools','3':'craft','4':'research','5':'goal'};
+  if(tabs[k]){switchTab(tabs[k]);return;}
+  if(k==='q'||k==='Q'){if(MDEFS[activeTool])cancelBuild();else{setTool('select');updateBuildHUD();}return;}
+  if(k==='m'||k==='M'){openBigMenu();return;}
+  const w=canvas?canvas.clientWidth:600, h=canvas?canvas.clientHeight:600, step=Math.round(Math.min(w,h)/6);
+  const pan={ArrowLeft:[-1,0],a:[-1,0],A:[-1,0],ArrowRight:[1,0],d:[1,0],D:[1,0],ArrowUp:[0,-1],w:[0,-1],W:[0,-1],ArrowDown:[0,1],s:[0,1],S:[0,1]}[k];
+  if(pan){e.preventDefault();G.cam.x+=pan[0]*step;G.cam.y+=pan[1]*step;clampCam();return;}
+  if(k==='+'||k==='='){zoomAt(w/2,h/2,1.2);return;}
+  if(k==='-'||k==='_'){zoomAt(w/2,h/2,1/1.2);return;}
+}
+document.addEventListener('keydown',onKey);
+
 let inputReady=false;
 function setupInput(){
   if(inputReady)return; // startGame runs on every new game / load; listeners must attach once
@@ -4831,6 +4908,19 @@ function liftBelts(belts){ // demolish quietly, keep their items to put back; re
   for(const b of belts){const t=G.map[b.y][b.x]; kept.push([b.x,b.y,t.items.map(it=>({...it}))]); tryRemove(b.x,b.y,true);}
   return kept;
 }
+// The splitter takes the belts' tier (v2.0.34): the highest tier among them, paying each upgrade step (free in dev free
+// build). If a step can't be afforded it stops there and says so. Returns the tier reached.
+function matchBeltTier(m,belts){
+  const want=Math.max(1,...belts.map(b=>b.tier||1)); let short=null;
+  for(let t=(m.tier||1)+1;t<=want;t++){
+    const cost=tierCost(m.type,t);
+    if(!G.devFreeBuild){ const miss=Object.entries(cost).find(([k,n])=>(G.inv[k]||0)<n); if(miss){short=miss;break;} for(const[k,n]of Object.entries(cost))G.inv[k]-=n; }
+    m.tier=t;
+  }
+  if(G.devFreeBuild&&undoGroup){const op=undoGroup.find(o=>o.op==='place'&&o.id===m.id); if(op)op.tier=m.tier;} // undo takes back what free build gave
+  if(short)toast(`Splitter left at T${m.tier}: T${m.tier+1} needs ${short[1]}× ${ITEMS[short[0]]?.name||short[0]}`,'wrn');
+  return m.tier;
+}
 function restoreBeltItems(kept,m){ // the lifted items ride on the new splitter (they went to the inventory with the belt)
   for(const[x,y,items]of kept){
     const t=G.map[y][x]; if(t.mid!==m.id)continue;
@@ -4891,9 +4981,9 @@ function tryPlace(type,tx,ty){
     G.map[ty+dy][tx+dx].mid=m.id;
   const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
 
-  if(under.length){restoreBeltItems(kept,m);undoEnd();}
+  if(under.length){matchBeltTier(m,under);restoreBeltItems(kept,m);undoEnd();}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
-  toast(under.length?`Placed ${def.name}, replacing ${under.length} belt${under.length>1?'s':''}`:`Placed ${def.name}`,'ok');
+  toast(under.length?`Placed ${def.name}${m.tier>1?` (T${m.tier})`:''}, replacing ${under.length} belt${under.length>1?'s':''}`:`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
   updateBuildHUD(); // every machine stays selected: keep placing until CANCEL (v2.0.30)
 }
@@ -4924,7 +5014,7 @@ function completePlacement(type,tx,ty){
   const[mw,mh]=machSize(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++) G.map[ty+dy][tx+dx].mid=m.id;
   const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
-  if(under.length){restoreBeltItems(kept,m);undoEnd();}
+  if(under.length){matchBeltTier(m,under);restoreBeltItems(kept,m);undoEnd();}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
@@ -9671,6 +9761,7 @@ function openSettings(){
   settingsHtml+=row('📳 HAPTICS',navigator.vibrate?`<button class="mini-btn ${PREFS.haptics!==false?'teal':'dim'}" onclick="setPref('haptics',${PREFS.haptics===false});haptic('place')">${PREFS.haptics!==false?'ON':'OFF'}</button>`:`<span style="font-size:var(--f4);color:var(--text3)">Not supported in this browser</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin:-2px 0 8px">Lower FPS and resolution save battery. The factory runs at the same speed either way.</div>`;
 
+  if(window.matchMedia('(pointer:fine)').matches)settingsHtml+=row('⌨ KEYS',`<span style="font-size:var(--f4);color:var(--text3);flex:1;line-height:1.9">${KEY_HELP}</span>`);
   settingsHtml+=`<div style="font-size:var(--f4);color:var(--text3);line-height:1.9;margin-bottom:6px">These settings are for this device: every save, slot and sandbox shares them.</div>`;
   if(!title)settingsHtml+=`<button class="full-btn" onclick="restartTutorial()">📖 RESTART ZONE ${G.zone} TUTORIAL</button>`;
 

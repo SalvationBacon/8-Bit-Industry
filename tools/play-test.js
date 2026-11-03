@@ -772,8 +772,14 @@ const r=await p.evaluate(async()=>{
     run(240); const flows=(c2.chestInv.coal||0)>before+5;
     const chestNo=!canPlace('splitter',21,y,0,true); // not over anything that isn't a belt
     undoLast(); const back=G.machines[G.map[y][15].mid]?.type==='belt'&&G.map[y+1][15].mid===null&&!Object.values(G.machines).some(m=>m.type==='splitter');
+    // the splitter takes the belts' tier, paying the upgrade; with nothing to pay it stays T1
+    const b17=G.machines[G.map[y][17].mid]; b17.tier=2; const g0=G.inv.iron_gear; hov={x:17,y}; confirmPlace();
+    const s17=G.machines[G.map[y][17].mid], tiered=s17?.type==='splitter'&&s17.tier===2&&G.inv.iron_gear===g0-BELT_TIER_COSTS[2].iron_gear+BELT_TIER_COSTS[2].iron_gear-(MDEFS.splitter.cost.iron_gear||0);
+    undoLast(); const tierUndo=G.machines[G.map[y][17].mid]?.type==='belt'&&G.machines[G.map[y][17].mid].tier===2&&G.inv.iron_gear===g0;
+    const b13=G.machines[G.map[y][13].mid]; b13.tier=3; const keepInv={...G.inv}; G.inv.steel_plate=0; hov={x:13,y}; confirmPlace();
+    const s13=G.machines[G.map[y][13].mid], capped=s13?.type==='splitter'&&s13.tier===3&&(G.inv.steel_plate||0)===0; // the T3 belt's own refund pays the splitter's T3 step
     setTool('select'); G.devFreeBuild=true;
-    ok('splitter_over_belts',ghostOk&&pasteNo&&replaced&&refunded&&flows&&chestNo&&back,{ghostOk,pasteNo,replaced,refunded,flows,before,after:c2.chestInv.coal,chestNo,back}); }
+    ok('splitter_over_belts',ghostOk&&pasteNo&&replaced&&refunded&&flows&&chestNo&&back&&tiered&&tierUndo&&capped,{ghostOk,pasteNo,replaced,refunded,flows,before,after:c2.chestInv.coal,chestNo,back,tiered,tierUndo,capped,s13:s13?.tier}); }
   // ── Stats graphs: machine output per item per 10s and per minute, power made and used, drawn in the Stats panel
   { reset(); G.prodLog=null; G.tick=0; power(2,2); res(10,G.floorY+4,1,1,'iron_ore'); const mi=put('miner',10,G.floorY+4); put('chest',11,G.floorY+4);
     G.inv.iron_ore=0; run(480);
