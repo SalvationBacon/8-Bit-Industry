@@ -175,6 +175,39 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390],['tablet',11
   const line6=await p.evaluate(([x,y])=>{let n=0;for(let i=0;i<6;i++)if(G.machines[G.map[y+2][x+i].mid]?.type==='belt')n++;return n;},[mb.tx,mb.ty]);
   await p.mouse.click(mb.a.x,mb.a.y+200,{button:'right'}); await p.waitForTimeout(100); const rstop=await p.evaluate(()=>activeTool==='select');
   ok('mouse_click_places',clicked&&line6===6&&rstop,{clicked,line6,rstop});
+  // Shift+drag a row of furnaces (one undo), hover info, Shift+drag select, Ctrl+C / Ctrl+V, Del, Ctrl+Y, middle-drag, hotbar keys
+  const sp=await p.evaluate(()=>{setTool('select');G.inv.stone=100;G.inv.iron_plate=500;G.inv.iron_gear=100;const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
+    const tx=Math.floor((G.cam.x+r.width*.3)/ts), ty=Math.floor((G.cam.y+r.height*.55)/ts); for(let j=-1;j<4;j++)for(let i=-1;i<16;i++)G.map[ty+j][tx+i]={type:0,res:null,mid:null,items:[]};
+    const pt=(x,y)=>({x:r.left+x*ts-G.cam.x+ts/2,y:r.top+y*ts-G.cam.y+ts/2});return{tx,ty,a:pt(tx,ty),b:pt(tx+4,ty),c:pt(tx-1,ty-1),d:pt(tx+5,ty+1),e:pt(tx+8,ty+2)};});
+  await p.evaluate(()=>setTool('stone_furnace'));
+  await p.keyboard.down('Shift'); await p.mouse.move(sp.a.x,sp.a.y); await p.mouse.down(); for(let k=1;k<=12;k++)await p.mouse.move(sp.a.x+(sp.b.x-sp.a.x)*k/12,sp.a.y); await p.mouse.up(); await p.keyboard.up('Shift');
+  const row=await p.evaluate(([x,y])=>{let n=0;for(let i=0;i<5;i++)if(G.machines[G.map[y][x+i].mid]?.type==='stone_furnace')n++;return n;},[sp.tx,sp.ty]);
+  await p.keyboard.press('Control+z'); const rowUndo=await p.evaluate(([x,y])=>[0,1,2,3,4].every(i=>G.map[y][x+i].mid===null),[sp.tx,sp.ty]);
+  await p.keyboard.press('Control+y'); const rowRedo=await p.evaluate(([x,y])=>[0,1,2,3,4].every(i=>G.machines[G.map[y][x+i].mid]?.type==='stone_furnace'),[sp.tx,sp.ty]);
+  ok('shift_drag_row_undo_redo',row===5&&rowUndo&&rowRedo,{row,rowUndo,rowRedo});
+  await p.mouse.click(sp.a.x,sp.a.y,{button:'right'}); // stop building
+  await p.mouse.move(sp.a.x+3,sp.a.y+3); await p.waitForTimeout(500); await p.mouse.move(sp.a.x+4,sp.a.y+4); await p.waitForTimeout(100);
+  const tip=await p.evaluate(()=>{const e=document.getElementById('hoverTip');return e.classList.contains('hidden')?null:e.innerText;});
+  ok('hover_info',!!tip&&/Stone Furnace/.test(tip),{tip});
+  // Shift+drag box around the row, Ctrl+C holds a copy, click pastes it lower down, Del demolishes a selection
+  await p.keyboard.down('Shift'); await p.mouse.move(sp.c.x,sp.c.y); await p.mouse.down(); await p.mouse.move(sp.d.x,sp.d.y,{steps:6}); await p.mouse.up(); await p.keyboard.up('Shift');
+  const sel=await p.evaluate(()=>multiselState.mode==='selected'?multiselState.ids.length:0);
+  await p.keyboard.press('Control+c'); const pasting=await p.evaluate(()=>multiselState.mode==='pasting');
+  const below=await p.evaluate(([x,y])=>{const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;return{x:r.left+x*ts-G.cam.x+ts/2,y:r.top+(y+2)*ts-G.cam.y+ts/2};},[sp.tx,sp.ty]);
+  await p.mouse.click(below.x,below.y); await p.waitForTimeout(100);
+  const pasted=await p.evaluate(([x,y])=>[0,1,2,3,4].every(i=>G.machines[G.map[y+2][x+i].mid]?.type==='stone_furnace'),[sp.tx,sp.ty]);
+  await p.keyboard.press('Escape'); await p.keyboard.press('Escape');
+  await p.keyboard.down('Shift'); await p.mouse.move(sp.c.x,sp.c.y); await p.mouse.down(); await p.mouse.move(sp.d.x,sp.d.y,{steps:6}); await p.mouse.up(); await p.keyboard.up('Shift');
+  await p.keyboard.press('Delete'); const delSel=await p.evaluate(([x,y])=>[0,1,2,3,4].every(i=>G.map[y][x+i].mid===null),[sp.tx,sp.ty]);
+  ok('select_copy_paste_delete',sel===5&&pasting&&pasted&&delSel,{sel,pasting,pasted,delSel});
+  // middle-drag moves the map and never places; with BUILD open, 2 picks the group's second item and Tab moves to the next group
+  await p.evaluate(()=>setTool('stone_furnace')); const m0=await p.evaluate(()=>({x:G.cam.x,n:Object.keys(G.machines).length}));
+  await p.mouse.move(sp.e.x,sp.e.y); await p.mouse.down({button:'middle'}); await p.mouse.move(sp.e.x-120,sp.e.y,{steps:6}); await p.mouse.up({button:'middle'});
+  const m1=await p.evaluate(()=>({x:G.cam.x,n:Object.keys(G.machines).length}));
+  await p.keyboard.press('Escape'); await p.evaluate(()=>{if(activeTab!=='build')switchTab('build');setDrawerCat(0);G.research.done.push('logistics');});
+  await p.keyboard.press('2'); const hk=await p.evaluate(()=>({tool:activeTool,want:drawerCats('build')[0].items[1].id}));
+  await p.keyboard.press('Tab'); const cat=await p.evaluate(()=>activeDrawerCat.build);
+  ok('middle_pan_and_hotbar',m1.x!==m0.x&&m1.n===m0.n&&hk.tool===hk.want&&cat===1,{m0,m1,hk,cat});
   for(const[k,v]of Object.entries(R))console.log('desktop'.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
   console.log('desktop', errs.join('\n')||'no page errors'); await p.close(); }
 await b.close();})();

@@ -527,6 +527,17 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
   #resInfo{left:auto;width:min(400px,40vw)}
   #toolTip .tt-recipes,#toolTip .tt-desc{display:block}
 }
+/* PC title screen (v2.0.37): a wide card, the logo on the left and the menu on the right, so it never scrolls (the narrow
+   phone card scrolled inside itself on laptop screens once there were saves). */
+@media (min-width:900px) and (min-height:460px){
+  .title-card{width:min(960px,92vw);max-height:none;overflow:visible;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:40px;align-items:center;padding:30px 36px 18px}
+  .title-card .tc-brand{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0}
+  .title-card .tc-brand .logo-icon{display:inline-block}
+  .title-card .tc-brand .tagline{margin-bottom:0}
+  .title-card .tc-menu{max-width:none!important;min-width:0}
+  .title-card .v-num{grid-column:1/3;margin-top:14px}
+  .logo-8{font-size:clamp(34px,4.2vw,54px)}
+}
 /* Key hints (v2.0.35): a Shapez-style bar along the bottom of the map with the keys for what you're doing right now.
    Mouse and keyboard only (body.kh, set by updateKeyHints); the build buttons, paste bar and toasts sit above it. */
 #keyHints{position:fixed;left:var(--cl);right:var(--cr);bottom:var(--cb);z-index:590;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;
@@ -534,6 +545,9 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 #keyHints .kh{display:inline-flex;align-items:center;gap:6px;font-size:var(--f4);color:var(--text2);white-space:nowrap}
 #keyHints kbd{font-family:var(--font);font-size:var(--f4);color:var(--amber);background:#1d1d1d;border:1px solid #444;border-bottom-width:2px;padding:3px 6px;min-width:12px;text-align:center}
 #keyHints .kh-ctx{color:var(--teal);font-size:var(--f4);margin-right:4px}
+#hoverTip{position:fixed;z-index:595;pointer-events:none;max-width:320px;background:rgba(12,12,12,.96);border:1px solid var(--border2);box-shadow:0 6px 20px rgba(0,0,0,.6);padding:8px 10px;font-size:var(--f4);color:var(--text2);line-height:1.9}
+#hoverTip .ht-name{font-size:var(--f5);color:var(--amber);margin-bottom:2px}
+#hoverTip .ht-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 body.kh #buildHUD{bottom:calc(var(--cb) + 44px)}
 body.kh #ghostBar{bottom:calc(var(--cb) + 34px)}
 body.kh #toasts{bottom:calc(var(--cb) + 112px)}
@@ -560,13 +574,15 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
   <div class="title-glow"></div>
   <div id="titleCaption"></div>
   <div class="title-card">
+    <div class="tc-brand">
     <span class="logo-icon" data-ui="factory"></span>
     <div class="logo">
       <span class="logo-8">8-BIT</span>
       <span class="logo-rest">INDUSTRY</span>
     </div>
     <p class="tagline">START WITH NOTHING · AUTOMATE EVERYTHING · LAUNCH</p>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:320px;margin:0 auto">
+    </div>
+    <div class="tc-menu" style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:320px;margin:0 auto">
       <div id="titleSlots" style="width:100%"></div>
       <button class="btn" onclick="newGame()" style="width:100%">NEW GAME</button>
       <button class="btn" id="titleSandbox" onclick="openSandboxMenu()" style="width:100%"><span data-ui="build"></span>SANDBOX</button>
@@ -577,7 +593,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       </div>
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
     </div>
-    <p class="v-num">v2.0.36 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.37 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -595,6 +611,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
   <!-- Build mode controls, fixed, outside canvas touch zone, same pattern as ghostBar -->
   <div id="invStrip" onclick="showPanel('inv')" title="Inventory"></div>
   <div id="keyHints" class="hidden" aria-live="off"></div>
+  <div id="hoverTip" class="hidden"></div>
   <div id="buildHUD" class="hidden">
     <div id="buildCost"></div>
     <button id="buildRotateBtn" title="Rotate (R)" onclick="cycleDir()" style="display:none">↻ →</button>
@@ -762,7 +779,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.36';
+const VER      = '2.0.37';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -1565,6 +1582,7 @@ const DRAWER_DEFS = {
       {id:'move',name:'Move',icon:'✥',noMachine:true},
       {id:'blueprint',name:'Blueprint',icon:'📐',noMachine:true},
       {id:'undo',name:'Undo',icon:'↶',noMachine:true,action:'undoLast()'}, // last in the EDIT tab (v2.0.19)
+      {id:'redo',name:'Redo',icon:'↷',noMachine:true,action:'redoLast()'}, // v2.0.37
     ]},
   ],
 };
@@ -2802,6 +2820,7 @@ const UI_ART={
     R(0,6,5,1,'#ffd27a');R(1,5,3,1,'#ffd27a');P(2,4,'#ffd27a');},
   move({R,P}){R(7,2,2,12,'#cfcfcf');R(2,7,12,2,'#cfcfcf');
     for(const[x,y,dx,dy]of[[8,0,0,1],[8,15,0,-1],[0,8,1,0],[15,8,-1,0]]){for(let k=0;k<3;k++){if(dx===0){R(x-1-k,y+dy*k,2+k*2,1,'#f5a623');}else{R(x+dx*k,y-1-k,1,2+k*2,'#f5a623');}}}},
+  redo(a){UI_ART.undo({...a,P:(x,y,c)=>a.P(15-x,y,c),R:(x,y,w,h,c)=>a.R(16-x-w,y,w,h,c)});}, // the undo arrow, mirrored
   undo({P,R}){R(4,4,7,2,'#f5a623');R(4,4,7,1,'#ffd27a');R(5,11,6,2,'#f5a623');R(5,12,6,1,'#a86c08');
     for(let y=3;y<15;y++)for(let x=10;x<16;x++){const d=Math.hypot(x-10,y-8.5);if(d>=2.6&&d<=4.6&&x>=11)P(x,y,d<3.6?'#ffd27a':'#f5a623');}
     R(3,2,1,6,'#ffd27a');R(2,3,1,4,'#ffd27a');R(1,4,1,2,'#ffd27a');R(4,3,1,4,'#f5a623');},
@@ -4290,7 +4309,7 @@ function placeLine(){
 // ── Keyboard (v2.0.34): for tablets with keyboards and desktops. Ignored while typing in a text box.
 // R rotate · Enter or Space place · Esc cancel / close · Ctrl+Z undo · 1-5 the tabs · WASD or arrows pan · + and - zoom ·
 // Q select · M menu
-const KEY_HELP='Click place (drag a belt or pipe line) · Right-click stop building · R rotate · Enter place · Esc cancel or close · Q pick the building under the mouse (or stop building) · Del or X demolish under the mouse · F and V flip a paste · Ctrl+Z undo · 1-5 tabs · WASD or arrows move the map · + and - zoom · M menu · H show or hide the key hints';
+const KEY_HELP='Click place (drag a belt or pipe line, Shift+drag a row of anything) · Right-click stop building · Shift+drag select an area · Ctrl+C copy · Ctrl+V paste · Del demolish the selection · Ctrl+Y redo · with BUILD open: 1-9 pick, Tab next group · middle-drag move the map · R rotate · Enter place · Esc cancel or close · Q pick the building under the mouse (or stop building) · Del or X demolish under the mouse · F and V flip a paste · Ctrl+Z undo · 1-5 tabs · WASD or arrows move the map · + and - zoom · M menu · H show or hide the key hints';
 function onKey(e){
   if(!G||onTitle())return;
   const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
@@ -4298,6 +4317,7 @@ function onKey(e){
   if(k==='Escape'){
     e.preventDefault();
     if(modalOpen){closeModal();return;}
+    if(multiselState.ids.length&&multiselState.mode!=='pasting'){multiselClear();return;}
     if(blueprintState.mode==='holding'||multiselState.mode==='pasting'){ghostCancel();return;}
     if(MDEFS[activeTool]){cancelBuild();return;}
     if(activeTool!=='select'){setTool('select');updateBuildHUD();return;}
@@ -4306,7 +4326,16 @@ function onKey(e){
     return;
   }
   if(modalOpen)return;
-  if((e.ctrlKey||e.metaKey)&&(k==='z'||k==='Z')){e.preventDefault();undoLast();return;}
+  const ctl=e.ctrlKey||e.metaKey, ms=multiselState, selected=ms.ids.length&&ms.mode==='selected';
+  if(ctl&&(k==='y'||k==='Y'||((k==='z'||k==='Z')&&e.shiftKey))){e.preventDefault();redoLast();return;}
+  if(ctl&&(k==='z'||k==='Z')){e.preventDefault();undoLast();return;}
+  if(ctl&&(k==='c'||k==='C')){ // copy the selection, or the building under the mouse, and hold it to paste
+    e.preventDefault();
+    if(!selected){const hm=hoverMachine(); if(!hm){toast('Select an area (Shift+drag) or point at a building to copy','wrn');return;} setTool('multisel'); ms.ids=[hm.id]; ms.mode='selected';}
+    multiselCopy(); return;
+  }
+  if(ctl&&(k==='v'||k==='V')){e.preventDefault(); if(!ms.clipboard?.length){toast('Nothing copied yet','wrn');return;} if(activeTool!=='multisel')setTool('multisel'); multiselStartPaste(); return;}
+  if(selected&&(k==='Delete'||k==='x'||k==='X'||k==='Backspace')){e.preventDefault();multiselDemolish();return;}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting';
   if(k==='r'||k==='R'){
@@ -4319,6 +4348,13 @@ function onKey(e){
     if(pasting){e.preventDefault();ghostConfirm();return;}
     if(MDEFS[activeTool]){e.preventDefault();confirmPlace();}
     return;
+  }
+  // With the BUILD drawer open, 1-9 pick from the open group and Tab / Shift+Tab change group (Shapez's hotbar);
+  // otherwise 1-5 pick the tabs
+  if(activeTab==='build'){
+    const cats=drawerCats('build'), ci=Math.min(activeDrawerCat.build||0,cats.length-1);
+    if(k==='Tab'){e.preventDefault();setDrawerCat((ci+(e.shiftKey?-1:1)+cats.length)%cats.length);return;}
+    if(/^[1-9]$/.test(k)){const it=cats[ci]?.items[+k-1]; if(it){const d=MDEFS[it.id]; if(d?.unlock&&!G.research.done.includes(d.unlock)){toast(`Requires: ${TECHS[d.unlock]?.name||d.unlock}`,'wrn');sfx('error');} else{setTool(it.id);buildDrawer();}} return;}
   }
   const tabs={'1':'build','2':'tools','3':'craft','4':'research','5':'goal'};
   if(tabs[k]){switchTab(tabs[k]);return;}
@@ -4358,12 +4394,13 @@ function keyHintList(){
   const H=(k,l)=>[k,l];
   if(!document.getElementById('mOverlay').classList.contains('hidden'))return['MENU',[H('Esc','Close')]];
   const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting';
+  if(multiselState.ids.length&&multiselState.mode==='selected')return[`${multiselState.ids.length} SELECTED`,[H('Ctrl+C','Copy'),H('Del','Demolish'),H('Esc','Clear'),H('Ctrl+Z','Undo')]];
   if(pasting)return['PASTING',[H('Click','Paste'),H('R','Rotate'),H('F','Flip sideways'),H('V','Flip up-down'),H('Right-click','Stop')]];
   const def=MDEFS[activeTool];
   if(def&&line.drawing)return['LINE',[H('Drag','Extend'),H('Release','Place line'),H('Esc','Drop the line')]];
   if(def&&lineActive())return['LINE',[H('Enter','Place line'),H('R','Flip'),H('Esc','Drop the line')]];
-  if(def)return[def.name.toUpperCase(),[H('Click','Place'),...(LINE_TOOLS.has(activeTool)?[H('Drag','Place a line')]:[]),...(DIR_TYPES.has(activeTool)||PORTS[activeTool]||def.size[0]!==def.size[1]?[H('R',`Rotate (${DIR_WORD[placeDir]})`)]:[]),
-    H('Right-click','Stop building'),H('Ctrl+Z','Undo')]];
+  if(def)return[def.name.toUpperCase(),[H('Click','Place'),...(LINE_TOOLS.has(activeTool)?[H('Drag','Place a line')]:[H('Shift+drag','Place a row')]),...(DIR_TYPES.has(activeTool)||PORTS[activeTool]||def.size[0]!==def.size[1]?[H('R',`Rotate (${DIR_WORD[placeDir]})`)]:[]),
+    H('Right-click','Stop building'),...(activeTab==='build'?[H('1-9','Pick'),H('Tab','Next group')]:[]),H('Ctrl+Z','Undo'),...(redoStack.length?[H('Ctrl+Y','Redo')]:[])]];
   const tool={demolish:['DEMOLISH',[H('Click','Demolish'),H('Ctrl+Z','Undo'),H('Esc','Done')]],
     rotate:['ROTATE',[H('Click','Rotate'),H('Esc','Done')]],
     move:['MOVE',[H('Click',moveState.active?'Put down':'Pick up'),H('Enter','Place'),H('R','Rotate'),H('Esc','Cancel')]],
@@ -4373,13 +4410,48 @@ function keyHintList(){
   if(tool)return tool;
   const hm=hoverMachine();
   if(hm){const d=MDEFS[hm.type],f=machFaces(hm.type);
-    return[d.name.toUpperCase(),[H('Click','Open'),...(f?[H('R','Rotate')]:[]),...(hm.type!=='singularity'?[H('Q','Build another')]:[]),H('X','Demolish'),...(undoStack.length?[H('Ctrl+Z','Undo')]:[])]];}
+    return[d.name.toUpperCase(),[H('Click','Open'),...(f?[H('R','Rotate')]:[]),...(hm.type!=='singularity'?[H('Q','Build another')]:[]),H('X','Demolish'),H('Ctrl+C','Copy'),...(undoStack.length?[H('Ctrl+Z','Undo')]:[])]];}
   const t=mouseIn&&hov.x>=0?G.map[hov.y]?.[hov.x]:null;
   const base=[H('1-5','Tabs'),H('WASD','Move'),H('Scroll','Zoom'),H('M','Menu')];
   if(t&&t.type===T_RESOURCE)return[ITEMS[t.res]?.name?.toUpperCase()||'DEPOSIT',[H('Click','Mine'),...base]];
-  return['',[...(openPanel?[H('Esc','Close panel')]:activeTab?[H('Esc','Close')]:[]),...base,...(undoStack.length?[H('Ctrl+Z','Undo')]:[])]];
+  return['',[...(openPanel?[H('Esc','Close panel')]:activeTab?[H('Esc','Close')]:[]),...(activeTab==='build'?[H('1-9','Pick'),H('Tab','Next group')]:[]),...base,H('Shift+drag','Select'),...(multiselState.clipboard?.length?[H('Ctrl+V','Paste')]:[]),...(undoStack.length?[H('Ctrl+Z','Undo')]:[]),...(redoStack.length?[H('Ctrl+Y','Redo')]:[])]];
+}
+// ── Hover info (v2.0.37): with a mouse, resting on a building for a moment shows its name, tier, status and what it
+// makes per minute beside the cursor, without opening the panel. Refreshed with the key hints.
+let mouseXY={x:0,y:0}, tipId=null, tipAt=0;
+function machineStatusText(m){
+  const d=MDEFS[m.type];
+  if(!m.active)return['Paused','var(--text3)'];
+  if(m.withered)return['Withered','var(--red)'];
+  if(machineWorking(m))return['Working','var(--green)'];
+  if(d.power>0&&powerRatio()===0)return['No power','var(--red)'];
+  if(d.recipes?.length&&!m.recipe)return['No recipe set','var(--amber)'];
+  if(m.type==='miner'&&!m.mineRes)return['Not on a deposit','var(--red)'];
+  if(Object.values(m.outBuf||{}).reduce((a,b)=>a+b,0)>=50)return['Output full','var(--amber)'];
+  return['Idle','var(--text2)'];
+}
+function updateHoverTip(){
+  const el=document.getElementById('hoverTip'); if(!el)return;
+  const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting';
+  const hm=KH_MQ.matches&&!paint&&!pasting&&!(MDEFS[activeTool]&&activeTool!=='select')&&document.getElementById('mOverlay').classList.contains('hidden')?hoverMachine():null;
+  if(!hm){tipId=null;el.classList.add('hidden');return;}
+  const now=performance.now();
+  if(hm.id!==tipId){tipId=hm.id;tipAt=now;el.classList.add('hidden');setTimeout(updateHoverTip,380);return;}
+  if(now-tipAt<350)return;
+  const d=MDEFS[hm.type], [st,col]=machineStatusText(hm), R=machineRates(hm);
+  const tierTxt=TIER_TYPES.includes(hm.type)?` <span style="color:var(--teal)">T${hm.tier||1}</span>`:'';
+  const line=o=>Object.entries(o).map(([k,v])=>`<span style="white-space:nowrap">${iconHtml(k)} ${fmtRate(v)}/min</span>`).join(' ');
+  const outs=line(R.out), ins=line(R.in);
+  const speed=BELT_TYPES.includes(hm.type)||isInserter(hm.type)?`<div class="ht-row">${tierBonus(hm.type,hm.tier||1)}</div>`:'';
+  setHtml(el,`<div class="ht-name">${iconHtml(hm.type)} ${d.name}${tierTxt}</div>
+    <div class="ht-row" style="color:${col}">${st}${hm.recipe&&RECIPES[hm.recipe]?` · <span style="color:var(--text2)">${RECIPES[hm.recipe].name}</span>`:''}</div>
+    ${outs?`<div class="ht-row"><span style="color:var(--text3)">MAKES</span> ${outs}</div>`:''}${ins?`<div class="ht-row"><span style="color:var(--text3)">USES</span> ${ins}</div>`:''}${speed}`);
+  el.classList.remove('hidden');
+  const w=el.offsetWidth, h=el.offsetHeight;
+  el.style.left=Math.min(innerWidth-w-8,mouseXY.x+18)+'px'; el.style.top=Math.min(innerHeight-h-8,mouseXY.y+18)+'px';
 }
 function updateKeyHints(){
+  updateHoverTip();
   const el=document.getElementById('keyHints'); if(!el)return;
   const on=!!G&&!onTitle()&&KH_MQ.matches&&PREFS.keyHints!==false;
   el.classList.toggle('hidden',!on); document.body.classList.toggle('kh',on);
@@ -4396,9 +4468,9 @@ function setupInput(){
   let lastTouch=0;
   const isTouch=()=>Date.now()-lastTouch<500;
 
-  el.addEventListener('mousedown', e=>{if(!isTouch())onDown(e.clientX,e.clientY,e.button);});
-  el.addEventListener('mousemove', e=>{if(!isTouch()){mouseIn=true;onMov(e.clientX,e.clientY);updateKeyHints();}});
-  el.addEventListener('mouseleave',()=>{mouseIn=false;updateKeyHints();});
+  el.addEventListener('mousedown', e=>{if(e.button===1)e.preventDefault();if(!isTouch())onDown(e.clientX,e.clientY,e.button,e.shiftKey);});
+  el.addEventListener('mousemove', e=>{if(!isTouch()){mouseIn=true;mouseXY={x:e.clientX,y:e.clientY};onMov(e.clientX,e.clientY);updateKeyHints();}});
+  el.addEventListener('mouseleave',()=>{mouseIn=false;if(paint){undoEnd();paint=null;}updateKeyHints();});
   el.addEventListener('mouseup',   e=>{if(!isTouch())onUp(e.clientX,e.clientY);});
   el.addEventListener('wheel',     e=>{e.preventDefault();const r=wrapRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY>0?.88:1.14);},{passive:false});
   el.addEventListener('touchstart',e=>{e.preventDefault();lastTouch=Date.now();onTouchStart(e);},{passive:false});
@@ -4407,9 +4479,15 @@ function setupInput(){
   document.addEventListener('contextmenu',e=>e.preventDefault());
 }
 
-function onDown(cx,cy,btn){
+let paint=null, shiftBox=false; // Shift+drag: place a row (building) or select an area (otherwise)
+function onDown(cx,cy,btn,shift){
   closeResInfo();
-  const r=wrapRect();
+  const r=wrapRect(), tile=scrToTile(cx-r.left,cy-r.top);
+  const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting', building=!!MDEFS[activeTool]&&activeTool!=='select';
+  if(shift&&!btn&&!pasting){
+    if(building&&!LINE_TOOLS.has(activeTool)){paint={last:null};undoBegin();paintAt(tile);drag={on:false,moved:false,btn};return;}
+    if(!building){setTool('multisel');const ms=multiselState;ms.ids=[];ms.x1=ms.x2=tile.x;ms.y1=ms.y2=tile.y;ms.mode='selecting';shiftBox=true;drag={on:false,moved:false,btn};return;}
+  }
   if(!btn&&lineStart(scrToTile(cx-r.left,cy-r.top),cx-r.left,cy-r.top)){drag={on:false,moved:false,btn};return;} // right-drag still pans
   drag={on:true,sx:cx,sy:cy,cx:G.cam.x,cy:G.cam.y,moved:false,btn};
 }
@@ -4427,8 +4505,15 @@ function mouseClick(tile,btn){
   if(building){hov={x:tile.x,y:tile.y};confirmPlace();return true;}
   return false;
 }
+function paintAt(tile){ // one machine of the row, wherever it fits; stops at the first one it can't pay for
+  if(!paint||tile.x<0||(paint.last&&paint.last.x===tile.x&&paint.last.y===tile.y))return; paint.last=tile; hov={x:tile.x,y:tile.y};
+  if(!canPlace(activeTool,tile.x,tile.y,undefined,true))return;
+  const n=Object.keys(G.machines).length; completePlacement(activeTool,tile.x,tile.y,true);
+  if(Object.keys(G.machines).length===n){undoEnd();paint=null;}
+}
 function onMov(cx,cy){
   const r=wrapRect();
+  if(paint){paintAt(scrToTile(cx-r.left,cy-r.top));return;}
   if(line.drawing){line.pt={x:cx-r.left,y:cy-r.top};lineMove(scrToTile(cx-r.left,cy-r.top));return;}
   if(!lineActive())hov=scrToTile(cx-r.left,cy-r.top);
   if(!drag.on)return;
@@ -4438,6 +4523,8 @@ function onMov(cx,cy){
 }
 function onUp(cx,cy){
   const r=wrapRect(), tile=scrToTile(cx-r.left,cy-r.top);
+  if(paint){undoEnd();paint=null;updateHUD();return;}
+  if(shiftBox){shiftBox=false;hov={x:tile.x,y:tile.y};handleTap(tile,false);if(multiselState.mode==='idle')setTool('select');return;}
   if(line.drawing){ // a press that never left the ghost tile is a click; a dragged line is placed on release
     const tap=line.path.length<2; lineEnd();
     if(tap){if(!mouseClick(tile,0))handleTap(tile,false);}
@@ -4445,6 +4532,7 @@ function onUp(cx,cy){
     return;
   }
   if(!drag.on)return; drag.on=false;
+  if(drag.btn===1)return; // middle-drag only moves the map
   if(!drag.moved&&!mouseClick(tile,drag.btn||0)&&!drag.btn)handleTap(tile,false);
 }
 
@@ -4864,12 +4952,17 @@ function unlinkTunnel(m){
 //   pos    {list}    undone by putting machines back where and how they faced
 // The stack lives outside G: it is per session and clears on load and zone change.
 const UNDO_MAX=30;
-let undoStack=[], undoGroup=null, undoBusy=false;
+// Redo (v2.0.37): undoing a step records what it just did as the redo step (undoing that redoes it), and the other way
+// round, through one function (applyUndoGroup). A rebuilt machine gets a new id; UNDO_REMAP points old ids at new ones
+// so older steps still find it. Any new build action clears the redo stack. Groups nest (undoDepth), so a splitter laid
+// over belts inside a Shift-drag stays one step.
+let undoStack=[], redoStack=[], undoGroup=null, undoBusy=false, undoDepth=0, UNDO_REMAP={};
+const rid=id=>{let n=0;while(UNDO_REMAP[id]!==undefined&&n++<64)id=UNDO_REMAP[id];return id;};
 function undoRec(op){if(undoBusy)return; if(undoGroup)undoGroup.push(op); else pushUndo([op]);}
-function undoBegin(){if(!undoBusy)undoGroup=[];}
-function undoEnd(){const g=undoGroup;undoGroup=null;if(g&&g.length)pushUndo(g);}
-function pushUndo(ops){undoStack.push(ops);if(undoStack.length>UNDO_MAX)undoStack.shift();updateUndoBtn();}
-function clearUndo(){undoStack=[];undoGroup=null;updateUndoBtn();}
+function undoBegin(){if(undoBusy)return; if(!undoDepth)undoGroup=[]; undoDepth++;}
+function undoEnd(){if(undoBusy)return; undoDepth=Math.max(0,undoDepth-1); if(undoDepth)return; const g=undoGroup;undoGroup=null;if(g&&g.length)pushUndo(g);}
+function pushUndo(ops){undoStack.push(ops);if(undoStack.length>UNDO_MAX)undoStack.shift();redoStack=[];updateUndoBtn();}
+function clearUndo(){undoStack=[];redoStack=[];undoGroup=null;undoDepth=0;UNDO_REMAP={};updateUndoBtn();}
 function posSnap(m){return{id:m.id,x:m.x,y:m.y,dir:m.dir};}
 // Undo lives in the EDIT tab; its card shows how many steps are left
 function updateUndoBtn(){if(activeTab==='tools')buildDrawer();}
@@ -4895,51 +4988,74 @@ function relocate(list){
   for(const m of ms)linkTunnel(m);
   return true;
 }
-function undoLast(){
-  const ops=undoStack[undoStack.length-1];
-  if(!ops){toast('Nothing to undo','wrn');return;}
-  // Rebuilds must fit and be affordable before anything changes
+// Undo (or redo) one step: performs the opposite of each op, newest first, and returns what it did (the step that
+// reverses it), or null if it couldn't (a rebuild doesn't fit or can't be paid for).
+function applyUndoGroup(ops,verb){
   const rebuilds=ops.filter(o=>o.op==='remove');
   if(rebuilds.length){
     // machines this same step placed come up first (a splitter laid over belts), so their tiles and refunds count
-    const placed=ops.filter(o=>o.op==='place').map(o=>G.machines[o.id]).filter(Boolean), cleared=[], back={};
+    const places=ops.filter(o=>o.op==='place'), placed=places.map(o=>G.machines[rid(o.id)]).filter(Boolean), cleared=[], back={};
     for(const pm of placed){const[w,h]=machSize(pm);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){const t=G.map[pm.y+dy]?.[pm.x+dx];if(t&&t.mid===pm.id){t.mid=null;cleared.push([t,pm.id]);}}
-      if(ops.find(o=>o.op==='place'&&o.id===pm.id).src==='inv')addCost(back,machineWorth(pm.type,pm.tier,pm.modules));}
+      if(places.find(o=>rid(o.id)===pm.id)?.src==='inv')addCost(back,machineWorth(pm.type,pm.tier,pm.modules));}
     const fits=rebuilds.every(o=>canPlace(o.snap.type,o.snap.x,o.snap.y,o.snap.dir));
     for(const[t,id]of cleared)t.mid=id;
-    if(!fits){toast('Cannot undo: something is built there now','bad');sfx('error');return;}
+    if(!fits){toast(`Cannot ${verb}: something is built there now`,'bad');sfx('error');return null;}
     if(!G.devFreeBuild){
       const need={};
       for(const o of rebuilds)addCost(need,machineWorth(o.snap.type,o.snap.tier,o.snap.modules));
       const miss=Object.entries(need).find(([k,n])=>(G.inv[k]||0)+(back[k]||0)<n);
-      if(miss){toast(`Cannot undo: need ${miss[1]}× ${ITEMS[miss[0]]?.name||miss[0]}`,'bad');sfx('error');return;}
+      if(miss){toast(`Cannot ${verb}: need ${miss[1]}× ${ITEMS[miss[0]]?.name||miss[0]}`,'bad');sfx('error');return null;}
     }
   }
+  const done=[];
   undoBusy=true;
   try{
     for(let i=ops.length-1;i>=0;i--){
       const o=ops[i];
       if(o.op==='pos'){
-        if(!relocate(o.list)){toast('Cannot undo: the old spot is taken','bad');sfx('error');return;}
+        const list=o.list.map(e=>({...e,id:rid(e.id)}));
+        const before=list.map(e=>G.machines[e.id]).filter(Boolean).map(posSnap);
+        if(!relocate(list)){toast(`Cannot ${verb}: the old spot is taken`,'bad');sfx('error');return done.length?done:null;}
+        done.push({op:'pos',list:before});
       } else if(o.op==='place'){
-        const m=G.machines[o.id]; if(!m)continue;
+        const m=G.machines[rid(o.id)]; if(!m)continue;
+        const snap={id:m.id,type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])],...(m.relief?{relief:m.relief}:{})};
         const type=m.type; tryRemove(m.x,m.y,true);
         if(o.src!=='inv'){ // it was never paid for in materials: take back what demolish refunded for it
           for(const[k,n]of Object.entries(machineWorth(type,o.tier)))G.inv[k]=Math.max(0,(G.inv[k]||0)-n);
           if(o.src==='crafted')G.crafted[type]=(G.crafted[type]||0)+1;
         }
+        done.push({op:'remove',snap,src:o.src});
       } else if(o.op==='remove'){
-        const sn=o.snap;
-        if(!G.devFreeBuild)for(const[k,n]of Object.entries(machineWorth(sn.type,sn.tier,sn.modules)))G.inv[k]-=n;
+        const sn=o.snap; let src=G.devFreeBuild?'free':'inv';
+        if(!G.devFreeBuild){
+          const worth=machineWorth(sn.type,sn.tier,sn.modules);
+          if(o.src==='crafted'&&(G.crafted[sn.type]||0)>0){G.crafted[sn.type]--;src='crafted';for(const[k,n]of Object.entries(worth))G.inv[k]-=n;addCost(G.inv,MDEFS[sn.type].cost);} // the built one back from the pool, upgrades paid
+          else for(const[k,n]of Object.entries(worth))G.inv[k]-=n;
+        }
         const m=stampMachine(sn,sn.x,sn.y);
-        if(m){m.modules=[...(sn.modules||[])]; G.stats.placed--;}
+        if(m){m.modules=[...(sn.modules||[])];G.stats.placed--; if(sn.id!==undefined&&sn.id!==m.id)UNDO_REMAP[sn.id]=m.id; done.push({op:'place',id:m.id,src,tier:m.tier});}
       }
     }
   } finally {undoBusy=false;}
-  undoStack.pop(); updateUndoBtn();
-  updateHUD(); saveGame(); sfx('remove');
+  return done;
+}
+function undoLast(){
+  const ops=undoStack[undoStack.length-1];
+  if(!ops){toast('Nothing to undo','wrn');return;}
+  const done=applyUndoGroup(ops,'undo'); if(!done)return;
+  undoStack.pop(); if(done.length){redoStack.push(done);if(redoStack.length>UNDO_MAX)redoStack.shift();}
+  updateUndoBtn(); updateHUD(); saveGame(); sfx('remove');
   G.stats.undos=(G.stats.undos||0)+1;
   toast('↶ Undone','ok');
+}
+function redoLast(){
+  const ops=redoStack[redoStack.length-1];
+  if(!ops){toast('Nothing to redo','wrn');return;}
+  const done=applyUndoGroup(ops,'redo'); if(!done)return;
+  redoStack.pop(); if(done.length){undoStack.push(done);if(undoStack.length>UNDO_MAX)undoStack.shift();}
+  updateUndoBtn(); updateHUD(); saveGame(); sfx('place');
+  toast('Redone','ok');
 }
 
 // Can a copied layout (blueprint / clipboard) be stamped with its origin at x,y?
@@ -5072,7 +5188,7 @@ function tryPlace(type,tx,ty){
   updateBuildHUD(); // every machine stays selected: keep placing until CANCEL (v2.0.30)
 }
 
-function completePlacement(type,tx,ty){
+function completePlacement(type,tx,ty,quiet){
   // Called after player confirms power warning, skip power check and place
   const def=MDEFS[type]; if(!def)return;
   if(!canPlace(type,tx,ty,undefined,true)){toast('Cannot place here','bad');sfx('error');return;}
@@ -5099,6 +5215,7 @@ function completePlacement(type,tx,ty){
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++) G.map[ty+dy][tx+dx].mid=m.id;
   const tl=linkTunnel(m); if(tl)toast(`Tunnel linked! (${tl} tiles)`,'ok');
   if(under.length){matchBeltTier(m,under);restoreBeltItems(kept,m);undoEnd();}
+  if(quiet){G.stats.placed++;saveGame();sfx('place');return;}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
   toast(`Placed ${def.name}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
@@ -5108,7 +5225,7 @@ function tryRemove(tx,ty,quiet){
   const mid=G.map[ty][tx].mid; if(mid===null)return;
   const m=G.machines[mid]; if(!m)return;
   const def=MDEFS[m.type];
-  undoRec({op:'remove',snap:{type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])],...(m.relief?{relief:m.relief}:{})}});
+  undoRec({op:'remove',snap:{id:m.id,type:m.type,x:m.x,y:m.y,dir:m.dir,recipe:m.recipe,tier:m.tier||1,modules:[...(m.modules||[])],...(m.relief?{relief:m.relief}:{})}});
   const[mw,mh]=machSize(m);
   unlinkTunnel(m);
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){
@@ -6581,7 +6698,7 @@ function buildDrawerItems(cats,safeCatIdx){
     const sub=!def?'':locked?`<span class="dc lock">🔒 ${TECHS[def.unlock]?.name||''}</span>`
       :`<span class="dc">${costChips(def.cost,item.id)}</span>`;
     if(item.action){ // one-tap actions (Undo) rather than tools
-      const n=item.id==='undo'?undoStack.length:1;
+      const n=item.id==='undo'?undoStack.length:item.id==='redo'?redoStack.length:1;
       return `<div class="ditem${n?'':' off'}" onclick="${item.action}">
       <span class="di">${uiIcon(item.id)}</span>
       <span class="dn">${item.name}</span><span class="dc">${n?`${n} step${n>1?'s':''}`:'nothing yet'}</span>
@@ -10230,7 +10347,7 @@ function buildTitleSlots(){
       <span style="font-size:var(--f7);color:var(--amber);min-width:32px;font-family:var(--font)">${slot.label}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:var(--f6);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.info}</div>
-        <div style="font-size:var(--f5);color:var(--text3)">${slot.time}</div>
+        <div style="font-size:var(--f5);color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.9">${slot.time}</div>
       </div>
       <button class="btn btn-teal btn-sm" style="font-size:var(--f5);padding:4px 8px" onclick="${slot.load}">LOAD</button>
       <button class="btn btn-sm" style="font-size:var(--f5);padding:4px 6px;color:var(--text3)" onclick="${slot.del}">✕</button>
