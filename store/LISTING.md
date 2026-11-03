@@ -66,7 +66,7 @@ Simulation, Strategy, Casual, Offline, Pixel art
 | 10-inch tablet screenshots | `store/screenshots/tablet10/` | 2560×1440 (`... tablet10`) |
 | Chromebook screenshots | `store/screenshots/pc/` | 1920×1080, mouse layout with key hints and hover info (`... pc`) |
 | Google Play Games on PC feature graphic | `store/pc-feature-graphic.png` | 1920×1080, 16:9, scene only: Google lays the logo over it as the game card |
-| Google Play Games on PC logo | `store/pc-logo.png` | 1200×600 transparent PNG (`node tools/make-store-art.js` redraws both) |
+| Google Play Games on PC logo | `store/pc-logo.png` | 600×400 transparent PNG (`node tools/make-store-art.js` redraws both) |
 
 ## In-app product
 | Field | Value |
