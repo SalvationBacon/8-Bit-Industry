@@ -1,14 +1,15 @@
 // Draws the Google Play phone screenshots (1080x1920) from real factories built in the store build.
 // Usage: node tools/build-app.js && node tools/make-store-shots.js [phone|tablet|pc] [name]   -> store/screenshots/<mode>/
-//   phone 1080x1920 portrait (touch) · tablet 1920x1080 landscape (touch) · pc 1920x1080 landscape (mouse: key hints, hover info)
+//   phone 1080x1920 portrait (touch) · tablet 1920x1080 landscape (touch) · tablet10 2560x1440 (touch) · pc 1920x1080 landscape (mouse: key hints, hover info)
 const {chromium}=require('playwright'),path=require('path'),fs=require('fs');
 const MODE=process.argv[2]||'phone', only=process.argv[3];
 if(!only){for(const n of ['1-ironfield','2-machine-panel','3-the-deep','4-singularity','5-research'])
   require('child_process').execFileSync('node',[__filename,MODE,n],{stdio:'inherit'}); process.exit(0);}
 const DEV={phone:{viewport:{width:360,height:640},deviceScaleFactor:3,hasTouch:true,isMobile:true},
   tablet:{viewport:{width:1280,height:720},deviceScaleFactor:1.5,hasTouch:true,isMobile:true},
+  tablet10:{viewport:{width:1280,height:720},deviceScaleFactor:2,hasTouch:true,isMobile:true},
   pc:{viewport:{width:1280,height:720},deviceScaleFactor:1.5}}[MODE];
-const ZOOM={phone:1,tablet:1.55,pc:1.55}[MODE];
+const ZOOM={phone:1,tablet:1.55,tablet10:1.55,pc:1.55}[MODE];
 const OUT=path.join(__dirname,'..','store','screenshots',MODE)+'/'; fs.mkdirSync(OUT,{recursive:true});
 (async()=>{
 const b=await chromium.launch();
