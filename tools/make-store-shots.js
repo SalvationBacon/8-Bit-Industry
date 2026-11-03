@@ -1,14 +1,21 @@
 // Draws the Google Play phone screenshots (1080x1920) from real factories built in the store build.
-// Usage: node tools/build-app.js && node tools/make-store-shots.js [name]   -> store/screenshots/
+// Usage: node tools/build-app.js && node tools/make-store-shots.js [phone|tablet|pc] [name]   -> store/screenshots/<mode>/
+//   phone 1080x1920 portrait (touch) · tablet 1920x1080 landscape (touch) · pc 1920x1080 landscape (mouse: key hints, hover info)
 const {chromium}=require('playwright'),path=require('path'),fs=require('fs');
-const OUT='/home/user/8-Bit-Industry/store/screenshots/'; fs.mkdirSync(OUT,{recursive:true});
-const only=process.argv[2];
+const MODE=process.argv[2]||'phone', only=process.argv[3];
+if(!only){for(const n of ['1-ironfield','2-machine-panel','3-the-deep','4-singularity','5-research'])
+  require('child_process').execFileSync('node',[__filename,MODE,n],{stdio:'inherit'}); process.exit(0);}
+const DEV={phone:{viewport:{width:360,height:640},deviceScaleFactor:3,hasTouch:true,isMobile:true},
+  tablet:{viewport:{width:1280,height:720},deviceScaleFactor:1.5,hasTouch:true,isMobile:true},
+  pc:{viewport:{width:1280,height:720},deviceScaleFactor:1.5}}[MODE];
+const ZOOM={phone:1,tablet:1.55,pc:1.55}[MODE];
+const OUT=path.join(__dirname,'..','store','screenshots',MODE)+'/'; fs.mkdirSync(OUT,{recursive:true});
 (async()=>{
 const b=await chromium.launch();
-const p=await b.newPage({viewport:{width:360,height:640},deviceScaleFactor:3,hasTouch:true,isMobile:true});
+const p=await b.newPage(DEV);
 const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(/FAILED/.test(m.text()))console.log(m.text());});
 await p.addInitScript(()=>{localStorage.setItem('ebi_prefs',JSON.stringify({audioSet:true,music:false,sfx:false}));});
-await p.goto('file://'+path.resolve('/home/user/8-Bit-Industry/www/index.html')); await p.waitForTimeout(500);
+await p.goto('file://'+path.join(__dirname,'..','www','index.html')); await p.evaluate(z=>{window.ZM=z;},ZOOM); await p.waitForTimeout(500);
 // helpers inside the page
 await p.evaluate(()=>{
   window.S={}; checkAchievements=()=>{}; toast=()=>{};
@@ -25,12 +32,16 @@ await p.evaluate(()=>{
   S.ore=(x0,y0,w,h,r)=>{for(let y=y0;y<y0+h;y++)for(let x=x0;x<x0+w;x++){G.map[y][x].type=1;G.map[y][x].res=r;}invalidateChunks();};
   S.put=(type,x,y,dir=0,extra)=>{placeDir=dir;const id=G.nextId;tryPlace(type,x,y);closeModal();const m=G.machines[id];if(m&&extra)Object.assign(m,extra);if(!m)console.log('FAILED',type,x,y);return m;};
   S.belt=(x0,y0,x1,y1,dir)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)S.put('belt',x,y,dir);};
-  S.cam=(x,y,zoom)=>{S.want=[x,y,zoom];S.applyCam();};
+  S.cam=(x,y,zoom)=>{S.want=[x,y,zoom*(window.ZM||1)];S.applyCam();};
   S.applyCam=()=>{if(!S.want)return;const[x,y,zoom]=S.want;G.cam.zoom=zoom;const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*zoom;G.cam.x=x*ts-r.width/2;G.cam.y=y*ts-r.height/2;};
   S.fuel=()=>{for(const m of Object.values(G.machines)){if(['generator','burner'].includes(m.type))m.inBuf.coal=9999;if(m.type==='stone_furnace'||m.type==='blast_furnace')m.inBuf.coal=999;if(m.type==='combustion_gen'||m.type==='scrubber')m.inBuf.refined_fuel=999;if(m.type==='reactor')m.inBuf.luminite_rod=99;}};
 });
+// Each shot runs in a fresh page (run with no name to do them all); 2 and 5 build on the scene before them.
+const NEEDS={'2-machine-panel':'1-ironfield','5-research':'4-singularity'};
 async function shot(name,fn,settle=1200){
-  if(only&&only!==name)return;
+  const prep=only&&NEEDS[only]===name;
+  if(only&&only!==name&&!prep)return;
+  if(prep){await p.evaluate(fn); await p.waitForTimeout(900); await p.evaluate(()=>S.clean()); return;}
   await p.evaluate(fn); await p.waitForTimeout(900); await p.evaluate(()=>S.clean()); await p.waitForTimeout(settle);
   await p.screenshot({path:OUT+name+'.png'}); console.log('shot',name);
 }
@@ -53,6 +64,11 @@ await shot('1-ironfield',()=>{
   S.fuel(); S.run(700); S.restore(); S.cam(X+5.5,Y+6.2,.62);
 });
 
+if(MODE==='pc'&&only==='1-ironfield'){ // rest the mouse on an assembler: hover info + key hints
+  const pt=await p.evaluate(()=>{const a=Object.values(G.machines).find(m=>m.type==='assembler'),r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;return{x:r.left+(a.x+1)*ts-G.cam.x,y:r.top+(a.y+1)*ts-G.cam.y};});
+  await p.mouse.move(pt.x,pt.y); await p.mouse.move(pt.x+2,pt.y+2); await p.waitForTimeout(700);
+  await p.screenshot({path:OUT+'1-ironfield.png'}); console.log('shot 1-ironfield (hover)'); await p.mouse.move(5,5);
+}
 // 2. machine panel with per-minute rates
 await shot('2-machine-panel',()=>{
   S.want=null; const a=Object.values(G.machines).find(m=>m.type==='assembler'); selectMachineById(a.id);
@@ -91,4 +107,4 @@ await shot('4-singularity',()=>{
 await shot('5-research',()=>{ switchTab('research'); },900);
 
 console.log(errs.join('\n')||'no page errors'); await b.close();
-})();
+})().catch(e=>{console.error(e);process.exit(1);});
