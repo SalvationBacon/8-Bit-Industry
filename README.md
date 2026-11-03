@@ -4,10 +4,13 @@
 
 A factory automation game for phones, tablets and computers. Built as a single HTML file PWA.
 
-On a computer a bar along the bottom of the map shows the keys for whatever you're doing (H hides it). R rotates, Enter places, Esc cancels or closes, Q picks the building under the mouse to build another (or stops building), X or Delete demolishes it, F and V flip a paste, Ctrl+Z undoes, 1 to 5 pick the tabs, WASD or the arrow keys move the map, + and - (or the mouse wheel) zoom and M opens the menu.
+On a computer you click to place (drag a belt or pipe to lay a line, Shift+drag a row of anything, right-click to stop building), Shift+drag selects an area (Ctrl+C copy, Ctrl+V paste, Del demolish), resting the mouse on a building shows what it is doing, Ctrl+Y redoes, with BUILD open 1 to 9 pick a building and Tab changes group, and the middle mouse button moves the map; and a bar along the bottom of the map shows the keys for whatever you're doing (H hides it). R rotates, Enter also places, Esc cancels or closes, Q picks the building under the mouse to build another (or stops building), X or Delete demolishes it, F and V flip a paste, Ctrl+Z undoes, 1 to 5 pick the tabs, WASD or the arrow keys move the map, + and - (or the mouse wheel) zoom and M opens the menu.
 
 ## Play
 https://salvationbacon.github.io/8-Bit-Industry/
+
+## Android
+The game is also an Android app for Google Play, the same `index.html` wrapped with Capacitor (no dev menu, works offline, the back button steps back). An optional one-time **Supporter Pack** unlocks the Golden Hour theme and Gilded Machines (cosmetic only). GitHub Actions builds it; see `docs/PLAY_STORE.md`.
 
 ## Files
 | File | Purpose |
@@ -23,11 +26,17 @@ https://salvationbacon.github.io/8-Bit-Industry/
 | `docs/GDD.md` | Original Game Design Document (long-term vision) |
 | `docs/ZONE3_DESIGN.md` | Zone 3: The Deep: design (implemented) |
 | `tools/check.js` | Headless test: `node tools/check.js` (needs Playwright) |
-| `tools/make-icons.js` | Regenerates the pixel-art app icons |
+| `tools/make-icons.js` | Regenerates the pixel-art app icons (web and Android) |
+| `tools/build-app.js` | Builds `www/` for the Android app |
+| `tools/store-test.js` | Tests the Android build (Supporter Pack, back button) |
+| `android/`, `capacitor.config.json`, `package.json` | The Android app project |
+| `privacy.html` | Privacy policy |
+| `store/` | Google Play listing text and graphics |
+| `docs/PLAY_STORE.md` | How to publish and update on Google Play |
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v171` → `ebi-v172`) on every update
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v171` → `ebi-v172`) on every update, and `version` in `package.json` (it must match `VER`)
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open
@@ -68,4 +77,4 @@ After your first Big Bang, SANDBOX on the title screen opens a creative mode: pi
 ☰ menu → Settings (or SETTINGS on the title screen), shared by every save on the device: sound effects, music and volume, FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.35: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.37: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige

@@ -780,6 +780,17 @@ const r=await p.evaluate(async()=>{
     const s13=G.machines[G.map[y][13].mid], capped=s13?.type==='splitter'&&s13.tier===3&&(G.inv.steel_plate||0)===0; // the T3 belt's own refund pays the splitter's T3 step
     setTool('select'); G.devFreeBuild=true;
     ok('splitter_over_belts',ghostOk&&pasteNo&&replaced&&refunded&&flows&&chestNo&&back&&tiered&&tierUndo&&capped,{ghostOk,pasteNo,replaced,refunded,flows,before,after:c2.chestInv.coal,chestNo,back,tiered,tierUndo,capped,s13:s13?.tier}); }
+  // ── Redo: undo and redo are mirror steps; a rebuilt machine keeps its later steps (id remap); materials come out even
+  { reset(); power(2,2); G.devFreeBuild=false; G.inv={iron_plate:500,iron_gear:200,circuit:100,copper_wire:100}; clearUndo();
+    const inv0=JSON.stringify(G.inv), y=G.floorY+6;
+    placeDir=0; const a=put('assembler',20,y); rotateM(a.id); tryRemove(20,y,true);
+    undoLast(); undoLast(); undoLast(); const none=G.map[y][20].mid===null&&JSON.stringify(G.inv)===inv0&&redoStack.length===3;
+    redoLast(); const b=G.machines[G.map[y][20].mid]; redoLast(); const turned=b&&G.machines[b.id]?.dir===1;
+    redoLast(); const gone=G.map[y][20].mid===null&&redoStack.length===0&&undoStack.length===3;
+    undoLast(); const back=G.machines[G.map[y][20].mid]?.dir===1;
+    const k=put('chest',30,y); const cleared=redoStack.length===0; // a new action clears redo
+    G.devFreeBuild=true; G.inv={};
+    ok('redo',none&&!!b&&turned&&gone&&back&&cleared,{none,b:!!b,turned,gone,back,cleared,u:undoStack.length,r:redoStack.length}); }
   // ── Stats graphs: machine output per item per 10s and per minute, power made and used, drawn in the Stats panel
   { reset(); G.prodLog=null; G.tick=0; power(2,2); res(10,G.floorY+4,1,1,'iron_ore'); const mi=put('miner',10,G.floorY+4); put('chest',11,G.floorY+4);
     G.inv.iron_ore=0; run(480);

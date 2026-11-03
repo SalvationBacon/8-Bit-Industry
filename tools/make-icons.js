@@ -2,6 +2,7 @@
 //   icon-192.png, icon-512.png       full-bleed ("any")
 //   icon-maskable-512.png             art at ~80% so Android's round/squircle masks never cut it
 //   apple-touch-icon.png (180×180)    iOS rounds the corners itself
+//   android/app/src/main/res/...      launcher icons (square, round, adaptive foreground) and splash screens
 const {chromium}=require('playwright');
 const fs=require('fs'), path=require('path');
 
@@ -43,8 +44,22 @@ function art(P,R,C){
     const make=(size,scale)=>{const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d');
       x.fillStyle='#0d0d0d';x.fillRect(0,0,size,size);x.imageSmoothingEnabled=false;
       const d=32*scale, o=Math.round((size-d)/2); x.drawImage(base,o,o,d,d); return c.toDataURL('image/png').split(',')[1];};
-    return {'icon-192.png':make(192,6),'icon-512.png':make(512,16),'icon-maskable-512.png':make(512,13),'apple-touch-icon.png':make(180,5)};
+    // Android (v2.0.38): legacy square and round launcher icons, adaptive-icon foregrounds (108dp, art kept inside the
+    // 66dp circle every launcher mask shows: 2 art px per dp step), and splash screens (art centred on the background)
+    const rect=(w,h,scale,{round=false}={})=>{const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+      if(round){x.beginPath();x.arc(w/2,h/2,w/2,0,Math.PI*2);x.clip();}
+      x.fillStyle='#0d0d0d';x.fillRect(0,0,w,h);x.imageSmoothingEnabled=false;
+      const d=Math.round(32*scale); x.drawImage(base,Math.round((w-d)/2),Math.round((h-d)/2),d,d); return c.toDataURL('image/png').split(',')[1];};
+    const A='android/app/src/main/res/', o={'icon-192.png':make(192,6),'icon-512.png':make(512,16),'icon-maskable-512.png':make(512,13),'apple-touch-icon.png':make(180,5)};
+    for(const[dpi,k]of Object.entries({mdpi:1,hdpi:1.5,xhdpi:2,xxhdpi:3,xxxhdpi:4})){
+      const n=48*k; o[A+`mipmap-${dpi}/ic_launcher.png`]=rect(n,n,n/32); o[A+`mipmap-${dpi}/ic_launcher_round.png`]=rect(n,n,n/32*.86,{round:true});
+      o[A+`mipmap-${dpi}/ic_launcher_foreground.png`]=rect(108*k,108*k,2*k);
+    }
+    const SPL={'drawable':[480,320],'drawable-land-mdpi':[480,320],'drawable-land-hdpi':[800,480],'drawable-land-xhdpi':[1280,720],'drawable-land-xxhdpi':[1600,960],'drawable-land-xxxhdpi':[1920,1280],
+      'drawable-port-mdpi':[320,480],'drawable-port-hdpi':[480,800],'drawable-port-xhdpi':[720,1280],'drawable-port-xxhdpi':[960,1600],'drawable-port-xxxhdpi':[1280,1920]};
+    for(const[d,[w,h]]of Object.entries(SPL))o[A+d+'/splash.png']=rect(w,h,Math.max(1,Math.floor(Math.min(w,h)*.3/32)));
+    return o;
   },art.toString());
-  for(const[f,b64]of Object.entries(out)){fs.writeFileSync(path.resolve(__dirname,'..',f),Buffer.from(b64,'base64'));console.log('wrote',f);}
+  for(const[f,b64]of Object.entries(out)){const fp=path.resolve(__dirname,'..',f);if(f.startsWith('android/')&&!fs.existsSync(path.dirname(fp)))continue;fs.writeFileSync(fp,Buffer.from(b64,'base64'));console.log('wrote',f);}
   await b.close();
 })();

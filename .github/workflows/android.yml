@@ -1,0 +1,73 @@
+# Builds the Android app (Google Play) from index.html.
+#   Every push: a debug APK you can install on your own phone (Actions run -> Artifacts -> 8-bit-industry-debug-apk).
+#   With the signing secrets set: also a signed release AAB to upload to Play Console (8-bit-industry-release-aab).
+# Secrets (repo Settings -> Secrets and variables -> Actions):
+#   EBI_KEYSTORE_BASE64   the upload keystore (.jks), base64 encoded
+#   EBI_KEYSTORE_PASSWORD, EBI_KEY_ALIAS, EBI_KEY_PASSWORD
+name: Android build
+
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'tools/build-app.js'
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.EBI_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      # The Android SDK comes preinstalled on GitHub's Ubuntu runners (ANDROID_HOME); Gradle fetches any missing platform.
+      - name: Build the web files and sync them into the Android project
+        run: |
+          npm ci
+          node tools/build-app.js
+          npx cap sync android
+
+      - name: Debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 8-bit-industry-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
+      - name: Signed release AAB
+        if: ${{ env.HAS_KEY == 'true' }}
+        env:
+          EBI_KEYSTORE_BASE64: ${{ secrets.EBI_KEYSTORE_BASE64 }}
+          EBI_KEYSTORE_PASSWORD: ${{ secrets.EBI_KEYSTORE_PASSWORD }}
+          EBI_KEY_ALIAS: ${{ secrets.EBI_KEY_ALIAS }}
+          EBI_KEY_PASSWORD: ${{ secrets.EBI_KEY_PASSWORD }}
+        working-directory: android
+        run: |
+          echo "$EBI_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          EBI_KEYSTORE="$RUNNER_TEMP/upload.jks" ./gradlew --no-daemon bundleRelease
+          rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('android/app/build/outputs/bundle/release/*.aab') != '' }}
+        with:
+          name: 8-bit-industry-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
