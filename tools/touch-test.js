@@ -99,6 +99,7 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390],['tablet',11
   const t0=await p.evaluate(()=>G.stats.taps);
   await tapTile(ore.tx,ore.ty); for(let i=0;i<2;i++)await tapEl('#mineTapBtn');
   const t1=await p.evaluate(()=>G.stats.taps);
+  ok('no_key_hints_on_touch',await p.evaluate(()=>document.getElementById('keyHints').classList.contains('hidden')));
   ok('no_double_input_after_reload',t1-t0===2,{t0,t1,diag:t1-t0===2?0:await p.evaluate(([x,y])=>{const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
     const e=document.elementFromPoint(r.left+x*ts-G.cam.x+ts/2,r.top+y*ts-G.cam.y+ts/2);return{tile:G.map[y][x],popup:!document.getElementById('resInfo').classList.contains('hidden'),at:e&&(e.id||e.className||e.tagName),tool:activeTool,modal:!document.getElementById('mOverlay').classList.contains('hidden')};},[ore.tx,ore.ty])});
   for(const[k,v]of Object.entries(R))console.log(name.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
@@ -144,6 +145,24 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390],['tablet',11
   await p.evaluate(()=>openSettings()); const keys=await p.evaluate(()=>/Ctrl\+Z undo/.test(document.getElementById('mBody').innerText));
   await p.keyboard.press('Escape'); const closed=await p.evaluate(()=>document.getElementById('mOverlay').classList.contains('hidden'));
   ok('keys_menu_settings',menu&&keys&&closed,{menu,keys,closed});
+  // key hints follow what you're doing: idle, building, hovering a building (Q picks it, X demolishes), a menu; H hides them
+  const hints=()=>p.evaluate(()=>{const e=document.getElementById('keyHints');return e.classList.contains('hidden')?null:e.innerText.replace(/\s+/g,' ');});
+  await p.mouse.move(900,500); await p.waitForTimeout(100);
+  const hIdle=await hints();
+  const bt=await p.evaluate(()=>{G.inv.iron_plate=200;G.inv.iron_gear=50;G.inv.circuit=50;G.research.done.push('automation');setTool('assembler');const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
+    const tx=Math.floor((G.cam.x+r.width*.5)/ts), ty=Math.floor((G.cam.y+r.height*.5)/ts); for(let j=0;j<2;j++)for(let i=0;i<2;i++)G.map[ty+j][tx+i]={type:0,res:null,mid:null,items:[]};
+    return{tx,ty,x:r.left+tx*ts-G.cam.x+ts/2,y:r.top+ty*ts-G.cam.y+ts/2};});
+  await p.mouse.move(bt.x,bt.y); await p.waitForTimeout(100); const hBuild=await hints();
+  await p.keyboard.press('Enter'); await p.keyboard.press('q'); await p.waitForTimeout(100);
+  const stopped=await p.evaluate(()=>activeTool==='select'); await p.mouse.move(bt.x+2,bt.y+2); await p.waitForTimeout(100); const hOver=await hints();
+  await p.keyboard.press('q'); const picked=await p.evaluate(()=>activeTool==='assembler'); await p.keyboard.press('Escape');
+  await p.mouse.move(bt.x,bt.y); await p.keyboard.press('x'); await p.waitForTimeout(100); const gone=await p.evaluate(([x,y])=>G.map[y][x].mid===null,[bt.tx,bt.ty]);
+  await p.keyboard.press('Control+z'); const backA=await p.evaluate(([x,y])=>G.machines[G.map[y][x].mid]?.type==='assembler',[bt.tx,bt.ty]);
+  await p.keyboard.press('m'); await p.waitForTimeout(150); const hMenu=await hints(); await p.keyboard.press('Escape');
+  await p.keyboard.press('h'); await p.waitForTimeout(100); const hid=await hints(); await p.keyboard.press('h'); const shown=await hints();
+  ok('key_hints_follow_context',/Scroll Zoom/.test(hIdle||'')&&/ASSEMBLER/.test(hBuild||'')&&/Enter Place/.test(hBuild||'')&&/Q Stop building/.test(hBuild||'')
+    &&/Q Build another/.test(hOver||'')&&/X Demolish/.test(hOver||'')&&/Esc Close/.test(hMenu||'')&&hid===null&&!!shown,{hIdle,hBuild,hOver,hMenu,hid:hid===null,shown:!!shown});
+  ok('q_picks_x_demolishes',stopped&&picked&&gone&&backA,{stopped,picked,gone,backA});
   for(const[k,v]of Object.entries(R))console.log('desktop'.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
   console.log('desktop', errs.join('\n')||'no page errors'); await p.close(); }
 await b.close();})();
