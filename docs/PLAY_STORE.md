@@ -44,8 +44,8 @@ Repo → Settings → Secrets and variables → Actions → New repository secre
 |---|---|
 | `EBI_KEYSTORE_BASE64` | the contents of `upload.txt` |
 | `EBI_KEYSTORE_PASSWORD` | the keystore password |
-| `EBI_KEY_ALIAS` | `upload` |
-| `EBI_KEY_PASSWORD` | the key password (the same as the keystore password unless you set another) |
+| `EBI_KEY_ALIAS` | optional: only if your alias is not `upload` |
+| `EBI_KEY_PASSWORD` | optional: only if the key password differs from the keystore password |
 
 Never commit `upload.jks`.
 
