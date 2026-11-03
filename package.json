@@ -1,6 +1,6 @@
 {
   "name": "eight-bit-industry",
-  "version": "2.0.38",
+  "version": "2.0.39",
   "private": true,
   "description": "8-Bit Industry: the Android app wrapper (Capacitor). The game itself is index.html.",
   "scripts": {
@@ -12,6 +12,7 @@
     "@capacitor/android": "^8.6.0",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0",
+    "@capacitor/preferences": "^8.0.1",
     "cordova-plugin-purchase": "^13.20.0"
   },
   "devDependencies": {

@@ -1,14 +1,17 @@
 // Play Store app test. Usage: node tools/store-test.js  (Playwright + Chromium)
 // Builds www/ (tools/build-app.js), loads it with Capacitor's App plugin and Google Play Billing
 // (cordova-plugin-purchase) mocked, and checks the store build: bundled font, no dev menu outside a sandbox,
-// no install button, the Supporter Pack purchase, the Android back button and the background pause.
+// no install button, the Supporter Pack purchase, the Android back button, the background pause, saves mirrored
+// to Android's storage and restored, startup surviving a plugin error, and a broken save never being replaced.
 // Then checks the web game (index.html) shows none of it.
 const {chromium}=require('playwright'); const path=require('path');
 require('child_process').execFileSync('node',[path.join(__dirname,'build-app.js')],{stdio:'inherit'});
 
 const MOCK=()=>{ // Capacitor App plugin + CdvPurchase, just enough of each
   window.__ebi={listeners:{},orders:0,min:false,cancel:false};
-  window.Capacitor={Plugins:{App:{addListener:(ev,fn)=>{__ebi.listeners[ev]=fn;},minimizeApp:()=>{__ebi.min=true;},exitApp:()=>{}}}};
+  const NP=window.__nativePrefs||{}; window.__nativeStore=NP; // Android SharedPreferences stand-in
+  const Preferences={get:async({key})=>({value:key in NP?NP[key]:null}),set:async({key,value})=>{NP[key]=value;},remove:async({key})=>{delete NP[key];},keys:async()=>({keys:Object.keys(NP)})};
+  window.Capacitor={Plugins:{Preferences,App:{addListener:(ev,fn)=>{__ebi.listeners[ev]=fn;},minimizeApp:()=>{__ebi.min=true;},exitApp:()=>{}}}};
   const owned=new Set(), cbs={};
   const product={id:'supporter_pack',pricing:{price:'£2.99'},getOffer:()=>({id:'base'})};
   const when={productUpdated(f){cbs.pu=f;return when;},approved(f){cbs.ap=f;return when;},finished(f){cbs.fi=f;return when;},receiptUpdated(f){cbs.ru=f;return when;}};
@@ -85,6 +88,46 @@ const MOCK=()=>{ // Capacitor App plugin + CdvPurchase, just enough of each
   await p2.goto('file://'+path.resolve(__dirname,'..','www','index.html')); await p2.waitForTimeout(400);
   ok('supporter_restored_on_launch',await p2.evaluate(()=>supporter()&&GILD));
   await p2.close();
+
+  // ── durable saves: everything written in the app is mirrored to Android's storage; a WebView that lost it gets it back
+  { const q=await b.newPage({viewport:{width:400,height:800}}); q.on('pageerror',e=>errs.push('mirror: '+e.message));
+    await q.addInitScript(MOCK);
+    await q.goto('file://'+path.resolve(__dirname,'..','www','index.html')); await q.waitForTimeout(500);
+    const native=await q.evaluate(async()=>{newGame(); await new Promise(r=>setTimeout(r,800)); closeModal(); clearInterval(tickId);
+      G.inv.iron_plate=4321; saveGame(); localStorage.setItem('ebi_save_slot2','{"ver":"x","zone":3}'); await mirrorFlush();
+      return JSON.stringify(window.__nativeStore);});
+    const N=JSON.parse(native);
+    const mirrored=!!N.ebi_save&&JSON.parse(N.ebi_save).inv.iron_plate===4321&&!!N.ebi_save_slot2&&+N.ebi_seq>0;
+    await q.close();
+    // a fresh WebView (storage lost) on the same phone: the saves come back on launch
+    const r2=await b.newPage({viewport:{width:400,height:800}}); r2.on('pageerror',e=>errs.push('restore: '+e.message));
+    await r2.addInitScript(n=>{window.__nativePrefs=n;},N); await r2.addInitScript(MOCK);
+    await r2.goto('file://'+path.resolve(__dirname,'..','www','index.html')); await r2.waitForTimeout(1200);
+    const back=await r2.evaluate(()=>{const raw=localStorage.getItem(SAVE_KEY);return {plates:raw&&JSON.parse(raw).inv.iron_plate,slot:!!localStorage.getItem('ebi_save_slot2'),
+      listed:/AUTO/.test(document.getElementById('titleSlots').innerText),icons:document.querySelectorAll('#tabBar [data-ui] img, .title-card [data-ui] img').length};});
+    ok('saves_survive_lost_webview',mirrored&&back.plates===4321&&back.slot&&back.listed&&back.icons>0,{mirrored,back});
+    // a newer WebView copy than the mirror (the mirror missed writes) is copied over, never replaced
+    const r3=await b.newPage(); await r3.addInitScript(n=>{window.__nativePrefs=n;},{ebi_seq:'1',ebi_save:'old'});
+    await r3.addInitScript(()=>{localStorage.setItem('ebi_seq','9');localStorage.setItem('ebi_save_slot1','{"ver":"2","zone":2}');}); await r3.addInitScript(MOCK);
+    await r3.goto('file://'+path.resolve(__dirname,'..','www','index.html')); await r3.waitForTimeout(800);
+    const kept=await r3.evaluate(()=>({slot:!!localStorage.getItem('ebi_save_slot1'),nat:window.__nativeStore.ebi_save_slot1,old:window.__nativeStore.ebi_save}));
+    ok('mirror_catches_up',kept.slot&&!!kept.nat&&kept.old===undefined,kept);
+    await r2.close(); await r3.close(); }
+  // ── the app's startup can't stop the title screen: a billing plugin that throws still leaves icons and saves on screen
+  { const q=await b.newPage({viewport:{width:400,height:800}}); const pe=[]; q.on('pageerror',e=>pe.push(e.message));
+    await q.addInitScript(MOCK); await q.addInitScript(()=>{localStorage.setItem('ebi_save',JSON.stringify({ver:'2.0.39',zone:1,tick:5,inv:{},machines:{},research:{done:[]}}));});
+    await q.addInitScript(()=>{window.CdvPurchase.store.register=()=>{throw new Error('billing exploded');};});
+    await q.goto('file://'+path.resolve(__dirname,'..','www','index.html')); await q.waitForTimeout(600);
+    const t=await q.evaluate(()=>({icons:document.querySelectorAll('#tabBar [data-ui] img').length,slots:/AUTO/.test(document.getElementById('titleSlots').innerText),
+      toast:document.getElementById('toasts').innerText}));
+    ok('startup_survives_plugin_error',t.icons>0&&t.slots&&/billing exploded/.test(t.toast),t); await q.close(); }
+  // ── a save that won't load is kept, never replaced by a new game
+  { const q=await b.newPage({viewport:{width:400,height:800}}); q.on('pageerror',e=>errs.push('broken: '+e.message));
+    await q.goto('file://'+path.resolve(__dirname,'..','index.html')); await q.waitForTimeout(300);
+    const r=await q.evaluate(()=>{const bad='{"ver":"2.0.39","zone":1,"map":"#!garbage","machines":7}'; localStorage.setItem(SAVE_KEY,bad);
+      continueGame(); const kept=localStorage.getItem(SAVE_KEY)===bad, copy=localStorage.getItem(BROKEN_KEY)===bad, msg=document.getElementById('mBody').innerText;
+      closeModal(); localStorage.removeItem(SAVE_KEY); localStorage.removeItem(BROKEN_KEY); return {kept,copy,title:onTitle(),noGame:G===null,msg:/left exactly as it is/.test(msg)};});
+    ok('broken_save_kept',r.kept&&r.copy&&r.title&&r.noGame&&r.msg,r); await q.close(); }
 
   // ── the web game shows none of it
   const w=await b.newPage({viewport:{width:400,height:800}}); w.on('pageerror',e=>errs.push('web: '+e.message));
