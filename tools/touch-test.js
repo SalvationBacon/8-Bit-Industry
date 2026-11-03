@@ -160,9 +160,21 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390],['tablet',11
   await p.keyboard.press('Control+z'); const backA=await p.evaluate(([x,y])=>G.machines[G.map[y][x].mid]?.type==='assembler',[bt.tx,bt.ty]);
   await p.keyboard.press('m'); await p.waitForTimeout(150); const hMenu=await hints(); await p.keyboard.press('Escape');
   await p.keyboard.press('h'); await p.waitForTimeout(100); const hid=await hints(); await p.keyboard.press('h'); const shown=await hints();
-  ok('key_hints_follow_context',/Scroll Zoom/.test(hIdle||'')&&/ASSEMBLER/.test(hBuild||'')&&/Enter Place/.test(hBuild||'')&&/Q Stop building/.test(hBuild||'')
+  ok('key_hints_follow_context',/Scroll Zoom/.test(hIdle||'')&&/ASSEMBLER/.test(hBuild||'')&&/Click Place/.test(hBuild||'')&&/Right-click Stop building/.test(hBuild||'')
     &&/Q Build another/.test(hOver||'')&&/X Demolish/.test(hOver||'')&&/Esc Close/.test(hMenu||'')&&hid===null&&!!shown,{hIdle,hBuild,hOver,hMenu,hid:hid===null,shown:!!shown});
   ok('q_picks_x_demolishes',stopped&&picked&&gone&&backA,{stopped,picked,gone,backA});
+  // with a mouse a click places, a dragged belt line places on release, a right-click stops building
+  const mb=await p.evaluate(()=>{G.inv.iron_plate=500;G.inv.iron_gear=100;setTool('stone_furnace');G.inv.stone=50;const r=document.getElementById('wrap').getBoundingClientRect(),ts=TILE*G.cam.zoom;
+    const tx=Math.floor((G.cam.x+r.width*.35)/ts), ty=Math.floor((G.cam.y+r.height*.35)/ts); for(let j=0;j<3;j++)for(let i=0;i<8;i++)G.map[ty+j][tx+i]={type:0,res:null,mid:null,items:[]};
+    const pt=(x,y)=>({x:r.left+x*ts-G.cam.x+ts/2,y:r.top+y*ts-G.cam.y+ts/2});return{tx,ty,a:pt(tx,ty),b:pt(tx+1,ty),l0:pt(tx,ty+2),l1:pt(tx+5,ty+2)};});
+  await p.mouse.click(mb.a.x,mb.a.y); await p.mouse.click(mb.b.x,mb.b.y); await p.waitForTimeout(100);
+  const clicked=await p.evaluate(([x,y])=>G.machines[G.map[y][x].mid]?.type==='stone_furnace'&&G.machines[G.map[y][x+1].mid]?.type==='stone_furnace'&&activeTool==='stone_furnace',[mb.tx,mb.ty]);
+  await p.evaluate(()=>setTool('belt')); await p.mouse.move(mb.l0.x,mb.l0.y); await p.mouse.down();
+  for(let k=1;k<=10;k++)await p.mouse.move(mb.l0.x+(mb.l1.x-mb.l0.x)*k/10,mb.l0.y);
+  await p.mouse.up(); await p.waitForTimeout(100);
+  const line6=await p.evaluate(([x,y])=>{let n=0;for(let i=0;i<6;i++)if(G.machines[G.map[y+2][x+i].mid]?.type==='belt')n++;return n;},[mb.tx,mb.ty]);
+  await p.mouse.click(mb.a.x,mb.a.y+200,{button:'right'}); await p.waitForTimeout(100); const rstop=await p.evaluate(()=>activeTool==='select');
+  ok('mouse_click_places',clicked&&line6===6&&rstop,{clicked,line6,rstop});
   for(const[k,v]of Object.entries(R))console.log('desktop'.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
   console.log('desktop', errs.join('\n')||'no page errors'); await p.close(); }
 await b.close();})();

@@ -577,7 +577,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       </div>
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
     </div>
-    <p class="v-num">v2.0.35 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.36 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -762,7 +762,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.35';
+const VER      = '2.0.36';
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
@@ -4290,7 +4290,7 @@ function placeLine(){
 // ── Keyboard (v2.0.34): for tablets with keyboards and desktops. Ignored while typing in a text box.
 // R rotate · Enter or Space place · Esc cancel / close · Ctrl+Z undo · 1-5 the tabs · WASD or arrows pan · + and - zoom ·
 // Q select · M menu
-const KEY_HELP='R rotate · Enter place · Esc cancel or close · Q pick the building under the mouse (or stop building) · Del or X demolish under the mouse · F and V flip a paste · Ctrl+Z undo · 1-5 tabs · WASD or arrows move the map · + and - zoom · M menu · H show or hide the key hints';
+const KEY_HELP='Click place (drag a belt or pipe line) · Right-click stop building · R rotate · Enter place · Esc cancel or close · Q pick the building under the mouse (or stop building) · Del or X demolish under the mouse · F and V flip a paste · Ctrl+Z undo · 1-5 tabs · WASD or arrows move the map · + and - zoom · M menu · H show or hide the key hints';
 function onKey(e){
   if(!G||onTitle())return;
   const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
@@ -4358,11 +4358,12 @@ function keyHintList(){
   const H=(k,l)=>[k,l];
   if(!document.getElementById('mOverlay').classList.contains('hidden'))return['MENU',[H('Esc','Close')]];
   const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting';
-  if(pasting)return['PASTING',[H('Click','Position'),H('Enter','Paste'),H('R','Rotate'),H('F','Flip sideways'),H('V','Flip up-down'),H('Esc','Stop')]];
+  if(pasting)return['PASTING',[H('Click','Paste'),H('R','Rotate'),H('F','Flip sideways'),H('V','Flip up-down'),H('Right-click','Stop')]];
   const def=MDEFS[activeTool];
-  if(def&&lineActive())return['LINE',[H('Drag','Extend'),H('Enter','Place line'),H('R','Flip'),H('Esc','Drop the line')]];
-  if(def)return[def.name.toUpperCase(),[H('Click','Aim'),H('Enter','Place'),...(DIR_TYPES.has(activeTool)||PORTS[activeTool]||def.size[0]!==def.size[1]?[H('R',`Rotate (${DIR_WORD[placeDir]})`)]:[]),
-    ...(LINE_TOOLS.has(activeTool)?[H('Drag ghost','Draw a line')]:[]),H('Q','Stop building'),H('Ctrl+Z','Undo')]];
+  if(def&&line.drawing)return['LINE',[H('Drag','Extend'),H('Release','Place line'),H('Esc','Drop the line')]];
+  if(def&&lineActive())return['LINE',[H('Enter','Place line'),H('R','Flip'),H('Esc','Drop the line')]];
+  if(def)return[def.name.toUpperCase(),[H('Click','Place'),...(LINE_TOOLS.has(activeTool)?[H('Drag','Place a line')]:[]),...(DIR_TYPES.has(activeTool)||PORTS[activeTool]||def.size[0]!==def.size[1]?[H('R',`Rotate (${DIR_WORD[placeDir]})`)]:[]),
+    H('Right-click','Stop building'),H('Ctrl+Z','Undo')]];
   const tool={demolish:['DEMOLISH',[H('Click','Demolish'),H('Ctrl+Z','Undo'),H('Esc','Done')]],
     rotate:['ROTATE',[H('Click','Rotate'),H('Esc','Done')]],
     move:['MOVE',[H('Click',moveState.active?'Put down':'Pick up'),H('Enter','Place'),H('R','Rotate'),H('Esc','Cancel')]],
@@ -4409,8 +4410,22 @@ function setupInput(){
 function onDown(cx,cy,btn){
   closeResInfo();
   const r=wrapRect();
-  if(!btn&&lineStart(scrToTile(cx-r.left,cy-r.top),cx-r.left,cy-r.top)){drag={on:false,moved:false};return;} // right-drag still pans
-  drag={on:true,sx:cx,sy:cy,cx:G.cam.x,cy:G.cam.y,moved:false};
+  if(!btn&&lineStart(scrToTile(cx-r.left,cy-r.top),cx-r.left,cy-r.top)){drag={on:false,moved:false,btn};return;} // right-drag still pans
+  drag={on:true,sx:cx,sy:cy,cx:G.cam.x,cy:G.cam.y,moved:false,btn};
+}
+// ── Mouse building (v2.0.36, Shapez-style): with a mouse the ghost follows the cursor, so a click places it there
+// (and pastes a held paste); dragging a belt or pipe line places it on release; a right-click stops building or pasting.
+// Touch keeps tap-to-aim and the PLACE button (a finger can't hover to preview), so none of this runs for touch.
+function mouseClick(tile,btn){
+  const pasting=blueprintState.mode==='holding'||multiselState.mode==='pasting', building=!!MDEFS[activeTool]&&activeTool!=='select';
+  if(btn===2){ // right-click: stop
+    if(pasting){ghostCancel();return true;}
+    if(building){if(lineActive())lineClear();cancelBuild();return true;}
+    return false;
+  }
+  if(pasting){hov={x:tile.x,y:tile.y};multiselState.pasteAnchor=null;ghostConfirm();return true;}
+  if(building){hov={x:tile.x,y:tile.y};confirmPlace();return true;}
+  return false;
 }
 function onMov(cx,cy){
   const r=wrapRect();
@@ -4422,13 +4437,15 @@ function onMov(cx,cy){
   G.cam.x=drag.cx-dx; G.cam.y=drag.cy-dy; clampCam();
 }
 function onUp(cx,cy){
-  if(line.drawing){ // a press that never left the ghost tile is still a tap
+  const r=wrapRect(), tile=scrToTile(cx-r.left,cy-r.top);
+  if(line.drawing){ // a press that never left the ghost tile is a click; a dragged line is placed on release
     const tap=line.path.length<2; lineEnd();
-    if(tap){const r=wrapRect();handleTap(scrToTile(cx-r.left,cy-r.top),false);}
+    if(tap){if(!mouseClick(tile,0))handleTap(tile,false);}
+    else if(lineActive())placeLine();
     return;
   }
   if(!drag.on)return; drag.on=false;
-  if(!drag.moved){const r=wrapRect();handleTap(scrToTile(cx-r.left,cy-r.top),false);}
+  if(!drag.moved&&!mouseClick(tile,drag.btn||0)&&!drag.btn)handleTap(tile,false);
 }
 
 function tdist(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy)}
