@@ -830,6 +830,26 @@ const r=await p.evaluate(async()=>{
     startSandbox(1); closeModal(); clearInterval(tickId); const z1=G.zone===1&&G.tutorial.step===-1&&G.sandbox;
     localStorage.removeItem(SANDBOX_KEY); PRESTIGE=JSON.parse(saved); savePrestige();
     ok('sandbox_mode',locked&&z3&&quantum&&own&&noAch&&z5&&noDust&&back&&z1,{locked,z3,quantum,own,noAch,z5,noDust,back,z1,w:MAP_W}); }
+  // ── Sound is one setting for the device: it survives a zone change and a new game; an old save hands its choice over once
+  { const keep={sfx:PREFS.sfx,music:PREFS.music,musicVol:PREFS.musicVol,audioSet:PREFS.audioSet};
+    PREFS.sfx=true; PREFS.audioSet=false; toggleSfx(); setMusicVol(0.3);
+    const set=PREFS.sfx===false&&PREFS.musicVol===0.3&&PREFS.audioSet===true&&JSON.parse(localStorage.getItem(PREFS_KEY)).sfx===false;
+    G.perks.awarded[G.zone]=true; transitionToZone(2); closeModal(); clearInterval(tickId);
+    const kept=PREFS.sfx===false&&PREFS.musicVol===0.3&&!('sfx' in G)&&!('musicVol' in G)&&!('music' in G);
+    // an older save carries its own sound: the first one loaded on this build hands it over, then it leaves the save
+    PREFS.audioSet=false; PREFS.sfx=true; G.sfx=false; G.musicVol=0.55; G.music=true; localStorage.setItem(SAVE_KEY,serializeG()); G=null; continueGame(); await new Promise(r=>setTimeout(r,50)); closeModal(); clearInterval(tickId);
+    const moved=PREFS.sfx===false&&PREFS.musicVol===0.55&&PREFS.audioSet===true&&!("sfx" in G)&&!("musicVol" in G);
+    G.sfx=true; G.musicVol=0.9; migrateSave(); const once=PREFS.sfx===false&&PREFS.musicVol===0.55&&!('sfx' in G); // after that, saves never override it
+    openSettings(); const inGame=document.getElementById('mBody').innerText; closeModal();
+    Object.assign(PREFS,keep); savePrefs();
+    ok('sound_is_device_wide',set&&kept&&moved&&once&&/SFX/.test(inGame)&&/RESTART ZONE/.test(inGame),{set,kept,moved,once,ui:/SFX/.test(inGame)}); }
+  // ── Settings from the title screen: device settings only, changes redraw the window (runs last: leaves the game)
+  { const cb0=PREFS.cb; quitToTitle(); closeModal();
+    document.getElementById('titleSettings').click(); const t1=document.getElementById('mBody').innerText;
+    const devOnly=/FPS/.test(t1)&&/COLOURS/.test(t1)&&/TIMER/.test(t1)&&/SFX/.test(t1)&&/Music/.test(t1)&&/Vol/.test(t1)&&!/RESTART ZONE/.test(t1);
+    setColourBlind(!cb0); const t2=document.getElementById('mBody')?.innerText||''; const redrawn=!!document.getElementById('settingsRoot')&&/COLOURS/.test(t2)&&PREFS.cb===!cb0;
+    setPref('fps',30); const stays=!!document.getElementById('settingsRoot'); setPref('fps',60); setColourBlind(cb0); closeModal();
+    ok('title_settings',devOnly&&redrawn&&stays,{devOnly,redrawn,stays}); }
   return R;
 });
 for(const[k,v]of Object.entries(r))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);
