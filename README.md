@@ -9,6 +9,9 @@ On a computer you click to place (drag a belt or pipe to lay a line, Shift+drag 
 ## Play
 https://salvationbacon.github.io/8-Bit-Industry/
 
+## Android
+The game is also an Android app for Google Play, the same `index.html` wrapped with Capacitor (no dev menu, works offline, the back button steps back). An optional one-time **Supporter Pack** unlocks the Golden Hour theme and Gilded Machines (cosmetic only). GitHub Actions builds it; see `docs/PLAY_STORE.md`.
+
 ## Files
 | File | Purpose |
 |---|---|
@@ -23,11 +26,17 @@ https://salvationbacon.github.io/8-Bit-Industry/
 | `docs/GDD.md` | Original Game Design Document (long-term vision) |
 | `docs/ZONE3_DESIGN.md` | Zone 3: The Deep: design (implemented) |
 | `tools/check.js` | Headless test: `node tools/check.js` (needs Playwright) |
-| `tools/make-icons.js` | Regenerates the pixel-art app icons |
+| `tools/make-icons.js` | Regenerates the pixel-art app icons (web and Android) |
+| `tools/build-app.js` | Builds `www/` for the Android app |
+| `tools/store-test.js` | Tests the Android build (Supporter Pack, back button) |
+| `android/`, `capacitor.config.json`, `package.json` | The Android app project |
+| `privacy.html` | Privacy policy |
+| `store/` | Google Play listing text and graphics |
+| `docs/PLAY_STORE.md` | How to publish and update on Google Play |
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v171` → `ebi-v172`) on every update
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v171` → `ebi-v172`) on every update, and `version` in `package.json` (it must match `VER`)
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open

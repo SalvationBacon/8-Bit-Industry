@@ -1,0 +1,22 @@
+{
+  "appId": "com.salvationbacon.eightbitindustry",
+  "appName": "8-Bit Industry",
+  "webDir": "www",
+  "backgroundColor": "#0d0d0d",
+  "android": {
+    "backgroundColor": "#0d0d0d",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK",
+      "insetsHandling": "css"
+    }
+  },
+  "cordova": {
+    "preferences": {
+      "KeepRunning": "false"
+    }
+  }
+}
