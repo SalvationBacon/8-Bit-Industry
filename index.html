@@ -600,7 +600,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.42 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.43 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -786,7 +786,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.42';
+const VER      = '2.0.43';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -3417,7 +3417,7 @@ function beltVisPass(){
     if(!g.entrance){
       const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
       if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
-      else if(!(nm&&((nm.type==='chest'&&!chestFull(nm))||nm.type==='quantum_chest')))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
+      else if(!(nm&&nm.type==='quantum_chest'))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
     }
     const sp=base*beltTierMult(g.m);
     let mn=Infinity;
@@ -6064,11 +6064,12 @@ function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on th
     if((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1]>0)return false; // entrance: items go underground
   }
   const nt=G.map[ty+D_VEC[m.dir][1]]?.[tx+D_VEC[m.dir][0]]; if(!nt||nt.mid===null)return true;
-  const nm=G.machines[nt.mid]; return !nm||chestFull(nm)||!(beltLike(nm.type)||nm.type==='chest'||nm.type==='quantum_chest');
+  const nm=G.machines[nt.mid]; return !nm||!(beltLike(nm.type)||nm.type==='quantum_chest'); // a chest needs an inserter (v2.0.43)
 }
-// A chest holds CHEST_CAP items (v2.0.42: belts running straight into a chest ignored the cap, so belt-fed chests
-// grew without limit; only inserters checked it). A full chest is a dead end: the belt queues behind it.
+// A chest holds CHEST_CAP items, filled by inserters only. Belts fed chests directly until v2.0.43 (and ignored the cap
+// until v2.0.42); now a belt ending at a chest is a dead end like any machine. Quantum Storage still takes belts.
 const CHEST_CAP=200;
+let chestBeltWarned=false; // the one-time hint when a belt runs into a chest
 const chestTotal=m=>{let t=0;for(const k in m.chestInv)t+=m.chestInv[k];return t;};
 const chestFull=m=>m.type==='chest'&&chestTotal(m)>=CHEST_CAP;
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
@@ -6198,12 +6199,11 @@ function runBelts(){
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='tunnel'&&beltRoom(next,carryProg(it.prog))){ // a tunnel mouth fills like a belt (it had no cap and swallowed thousands)
           it.prog=carryProg(it.prog);next.items.push(it);
-        } else if(nm.type==='chest'&&!chestFull(nm)){
-          nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else if(nm.type==='quantum_chest'){
-          G.inv[it.id]=(G.inv[it.id]||0)+1; nm.produced++; nm._qt=G.tick;
+          G.inv[it.id]=(G.inv[it.id]||0)+1; nm.produced++; nm._qt=G.tick; (nm._sent||(nm._sent={}))[it.id]=(nm._sent[it.id]||0)+1; // per item, for tests and the panel
         } else {
-          // All other machines (assembler, furnace, etc), belts cannot feed directly, back-pressure
+          // All other machines (assembler, furnace, chest...), belts cannot feed directly, back-pressure
+          if(nm.type==='chest'&&!chestBeltWarned){chestBeltWarned=true;setTimeout(()=>toast('📦 Chests need an inserter: a belt can\'t fill one by itself','wrn'),0);}
           hold(it);
         }
       } else hold(it);
