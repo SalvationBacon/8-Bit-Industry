@@ -600,7 +600,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.41 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.42 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -786,7 +786,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.41';
+const VER      = '2.0.42';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -3417,7 +3417,7 @@ function beltVisPass(){
     if(!g.entrance){
       const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
       if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
-      else if(!(nm&&(nm.type==='chest'||nm.type==='quantum_chest')))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
+      else if(!(nm&&((nm.type==='chest'&&!chestFull(nm))||nm.type==='quantum_chest')))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
     }
     const sp=base*beltTierMult(g.m);
     let mn=Infinity;
@@ -3825,7 +3825,7 @@ function draw(){
     // Chest: show fill level with bar + count
     if(m.type==='chest'){
       const total=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-      const CAP=200;
+      const CAP=CHEST_CAP;
       const pct=Math.min(1,total/CAP);
       if(ts>14){
         // Background track
@@ -6064,8 +6064,13 @@ function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on th
     if((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1]>0)return false; // entrance: items go underground
   }
   const nt=G.map[ty+D_VEC[m.dir][1]]?.[tx+D_VEC[m.dir][0]]; if(!nt||nt.mid===null)return true;
-  const nm=G.machines[nt.mid]; return !nm||!(beltLike(nm.type)||nm.type==='chest'||nm.type==='quantum_chest');
+  const nm=G.machines[nt.mid]; return !nm||chestFull(nm)||!(beltLike(nm.type)||nm.type==='chest'||nm.type==='quantum_chest');
 }
+// A chest holds CHEST_CAP items (v2.0.42: belts running straight into a chest ignored the cap, so belt-fed chests
+// grew without limit; only inserters checked it). A full chest is a dead end: the belt queues behind it.
+const CHEST_CAP=200;
+const chestTotal=m=>{let t=0;for(const k in m.chestInv)t+=m.chestInv[k];return t;};
+const chestFull=m=>m.type==='chest'&&chestTotal(m)>=CHEST_CAP;
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
@@ -6193,7 +6198,7 @@ function runBelts(){
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='tunnel'&&beltRoom(next,carryProg(it.prog))){ // a tunnel mouth fills like a belt (it had no cap and swallowed thousands)
           it.prog=carryProg(it.prog);next.items.push(it);
-        } else if(nm.type==='chest'){
+        } else if(nm.type==='chest'&&!chestFull(nm)){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else if(nm.type==='quantum_chest'){
           G.inv[it.id]=(G.inv[it.id]||0)+1; nm.produced++; nm._qt=G.tick;
@@ -6385,7 +6390,7 @@ function stepInserter(m){
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type==='chest'){
         const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
-        if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
+        if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
         if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
@@ -6401,7 +6406,7 @@ function stepInserter(m){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid]; let deposited=false;
       if(dm&&beltLike(dm.type)&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
-      else if(dm&&dm.type==='chest'){const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      else if(dm&&dm.type==='chest'){const total=chestTotal(dm);if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
     } else {
@@ -7258,7 +7263,7 @@ function renderMachPanel(){
     ? `<span style="color:var(--red)">⚡ No power</span>`
     : m.recipe ? `<span style="color:var(--green)">▶ ${m.type==='lab'?'Researching':'Running'}: ${RECIPES[m.recipe]?.name||''}</span>`
     : `<span style="color:var(--amber)">⚠ No recipe</span>`;
-  const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${Object.values(m.chestInv).reduce((a,b)=>a+b,0)}/200 stored</span>`:null;
+  const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${chestTotal(m)}/${CHEST_CAP} stored</span>`:null;
   const statusVal = chestCap || minerStatus
     || (noRecipeTypes.includes(m.type)||!def.recipes.length
       ? (m.active ? `<span style="color:var(--green)">▶ Active</span>` : `<span style="color:var(--text3)">⏸ Paused</span>`)
@@ -7285,7 +7290,7 @@ function renderMachPanel(){
   html+=fluidPanelRows(m,def,rec);
   if(m.type==='chest'){
     const tot=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-    html+=irow('Stored',`${tot}/200`);
+    html+=irow('Stored',`${tot}/${CHEST_CAP}`);
     if(tot>0){
       html+=`<div style="border-top:1px solid var(--border);margin:6px 0 4px"></div>`;
       html+=`<button class="full-btn amber" onclick="chestCollectAll(${m.id})" style="margin-bottom:6px">↑ COLLECT ALL</button>`;
@@ -9377,7 +9382,7 @@ function checkAchievements(){
     inserters_20: ()=>(cnt.inserter||0)+(cnt.long_inserter||0)>=20,
     long_ins:     ()=>cnt.long_inserter>0,
     first_chest:  ()=>cnt.chest>0,
-    chest_full:   ()=>machines.some(m=>m.type==='chest'&&Object.values(m.chestInv).reduce((a,b)=>a+b,0)>=200),
+    chest_full:   ()=>machines.some(m=>chestFull(m)),
     first_splitter:()=>cnt.splitter>0,
     splitters_5:  ()=>(cnt.splitter||0)>=5,
     first_tunnel: ()=>cnt.tunnel>0,
