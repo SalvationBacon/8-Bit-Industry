@@ -61,8 +61,12 @@ Simulation, Strategy, Casual, Offline, Pixel art
 |---|---|---|
 | App icon 512×512 | `store/icon-512.png` | Play rounds the corners itself |
 | Feature graphic 1024×500 | `store/feature-graphic.png` | `node tools/make-store-art.js` redraws it |
-| Phone screenshots | take your own | 2 to 8, from the app on your phone (portrait). Good shots: a busy Ironfield belt line, The Deep's pipes, a living Bloom factory, the Singularity, the Recipe Book or Stats graphs |
-| Tablet screenshots | optional | 7-inch and 10-inch, landscape works well |
+| Phone screenshots | `store/screenshots/phone/` | 1080×1920, 5 shots (`node tools/make-store-shots.js phone`) |
+| 7-inch tablet screenshots | `store/screenshots/tablet/` | 1920×1080 (`... tablet`) |
+| 10-inch tablet screenshots | `store/screenshots/tablet10/` | 2560×1440 (`... tablet10`) |
+| Chromebook screenshots | `store/screenshots/pc/` | 1920×1080, mouse layout with key hints and hover info (`... pc`) |
+| Google Play Games on PC feature graphic | `store/pc-feature-graphic.png` | 1920×1080, 16:9, scene only: Google lays the logo over it as the game card |
+| Google Play Games on PC logo | `store/pc-logo.png` | 600×400 transparent PNG (`node tools/make-store-art.js` redraws both) |
 
 ## In-app product
 | Field | Value |
@@ -72,6 +76,7 @@ Simulation, Strategy, Casual, Offline, Pixel art
 | Name | Supporter Pack |
 | Description | A one-time thank you: unlocks the Golden Hour theme and Gilded Machines. Cosmetic only. |
 | Price | your choice (£2.99 / $2.99 suggested) |
+| Icon | `store/supporter-pack-icon.png` (512×512) |
 
 ## App content answers
 - **Privacy policy:** the URL above

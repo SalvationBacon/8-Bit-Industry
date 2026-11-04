@@ -549,6 +549,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 #hoverTip .ht-name{font-size:var(--f5);color:var(--amber);margin-bottom:2px}
 #hoverTip .ht-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 body.kh #buildHUD{bottom:calc(var(--cb) + 44px)}
+/* With a mouse (v2.0.41) the touch buttons go: click places, R rotates, right-click or Esc stops, and the key hints
+   say so. The build cost bar and the paste count stay. Same query as KH_MQ. */
+@media (hover:hover) and (pointer:fine){
+  #buildRotateBtn,#buildConfirmBtn,#buildCancelBtn,#ghostBar button{display:none!important}
+}
 body.kh #ghostBar{bottom:calc(var(--cb) + 34px)}
 body.kh #toasts{bottom:calc(var(--cb) + 112px)}
 /* Desktop (mouse): the base type scale was set for phones held close; a monitor needs it larger */
@@ -595,7 +600,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.38 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.42 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -781,7 +786,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.38';
+const VER      = '2.0.42';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -3412,7 +3417,7 @@ function beltVisPass(){
     if(!g.entrance){
       const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
       if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
-      else if(!(nm&&(nm.type==='chest'||nm.type==='quantum_chest')))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
+      else if(!(nm&&((nm.type==='chest'&&!chestFull(nm))||nm.type==='quantum_chest')))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
     }
     const sp=base*beltTierMult(g.m);
     let mn=Infinity;
@@ -3820,7 +3825,7 @@ function draw(){
     // Chest: show fill level with bar + count
     if(m.type==='chest'){
       const total=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-      const CAP=200;
+      const CAP=CHEST_CAP;
       const pct=Math.min(1,total/CAP);
       if(ts>14){
         // Background track
@@ -4398,6 +4403,8 @@ document.addEventListener('keydown',e=>{onKey(e);updateKeyHints();});
 // keyboard (KH_MQ) and while PREFS.keyHints isn't false (H or Settings → KEY HINTS). Rebuilt on every mouse move, key
 // and UI refresh; setHtml only touches the DOM when the hints change.
 const KH_MQ=window.matchMedia('(hover:hover) and (pointer:fine)');
+// The paste bar's line: with a mouse the buttons are hidden (v2.0.41), so it says what to click instead
+const pasteLabel=n=>`${n} machine${n!==1?'s':''}, `+(KH_MQ.matches?'click to paste, right-click to stop':'tap map to position, ✓ PLACE to stamp');
 let mouseIn=false;
 const DIR_WORD=['right','down','left','up'];
 function hoverMachine(){if(!G||!mouseIn||hov.x<0)return null;const t=G.map[hov.y]?.[hov.x];return t&&t.mid!==null?G.machines[t.mid]||null:null;}
@@ -6057,8 +6064,13 @@ function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on th
     if((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1]>0)return false; // entrance: items go underground
   }
   const nt=G.map[ty+D_VEC[m.dir][1]]?.[tx+D_VEC[m.dir][0]]; if(!nt||nt.mid===null)return true;
-  const nm=G.machines[nt.mid]; return !nm||!(beltLike(nm.type)||nm.type==='chest'||nm.type==='quantum_chest');
+  const nm=G.machines[nt.mid]; return !nm||chestFull(nm)||!(beltLike(nm.type)||nm.type==='chest'||nm.type==='quantum_chest');
 }
+// A chest holds CHEST_CAP items (v2.0.42: belts running straight into a chest ignored the cap, so belt-fed chests
+// grew without limit; only inserters checked it). A full chest is a dead end: the belt queues behind it.
+const CHEST_CAP=200;
+const chestTotal=m=>{let t=0;for(const k in m.chestInv)t+=m.chestInv[k];return t;};
+const chestFull=m=>m.type==='chest'&&chestTotal(m)>=CHEST_CAP;
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
@@ -6186,7 +6198,7 @@ function runBelts(){
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='tunnel'&&beltRoom(next,carryProg(it.prog))){ // a tunnel mouth fills like a belt (it had no cap and swallowed thousands)
           it.prog=carryProg(it.prog);next.items.push(it);
-        } else if(nm.type==='chest'){
+        } else if(nm.type==='chest'&&!chestFull(nm)){
           nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else if(nm.type==='quantum_chest'){
           G.inv[it.id]=(G.inv[it.id]||0)+1; nm.produced++; nm._qt=G.tick;
@@ -6378,7 +6390,7 @@ function stepInserter(m){
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type==='chest'){
         const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
-        if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
+        if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
         if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
@@ -6394,7 +6406,7 @@ function stepInserter(m){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid]; let deposited=false;
       if(dm&&beltLike(dm.type)&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
-      else if(dm&&dm.type==='chest'){const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);if(total<200){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      else if(dm&&dm.type==='chest'){const total=chestTotal(dm);if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
     } else {
@@ -7251,7 +7263,7 @@ function renderMachPanel(){
     ? `<span style="color:var(--red)">⚡ No power</span>`
     : m.recipe ? `<span style="color:var(--green)">▶ ${m.type==='lab'?'Researching':'Running'}: ${RECIPES[m.recipe]?.name||''}</span>`
     : `<span style="color:var(--amber)">⚠ No recipe</span>`;
-  const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${Object.values(m.chestInv).reduce((a,b)=>a+b,0)}/200 stored</span>`:null;
+  const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${chestTotal(m)}/${CHEST_CAP} stored</span>`:null;
   const statusVal = chestCap || minerStatus
     || (noRecipeTypes.includes(m.type)||!def.recipes.length
       ? (m.active ? `<span style="color:var(--green)">▶ Active</span>` : `<span style="color:var(--text3)">⏸ Paused</span>`)
@@ -7278,7 +7290,7 @@ function renderMachPanel(){
   html+=fluidPanelRows(m,def,rec);
   if(m.type==='chest'){
     const tot=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-    html+=irow('Stored',`${tot}/200`);
+    html+=irow('Stored',`${tot}/${CHEST_CAP}`);
     if(tot>0){
       html+=`<div style="border-top:1px solid var(--border);margin:6px 0 4px"></div>`;
       html+=`<button class="full-btn amber" onclick="chestCollectAll(${m.id})" style="margin-bottom:6px">↑ COLLECT ALL</button>`;
@@ -7749,7 +7761,7 @@ function startPasteBlueprint(idx){
   closePanel('blueprint');
   setTool('blueprint');
   const lbl=document.getElementById('ghostBarLabel');
-  if(lbl) lbl.textContent=`${b.data.length} machine${b.data.length!==1?'s':''}, position then ✓ PLACE`;
+  if(lbl) lbl.textContent=pasteLabel(b.data.length);
   document.getElementById('ghostBar')?.classList.remove('hidden');
 }
 // ── Rotate / flip a copied layout or blueprint before placing ──
@@ -8679,7 +8691,7 @@ function multiselStartPaste(){
   const cnt=document.getElementById('multiselCount');
   if(cnt) cnt.textContent='Position ghost then ✓ PLACE';
   const lbl=document.getElementById('ghostBarLabel');
-  if(lbl) lbl.textContent=`${ms.clipboard.length} machine${ms.clipboard.length!==1?'s':''}, tap map to position, ✓ PLACE to stamp`;
+  if(lbl) lbl.textContent=pasteLabel(ms.clipboard.length);
   document.getElementById('ghostBar')?.classList.remove('hidden');
 }
 function ghostConfirm(){
@@ -8712,7 +8724,7 @@ function ghostConfirm(){
     G.stats.pastes=(G.stats.pastes||0)+1;
     toast(`Pasted ${data.length} machine${data.length!==1?'s':''}!`,'ok');
     const lbl=document.getElementById('ghostBarLabel');
-    if(lbl) lbl.textContent=`${data.length} machine${data.length!==1?'s':''}, tap map to position, ✓ PLACE to stamp`;
+    if(lbl) lbl.textContent=pasteLabel(data.length);
   }
 }
 function ghostCancel(){
@@ -9370,7 +9382,7 @@ function checkAchievements(){
     inserters_20: ()=>(cnt.inserter||0)+(cnt.long_inserter||0)>=20,
     long_ins:     ()=>cnt.long_inserter>0,
     first_chest:  ()=>cnt.chest>0,
-    chest_full:   ()=>machines.some(m=>m.type==='chest'&&Object.values(m.chestInv).reduce((a,b)=>a+b,0)>=200),
+    chest_full:   ()=>machines.some(m=>chestFull(m)),
     first_splitter:()=>cnt.splitter>0,
     splitters_5:  ()=>(cnt.splitter||0)>=5,
     first_tunnel: ()=>cnt.tunnel>0,
@@ -10103,7 +10115,7 @@ function applyBackup(){
   if(d.blueprints!==undefined)put(BP_KEY,d.blueprints); // older backups had none: keep this device's library
   if(d.times!==undefined)put(TIMES_KEY,d.times);         // best times (v2.0.29), the same
   (d.slots||[]).forEach((v,i)=>put(`ebi_save_slot${i+1}`,v));
-  location.reload();
+  reloadSafe();
 }
 
 // ═══ INSTALL ═══
@@ -10326,7 +10338,7 @@ function devCompleteZone(){
 function devReset(){
   showModal('RESET SAVE?',
     '<div style="font-size:var(--f6);color:var(--red)">This will wipe everything and start a new game.</div>',
-    `<button class="btn btn-sm btn-red" onclick="noSave=true;localStorage.removeItem('${saveKey()}');location.reload()">RESET</button>
+    `<button class="btn btn-sm btn-red" onclick="noSave=true;localStorage.removeItem('${saveKey()}');reloadSafe()">RESET</button>
      <button class="btn btn-sm" onclick="closeModal()">CANCEL</button>`
   );
 }
@@ -10475,11 +10487,12 @@ function saveGame(){
 }
 window.addEventListener('pagehide',()=>{if(G&&tickId)saveGame();});
 function continueGame(key){
+  let raw=null;
   try{
-    const raw=localStorage.getItem(key||SAVE_KEY);
+    raw=localStorage.getItem(key||SAVE_KEY);
     if(!raw){if(key)startSandbox(1);else newGame();return;}
     G=JSON.parse(raw);
-    if(!G||!G.ver){newGame();return;}
+    if(!G||!G.ver)throw new Error('not a save');
     if(!G.crafted)G.crafted={};
     if(!G.perks)G.perks={points:0,spent:{},awarded:{}};
     if(!G.achievements)G.achievements=[];
@@ -10489,8 +10502,22 @@ function continueGame(key){
     migrateSave();
     G.power={out:0,in:0};
     startGame(false);
-  }catch(e){newGame();return;}
+  }catch(e){saveWontLoad(key||SAVE_KEY,raw,e);return;}
   backfillLaunchPerks();
+}
+// v2.0.39: a save that fails to load used to be replaced by a new game on the spot (the autosave then wrote over it).
+// Now it is left untouched, a copy is kept in BROKEN_KEY, and the player chooses.
+const BROKEN_KEY='ebi_broken_save';
+function saveWontLoad(key,raw,err){
+  G=null; if(tickId){clearInterval(tickId);tickId=null;}
+  if(raw)try{localStorage.setItem(BROKEN_KEY,raw);}catch(e){}
+  if(!onTitle())quitToTitle();
+  showModal('⚠️ SAVE WON\'T LOAD',`<div style="font-size:var(--f6);color:var(--text2);line-height:2.3">
+      This save could not be opened, so it has been left exactly as it is. Nothing was deleted.<br><br>
+      Make a <span style="color:var(--amber)">backup code</span> now to keep it safe, and send it to the developer with this error:<br>
+      <span style="color:var(--red);font-size:var(--f5)">${escHtml(String(err&&err.message||err).slice(0,160))}</span></div>`,
+    `<button class="btn btn-sm" onclick="closeModal()">CLOSE</button>
+     <button class="btn btn-teal btn-sm" onclick="closeModal();openBackup()">BACKUP</button>`);
 }
 
 // ═══ SANDBOX (v2.0.27) ═══
@@ -10616,8 +10643,8 @@ function updateSupportUI(){
   const b=document.getElementById('titleSupport'); if(b)b.style.display=STORE_BUILD?'':'none';
   const s=document.getElementById('titleSupporter'); if(s)s.style.display=supporter()?'':'none';
 }
-function initBilling(){
-  const CP=window.CdvPurchase; if(!STORE_BUILD||!CP||billing.init)return; billing.init=true;
+function initBilling(){ // true once set up. CdvPurchase appears before its store does, so this waits for CP.store
+  const CP=window.CdvPurchase; if(billing.init)return true; if(!STORE_BUILD||!CP||!CP.store)return false; billing.init=true;
   const {store,ProductType,Platform,LogLevel}=CP;
   try{store.verbosity=LogLevel.WARNING;}catch(e){}
   store.register([{id:SUPPORT_ID,type:ProductType.NON_CONSUMABLE,platform:Platform.GOOGLE_PLAY}]);
@@ -10628,6 +10655,7 @@ function initBilling(){
     .receiptUpdated(()=>refreshSupporter());
   store.error(e=>{billing.err=(e&&e.message)||'Google Play is not available'; billing.busy=false; refreshSupportModal();});
   store.initialize([Platform.GOOGLE_PLAY]).then(()=>{billing.ready=true;refreshSupporter();}).catch(()=>{});
+  return true;
 }
 function refreshSupporter(){
   const st=billingStore(); if(!st)return;
@@ -10688,6 +10716,57 @@ function openSupport(){
 }
 function refreshSupportModal(){if(document.getElementById('supportRoot')&&!document.getElementById('mOverlay').classList.contains('hidden'))openSupport();}
 
+// ── Durable saves (v2.0.39). Android's WebView writes localStorage to disk lazily, so swiping the app away soon
+// after a save (or right after importing a backup) could lose everything written since. In the app every ebi_* write
+// is mirrored to Android's own storage (Capacitor Preferences: SharedPreferences, flushed when the app stops) along
+// with a sequence number in MIRROR_SEQ. At launch mirrorSync() compares the two: if the WebView copy is behind, every
+// ebi_* key is restored from the mirror and the page reloads once (noSave stops the old state being written back).
+const MIRROR_SEQ='ebi_seq';
+let mirrorOn=false, mirrorPending=[];
+const lsSet=Storage.prototype.setItem, lsDel=Storage.prototype.removeItem;
+function prefsPlugin(){return window.Capacitor?.Plugins?.Preferences||null;}
+function mirrorWrite(k,v){
+  const P=prefsPlugin(); if(!mirrorOn||!P||!k.startsWith('ebi_')||k===MIRROR_SEQ)return;
+  const n=String((parseInt(localStorage.getItem(MIRROR_SEQ))||0)+1); lsSet.call(localStorage,MIRROR_SEQ,n);
+  const pr=Promise.all([v===null?P.remove({key:k}):P.set({key:k,value:v}),P.set({key:MIRROR_SEQ,value:n})]).catch(()=>{});
+  mirrorPending.push(pr); pr.then(()=>{mirrorPending=mirrorPending.filter(x=>x!==pr);});
+}
+if(STORE_BUILD){
+  Storage.prototype.setItem=function(k,v){lsSet.call(this,k,v); if(this===window.localStorage)mirrorWrite(String(k),String(v));};
+  Storage.prototype.removeItem=function(k){lsDel.call(this,k); if(this===window.localStorage)mirrorWrite(String(k),null);};
+}
+function mirrorFlush(){return Promise.all(mirrorPending).catch(()=>{});}
+function reloadSafe(){mirrorFlush().then(()=>location.reload());} // a reload after a storage change waits for the mirror
+async function mirrorSync(){
+  const P=prefsPlugin(); if(!P)return;
+  try{
+    const N=parseInt((await P.get({key:MIRROR_SEQ})).value)||0, L=parseInt(localStorage.getItem(MIRROR_SEQ))||0;
+    const nk=((await P.keys()).keys||[]).filter(k=>k.startsWith('ebi_')&&k!==MIRROR_SEQ);
+    const lk=Object.keys(localStorage).filter(k=>k.startsWith('ebi_')&&k!==MIRROR_SEQ);
+    if(N>L&&!sessionStorage.getItem('ebi_restored')){ // the WebView lost writes: bring the mirror back
+      for(const k of lk)if(!nk.includes(k))lsDel.call(localStorage,k);
+      for(const k of nk){const {value}=await P.get({key:k}); if(value!==null&&value!==undefined)lsSet.call(localStorage,k,value);}
+      lsSet.call(localStorage,MIRROR_SEQ,String(N));
+      try{sessionStorage.setItem('ebi_restored','1');}catch(e){}
+      noSave=true; location.reload(); return;
+    }
+    if(L>N||!N){ // first launch with the mirror, or it missed writes: copy the WebView over
+      for(const k of nk)if(!lk.includes(k))await P.remove({key:k});
+      for(const k of lk)await P.set({key:k,value:localStorage.getItem(k)});
+      const n=String(Math.max(L,N)+1); lsSet.call(localStorage,MIRROR_SEQ,n); await P.set({key:MIRROR_SEQ,value:n});
+    }
+  }catch(e){appError(e);}
+  mirrorOn=true;
+}
+// Errors in the app show once per launch, so testers can screenshot them for the developer.
+let appErrShown=false;
+function appError(e){
+  const m=String(e&&(e.message||e.reason&&e.reason.message||e.reason)||e).slice(0,140);
+  try{console.error('8BI',e);}catch(x){}
+  if(appErrShown||!m||m==='undefined')return; appErrShown=true;
+  try{toast('⚠️ Error: '+m+' (please screenshot this for the developer)','bad');}catch(x){}
+}
+
 // Android back button: one step back (Esc); with nothing open in a game, the menu; on the title screen, leave the app.
 function androidBack(){
   if(escapeStep())return;
@@ -10705,19 +10784,26 @@ function appShown(){
   if(simPaused){simPaused=false;if(G&&!onTitle())startTick();}
   if(onTitle())titleMusic(); else if(G&&PREFS.music!==false&&_music&&!_music.running)musicStart();
 }
-function initNative(){
+function initNative(){ // every part guarded, so one failing never stops the others
   document.body.classList.add('store');
+  window.addEventListener('error',e=>appError(e.error||e.message));
+  window.addEventListener('unhandledrejection',e=>appError(e.reason));
+  mirrorSync();
   const App=window.Capacitor?.Plugins?.App;
-  if(App){App.addListener('backButton',androidBack);App.addListener('pause',appHidden);App.addListener('resume',appShown);}
-  document.addEventListener('deviceready',initBilling,false);
-  if(window.CdvPurchase)initBilling();
+  try{if(App){App.addListener('backButton',androidBack);App.addListener('pause',appHidden);App.addListener('resume',appShown);}}catch(e){appError(e);}
+  // Billing: on deviceready, and meanwhile every half second for 20s, until the plugin's store exists (v2.0.40:
+  // calling it as soon as window.CdvPurchase appeared read an undefined store, threw, and billing never started)
+  let tries=0;
+  const bill=()=>{try{if(initBilling())return;}catch(e){appError(e);return;} if(++tries<40)setTimeout(bill,500);};
+  document.addEventListener('deviceready',()=>{try{initBilling();}catch(e){appError(e);}},false);
+  bill();
 }
 
 // ═══════════════════════════════════════════════════
 //  BOOTSTRAP
 // ═══════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded',()=>{
-  updateGild(); applyTheme(); applyColourBlind(); updateSupportUI(); if(STORE_BUILD)initNative();
+  updateGild(); applyTheme(); applyColourBlind(); updateSupportUI();
   const sd=document.getElementById('titleStardust'); if(sd&&PRESTIGE.total>0)sd.style.display='';
   document.querySelectorAll('[data-ui]').forEach(e=>{e.innerHTML=uiIcon(e.dataset.ui);});
   watchEmoji();
@@ -10725,6 +10811,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   // Ask the browser not to evict our saves (granted automatically once installed on most browsers)
   try{navigator.storage?.persist?.().catch(()=>{});}catch(e){}
   document.addEventListener('contextmenu',e=>e.preventDefault());
+  if(STORE_BUILD){try{initNative();}catch(e){appError(e);}} // last, and guarded: icons and saves are already on screen
 });
 </script>
 <script>

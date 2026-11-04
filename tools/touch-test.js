@@ -208,6 +208,11 @@ for(const [name,w,h] of [['portrait',390,844],['landscape',844,390],['tablet',11
   await p.keyboard.press('2'); const hk=await p.evaluate(()=>({tool:activeTool,want:drawerCats('build')[0].items[1].id}));
   await p.keyboard.press('Tab'); const cat=await p.evaluate(()=>activeDrawerCat.build);
   ok('middle_pan_and_hotbar',m1.x!==m0.x&&m1.n===m0.n&&hk.tool===hk.want&&cat===1,{m0,m1,hk,cat});
+  // with a mouse the touch build buttons and paste buttons are hidden; the cost bar stays
+  { const r=await p.evaluate(()=>{setTool('stone_furnace');updateBuildHUD();const vis=id=>{const e=document.getElementById(id);return !!e&&e.offsetParent!==null&&getComputedStyle(e).display!=='none';};
+      const o={place:vis('buildConfirmBtn'),rotate:vis('buildRotateBtn'),cancel:vis('buildCancelBtn'),cost:vis('buildCost')}; cancelBuild();
+      const gb=[...document.querySelectorAll('#ghostBar button')].some(b=>getComputedStyle(b).display!=='none'); return {...o,gb,label:pasteLabel(3)};});
+    ok('mouse_hides_touch_buttons',!r.place&&!r.rotate&&!r.cancel&&r.cost&&!r.gb&&/click to paste/.test(r.label),r); }
   for(const[k,v]of Object.entries(R))console.log('desktop'.padEnd(10),v.startsWith('PASS')?'  ':'✗ ',k.padEnd(30),v);
   console.log('desktop', errs.join('\n')||'no page errors'); await p.close(); }
 await b.close();})();

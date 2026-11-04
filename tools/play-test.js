@@ -847,6 +847,13 @@ const r=await p.evaluate(async()=>{
     startSandbox(1); closeModal(); clearInterval(tickId); const z1=G.zone===1&&G.tutorial.step===-1&&G.sandbox;
     localStorage.removeItem(SANDBOX_KEY); PRESTIGE=JSON.parse(saved); savePrestige();
     ok('sandbox_mode',locked&&z3&&quantum&&own&&noAch&&z5&&noDust&&back&&z1,{locked,z3,quantum,own,noAch,z5,noDust,back,z1,w:MAP_W}); }
+  // ── A chest holds 200: a belt running straight into it backs up instead of overfilling it (v2.0.42); inserters too
+  { reset(); power(2,2); res(10,30,1,1,'stone'); put('miner',10,30,0);
+    for(let x=11;x<16;x++)put('belt',x,30,0); const c=put('chest',16,30); c.chestInv.stone=195;
+    run(2400); const tot=chestTotal(c), queued=[11,12,13,14,15].reduce((a,x)=>a+G.map[30][x].items.length,0);
+    reset(); power(2,2); const src=put('chest',10,32); src.chestInv.coal=150; put('inserter',11,32,0); const dst=put('chest',12,32); dst.chestInv.coal=190;
+    run(800); const insTot=chestTotal(dst);
+    ok('chest_cap_200',tot===200&&queued>=5&&insTot===200,{tot,queued,insTot}); }
   // ── Sound is one setting for the device: it survives a zone change and a new game; an old save hands its choice over once
   { const keep={sfx:PREFS.sfx,music:PREFS.music,musicVol:PREFS.musicVol,audioSet:PREFS.audioSet};
     PREFS.sfx=true; PREFS.audioSet=false; toggleSfx(); setMusicVol(0.3);
