@@ -549,6 +549,11 @@ img.ico{width:1.7em;height:1.7em;image-rendering:pixelated;image-rendering:crisp
 #hoverTip .ht-name{font-size:var(--f5);color:var(--amber);margin-bottom:2px}
 #hoverTip .ht-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 body.kh #buildHUD{bottom:calc(var(--cb) + 44px)}
+/* With a mouse (v2.0.41) the touch buttons go: click places, R rotates, right-click or Esc stops, and the key hints
+   say so. The build cost bar and the paste count stay. Same query as KH_MQ. */
+@media (hover:hover) and (pointer:fine){
+  #buildRotateBtn,#buildConfirmBtn,#buildCancelBtn,#ghostBar button{display:none!important}
+}
 body.kh #ghostBar{bottom:calc(var(--cb) + 34px)}
 body.kh #toasts{bottom:calc(var(--cb) + 112px)}
 /* Desktop (mouse): the base type scale was set for phones held close; a monitor needs it larger */
@@ -595,7 +600,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.40 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.41 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -781,7 +786,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.40';
+const VER      = '2.0.41';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -4398,6 +4403,8 @@ document.addEventListener('keydown',e=>{onKey(e);updateKeyHints();});
 // keyboard (KH_MQ) and while PREFS.keyHints isn't false (H or Settings → KEY HINTS). Rebuilt on every mouse move, key
 // and UI refresh; setHtml only touches the DOM when the hints change.
 const KH_MQ=window.matchMedia('(hover:hover) and (pointer:fine)');
+// The paste bar's line: with a mouse the buttons are hidden (v2.0.41), so it says what to click instead
+const pasteLabel=n=>`${n} machine${n!==1?'s':''}, `+(KH_MQ.matches?'click to paste, right-click to stop':'tap map to position, ✓ PLACE to stamp');
 let mouseIn=false;
 const DIR_WORD=['right','down','left','up'];
 function hoverMachine(){if(!G||!mouseIn||hov.x<0)return null;const t=G.map[hov.y]?.[hov.x];return t&&t.mid!==null?G.machines[t.mid]||null:null;}
@@ -7749,7 +7756,7 @@ function startPasteBlueprint(idx){
   closePanel('blueprint');
   setTool('blueprint');
   const lbl=document.getElementById('ghostBarLabel');
-  if(lbl) lbl.textContent=`${b.data.length} machine${b.data.length!==1?'s':''}, position then ✓ PLACE`;
+  if(lbl) lbl.textContent=pasteLabel(b.data.length);
   document.getElementById('ghostBar')?.classList.remove('hidden');
 }
 // ── Rotate / flip a copied layout or blueprint before placing ──
@@ -8679,7 +8686,7 @@ function multiselStartPaste(){
   const cnt=document.getElementById('multiselCount');
   if(cnt) cnt.textContent='Position ghost then ✓ PLACE';
   const lbl=document.getElementById('ghostBarLabel');
-  if(lbl) lbl.textContent=`${ms.clipboard.length} machine${ms.clipboard.length!==1?'s':''}, tap map to position, ✓ PLACE to stamp`;
+  if(lbl) lbl.textContent=pasteLabel(ms.clipboard.length);
   document.getElementById('ghostBar')?.classList.remove('hidden');
 }
 function ghostConfirm(){
@@ -8712,7 +8719,7 @@ function ghostConfirm(){
     G.stats.pastes=(G.stats.pastes||0)+1;
     toast(`Pasted ${data.length} machine${data.length!==1?'s':''}!`,'ok');
     const lbl=document.getElementById('ghostBarLabel');
-    if(lbl) lbl.textContent=`${data.length} machine${data.length!==1?'s':''}, tap map to position, ✓ PLACE to stamp`;
+    if(lbl) lbl.textContent=pasteLabel(data.length);
   }
 }
 function ghostCancel(){
