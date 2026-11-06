@@ -612,7 +612,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.46 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.47 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -799,7 +799,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.46';
+const VER      = '2.0.47';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -807,9 +807,11 @@ const STORE_BUILD=false;
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
-const SMOG_PER={oil_pump:20,cracker:15,refinery:15,combustion_gen:20};
-const SMOG_DECAY_MIN=6;       // clears by itself this much per minute
-const SCRUBBER_SMOG_MIN=60;   // each powered, fuelled Scrubber
+const SMOG_SCALE=0.6; // v2.0.47 (user request): every smog rate at 60%, sources, natural clearing and Scrubbers alike, so the balance holds and the early climb takes about 10 minutes, not 4
+const smogRate=n=>Math.round(n*SMOG_SCALE*100)/100; // whole hundredths, so 6 × 0.6 reads 3.6
+const SMOG_PER={oil_pump:smogRate(20),cracker:smogRate(15),refinery:smogRate(15),combustion_gen:smogRate(20)};
+const SMOG_DECAY_MIN=smogRate(6);       // clears by itself this much per minute
+const SCRUBBER_SMOG_MIN=smogRate(60);   // each powered, fuelled Scrubber
 const SCRUBBER_FUEL_TICKS=16; // a Scrubber burns 1 refined fuel per 4s (15/min)
 function machineSmog(m){ // smog/min this machine makes when working
   const base=SMOG_PER[m.type]; if(!base)return 0;
@@ -1805,7 +1807,7 @@ const ZONES={
      arrivalHtml:`Something went wrong.<br>You've crashed on <span style="color:var(--red)">The Scar</span>.<br><br>
        The rocket is wrecked. Your tools are gone.<br>But your knowledge survived.<br><br>
        <span style="color:var(--amber)">The ground smells of oil.</span><br>
-       <span style="color:var(--text3);font-size:var(--f5)">Find the oil deposits. Build the chain. Fix the rocket.</span>`},
+       <span style="color:var(--text3);font-size:var(--f5)">Find the oil deposits. Build the chain. Keep the air clear. Fix the rocket.</span>`},
   3:{name:'The Deep', icon:'🕳️', rocketTech:'lattice_fuel', parts:ROCKET_PARTS_Z3, fuel:null,
      partsCat:'rocket3', partsLabel:'Escape Shaft (Zone 3)', sci:['sci_deep','sci_pressure','sci_lattice'],
      hazards:['pressure','glow'], buildMap:()=>carveCaves(buildZoneMap(DEPOSITS_Z3,0x0dee9),0x5ca7e),
@@ -1847,8 +1849,8 @@ function rocketUnlocked(){const t=zoneDef().rocketTech;return !!t&&G.research.do
 // Everything the current zone's launch consumes: parts + any launch fuel
 function rocketReqs(){
   const zd=zoneDef();
-  const list=zd.parts.map(p=>({id:p.id,name:p.name,need:p.need}));
-  if(zd.fuel)list.push({id:zd.fuel.item,name:`${ITEMS[zd.fuel.item].name} (launch)`,need:zd.fuel.n});
+  const list=zd.parts.map(p=>({id:p.id,name:p.name,need:uniScale(p.need)})); // 25% more per Big Bang (v2.0.47)
+  if(zd.fuel)list.push({id:zd.fuel.item,name:`${ITEMS[zd.fuel.item].name} (launch)`,need:uniScale(zd.fuel.n)});
   return list.map(r=>({...r,icon:ITEMS[r.id]?.icon||'?',have:G.inv[r.id]||0}));
 }
 // Techs that belong to a zone (Zone 1 techs have no zone field)
@@ -2536,7 +2538,7 @@ function beltSpr(fr,tier=1){
   const stud=BELT_TIER_COL[tier]||BELT_TIER_COL[1], rail=tier>1?shade(stud,-.45):'#5a5a5a';
   return mkSpr(`belt:${fr}:${tier}`,16,16,({R,P})=>{
     R(0,0,16,16,'#1a1a1a'); R(0,2,16,12,'#2b2b2b');
-    for(let x=0;x<16;x++){if((x+fr)%4===0)R(x,3,1,10,'#3c3c3c');}
+    for(let x=0;x<16;x++){if((x-fr+4)%4===0)R(x,3,1,10,'#3c3c3c');} // ridges move with the items (v2.0.47: they ran backwards)
     R(0,1,16,1,rail); R(0,14,16,1,rail); R(0,0,16,1,'#0e0e0e'); R(0,15,16,1,'#0e0e0e');
     for(let x=2;x<16;x+=8){P(x+fr*2%8,1,stud);if(tier>1)P(x+fr*2%8,14,stud);}
   });
@@ -2558,7 +2560,7 @@ function beltCornerSpr(fr,turn,tier=1){
       if(yv===0||yv===15)c='#0e0e0e';
       else if(yv===1)c=((along-2-fr*2)%8+8)%8===0?stud:rail;
       else if(yv===14)c=tier>1&&((along-2-fr*2)%8+8)%8===0?stud:rail;
-      else if(yv>=3&&yv<=12&&(along+fr)%4===0)c='#3c3c3c';
+      else if(yv>=3&&yv<=12&&((along-fr)%4+4)%4===0)c='#3c3c3c';
       P(x,y,c);
     }
   });
@@ -2991,6 +2993,9 @@ function uiFlip({P},vert){
     put(xr,y,'#f5a623');
   }
 }
+// Belt direction arrows (v2.0.47): on every belt while building, using an EDIT tool or holding a paste, so the way a
+// line runs is clear when planning; drawn under the items, gone again in plain play.
+function beltArrowsOn(){return !!G&&(activeTool!=='select'||blueprintState.mode==='holding'||multiselState.mode==='pasting');}
 function arrowSpr(dir,col){return mkSpr(`arr:${dir}:${col}`,16,16,a=>uiArrow(a,dir,col));}
 function uiSpr(name){const f=UI_ART[name];return f?mkSpr(`ui:${name}`,16,16,a=>f(a)):null;}
 // Emoji in tutorial text and toasts → pixel icons. 'ui:x' is a UI_ART icon; anything else an item/machine id
@@ -3616,6 +3621,7 @@ function draw(){
   const ts=TILE*z;
   const now=performance.now();
   const at=now/TICK_MS; // smooth animation clock in tick units (game ticks only step 4×/s)
+  const planArrows=beltArrowsOn();
   ctx.imageSmoothingEnabled=false; // pixel sprites stay crisp (resizing the canvas resets this)
   ctx.fillStyle='#090909';
   ctx.fillRect(0,0,W,H);
@@ -3647,8 +3653,8 @@ function draw(){
       ctx.strokeStyle='#f5a623'; ctx.lineWidth=2; ctx.strokeRect(px,py,ts,ts);
       // Draw pip dots (4 total, fill taps completed)
       const pipR=Math.max(3,ts*.07); const pipGap=pipR*2.8;
-      const totalW=(MINE_TAPS-1)*pipGap; const pipY=py+ts-pipR*2.2;
-      for(let i=0;i<MINE_TAPS;i++){
+      const NT=mineTaps(), totalW=(NT-1)*pipGap; const pipY=py+ts-pipR*2.2;
+      for(let i=0;i<NT;i++){
         const pipX=px+ts/2-totalW/2+i*pipGap;
         ctx.fillStyle=i<mineTap.taps?'#f5a623':'rgba(245,166,35,.25)';
         ctx.fillRect(Math.floor(pipX-pipR),Math.floor(pipY-pipR),Math.ceil(pipR*2),Math.ceil(pipR*2));
@@ -3677,6 +3683,7 @@ function draw(){
           turn=beltTurn(m);
           ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
           ctx.drawImage(turn?beltCornerSpr(fr,turn,tier):beltSpr(fr,tier),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
+          if(planArrows&&ts>12){const as=Math.floor(ts*.42);ctx.globalAlpha=.6;ctx.drawImage(arrowSpr(m.dir,'#f5a623'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);ctx.globalAlpha=1;}
         } else {
         // Full dark surface
         ctx.fillStyle=BELT_BG; ctx.fillRect(px,py,ts,ts);
@@ -3839,7 +3846,7 @@ function draw(){
     // Chest: show fill level with bar + count
     if(m.type==='chest'){
       const total=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-      const CAP=CHEST_CAP;
+      const CAP=chestCap();
       const pct=Math.min(1,total/CAP);
       if(ts>14){
         // Background track
@@ -4221,6 +4228,7 @@ let touchT=0;
 // mineTap: 4 taps = 1 ore. Active while resInfo mine popup is open.
 let mineTap={active:false,resId:null,tx:0,ty:0,taps:0};
 const MINE_TAPS=4; // taps per ore
+function mineTaps(){return G?.perks?.spent?.tap1?2:MINE_TAPS;} // Strong Arm perk (v2.0.47)
 let moveState={active:false,machineId:null,origX:0,origY:0};
 // Blueprint tool state
 let blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
@@ -4876,7 +4884,7 @@ function updateMineBtnLabel(){
   const pips=document.getElementById('minePips');
   if(!pips)return;
   pips.innerHTML='';
-  for(let i=0;i<MINE_TAPS;i++){
+  for(let i=0;i<mineTaps();i++){
     const d=document.createElement('div');
     d.className='mine-pip'+(i<mineTap.taps?' filled':'');
     pips.appendChild(d);
@@ -4891,7 +4899,7 @@ function doMineTap(){
   sfx('tap'); G.stats.taps++;
   const ts=TILE*G.cam.zoom;
   ripples.push({px:mineTap.tx*ts-G.cam.x+ts/2,py:mineTap.ty*ts-G.cam.y+ts/2,t:performance.now()});
-  if(mineTap.taps>=MINE_TAPS){
+  if(mineTap.taps>=mineTaps()){
     const yieldMult=perkMult().yield;
     const gained=Math.max(1,Math.round(yieldMult));
     G.inv[mineTap.resId]=(G.inv[mineTap.resId]||0)+gained;
@@ -5078,6 +5086,7 @@ function applyUndoGroup(ops,verb){
   return done;
 }
 function undoLast(){
+  dropHeldMachine(); // a machine held by the Move tool goes back first, so undo sees it where it was
   const ops=undoStack[undoStack.length-1];
   if(!ops){toast('Nothing to undo','wrn');return;}
   const done=applyUndoGroup(ops,'undo'); if(!done)return;
@@ -5087,6 +5096,7 @@ function undoLast(){
   toast('↶ Undone','ok');
 }
 function redoLast(){
+  dropHeldMachine();
   const ops=redoStack[redoStack.length-1];
   if(!ops){toast('Nothing to redo','wrn');return;}
   const done=applyUndoGroup(ops,'redo'); if(!done)return;
@@ -5348,6 +5358,9 @@ function powerRatio(){
 }
 
 // Perk multipliers, reads G.perks.spent and returns composite modifiers
+// Inserter speed from perks (Quick Grip I +20%, II +40%, v2.0.47) and Stardust (Quick Hands +10% a level). insMs() calls
+// this for every arm phase, so it allocates nothing.
+function insSpeedMult(){const s=G?.perks?.spent; return (s?.ins2?1.40:s?.ins1?1.20:1)*(1+.1*plv('quick_hands'));}
 function perkMult(){
   const s=G.perks?.spent||{}, o=PRESTIGE.owned;
   return {
@@ -5355,6 +5368,7 @@ function perkMult(){
     yield: (s.yield3?1.50 : s.yield2?1.35 : s.yield1?1.10 : 1)*(1+(plv('cosmic_yield')?.05+.1*plv('cosmic_yield'):0)),
     speed: (s.speed3?1.35 : s.speed2?1.20 : s.speed1?1.10 : 1)*(1+(plv('cosmic_speed')?.05+.1*plv('cosmic_speed'):0)),
     belt:  (s.belt2?1.40 : s.belt1?1.20 : 1)*(1+.1*plv('swift_belts')),
+    ins:   insSpeedMult(),
     power: (s.power2?0.70 : s.power1?0.85 : 1)*(plv('cosmic_power')?1-(.15+.05*plv('cosmic_power')):1), // multiplier on power draw
   };
 }
@@ -5634,9 +5648,10 @@ function runPump(m,def){
   if(!net){m._fluidStatus='nopipe';return;}
   m._fluidStatus='ok';
   net.type=def.pumps;
-  net.amt=Math.min(net.cap,net.amt+(m.tier===3?2:m.tier===2?1.5:1));
+  const sp=MACHINE_TIER_SPEED[m.tier||1]||1; // ×1 / ×2 / ×4 like every tier (it was 1 / 1.5 / 2, unreachable until v2.0.47)
+  net.amt=Math.min(net.cap,net.amt+sp);
   net.inflow++;
-  m.produced++; recordOutput(m,1,def.pumps);
+  m.produced+=sp; recordOutput(m,sp,def.pumps);
 }
 
 function fluidReady(m,rec){
@@ -5789,6 +5804,19 @@ function runReactor(m,def){
 const SING_BASE={grav_lens:500,stellar_casing:1000,void_engine:500,quantum_mind:500};
 function singReqsFor(bangs){const k=1+0.25*(bangs||0); return Object.fromEntries(Object.entries(SING_BASE).map(([id,n])=>[id,Math.round(n*k/10)*10]));}
 let SING_REQS=singReqsFor(0); // set for the current universe in startGame()
+// Research and rockets scale with the universe too (v2.0.47, user request): every Big Bang makes every tech in every zone
+// cost 25% more science packs, and every zone's rocket parts and launch fuel 25% more, the same step as the Singularity,
+// so later universes need bigger factories. techCost(id) is the only place a tech's cost is read, rocketReqs() the only
+// place a launch's needs are; uniScale(n) rounds (20+ to 5s). UNIVERSE_SCALE is set for the current universe in startGame().
+// Tutorial tally for a research step: the science packs it really costs in this universe
+function techRows(tid){return Object.entries(techCost(tid)).map(([id,need])=>({id,label:ITEMS[id]?.name||id,have:G.inv[id]||0,need}));}
+function universeScaleFor(bangs){return 1+0.25*(bangs||0);}
+let UNIVERSE_SCALE=1;
+function uniScale(n){if(UNIVERSE_SCALE===1)return n; const v=n*UNIVERSE_SCALE; return v>=20?Math.round(v/5)*5:Math.max(1,Math.round(v));}
+function techCost(id){ // Field Research perk: 15% fewer packs (v2.0.47)
+  const c=TECHS[id]?.cost||{}, f=UNIVERSE_SCALE*(G?.perks?.spent?.sci1?.85:1); if(f===1)return c;
+  return Object.fromEntries(Object.entries(c).map(([k,n])=>{const v=n*f;return [k,v>=20?Math.round(v/5)*5:Math.max(1,Math.round(v))];}));
+}
 function universeNum(){return (PRESTIGE.bangs||0)+(G&&G.bigBang?0:1);}
 const SING_POWER=5000, SING_SUSTAIN=240;
 function singularity(){return Object.values(G.machines).find(m=>m.type==='singularity')||null;}
@@ -5915,7 +5943,7 @@ function triggerBigBang(){
       The Singularity holds for sixty seconds.<br>Then everything, every belt, every world, collapses to a point.<br><br>
       <span style="color:var(--purple);font-size:var(--f7)">A NEW UNIVERSE BEGINS</span><br><br>
       <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(${base}: 10 + 1 per 2 achievements, up to +${ACH_DUST_MAX}${ascend>1?`, ×${ascend.toFixed(2)} for Universe ${PRESTIGE.bangs}`:''})</span><br>
-      <span style="color:var(--text3);font-size:var(--f5)">Universe ${PRESTIGE.bangs+1} next: the Singularity needs 25% more, and pays 25% more</span><br>
+      <span style="color:var(--text3);font-size:var(--f5)">Universe ${PRESTIGE.bangs+1} next: research, rockets and the Singularity need 25% more, and it pays 25% more</span><br>
       <span style="color:var(--text3);font-size:var(--f5)">Big Bangs: ${PRESTIGE.bangs} · Stardust is permanent across runs</span>
       ${PREFS.timer?`<br>${splitLine('The Singularity:',split)}${run?splitLine('Full run:',run):''}`:''}
     </div>`,
@@ -5932,7 +5960,7 @@ function openStardustShop(){
   let html=`<div class="card" style="margin-bottom:8px;text-align:center">
     <div style="font-size:var(--f5);color:var(--text3)">STARDUST</div>
     <div style="font-size:var(--f10);color:var(--amber)">✨ ${PRESTIGE.stardust}</div>
-    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px;line-height:1.8">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}<br>${G&&G.bigBang?'Next: ':''}Universe ${G&&G.bigBang?u+1:u}: the Singularity needs ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} and pays ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} Stardust</div>
+    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px;line-height:1.8">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}<br>${G&&G.bigBang?'Next: ':''}Universe ${G&&G.bigBang?u+1:u}: research, rockets and the Singularity need ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} and pays ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} Stardust</div>
   </div>`;
   let cat='';
   for(const it of PRESTIGE_SHOP){
@@ -6063,9 +6091,10 @@ function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on th
 // A chest holds CHEST_CAP items, filled by inserters only. Belts fed chests directly until v2.0.43 (and ignored the cap
 // until v2.0.42); now a belt ending at a chest is a dead end like any machine. Quantum Storage still takes belts.
 const CHEST_CAP=200;
+function chestCap(){return G?.perks?.spent?.chest1?300:CHEST_CAP;} // Deep Chests perk (v2.0.47)
 let chestBeltWarned=false; // the one-time hint when a belt runs into a chest
 const chestTotal=m=>{let t=0;for(const k in m.chestInv)t+=m.chestInv[k];return t;};
-const chestFull=m=>m.type==='chest'&&chestTotal(m)>=CHEST_CAP;
+const chestFull=m=>m.type==='chest'&&chestTotal(m)>=chestCap();
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
@@ -6277,7 +6306,7 @@ function beltDropPos(tile){
   return -1;
 }
 function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
-function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?(INS_TIER_SPEED[m.tier||1]||1)*(1+.1*plv('quick_hands')):1);}
+function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?(INS_TIER_SPEED[m.tier||1]||1)*insSpeedMult():1);}
 
 // ── Shared outputs ──
 // Several inserters on one machine's output side (or one chest) take turns: each item goes to the ready
@@ -6389,7 +6418,7 @@ function stepInserter(m){
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type==='chest'){
         const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
-        if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
+        if(total<chestCap()){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
         if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
@@ -6405,7 +6434,7 @@ function stepInserter(m){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid]; let deposited=false;
       if(dm&&beltLike(dm.type)&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
-      else if(dm&&dm.type==='chest'){const total=chestTotal(dm);if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      else if(dm&&dm.type==='chest'){const total=chestTotal(dm);if(total<chestCap()){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
     } else {
@@ -6824,6 +6853,16 @@ function setDrawerCat(idx){
   buildDrawer();
 }
 
+function dropHeldMachine(){
+  if(!moveState.active)return;
+  const m=G.machines[moveState.machineId];
+  if(m){
+    const[mw,mh]=machSize(m);
+    m.x=moveState.origX; m.y=moveState.origY;
+    for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){const t=G.map[moveState.origY+dy]?.[moveState.origX+dx]; if(t&&t.mid===null)t.mid=m.id;}
+  }
+  moveState={active:false,machineId:null,origX:0,origY:0};
+}
 function setTool(id){
   lineClear();
   if(activeTool==='upgrade'&&id!=='upgrade')upgClear();
@@ -6838,6 +6877,9 @@ function setTool(id){
     document.getElementById('multiselBar')?.classList.add('hidden');
     document.getElementById('ghostBar')?.classList.add('hidden');
   }
+  // Any tool change puts a machine held by the Move tool back where it was (v2.0.47: Rotate, Blueprint and Move itself
+  // returned early before this, leaving it drawn on the map with no tiles, so it could never be tapped again)
+  dropHeldMachine();
   if(id==='rotate'){
     activeTool='rotate'; closeResInfo(); buildDrawer(); updateSelectBtn(); updateBuildHUD();
     return;
@@ -6850,17 +6892,6 @@ function setTool(id){
     activeTool='blueprint';
     if(blueprintState.mode!=='holding') blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
     closeResInfo(); buildDrawer(); updateSelectBtn(); updateBuildHUD(); return;
-  }
-  // Switching away from move tool, restore any held machine
-  if(activeTool==='move'&&moveState.active){
-    const m=G.machines[moveState.machineId];
-    if(m){
-      const[mw,mh]=machSize(m);
-      m.x=moveState.origX; m.y=moveState.origY;
-      for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
-        G.map[moveState.origY+dy][moveState.origX+dx].mid=m.id;
-    }
-    moveState={active:false,machineId:null,origX:0,origY:0};
   }
   const def=MDEFS[id];
   if(def?.stub){toast('[FUTURE] Not yet active in Zone 1','wrn');return;}
@@ -6951,6 +6982,7 @@ function togglePanel(id){
   if(openPanel)closePanel(openPanel);
   closeResInfo();
   openPanel=id;
+  if(id==='smog'&&G)G.stats.smogPeek=1; // the Zone 2 tutorial's smog step
   document.body.classList.add('sheet-open');
   document.getElementById('toolTip').classList.add('hidden');
   document.getElementById('p'+cap(id))?.classList.add('open');
@@ -7048,7 +7080,7 @@ function machineRates(m){
   } else if(BELT_TYPES.includes(m.type)){
     R.notes.push(`Carries up to ${fmtRate(beltBaseSpeed()*beltTierMult(m)*BELT_CAP*TICKS_PER_MIN)} items/min (${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s)`);
   } else if(m.type==='inserter'||m.type==='long_inserter'){
-    R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
+    R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)*insSpeedMult()/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`); // perks and Quick Hands included (v2.0.47)
   } else if(m.recipe&&RECIPES[m.recipe]){
     const rec=RECIPES[m.recipe];
     const life=def.living?lifeStage(m).mult:1;
@@ -7124,8 +7156,8 @@ function renderCraftPanel(){
 
   // Active crafting session, hammer button front and centre
   if(active){
-    const pct=Math.round(cs.clicks/active.clicks*100);
-    const remaining=active.clicks-cs.clicks;
+    const need=craftClicks(active), pct=Math.round(cs.clicks/need*100);
+    const remaining=need-cs.clicks;
     const outStr=Object.entries(active.out).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ');
     html+=`<div id="craftActive" style="border:1px solid var(--amber);background:var(--bg3);padding:12px;margin-bottom:10px;text-align:center">
       <div style="font-size:var(--f7);color:var(--amber);margin-bottom:6px">${iconHtml(active.id)} ${active.name}</div>
@@ -7133,7 +7165,7 @@ function renderCraftPanel(){
       <div style="height:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:6px">
         <div style="height:100%;background:var(--amber);width:${pct}%;transition:width .1s"></div>
       </div>
-      <div style="font-size:var(--f5);color:var(--text3);margin-bottom:10px">${cs.clicks} / ${active.clicks} clicks &nbsp;·&nbsp; ${remaining} to go</div>
+      <div style="font-size:var(--f5);color:var(--text3);margin-bottom:10px">${cs.clicks} / ${need} clicks &nbsp;·&nbsp; ${remaining} to go</div>
       <button id="hammerBtn" onclick="hammerClick()" style="
         font-size:28px;background:var(--bg);border:2px solid var(--amber);
         padding:10px 24px;cursor:pointer;display:block;width:100%;
@@ -7176,7 +7208,7 @@ function renderCraftPanel(){
         <div>
           <div style="font-size:var(--f6);color:${isActive?'var(--amber)':'var(--text)'};margin-bottom:3px">${iconHtml(r.id)} ${r.name}</div>
           <div style="font-size:var(--f5);color:var(--blue);margin-bottom:2px">${inStr}</div>
-          <div style="font-size:var(--f5);color:var(--text3)">→ ${outStr} &nbsp;·&nbsp; ${r.clicks} clicks</div>
+          <div style="font-size:var(--f5);color:var(--text3)">→ ${outStr} &nbsp;·&nbsp; ${craftClicks(r)} clicks</div>
         </div>
         ${!isActive?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="startCraft('${r.id}')" ${canAfford?'':'disabled'}>START</button>`:'<span style="font-size:var(--f6);color:var(--amber)">▶ active</span>'}
       </div>
@@ -7200,6 +7232,7 @@ function startCraft(id){
   updateHUD(); renderCraftPanel(); sfx('tap');
 }
 
+function craftClicks(r){return G?.perks?.spent?.craft1?Math.max(1,Math.ceil(r.clicks/2)):r.clicks;} // Nimble Hands perk (v2.0.47)
 function hammerClick(){
   const cs=G.craftState; if(!cs||!cs.recipeId)return;
   const r=HAND_CRAFTS.find(h=>h.id===cs.recipeId); if(!r)return;
@@ -7214,7 +7247,7 @@ function hammerClick(){
     setTimeout(()=>{if(btn)btn.style.transform='scale(1) rotate(0deg)';},80);
   }
 
-  if(cs.clicks>=r.clicks){
+  if(cs.clicks>=craftClicks(r)){
     // Final click, check materials are still available, then deduct and give output
     if(!G.devFreeCraft){
       const canAfford=Object.entries(r.in).every(([k,v])=>(G.inv[k]||0)>=v);
@@ -7285,8 +7318,8 @@ function renderMachPanel(){
     ? `<span style="color:var(--red)">⚡ No power</span>`
     : m.recipe ? `<span style="color:var(--green)">▶ ${m.type==='lab'?'Researching':'Running'}: ${RECIPES[m.recipe]?.name||''}</span>`
     : `<span style="color:var(--amber)">⚠ No recipe</span>`;
-  const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${chestTotal(m)}/${CHEST_CAP} stored</span>`:null;
-  const statusVal = chestCap || minerStatus
+  const chestLbl=m.type==='chest'?`<span style="color:var(--amber)">${chestTotal(m)}/${chestCap()} stored</span>`:null;
+  const statusVal = chestLbl || minerStatus
     || (noRecipeTypes.includes(m.type)||!def.recipes.length
       ? (m.active ? `<span style="color:var(--green)">▶ Active</span>` : `<span style="color:var(--text3)">⏸ Paused</span>`)
       : (m.active ? recipeStatus : `<span style="color:var(--text3)">⏸ Paused</span>`));
@@ -7312,7 +7345,7 @@ function renderMachPanel(){
   html+=fluidPanelRows(m,def,rec);
   if(m.type==='chest'){
     const tot=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-    html+=irow('Stored',`${tot}/${CHEST_CAP}`);
+    html+=irow('Stored',`${tot}/${chestCap()}`);
     if(tot>0){
       html+=`<div style="border-top:1px solid var(--border);margin:6px 0 4px"></div>`;
       html+=`<button class="full-btn amber" onclick="chestCollectAll(${m.id})" style="margin-bottom:6px">↑ COLLECT ALL</button>`;
@@ -7626,15 +7659,27 @@ const BELT_TIER_COSTS={ // per belt tile, splitter or tunnel
 // Machines that take tier upgrades; module slots are only for the production machines
 const MODULE_TYPES=['miner','blast_furnace','electric_smelter','assembler','lab'];
 const BELT_TYPES=['belt','splitter','tunnel'];
-const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES];
+// Later zones' production machines take tiers too (v2.0.47, user request: Oil Pumps, Crackers and the rest had none).
+// Speed ×1 / ×2 / ×4 like every machine, paid in what their home zone makes: The Scar Polymer Sheets, The Deep
+// Silicon, Magnets and Batteries, The Bloom Luminite Crystals and Bio-Composite (in Zone 5 too, by home zone).
+const ZONE_TIER_HOME={oil_pump:2,cracker:2,refinery:2, brine_pump:3,evaporator:3,separator:3,rod_press:3,
+  enzyme_pump:4,algae_vat:4,bioreactor:4,spore_incubator:4,hyper_synth:4};
+const ZONE_TIER_COSTS={
+  2:{2:{polymer_sheet:5,iron_gear:5,circuit:2},  3:{polymer_sheet:10,steel_plate:6,engine:2}},
+  3:{2:{silicon:5,steel_plate:4,circuit:3},      3:{magnet:6,battery:2,steel_plate:6}},
+  4:{2:{lum_crystal:4,steel_plate:4,circuit:3},  3:{bio_composite:6,lum_crystal:6,engine:2}},
+};
+const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES,...Object.keys(ZONE_TIER_HOME)];
 const isInserter=t=>t==='inserter'||t==='long_inserter';
 // Belt upgrades need Advanced Logistics (it used to give +50% belt speed instead)
 function tierLocked(type){return BELT_TYPES.includes(type)&&!G.research.done.includes('logistics')?'Advanced Logistics':null;}
-function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:TIER_COSTS)[tier];}
+function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:ZONE_TIER_HOME[type]?ZONE_TIER_COSTS[ZONE_TIER_HOME[type]]:TIER_COSTS)[tier];}
 function tierBonus(type,tier){
   if(isInserter(type))return `${60*INS_TIER_SPEED[tier]} items/min`;
   if(BELT_TYPES.includes(type))return `${60*BELT_TIER_SPEED[tier]} items/min`;
   if(type==='miner')return `${60*MINER_TIER_SPEED[tier]} items/min`;
+  if(type==='oil_pump')return `${60*MINER_TIER_SPEED[tier]} crude oil/min`;
+  if(MDEFS[type]?.pumps)return `${fmtRate(TICKS_PER_MIN/2*MACHINE_TIER_SPEED[tier])} ${ITEMS[MDEFS[type].pumps]?.name.toLowerCase()||'fluid'}/min`;
   return `${MACHINE_TIER_SPEED[tier]}× speed`;
 }
 function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
@@ -7786,17 +7831,14 @@ async function exportBlueprints(idx){
     <textarea id="bpCode" class="bk-area" readonly>${bpCode}</textarea>`,
     `<button class="btn btn-sm" onclick="closeModal();showPanel('blueprint')">◀</button>
      <button class="btn btn-sm" onclick="copyBpCode()">📋 COPY</button>
-     <button class="btn btn-sm btn-teal" onclick="downloadBpCode()">⬇ FILE</button>`);
+     <button class="btn btn-sm btn-teal" onclick="downloadBpCode()">${FILE_LABEL}</button>`);
 }
 async function copyBpCode(){
   let ok=false;
   try{await navigator.clipboard.writeText(bpCode);ok=true;}catch(e){const t=document.getElementById('bpCode'); if(t){t.select();try{ok=document.execCommand('copy');}catch(e2){}}}
   const b=[...document.querySelectorAll('#mFoot button')].find(x=>x.textContent.includes('COPY')); if(b)b.textContent=ok?'✓ COPIED':'SELECT + COPY';
 }
-function downloadBpCode(){
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bpCode],{type:'text/plain'}));
-  a.download=`8bit-industry-${bpCodeName}.txt`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-}
+function downloadBpCode(){saveTextFile(`8bit-industry-${bpCodeName}.txt`,bpCode);}
 function importBlueprintsUI(msg){
   if(openPanel==='blueprint')closePanel('blueprint');
   showModal('📥 IMPORT BLUEPRINTS',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">Paste a blueprint code, or load a blueprint file. They are added to your library (up to ${BP_MAX}); nothing is replaced.</div>
@@ -8006,6 +8048,7 @@ function renderResPanel(){
   let html=`<div class="card" style="margin-bottom:12px">
     <span class="sec-label">SCIENCE PACKS</span>
     <div style="font-size:var(--f6);color:var(--text2);line-height:2">${sciHtml}</div>
+    ${UNIVERSE_SCALE>1?`<div style="font-size:var(--f5);color:var(--text3);margin-top:6px">Universe ${(PRESTIGE.bangs||0)+1}: research and rockets cost ×${UNIVERSE_SCALE.toFixed(2)}</div>`:''}
   </div>`;
 
   // Show this zone's techs (Zone 5 merges every zone, so it shows all)
@@ -8018,8 +8061,9 @@ function renderResPanel(){
     for(const[id,tech]of techsInEra){
       const done=G.research.done.includes(id);
       const reqMet=tech.req.every(r=>G.research.done.includes(r));
-      const canAfford=reqMet&&!done&&Object.entries(tech.cost).every(([k,v])=>(G.inv[k]||0)>=v);
-      const costStr=Object.entries(tech.cost).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(', ');
+      const cost=techCost(id);
+      const canAfford=reqMet&&!done&&Object.entries(cost).every(([k,v])=>(G.inv[k]||0)>=v);
+      const costStr=Object.entries(cost).map(([k,v])=>`${v}×${ITEMS[k]?.name||k}`).join(', ');
       html+=`<div class="tech-card ${done?'done':reqMet?'avail':'locked'}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:var(--f6);color:${done?'var(--teal)':'var(--text)'}">${tech.icon} ${tech.name}</span>
@@ -8027,7 +8071,7 @@ function renderResPanel(){
           ${!reqMet&&!done?'<span style="color:var(--text3);font-size:var(--f9)">🔒</span>':''}
         </div>
         <div style="font-size:var(--f5);color:var(--text3);margin-bottom:5px">${tech.desc}</div>
-        ${!done?`<div style="font-size:var(--f5);color:var(--amber);margin-bottom:5px">Cost: ${costStr} <span style="color:var(--text3)">· 1 Lab: ${fmtRate(labMinutes(tech.cost))} min</span></div>`:''}
+        ${!done?`<div style="font-size:var(--f5);color:var(--amber);margin-bottom:5px">Cost: ${costStr} <span style="color:var(--text3)">· 1 Lab: ${fmtRate(labMinutes(cost))} min</span></div>`:''}
         ${!done&&reqMet?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="doResearch('${id}')" ${canAfford?'':'disabled'}>RESEARCH</button>`:''}
       </div>`;
     }
@@ -8038,10 +8082,11 @@ function renderResPanel(){
 function doResearch(id){
   const tech=TECHS[id]; if(!tech||G.research.done.includes(id))return;
   if(!tech.req.every(r=>G.research.done.includes(r))){toast('Prerequisites not met','wrn');sfx('error');return;}
-  for(const[k,v]of Object.entries(tech.cost)){
+  const cost=techCost(id);
+  for(const[k,v]of Object.entries(cost)){
     if((G.inv[k]||0)<v){toast(`Need ${v}× ${ITEMS[k]?.name||k}`,'wrn');sfx('error');return;}
   }
-  for(const[k,v]of Object.entries(tech.cost))G.inv[k]-=v;
+  for(const[k,v]of Object.entries(cost))G.inv[k]-=v;
   G.research.done.push(id);
   if(tech.onResearch)tech.onResearch();
   buildToolbar(); renderResPanel(); updateHUD(); updateRocketBtn(); saveGame(); sfx('research');
@@ -8097,7 +8142,7 @@ function renderRocketPanel(){
       Research <span style="color:var(--amber)">${TECHS[zd.rocketTech]?.name}</span> to see the rocket parts.
     </div>`+milestonesHtml(); return;
   }
-  let html=goalHeaderHtml()+`<span class="sec-label">COMPONENTS REQUIRED</span>${rocketReqRows(false)}`;
+  let html=goalHeaderHtml()+`<span class="sec-label">COMPONENTS REQUIRED</span>${UNIVERSE_SCALE>1?`<div style="font-size:var(--f5);color:var(--text3);margin:-2px 0 6px">Universe ${(PRESTIGE.bangs||0)+1}: ×${UNIVERSE_SCALE.toFixed(2)} parts</div>`:''}${rocketReqRows(false)}`;
   html+=rocketReady()
     ?`<button class="full-btn launch" onclick="launchRocket()">🚀 ${zd.launchLabel}</button>`
     :`<div style="font-size:var(--f5);color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
@@ -8177,6 +8222,7 @@ function launchRocket(){
 // Fresh start in zone n, keeps research, perks, audio settings and dev mode
 function transitionToZone(n){
   const zd=ZONES[n]; if(!zd)return;
+  moveState={active:false,machineId:null,origX:0,origY:0}; // a held machine stays behind with the old zone
   const researchDone=[...G.research.done];
   const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft,sandbox:G.sandbox};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
@@ -8286,12 +8332,18 @@ const PERK_DEFS=[
   {id:'power1',   name:'Power Saver I',     desc:'-15% power consumption all machines', cost:1, req:[], cat:'Efficiency'},
   {id:'start1',   name:'Quick Start',       desc:'Begin next zone with 50 of each basic resource', cost:2, req:[], cat:'Utility'},
   {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput', cost:1, req:[], cat:'Logistics'},
+  {id:'ins1',     name:'Quick Grip I',      desc:'+20% inserter speed, to keep up with faster belts', cost:1, req:[], cat:'Logistics'},
+  {id:'tap1',     name:'Strong Arm',        desc:'Mining by tap takes 2 taps instead of 4', cost:1, req:[], cat:'Utility'},
+  {id:'craft1',   name:'Nimble Hands',      desc:'Hand crafting takes half the clicks', cost:1, req:[], cat:'Utility'},
   // Unlock after a zone's launch (after:N)
   {id:'yield3',   name:'Ore Richness III',  desc:'+15% more resource yield (stacks)',  cost:3, req:['yield2'], cat:'Yield',      after:2},
   {id:'power2',   name:'Power Saver II',    desc:'-15% more power consumption',        cost:2, req:['power1'], cat:'Efficiency', after:2},
   {id:'smog1',    name:'Clean Burn',        desc:'Oil pumps make 30% less smog',        cost:2, req:[],         cat:'Hazards',    after:2},
   {id:'speed3',   name:'Machine Haste III', desc:'+15% more machine speed (stacks)',   cost:3, req:['speed2'], cat:'Speed',      after:3},
   {id:'belt2',    name:'Belt Speed II',     desc:'+20% more belt throughput',          cost:2, req:['belt1'],  cat:'Logistics',  after:3},
+  {id:'ins2',     name:'Quick Grip II',     desc:'+20% more inserter speed',           cost:2, req:['ins1'],   cat:'Logistics',  after:3},
+  {id:'sci1',     name:'Field Research',    desc:'Research costs 15% fewer science packs', cost:2, req:[],     cat:'Research',   after:2},
+  {id:'chest1',   name:'Deep Chests',       desc:'Chests hold 300 items instead of 200', cost:1, req:[],       cat:'Logistics',  after:2},
   {id:'pressure1',name:'Reinforced Pipes',  desc:'Pipes take 50% longer to burst',     cost:2, req:[],         cat:'Hazards',    after:3},
   {id:'vital1',   name:'Vital Growth',      desc:'Living machines decay 25% slower',   cost:2, req:[],         cat:'Hazards',    after:4},
   {id:'cool1',    name:'Coolant Lines',     desc:'Reactors heat up 20% slower',        cost:2, req:[],         cat:'Hazards',    after:4},
@@ -9094,7 +9146,7 @@ function hazPressureHtml(){
     const p=Math.round(pressureOf(n)), ports=[...n.ports];
     const pumps=ports.filter(m=>MDEFS[m.type].pumps), users=ports.filter(m=>!MDEFS[m.type].pumps);
     const valves=n.members.filter(m=>m.type==='relief_valve'), jammed=valves.filter(valveJammed);
-    const pushMin=pumps.reduce((a,m)=>a+(m.mineRes===MDEFS[m.type].pumps&&m.active?(m.tier===3?2:m.tier===2?1.5:1)*TICKS_PER_MIN/2:0),0);
+    const pushMin=pumps.reduce((a,m)=>a+(m.mineRes===MDEFS[m.type].pumps&&m.active?(MACHINE_TIER_SPEED[m.tier||1]||1)*TICKS_PER_MIN/2:0),0);
     const col=n.strain>0?'var(--red)':p>=RELIEF_AT?'var(--amber)':p<LOW_PRESSURE?'var(--blue)':'var(--teal)';
     let advice;
     if(n.strain>0)advice=`<span style="color:var(--red)">Strain ${Math.round(n.strain/burstStrain()*100)}%: a pipe will burst.</span> Add a Relief Valve${jammed.length?`, load Gaskets into the ${jammed.length} jammed one${jammed.length>1?'s':''}`:''}, or add machines that use it.`;
@@ -9565,7 +9617,7 @@ function rbResHere(){ // deposit types on this map (cached until the map changes
 }
 function rbRecipes(){ // every recipe usable in this zone, machines then hand crafts
   const list=Object.entries(RECIPES).filter(([id])=>zoneRecipeOk(id)).map(([id,r])=>({id,name:r.name,machine:r.machine,secs:r.time/4,in:r.in,out:r.out,fluid:r.fluid,minPressure:r.minPressure,unlock:r.unlock}));
-  for(const h of HAND_CRAFTS)if(zoneRecipeOk(h.id))list.push({id:'hand:'+h.id,name:h.name,machine:'hand',clicks:h.clicks,in:h.in,out:h.out,unlock:h.unlock});
+  for(const h of HAND_CRAFTS)if(zoneRecipeOk(h.id))list.push({id:'hand:'+h.id,name:h.name,machine:'hand',clicks:craftClicks(h),in:h.in,out:h.out,unlock:h.unlock});
   return list;
 }
 function rbLock(r){
@@ -9609,7 +9661,7 @@ function rbOtherUses(id){ // uses outside recipes
   const builds=Object.keys(MDEFS).filter(t=>MDEFS[t].cost?.[id]&&drawerCats('build').some(c=>c.items.some(i=>i.id===t)));
   if(builds.length)out.push(`Builds ${builds.map(t=>rbChip(t,MDEFS[t].cost[id])).join('')}`);
   const techs=Object.entries(TECHS).filter(([tid,t])=>t.cost?.[id]&&!G.research.done.includes(tid));
-  if(techs.length)out.push(`Research: ${techs.map(([,t])=>`${t.name} (${fmt(t.cost[id])})`).join(', ')}`);
+  if(techs.length)out.push(`Research: ${techs.map(([tid,t])=>`${t.name} (${fmt(techCost(tid)[id])})`).join(', ')}`);
   const launch=rocketReqs().find(r=>r.id===id);
   if(launch)out.push(`Launch: ${fmt(launch.need)} needed (you have ${fmt(launch.have)})`);
   if(G.zone===5&&SING_REQS[id])out.push(`The Singularity needs ${SING_REQS[id]}`);
@@ -9757,13 +9809,13 @@ const TUTORIALS={
     {text:'Feed the Furnace iron ore AND coal with Inserters. Tap it and pick "Smelt Iron". Its output arrow drops plates straight onto a belt.',
      done:()=>machinesOf('stone_furnace').some(m=>m.recipe&&(m.inBuf.iron_ore||0)>0&&(m.inBuf.coal||0)>0)},
     {text:'Hand-craft [[sci_red]] Field Notes (gear + 2 wire), then open 🔬 RESEARCH and unlock Basic Automation.',
-     tally:[['sci_red',5]], done:()=>researched('automation')},
+     tally:()=>techRows('automation'), done:()=>researched('automation')},
     {text:'Automation! Build an [[assembler]] Assembler, set it to Iron Gear, and feed it plates. Machines can now craft for you.',
      done:()=>machinesOf('assembler').some(m=>m.recipe)},
     {text:'Build a [[lab]] Research Lab making [[sci_red]] Field Notes, fed by inserters. Science on autopilot.',
      done:()=>made('lab')},
-    {text:'Research Advanced Logistics (60 Field Notes). It unlocks Generators, Splitters, Tunnels and belt upgrades.',
-     tally:[['sci_red',50]], done:()=>researched('logistics')},
+    {text:'Research Advanced Logistics. It unlocks Generators, Splitters, Tunnels and belt upgrades.',
+     tally:()=>techRows('logistics'), done:()=>researched('logistics')},
     {text:'Labs also make [[sci_green]] Circuit Diagrams now. Research Steel and Electronics, then Rocket Science.',
      done:()=>researched('rocket_tech')},
     {text:'Final goal: build the 4 kinds of rocket part (the GOAL tab lists how many) and launch from the 🚀 GOAL tab. Milestones there earn bonus perk points.',
@@ -9775,18 +9827,20 @@ const TUTORIALS={
      done:()=>(G.inv.iron_ore||0)>=20&&(G.inv.coal||0)>=10&&(G.inv.stone||0)>=10},
     {text:'Get power back: place a [[burner]] Burner and feed it coal (or a Miner + Inserter like before).',
      done:()=>machinesOf('burner').some(m=>(m.inBuf.coal||0)>0)||machinesOf('generator').some(m=>(m.inBuf.coal||0)>0)},
-    {text:'Study the ruins: hand-craft [[sci_scar]] Scar Notes (gear + 2 coal) in 🔨 CRAFT, or make them in a Lab.',
-     tally:[['sci_scar',10]], done:()=>(G.inv.sci_scar||0)>=10||researched('oil_extraction')},
-    {text:'Open 🔬 RESEARCH and unlock Oil Extraction.', done:()=>researched('oil_extraction')},
-    {text:'Place an [[oil_pump]] Oil Pump on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil.',
+    // v2.0.47 (user request): smog is explained before the first pump, with every machine that makes it
+    {text:'Study the ruins: hand-craft [[sci_scar]] Scar Notes (gear + 2 coal) in 🔨 CRAFT, or make them in a Lab, then open 🔬 RESEARCH and unlock Oil Extraction.',
+     tally:()=>techRows('oil_extraction'), done:()=>researched('oil_extraction')},
+    {text:'⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%, a tenth at 100%) and clears only slowly. Tap 🌫️ in the top bar to see where it comes from.',
+     done:()=>!!G.stats.smogPeek||researched('smog_control')},
+    {text:`Place an [[oil_pump]] Oil Pump (BUILD → Liquids → [[oil_pump]]) on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil, and about ${SMOG_PER.oil_pump} smog a minute.`,
      done:()=>hasM('oil_pump')},
-    {text:'Inserter the crude into a [[cracker]] Cracker. It splits oil into [[raw_fuel]] raw fuel (right arrow) and [[plastic]] plastic (bottom arrow): put a belt or inserter on each.',
+    {text:'Inserter the crude into a [[cracker]] Cracker (BUILD → Refining → [[cracker]]). It splits oil into [[raw_fuel]] raw fuel (right arrow) and [[plastic]] plastic (bottom arrow): put a belt or inserter on each. It makes smog too.',
      done:()=>made('cracker')},
-    {text:'A [[refinery]] Refinery turns raw fuel into [[refined_fuel]] refined fuel. You will need lots of it.',
-     done:()=>made('refinery')},
-    {text:'⚠️ Pumps make smog (🌫️ in the top bar). Smog slows every machine. Make [[sci_smog]] Smog Data and research Smog Control.',
+    {text:'Get ahead of the smog: a Lab makes [[sci_smog]] Smog Data from plastic and wire. Research Smog Control now, before the air gets thick.',
      done:()=>researched('smog_control')},
-    {text:'Build a [[scrubber]] Scrubber and feed it refined fuel. Pumps, Crackers and Refineries all make smog: one Scrubber clears a pump with its Cracker and Refinery. GOAL shows what is rising.',
+    {text:'A [[refinery]] Refinery (BUILD → Refining → [[refinery]]) turns raw fuel into [[refined_fuel]] refined fuel, which Scrubbers and Combustion Gens burn. It makes smog as well.',
+     done:()=>made('refinery')},
+    {text:`Build a [[scrubber]] Scrubber (BUILD → Clean Air → [[scrubber]]) and feed it refined fuel. Each clears ${SCRUBBER_SMOG_MIN} smog a minute: one pump with its Cracker and Refinery makes about ${SMOG_PER.oil_pump+SMOG_PER.cracker+SMOG_PER.refinery}, and every Combustion Gen adds ${SMOG_PER.combustion_gen} more. Add Scrubbers as you grow; 🌫️ shows the balance.`,
      done:()=>machinesOf('scrubber').some(m=>(m.inBuf.refined_fuel||0)>0)},
     {text:'Goal: research Rocket Repair, build the 6 kinds of repair part and stock 100 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
      final:true},
@@ -9795,7 +9849,7 @@ const TUTORIALS={
     {text:'The Deep: no sky, glowing caves. Mine [[quartz]] quartz and [[copper_ore]] copper to start.',
      tally:[['quartz',10],['copper_ore',10]], done:()=>(G.inv.quartz||0)>=10&&(G.inv.copper_ore||0)>=10},
     {text:'Hand-craft [[sci_deep]] Deep Notes (quartz + 2 wire) and research 💧 Fluid Handling.',
-     tally:[['sci_deep',10]], done:()=>researched('fluid_handling')},
+     tally:()=>techRows('fluid_handling'), done:()=>researched('fluid_handling')},
     {text:'Place a [[brine_pump]] Brine Pump on a brine pool (bright blue water). It needs power.',
      done:()=>hasM('brine_pump')},
     {text:'Brine only travels through [[pipe]] Pipes. Lay pipes from the pump. Pipes join up on their own.',
@@ -9817,7 +9871,7 @@ const TUTORIALS={
     {text:'The Bloom is alive. Mine [[biomass]] biomass and [[copper_ore]] copper.',
      tally:[['biomass',15],['copper_ore',10]], done:()=>(G.inv.biomass||0)>=15&&(G.inv.copper_ore||0)>=10},
     {text:'Hand-craft [[sci_bloom]] Bloom Notes (2 biomass + wire) and research 🌱 Bio Cultivation.',
-     tally:[['sci_bloom',10]], done:()=>researched('bio_cultivation')},
+     tally:()=>techRows('bio_cultivation'), done:()=>researched('bio_cultivation')},
     {text:'Hand-craft [[nutrient]] Nutrient Paste (3 biomass). Living machines eat it.',
      tally:[['nutrient',5]], done:()=>(G.inv.nutrient||0)>=5},
     {text:'Place an [[enzyme_pump]] Enzyme Pump on an enzyme pool (lime-green water) and pipe it out.',
@@ -9845,7 +9899,7 @@ const TUTORIALS={
     {text:'Research 📕 Void Theory. Expansion I is optional: it grows the map with fresh deposits.',
      done:()=>researched('void_theory')},
     {text:'Labs make [[sci_void]] Void Data from one of each top pack. Research The Singularity.',
-     tally:[['sci_void',100]], done:()=>researched('singularity')},
+     tally:()=>techRows('singularity'), done:()=>researched('singularity')},
     {text:'Place the [[singularity]] Singularity (BUILD → Singularity). It needs a clear 10×10 area.',
      done:()=>!!singularity()},
     {text:'Build its 4 components and feed them in with inserters, or press DEPOSIT in the 🚀 GOAL tab.',
@@ -9985,7 +10039,7 @@ function updateRocketBtn(){
   if(goal)goal.textContent=(G.stats.launched&&nextZone())||(rocketUnlocked()&&rocketReady()&&!G.stats.launched)?'!':'';
   if(res){
     const can=Object.entries(TECHS).some(([id,t])=>!G.research.done.includes(id)&&(G.zone===5||(t.zone||1)===G.zone)
-      &&t.req.every(r=>G.research.done.includes(r))&&Object.entries(t.cost).every(([k,v])=>(G.inv[k]||0)>=v));
+      &&t.req.every(r=>G.research.done.includes(r))&&Object.entries(techCost(id)).every(([k,v])=>(G.inv[k]||0)>=v));
     res.textContent=can?'!':'';
   }
 }
@@ -10140,7 +10194,7 @@ async function exportBackup(){
     <textarea id="bkCode" class="bk-area" readonly>${backupCode}</textarea>`,
     `<button class="btn btn-sm" onclick="openBackup()">◀</button>
      <button class="btn btn-sm" onclick="copyBackup()">📋 COPY</button>
-     <button class="btn btn-sm btn-teal" onclick="downloadBackup()">⬇ FILE</button>`);
+     <button class="btn btn-sm btn-teal" onclick="downloadBackup()">${FILE_LABEL}</button>`);
 }
 async function copyBackup(){
   let ok=false;
@@ -10150,11 +10204,27 @@ async function copyBackup(){
   const b=[...document.querySelectorAll('#mFoot button')].find(x=>x.textContent.includes('COPY'));
   if(b)b.textContent=ok?'✓ COPIED':'SELECT + COPY';
 }
-function downloadBackup(){
+function downloadBackup(){saveTextFile(`8bit-industry-backup-${new Date().toISOString().slice(0,10)}.txt`,backupCode);}
+// Save a text file (backup or blueprint codes). The web downloads it. Android's WebView ignores download links, so the
+// FILE button did nothing in the app (a tester's report, v2.0.47): there the file is written to the app's cache with the
+// Capacitor Filesystem plugin and handed to Android's share sheet (Share plugin), where Save to Files, Drive, email or a
+// message keeps it. Cancelling the sheet is not an error.
+const FILE_LABEL=STORE_BUILD?'📤 SHARE FILE':'⬇ FILE';
+async function saveTextFile(name,text){
+  const P=window.Capacitor?.Plugins, FS=P?.Filesystem, SH=P?.Share;
+  if(STORE_BUILD&&FS&&SH){
+    try{
+      const {uri}=await FS.writeFile({path:name,data:text,directory:'CACHE',encoding:'utf8'});
+      await SH.share({title:name,files:[uri],dialogTitle:'Save or send your file'});
+    }catch(e){
+      if(/cancel/i.test(String(e&&e.message||e)))return;
+      toast('Could not save the file: use COPY instead ('+String(e&&e.message||e).slice(0,60)+')','bad');
+    }
+    return;
+  }
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([backupCode],{type:'text/plain'}));
-  a.download=`8bit-industry-backup-${new Date().toISOString().slice(0,10)}.txt`;
-  document.body.appendChild(a); a.click(); a.remove();
+  a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+  a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 function importBackupUI(msg){
@@ -10394,7 +10464,7 @@ function devGiveAll(){
 
 function devCompleteRocket(){
   if(!G.research.done.includes('rocket_tech'))G.research.done.push('rocket_tech');
-  for(const p of ROCKET_PARTS) G.inv[p.id]=(G.inv[p.id]||0)+p.need;
+  for(const p of ROCKET_PARTS) G.inv[p.id]=(G.inv[p.id]||0)+uniScale(p.need);
   buildToolbar(); updateHUD();
   toast('Rocket components given','ok');
 }
@@ -10648,9 +10718,10 @@ function newGame(){
 }
 
 function startGame(isNew){
-  stopTitleScene(); clearUndo();
+  stopTitleScene(); clearUndo(); moveState={active:false,machineId:null,origX:0,origY:0}; // a held machine belonged to the old game
   if(STORE_BUILD&&!G.sandbox){G.devMode=false;G.devFreeBuild=false;G.devFreeCraft=false;G.devTickSpeed=1;} // a web backup carried into the app
   SING_REQS=singReqsFor(PRESTIGE.bangs); // this universe's Singularity (25% bigger per Big Bang)
+  UNIVERSE_SCALE=universeScaleFor(PRESTIGE.bangs); // and its research and rockets (25% more per Big Bang)
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
   if(G._coolant){delete G._coolant;setTimeout(()=>toast('New: Heat Sinks need coolant. Pipe enzymes or brine to them, or reactors overheat','wrn'),3000);}
   if(G._gaskets){delete G._gaskets;setTimeout(()=>toast('New: Relief Valves wear out Gaskets. Yours have 4 spares each: tap a valve to see','wrn'),2600);}

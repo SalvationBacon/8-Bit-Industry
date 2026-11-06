@@ -415,7 +415,7 @@ const r=await p.evaluate(async()=>{
     const r0=JSON.stringify(machineRates(ck).out); G.smog=60; const r60=JSON.stringify(machineRates(ck).out); const note=machineRates(ck).notes.join(' ');
     const sc=put('scrubber',30,40); for(let t=0;t<480;t++){feed();sc.inBuf.refined_fuel=50;run(1);} const fell=G.smog;
     G.zone=z0;
-    ok('smog_rises_and_scrubs',rose>=25&&fell<60&&r0===r60&&note.includes('Smog is slowing it')&&note.includes('smog/min'),{rose:+rose.toFixed(1),fell:+fell.toFixed(1),r0,r60}); }
+    ok('smog_rises_and_scrubs',rose>=25*SMOG_SCALE&&fell<60&&r0===r60&&note.includes('Smog is slowing it')&&note.includes('smog/min'),{rose:+rose.toFixed(1),fell:+fell.toFixed(1),r0,r60}); }
   // ── power panel: tap the gauge; generators, consumers, idle ones, and what to build
   { reset(); G.research.done=Object.keys(TECHS).filter(k=>!TECHS[k].zone||TECHS[k].zone<=1);
     const g1=put('generator',2,2); g1.inBuf.coal=50; const g2=put('generator',2,5);   // one fuelled, one empty
@@ -529,7 +529,7 @@ const r=await p.evaluate(async()=>{
     sc.inBuf.refined_fuel=50; feed(); run(1); refreshOpenPanel(); const h3=document.getElementById('pSmogBody').innerText;
     findMachines(String(sc.id)); const found=openPanel==='machine'&&inspectId===sc.id; closePanel('machine');
     G.zone=z0; G.smog=0;
-    ok('smog_panel',opened&&Math.abs(rep.make-50)<1e-9&&rep.needNow===1&&rep.needMax===1&&h1.includes('Add 1 Scrubber')&&h1.includes('idle: 1 waiting for input')
+    ok('smog_panel',opened&&Math.abs(rep.make-50*SMOG_SCALE)<1e-9&&rep.needNow===1&&rep.needMax===1&&h1.includes('Add 1 Scrubber')&&h1.includes('idle: 1 waiting for input')
       &&h2.includes('1 out of refined fuel')&&h2.includes('FIND IDLE SCRUBBERS (1)')&&h3.includes('Enough')&&h3.includes('1 cleaning')&&found,
       {opened,make:rep.make,need:rep.needNow,found,h1:h1.slice(0,400)}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
@@ -879,6 +879,99 @@ const r=await p.evaluate(async()=>{
       feed(480); q._sent={}; const c0=chestTotal(ch); feed(480); return {right:(q._sent.iron_plate||0)/2,left:(chestTotal(ch)-c0)/2}; };
     const blocked=trial(true), open=trial(false);
     ok('splitter_overflows_blocked_side',blocked.right>=58&&open.left>=28&&open.right>=28,{blocked,open}); }
+  // ── Research scales with the universe (v2.0.47): every Big Bang, each tech costs 25% more science packs (the Singularity's
+  //    step); research charges the scaled cost, the panel says so, and the tutorial tallies show what research really costs
+  { reset(); const keep=UNIVERSE_SCALE, bangs=PRESTIGE.bangs;
+    UNIVERSE_SCALE=universeScaleFor(0); const base=techCost('logistics').sci_red===60&&techCost('automation').sci_red===5;
+    UNIVERSE_SCALE=universeScaleFor(1); const u2=techCost('logistics').sci_red===75&&techCost('automation').sci_red===6&&techCost('rocket_tech').sci_blue===75;
+    UNIVERSE_SCALE=universeScaleFor(2); const u3=techCost('logistics').sci_red===90&&techCost('singularity').sci_void===180;
+    G.research.done=G.research.done.filter(k=>k!=='logistics'); const inv0=G.inv.sci_red; G.inv.sci_red=89; doResearch('logistics'); const refused=!G.research.done.includes('logistics');
+    G.inv.sci_red=95; doResearch('logistics'); const charged=G.research.done.includes('logistics')&&G.inv.sci_red===5;
+    PRESTIGE.bangs=2; renderResPanel(); const note=/research and rockets cost ×1\.50/.test(document.getElementById('pResBody').innerText);
+    const tally=techRows('fluid_handling')[0].need===45&&techRows('singularity')[0].need===180;
+    // every zone's rocket parts and launch fuel by the same step (Universe 3: ×1.5)
+    const zone0=G.zone, need=z=>{G.zone=z;const r=Object.fromEntries(rocketReqs().map(q=>[q.id,q.need]));return r;};
+    const r1=need(1), r2=need(2), r3=need(3), r4=need(4); G.zone=zone0;
+    const rockets=r1.r_chassis===8&&r1.r_propellant===15&&r2.r_hull===30&&r2.refined_fuel===150&&r3.fuel_rod===30&&r4.hyperfuel===45&&r4.r_core===8;
+    G.inv.r_chassis=7; const short=!rocketReqs().every(r=>r.id!=='r_chassis'||r.have>=r.need);
+    UNIVERSE_SCALE=keep; PRESTIGE.bangs=bangs; G.inv.sci_red=inv0;
+    ok('research_scales_per_big_bang',base&&u2&&u3&&refused&&charged&&note&&tally&&rockets&&short,{base,u2,u3,refused,charged,note,tally,rockets,r1,r2,short}); }
+  // ── Later zones' production machines take tiers (v2.0.47): paid in their home zone's goods, ×1/×2/×4 like the rest, and
+  //    the panel's numbers agree (Oil Pump crude onto a belt, a Cracker's cracks, a Brine Pump's push into its pipes)
+  { const z0=G.zone, inv0=JSON.parse(JSON.stringify(G.inv));
+    const all=Object.keys(ZONE_TIER_HOME).every(t=>TIER_TYPES.includes(t)&&tierCost(t,2)&&tierCost(t,3));
+    const costs=tierCost('cracker',2).polymer_sheet===5&&tierCost('evaporator',3).magnet===6&&tierCost('hyper_synth',2).lum_crystal===4;
+    // buying T2 then T3 with the zone's goods
+    G.zone=2; reset(); res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); G.devFreeBuild=false;
+    G.inv={}; addCost(G.inv,tierCost('oil_pump',2)); upgradeMachine(pu.id); const t2=pu.tier===2&&Object.values(G.inv).every(n=>!n);
+    G.inv={}; upgradeMachine(pu.id); const refused=pu.tier===2;
+    G.devFreeBuild=true; G.inv=inv0;
+    // crude per minute onto a belt at T1, T2, T3
+    const crude=t=>{ G.zone=2; reset(); power(2,2); power(2,5); res(10,40,2,2,'oil'); const q=put('oil_pump',10,40); q.mineRes='oil'; q.tier=t;
+      for(let x=12;x<20;x++){put('belt',x,40,0).tier=3; put('belt',x,41,0).tier=3;} const k=sink(20,40), k2=sink(20,41); G.smog=0;
+      run(80); k._sent={}; k2._sent={}; run(240); G.smog=0; return ((k._sent.crude_oil||0)+(k2._sent.crude_oil||0)); };
+    const c1=crude(1), c2=crude(2), c3=crude(3);
+    // a Cracker at T2 cracks twice as often
+    const cracks=t=>{ G.zone=2; reset(); power(2,2); const cr=put('cracker',20,20); cr.recipe='z2_crack'; cr.tier=t; cr.inBuf.crude_oil=50; G.smog=0;
+      let n=0; for(let i=0;i<240;i++){ run(1); G.smog=0; cr.inBuf.crude_oil=50; n+=cr.outBuf.plastic||0; cr.outBuf={}; } return n; };
+    const k1=cracks(1), k2=cracks(2);
+    // a Brine Pump at T3 pushes four times as much, and the pressure panel says so
+    G.zone=3; reset(); power(2,2); power(2,5); res(10,40,2,2,'brine'); const bp=put('brine_pump',10,40); bp.tier=3; for(let x=12;x<30;x++)put('pipe',x,40); put('fluid_tank',30,40);
+    run(40); const net=bp._nets?.[0]; const before=net?net.amt:0; run(40); const after=bp._nets?.[0]?.amt||0; const push=Math.round(after-before);
+    const rate=machineRates(bp).out.brine, panel=/480\/min in/.test(hazPressureHtml());
+    G.zone=z0;
+    ok('later_machines_tiers',all&&costs&&t2&&refused&&c1===60&&c2===120&&c3===240&&k2===2*k1&&k1>0&&push===80&&rate===480&&panel,{all,costs,t2,refused,c1,c2,c3,k1,k2,push,rate,panel}); }
+  // ── Smog runs at 60% strength (v2.0.47): every source, natural clearing and the Scrubber scaled alike, so one Scrubber
+  //    still out-clears a pump with its Cracker and Refinery; smog still tops out at 100% (machines at 10%), and the
+  //    tutorial quotes the real numbers
+  { const z0=G.zone; G.zone=2; reset(); power(2,2);
+    const scaled=SMOG_SCALE===0.6&&SMOG_PER.oil_pump===12&&SMOG_PER.cracker===9&&SMOG_DECAY_MIN===3.6&&SCRUBBER_SMOG_MIN===36;
+    const holds=SCRUBBER_SMOG_MIN>SMOG_PER.oil_pump+SMOG_PER.cracker+SMOG_PER.refinery;
+    G.smog=95; addSmog(500); const top=G.smog===100;
+    const cr=put('cracker',20,20); cr.recipe='z2_crack'; const slow=/10% right now/.test(machineRates(cr).notes.join(' '));
+    const tut=TUTORIALS[2].steps.map(s=>s.text).join(' '), quoted=/about 12 smog a minute/.test(tut)&&/clears 36 smog/.test(tut)&&/about 30, and every Combustion Gen adds 12/.test(tut);
+    G.smog=0; G.zone=z0;
+    ok('smog_rates_scaled',scaled&&holds&&top&&slow&&quoted,{scaled,holds,top,slow,quoted}); }
+  // ── The Scar's tutorial explains smog before the first pump, names every machine that makes it, and the step clears when
+  //    the smog gauge is tapped (v2.0.47)
+  { const st=TUTORIALS[2].steps, z0=G.zone, t0=G.zoneTut, peek=G.stats.smogPeek;
+    const iSmog=st.findIndex(s=>/smog/i.test(s.text)&&/Combustion Gens/.test(s.text)), iPump=st.findIndex(s=>/\[\[oil_pump\]\] Oil Pump/.test(s.text));
+    const names=['Oil Pumps','Crackers','Refineries','Combustion Gens'].every(n=>st[iSmog]?.text.includes(n));
+    G.zone=2; G.stats.smogPeek=0; G.research.done=G.research.done.filter(k=>k!=='smog_control'); if(!G.research.done.includes('oil_extraction'))G.research.done.push('oil_extraction');
+    G.zoneTut=iSmog; tickTutorial(); const waits=G.zoneTut===iSmog;
+    togglePanel('smog'); tickTutorial(); const moved=G.zoneTut>iSmog; closePanel('smog');
+    G.zone=z0; G.zoneTut=t0; G.stats.smogPeek=peek; hideTutHint();
+    ok('scar_tutorial_smog_first',iSmog>=0&&iSmog<iPump&&names&&waits&&moved&&st.length===10,{iSmog,iPump,names,waits,moved,n:st.length}); }
+  // ── New perks (v2.0.47): Quick Grip I/II speed inserters up 20%/40% (real throughput, chest to chest), Strong Arm halves
+  //    the taps to mine, Nimble Hands halves hand-craft clicks, Field Research takes 15% off research (with the universe
+  //    scale too), Deep Chests hold 300; the Perks panel lists them all
+  { reset(); const keep={...G.perks.spent}, scale=UNIVERSE_SCALE; UNIVERSE_SCALE=1;
+    const moved=perks=>{ G.perks.spent=perks; reset(); power(2,2); const a=put('chest',10,30); a.chestInv={iron_plate:200}; put('inserter',11,30,0); const z=put('chest',12,30);
+      run(40); const z0=chestTotal(z); run(480); return (chestTotal(z)-z0)/2; };
+    const base=moved({}), g1=moved({ins1:true}), g2=moved({ins1:true,ins2:true});
+    const grip=Math.abs(base-60)<=1&&Math.abs(g1-72)<=1.5&&Math.abs(g2-84)<=1.5;
+    G.perks.spent={}; const t0=mineTaps(), c0=craftClicks({clicks:5}), r0=techCost('logistics').sci_red, cap0=chestCap();
+    G.perks.spent={tap1:true,craft1:true,sci1:true,chest1:true};
+    const t1=mineTaps(), c1=craftClicks({clicks:5}), r1=techCost('logistics').sci_red, cap1=chestCap();
+    UNIVERSE_SCALE=universeScaleFor(1); const r2=techCost('logistics').sci_red; UNIVERSE_SCALE=1;
+    reset(); power(2,2); const src=put('chest',10,32); src.chestInv={coal:200}; put('inserter',11,32,0); const dst=put('chest',12,32); dst.chestInv={coal:250}; run(400); const deep=chestTotal(dst)===300;
+    renderPerksPanel(); const pnl=document.getElementById('pPerksBody')?.innerText||document.getElementById('pPerks')?.innerText||'';
+    const listed=['Quick Grip I','Quick Grip II','Strong Arm','Nimble Hands','Field Research','Deep Chests'].every(n=>pnl.includes(n));
+    G.perks.spent=keep; UNIVERSE_SCALE=scale;
+    const small=t0===4&&t1===2&&c0===5&&c1===3&&r0===60&&r1===50&&r2===65&&cap0===200&&cap1===300;
+    ok('new_perks',grip&&small&&deep&&listed,{base,g1,g2,t0,t1,c0,c1,r0,r1,r2,cap0,cap1,deep,listed}); }
+  // ── A machine picked up with the Move tool goes back when the tool changes (v2.0.47: switching to Rotate, Blueprint or
+  //    Move again left a splitter drawn with no tiles, so it couldn't be tapped until a reload). Belt arrows show while planning
+  { reset(); const owns=m=>{const[w,h]=machSize(m);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)if(G.map[m.y+dy][m.x+dx].mid!==m.id)return false;return true;};
+    const res={};
+    for(const next of ['rotate','blueprint','move','select']){
+      const sp=put('splitter',30,30,0); setTool('move'); handleTap({x:30,y:30}); const held=moveState.active&&G.map[30][30].mid===null;
+      setTool(next); res[next]=held&&!moveState.active&&owns(sp)&&sp.x===30&&sp.y===30; tryRemove(30,30,true); }
+    const sp=put('splitter',30,30,0); setTool('move'); handleTap({x:30,y:30}); setTool('rotate'); const d0=sp.dir; handleTap({x:30,y:30});
+    const turned=sp.dir===(d0+1)%4&&owns(sp);
+    setTool('move'); handleTap({x:30,y:30}); undoLast(); const undoBack=owns(sp)&&!moveState.active;
+    setTool('select'); const offPlay=!beltArrowsOn(); setTool('belt'); const onBuild=beltArrowsOn(); setTool('rotate'); const onEdit=beltArrowsOn(); setTool('select');
+    ok('move_tool_switch_keeps_machine',Object.values(res).every(Boolean)&&turned&&undoBack&&offPlay&&onBuild&&onEdit,{res,turned,undoBack,offPlay,onBuild,onEdit}); }
   // ── Build tier picker (v2.0.46): T1/T2/T3 squares in the build drawer once upgrades are open; machines place at that
   //    tier and pay its machineWorth (a crafted one pays only the steps); undo gives back exactly what was paid
   { reset(); G.devFreeBuild=false; G.crafted={}; G.research.done=G.research.done.filter(k=>k!=='logistics');
