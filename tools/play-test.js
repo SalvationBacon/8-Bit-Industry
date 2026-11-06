@@ -863,6 +863,13 @@ const r=await p.evaluate(async()=>{
     run(480); const plates=(out.chestInv.iron_plate||0)+(fu.outBuf.iron_plate||0), noStone=!fu.inBuf.stone, coalCap=(fu.inBuf.coal||0)<=50;
     const arm=Object.values(G.machines).find(m=>m.type==='inserter'&&m.x===11)._arm, notStuck=!(arm&&arm.state==='waiting');
     ok('furnace_inputs_dont_clog',plates>=8&&noStone&&coalCap&&notStuck&&mix.chestInv.stone===40,{plates,ore:fu.inBuf.iron_ore,coal:fu.inBuf.coal,stone:fu.inBuf.stone,arm:arm&&arm.state}); }
+  // ── The tester's case: a Blast Furnace starting on 25 coal + 25 ore, fed coal and ore 1:1 by one inserter off a belt
+  //    that carries on past it. It uses 2 ore per coal, so coal fills its buffer to 50; ore must keep coming (v2.0.44)
+  { reset(); power(40,40); for(let x=2;x<22;x++)put('belt',x,20,0); sink(22,20); put('inserter',12,21,1);
+    const f=put('blast_furnace',12,22); f.recipe='bf_iron'; f.inBuf={coal:25,iron_ore:25};
+    let k=0; for(let t=0;t<2400;t++){ if(t%2===0){const tile=G.map[20][2]; if(beltRoom(tile,0))tile.items.push({id:k++%2?'coal':'iron_ore',prog:0});} run(1); f.outBuf={}; }
+    selectMachineById(f.id); const panel=document.getElementById('pMachine')?.innerText||document.body.innerText; closePanel('machine');
+    ok('blast_furnace_own_buffers',f.produced>=140&&(f.inBuf.coal||0)===50&&/INPUT BUFFERS/.test(panel)&&/Coal/.test(panel),{made:f.produced,coal:f.inBuf.coal,ore:f.inBuf.iron_ore}); }
   // ── Sound is one setting for the device: it survives a zone change and a new game; an old save hands its choice over once
   { const keep={sfx:PREFS.sfx,music:PREFS.music,musicVol:PREFS.musicVol,audioSet:PREFS.audioSet};
     PREFS.sfx=true; PREFS.audioSet=false; toggleSfx(); setMusicVol(0.3);
