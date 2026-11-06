@@ -896,6 +896,24 @@ const r=await p.evaluate(async()=>{
     G.inv.r_chassis=7; const short=!rocketReqs().every(r=>r.id!=='r_chassis'||r.have>=r.need);
     UNIVERSE_SCALE=keep; PRESTIGE.bangs=bangs; G.inv.sci_red=inv0;
     ok('research_scales_per_big_bang',base&&u2&&u3&&refused&&charged&&note&&tally&&rockets&&short,{base,u2,u3,refused,charged,note,tally,rockets,r1,r2,short}); }
+  // ── New perks (v2.0.47): Quick Grip I/II speed inserters up 20%/40% (real throughput, chest to chest), Strong Arm halves
+  //    the taps to mine, Nimble Hands halves hand-craft clicks, Field Research takes 15% off research (with the universe
+  //    scale too), Deep Chests hold 300; the Perks panel lists them all
+  { reset(); const keep={...G.perks.spent}, scale=UNIVERSE_SCALE; UNIVERSE_SCALE=1;
+    const moved=perks=>{ G.perks.spent=perks; reset(); power(2,2); const a=put('chest',10,30); a.chestInv={iron_plate:200}; put('inserter',11,30,0); const z=put('chest',12,30);
+      run(40); const z0=chestTotal(z); run(480); return (chestTotal(z)-z0)/2; };
+    const base=moved({}), g1=moved({ins1:true}), g2=moved({ins1:true,ins2:true});
+    const grip=Math.abs(base-60)<=1&&Math.abs(g1-72)<=1.5&&Math.abs(g2-84)<=1.5;
+    G.perks.spent={}; const t0=mineTaps(), c0=craftClicks({clicks:5}), r0=techCost('logistics').sci_red, cap0=chestCap();
+    G.perks.spent={tap1:true,craft1:true,sci1:true,chest1:true};
+    const t1=mineTaps(), c1=craftClicks({clicks:5}), r1=techCost('logistics').sci_red, cap1=chestCap();
+    UNIVERSE_SCALE=universeScaleFor(1); const r2=techCost('logistics').sci_red; UNIVERSE_SCALE=1;
+    reset(); power(2,2); const src=put('chest',10,32); src.chestInv={coal:200}; put('inserter',11,32,0); const dst=put('chest',12,32); dst.chestInv={coal:250}; run(400); const deep=chestTotal(dst)===300;
+    renderPerksPanel(); const pnl=document.getElementById('pPerksBody')?.innerText||document.getElementById('pPerks')?.innerText||'';
+    const listed=['Quick Grip I','Quick Grip II','Strong Arm','Nimble Hands','Field Research','Deep Chests'].every(n=>pnl.includes(n));
+    G.perks.spent=keep; UNIVERSE_SCALE=scale;
+    const small=t0===4&&t1===2&&c0===5&&c1===3&&r0===60&&r1===50&&r2===65&&cap0===200&&cap1===300;
+    ok('new_perks',grip&&small&&deep&&listed,{base,g1,g2,t0,t1,c0,c1,r0,r1,r2,cap0,cap1,deep,listed}); }
   // ── A machine picked up with the Move tool goes back when the tool changes (v2.0.47: switching to Rotate, Blueprint or
   //    Move again left a splitter drawn with no tiles, so it couldn't be tapped until a reload). Belt arrows show while planning
   { reset(); const owns=m=>{const[w,h]=machSize(m);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)if(G.map[m.y+dy][m.x+dx].mid!==m.id)return false;return true;};

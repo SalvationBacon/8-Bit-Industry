@@ -3651,8 +3651,8 @@ function draw(){
       ctx.strokeStyle='#f5a623'; ctx.lineWidth=2; ctx.strokeRect(px,py,ts,ts);
       // Draw pip dots (4 total, fill taps completed)
       const pipR=Math.max(3,ts*.07); const pipGap=pipR*2.8;
-      const totalW=(MINE_TAPS-1)*pipGap; const pipY=py+ts-pipR*2.2;
-      for(let i=0;i<MINE_TAPS;i++){
+      const NT=mineTaps(), totalW=(NT-1)*pipGap; const pipY=py+ts-pipR*2.2;
+      for(let i=0;i<NT;i++){
         const pipX=px+ts/2-totalW/2+i*pipGap;
         ctx.fillStyle=i<mineTap.taps?'#f5a623':'rgba(245,166,35,.25)';
         ctx.fillRect(Math.floor(pipX-pipR),Math.floor(pipY-pipR),Math.ceil(pipR*2),Math.ceil(pipR*2));
@@ -3844,7 +3844,7 @@ function draw(){
     // Chest: show fill level with bar + count
     if(m.type==='chest'){
       const total=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-      const CAP=CHEST_CAP;
+      const CAP=chestCap();
       const pct=Math.min(1,total/CAP);
       if(ts>14){
         // Background track
@@ -4226,6 +4226,7 @@ let touchT=0;
 // mineTap: 4 taps = 1 ore. Active while resInfo mine popup is open.
 let mineTap={active:false,resId:null,tx:0,ty:0,taps:0};
 const MINE_TAPS=4; // taps per ore
+function mineTaps(){return G?.perks?.spent?.tap1?2:MINE_TAPS;} // Strong Arm perk (v2.0.47)
 let moveState={active:false,machineId:null,origX:0,origY:0};
 // Blueprint tool state
 let blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
@@ -4881,7 +4882,7 @@ function updateMineBtnLabel(){
   const pips=document.getElementById('minePips');
   if(!pips)return;
   pips.innerHTML='';
-  for(let i=0;i<MINE_TAPS;i++){
+  for(let i=0;i<mineTaps();i++){
     const d=document.createElement('div');
     d.className='mine-pip'+(i<mineTap.taps?' filled':'');
     pips.appendChild(d);
@@ -4896,7 +4897,7 @@ function doMineTap(){
   sfx('tap'); G.stats.taps++;
   const ts=TILE*G.cam.zoom;
   ripples.push({px:mineTap.tx*ts-G.cam.x+ts/2,py:mineTap.ty*ts-G.cam.y+ts/2,t:performance.now()});
-  if(mineTap.taps>=MINE_TAPS){
+  if(mineTap.taps>=mineTaps()){
     const yieldMult=perkMult().yield;
     const gained=Math.max(1,Math.round(yieldMult));
     G.inv[mineTap.resId]=(G.inv[mineTap.resId]||0)+gained;
@@ -5355,6 +5356,9 @@ function powerRatio(){
 }
 
 // Perk multipliers, reads G.perks.spent and returns composite modifiers
+// Inserter speed from perks (Quick Grip I +20%, II +40%, v2.0.47) and Stardust (Quick Hands +10% a level). insMs() calls
+// this for every arm phase, so it allocates nothing.
+function insSpeedMult(){const s=G?.perks?.spent; return (s?.ins2?1.40:s?.ins1?1.20:1)*(1+.1*plv('quick_hands'));}
 function perkMult(){
   const s=G.perks?.spent||{}, o=PRESTIGE.owned;
   return {
@@ -5362,6 +5366,7 @@ function perkMult(){
     yield: (s.yield3?1.50 : s.yield2?1.35 : s.yield1?1.10 : 1)*(1+(plv('cosmic_yield')?.05+.1*plv('cosmic_yield'):0)),
     speed: (s.speed3?1.35 : s.speed2?1.20 : s.speed1?1.10 : 1)*(1+(plv('cosmic_speed')?.05+.1*plv('cosmic_speed'):0)),
     belt:  (s.belt2?1.40 : s.belt1?1.20 : 1)*(1+.1*plv('swift_belts')),
+    ins:   insSpeedMult(),
     power: (s.power2?0.70 : s.power1?0.85 : 1)*(plv('cosmic_power')?1-(.15+.05*plv('cosmic_power')):1), // multiplier on power draw
   };
 }
@@ -5805,9 +5810,9 @@ function techRows(tid){return Object.entries(techCost(tid)).map(([id,need])=>({i
 function universeScaleFor(bangs){return 1+0.25*(bangs||0);}
 let UNIVERSE_SCALE=1;
 function uniScale(n){if(UNIVERSE_SCALE===1)return n; const v=n*UNIVERSE_SCALE; return v>=20?Math.round(v/5)*5:Math.max(1,Math.round(v));}
-function techCost(id){
-  const c=TECHS[id]?.cost||{}; if(UNIVERSE_SCALE===1)return c;
-  return Object.fromEntries(Object.entries(c).map(([k,n])=>[k,uniScale(n)]));
+function techCost(id){ // Field Research perk: 15% fewer packs (v2.0.47)
+  const c=TECHS[id]?.cost||{}, f=UNIVERSE_SCALE*(G?.perks?.spent?.sci1?.85:1); if(f===1)return c;
+  return Object.fromEntries(Object.entries(c).map(([k,n])=>{const v=n*f;return [k,v>=20?Math.round(v/5)*5:Math.max(1,Math.round(v))];}));
 }
 function universeNum(){return (PRESTIGE.bangs||0)+(G&&G.bigBang?0:1);}
 const SING_POWER=5000, SING_SUSTAIN=240;
@@ -6083,9 +6088,10 @@ function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on th
 // A chest holds CHEST_CAP items, filled by inserters only. Belts fed chests directly until v2.0.43 (and ignored the cap
 // until v2.0.42); now a belt ending at a chest is a dead end like any machine. Quantum Storage still takes belts.
 const CHEST_CAP=200;
+function chestCap(){return G?.perks?.spent?.chest1?300:CHEST_CAP;} // Deep Chests perk (v2.0.47)
 let chestBeltWarned=false; // the one-time hint when a belt runs into a chest
 const chestTotal=m=>{let t=0;for(const k in m.chestInv)t+=m.chestInv[k];return t;};
-const chestFull=m=>m.type==='chest'&&chestTotal(m)>=CHEST_CAP;
+const chestFull=m=>m.type==='chest'&&chestTotal(m)>=chestCap();
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
 function runBelts(){
   const pm=perkMult();
@@ -6297,7 +6303,7 @@ function beltDropPos(tile){
   return -1;
 }
 function beltTierMult(m){return BELT_TIER_SPEED[m?.tier||1]||1;}
-function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?(INS_TIER_SPEED[m.tier||1]||1)*(1+.1*plv('quick_hands')):1);}
+function insMs(ms,m){return ms/(G?.devTickSpeed||1)/(m?(INS_TIER_SPEED[m.tier||1]||1)*insSpeedMult():1);}
 
 // ── Shared outputs ──
 // Several inserters on one machine's output side (or one chest) take turns: each item goes to the ready
@@ -6409,7 +6415,7 @@ function stepInserter(m){
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type==='chest'){
         const total=Object.values(dm.chestInv).reduce((a,b)=>a+b,0);
-        if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
+        if(total<chestCap()){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
         else{arm.state='waiting';arm.stateStart=now;}
       } else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){
         if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;arm.state='returning';arm.stateStart+=insMs(INS_DEPOSIT_MS,m);arm.item=null;m.lastTransferMs=now;}
@@ -6425,7 +6431,7 @@ function stepInserter(m){
     if(dst.mid!==null){
       const dm=G.machines[dst.mid]; let deposited=false;
       if(dm&&beltLike(dm.type)&&beltDropPos(dst)>=0){dst.items.push({id:arm.item,prog:beltDropPos(dst)});deposited=true;m.lastTransferMs=now;}
-      else if(dm&&dm.type==='chest'){const total=chestTotal(dm);if(total<CHEST_CAP){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
+      else if(dm&&dm.type==='chest'){const total=chestTotal(dm);if(total<chestCap()){dm.chestInv[arm.item]=(dm.chestInv[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       else if(dm&&dm.type!=='belt'&&dm.type!=='inserter'){if((dm.inBuf[arm.item]||0)<(MDEFS[dm.type].bufCap||50)){dm.inBuf[arm.item]=(dm.inBuf[arm.item]||0)+1;deposited=true;m.lastTransferMs=now;}}
       if(deposited){arm.state='returning';arm.stateStart=now;arm.item=null;}
     } else {
@@ -7070,7 +7076,7 @@ function machineRates(m){
   } else if(BELT_TYPES.includes(m.type)){
     R.notes.push(`Carries up to ${fmtRate(beltBaseSpeed()*beltTierMult(m)*BELT_CAP*TICKS_PER_MIN)} items/min (${fmtRate(beltBaseSpeed()*beltTierMult(m)*TICKS_PER_MIN/60)} tiles/s)`);
   } else if(m.type==='inserter'||m.type==='long_inserter'){
-    R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`);
+    R.notes.push(`Moves up to ${fmtRate(60000*(INS_TIER_SPEED[m.tier||1]||1)*insSpeedMult()/(INS_GRAB_MS+INS_DEPOSIT_MS+INS_RETURN_MS))} items/min`); // perks and Quick Hands included (v2.0.47)
   } else if(m.recipe&&RECIPES[m.recipe]){
     const rec=RECIPES[m.recipe];
     const life=def.living?lifeStage(m).mult:1;
@@ -7146,8 +7152,8 @@ function renderCraftPanel(){
 
   // Active crafting session, hammer button front and centre
   if(active){
-    const pct=Math.round(cs.clicks/active.clicks*100);
-    const remaining=active.clicks-cs.clicks;
+    const need=craftClicks(active), pct=Math.round(cs.clicks/need*100);
+    const remaining=need-cs.clicks;
     const outStr=Object.entries(active.out).map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ');
     html+=`<div id="craftActive" style="border:1px solid var(--amber);background:var(--bg3);padding:12px;margin-bottom:10px;text-align:center">
       <div style="font-size:var(--f7);color:var(--amber);margin-bottom:6px">${iconHtml(active.id)} ${active.name}</div>
@@ -7155,7 +7161,7 @@ function renderCraftPanel(){
       <div style="height:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:6px">
         <div style="height:100%;background:var(--amber);width:${pct}%;transition:width .1s"></div>
       </div>
-      <div style="font-size:var(--f5);color:var(--text3);margin-bottom:10px">${cs.clicks} / ${active.clicks} clicks &nbsp;·&nbsp; ${remaining} to go</div>
+      <div style="font-size:var(--f5);color:var(--text3);margin-bottom:10px">${cs.clicks} / ${need} clicks &nbsp;·&nbsp; ${remaining} to go</div>
       <button id="hammerBtn" onclick="hammerClick()" style="
         font-size:28px;background:var(--bg);border:2px solid var(--amber);
         padding:10px 24px;cursor:pointer;display:block;width:100%;
@@ -7198,7 +7204,7 @@ function renderCraftPanel(){
         <div>
           <div style="font-size:var(--f6);color:${isActive?'var(--amber)':'var(--text)'};margin-bottom:3px">${iconHtml(r.id)} ${r.name}</div>
           <div style="font-size:var(--f5);color:var(--blue);margin-bottom:2px">${inStr}</div>
-          <div style="font-size:var(--f5);color:var(--text3)">→ ${outStr} &nbsp;·&nbsp; ${r.clicks} clicks</div>
+          <div style="font-size:var(--f5);color:var(--text3)">→ ${outStr} &nbsp;·&nbsp; ${craftClicks(r)} clicks</div>
         </div>
         ${!isActive?`<button class="mini-btn ${canAfford?'amber':'dim'}" onclick="startCraft('${r.id}')" ${canAfford?'':'disabled'}>START</button>`:'<span style="font-size:var(--f6);color:var(--amber)">▶ active</span>'}
       </div>
@@ -7222,6 +7228,7 @@ function startCraft(id){
   updateHUD(); renderCraftPanel(); sfx('tap');
 }
 
+function craftClicks(r){return G?.perks?.spent?.craft1?Math.max(1,Math.ceil(r.clicks/2)):r.clicks;} // Nimble Hands perk (v2.0.47)
 function hammerClick(){
   const cs=G.craftState; if(!cs||!cs.recipeId)return;
   const r=HAND_CRAFTS.find(h=>h.id===cs.recipeId); if(!r)return;
@@ -7236,7 +7243,7 @@ function hammerClick(){
     setTimeout(()=>{if(btn)btn.style.transform='scale(1) rotate(0deg)';},80);
   }
 
-  if(cs.clicks>=r.clicks){
+  if(cs.clicks>=craftClicks(r)){
     // Final click, check materials are still available, then deduct and give output
     if(!G.devFreeCraft){
       const canAfford=Object.entries(r.in).every(([k,v])=>(G.inv[k]||0)>=v);
@@ -7307,8 +7314,8 @@ function renderMachPanel(){
     ? `<span style="color:var(--red)">⚡ No power</span>`
     : m.recipe ? `<span style="color:var(--green)">▶ ${m.type==='lab'?'Researching':'Running'}: ${RECIPES[m.recipe]?.name||''}</span>`
     : `<span style="color:var(--amber)">⚠ No recipe</span>`;
-  const chestCap=m.type==='chest'?`<span style="color:var(--amber)">${chestTotal(m)}/${CHEST_CAP} stored</span>`:null;
-  const statusVal = chestCap || minerStatus
+  const chestLbl=m.type==='chest'?`<span style="color:var(--amber)">${chestTotal(m)}/${chestCap()} stored</span>`:null;
+  const statusVal = chestLbl || minerStatus
     || (noRecipeTypes.includes(m.type)||!def.recipes.length
       ? (m.active ? `<span style="color:var(--green)">▶ Active</span>` : `<span style="color:var(--text3)">⏸ Paused</span>`)
       : (m.active ? recipeStatus : `<span style="color:var(--text3)">⏸ Paused</span>`));
@@ -7334,7 +7341,7 @@ function renderMachPanel(){
   html+=fluidPanelRows(m,def,rec);
   if(m.type==='chest'){
     const tot=Object.values(m.chestInv).reduce((a,b)=>a+b,0);
-    html+=irow('Stored',`${tot}/${CHEST_CAP}`);
+    html+=irow('Stored',`${tot}/${chestCap()}`);
     if(tot>0){
       html+=`<div style="border-top:1px solid var(--border);margin:6px 0 4px"></div>`;
       html+=`<button class="full-btn amber" onclick="chestCollectAll(${m.id})" style="margin-bottom:6px">↑ COLLECT ALL</button>`;
@@ -8309,12 +8316,18 @@ const PERK_DEFS=[
   {id:'power1',   name:'Power Saver I',     desc:'-15% power consumption all machines', cost:1, req:[], cat:'Efficiency'},
   {id:'start1',   name:'Quick Start',       desc:'Begin next zone with 50 of each basic resource', cost:2, req:[], cat:'Utility'},
   {id:'belt1',    name:'Belt Speed I',      desc:'+20% belt throughput', cost:1, req:[], cat:'Logistics'},
+  {id:'ins1',     name:'Quick Grip I',      desc:'+20% inserter speed, to keep up with faster belts', cost:1, req:[], cat:'Logistics'},
+  {id:'tap1',     name:'Strong Arm',        desc:'Mining by tap takes 2 taps instead of 4', cost:1, req:[], cat:'Utility'},
+  {id:'craft1',   name:'Nimble Hands',      desc:'Hand crafting takes half the clicks', cost:1, req:[], cat:'Utility'},
   // Unlock after a zone's launch (after:N)
   {id:'yield3',   name:'Ore Richness III',  desc:'+15% more resource yield (stacks)',  cost:3, req:['yield2'], cat:'Yield',      after:2},
   {id:'power2',   name:'Power Saver II',    desc:'-15% more power consumption',        cost:2, req:['power1'], cat:'Efficiency', after:2},
   {id:'smog1',    name:'Clean Burn',        desc:'Oil pumps make 30% less smog',        cost:2, req:[],         cat:'Hazards',    after:2},
   {id:'speed3',   name:'Machine Haste III', desc:'+15% more machine speed (stacks)',   cost:3, req:['speed2'], cat:'Speed',      after:3},
   {id:'belt2',    name:'Belt Speed II',     desc:'+20% more belt throughput',          cost:2, req:['belt1'],  cat:'Logistics',  after:3},
+  {id:'ins2',     name:'Quick Grip II',     desc:'+20% more inserter speed',           cost:2, req:['ins1'],   cat:'Logistics',  after:3},
+  {id:'sci1',     name:'Field Research',    desc:'Research costs 15% fewer science packs', cost:2, req:[],     cat:'Research',   after:2},
+  {id:'chest1',   name:'Deep Chests',       desc:'Chests hold 300 items instead of 200', cost:1, req:[],       cat:'Logistics',  after:2},
   {id:'pressure1',name:'Reinforced Pipes',  desc:'Pipes take 50% longer to burst',     cost:2, req:[],         cat:'Hazards',    after:3},
   {id:'vital1',   name:'Vital Growth',      desc:'Living machines decay 25% slower',   cost:2, req:[],         cat:'Hazards',    after:4},
   {id:'cool1',    name:'Coolant Lines',     desc:'Reactors heat up 20% slower',        cost:2, req:[],         cat:'Hazards',    after:4},
@@ -9588,7 +9601,7 @@ function rbResHere(){ // deposit types on this map (cached until the map changes
 }
 function rbRecipes(){ // every recipe usable in this zone, machines then hand crafts
   const list=Object.entries(RECIPES).filter(([id])=>zoneRecipeOk(id)).map(([id,r])=>({id,name:r.name,machine:r.machine,secs:r.time/4,in:r.in,out:r.out,fluid:r.fluid,minPressure:r.minPressure,unlock:r.unlock}));
-  for(const h of HAND_CRAFTS)if(zoneRecipeOk(h.id))list.push({id:'hand:'+h.id,name:h.name,machine:'hand',clicks:h.clicks,in:h.in,out:h.out,unlock:h.unlock});
+  for(const h of HAND_CRAFTS)if(zoneRecipeOk(h.id))list.push({id:'hand:'+h.id,name:h.name,machine:'hand',clicks:craftClicks(h),in:h.in,out:h.out,unlock:h.unlock});
   return list;
 }
 function rbLock(r){
