@@ -12,6 +12,8 @@ const r=await p.evaluate(async()=>{
   const reset=()=>{G.machines={};for(const row of G.map)for(const t of row){t.mid=null;t.items=[];t.type=0;t.res=null;}G.devFreeBuild=true;G.research.done=Object.keys(TECHS).filter(k=>!TECHS[k].zone||TECHS[k].zone<=G.zone);};
   const put=(type,x,y,dir=0)=>{placeDir=dir;const before=G.nextId;tryPlace(type,x,y);closeModal();return G.machines[before]||null;};
   const res=(x,y,w,h,r)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++){G.map[j][i].type=1;G.map[j][i].res=r;}};
+  // belts can't fill a chest (v2.0.43): a belt line's counter is Quantum Storage, which tallies what arrives in _sent
+  const sink=(x,y)=>{const q=put('quantum_chest',x,y); q._sent={}; return q;};
   const power=(x,y)=>{const b=put('generator',x,y);if(b)b.inBuf.coal=9999;return b;};
   // ── Z1 A: miner → inserter → chest
   reset(); power(2,2); res(10,10,1,1,'iron_ore');
@@ -252,19 +254,19 @@ const r=await p.evaluate(async()=>{
   // ── belt animation: an item is drawn every frame and never jumps, along straights, corners and a splitter
   { reset(); G.research.done=Object.keys(TECHS);
     for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
-    put('belt',16,44,0); put('splitter',17,44,0); for(let x=18;x<22;x++)put('belt',x,44,0); put('chest',22,44);
+    put('belt',16,44,0); put('splitter',17,44,0); for(let x=18;x<22;x++)put('belt',x,44,0); sink(22,44);
     G.map[40][10].items=[{id:'eff_module',prog:0}];
     G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5;
     const pts=[]; const orig=drawItem; let frame=null;
     window.drawItem=(c,id,x,y,sz)=>{if(id==='eff_module')frame.push([x,y]);};
     let maxStep=0, missing=0, last=null, frames=0, still=0, maxStill=0;
     for(let t=0;t<130;t++){ run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame=[]; draw(); frames++;
-        const inChest=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+        const inChest=Object.values(G.machines).some(m=>m.type==='quantum_chest'&&m._sent?.eff_module);
         if(!frame.length){ if(!inChest)missing++; last=null; continue; }
         const [x,y]=frame[0]; if(last){const d=Math.hypot(x-last[0],y-last[1])/(TILE*.5); maxStep=Math.max(maxStep,d); still=d<1e-6?still+1:0; maxStill=Math.max(maxStill,still);} last=[x,y]; }
       T=t0; }
     window.drawItem=orig;
-    const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+    const delivered=Object.values(G.machines).some(m=>m.type==='quantum_chest'&&m._sent?.eff_module);
     ok('belt_item_smooth',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
   // ── busy belts: every item glides at belt speed and never steps back, whether the belt flows, queues or drains
   { const scen=(build,tier=1,release)=>{ reset(); G.research.done=Object.keys(TECHS); power(2,2); build();
@@ -278,19 +280,19 @@ const r=await p.evaluate(async()=>{
           last=frame; } T=t0; }
       window.beltItemWorld=o; return {worst:+worst.toFixed(2),backs}; };
     const line=(tier,end)=>()=>{for(let x=8;x<20;x++){const b=put('belt',x,40,0); b.tier=tier;} end();};
-    const r={flow:scen(line(1,()=>put('chest',20,40))), queue:scen(line(1,()=>{})),
+    const r={flow:scen(line(1,()=>sink(20,40))), queue:scen(line(1,()=>{})),
       drain:scen(line(2,()=>{put('inserter',20,40,0);put('chest',21,40);}),2),
       tunnel:scen(()=>{for(let x=8;x<12;x++)put('belt',x,40,0); put('tunnel',12,40,0); put('tunnel',15,40,0); for(let x=16;x<20;x++)put('belt',x,40,0); put('inserter',20,40,0); put('chest',21,40);}),
       side:scen(line(1,()=>{const c=put('chest',12,38); c.chestInv.coal=999; put('inserter',12,39,1); put('inserter',20,40,0); put('chest',21,40);}))};
     ok('belt_busy_smooth',Object.values(r).every(v=>v.worst<=1&&v.backs===0),r);
     // a full line that starts moving again: every item sets off at belt speed, no surge (the queue is spaced in the sim)
-    const lim1=1.05/1.55, rel={t1:scen(line(1,()=>{}),1,()=>put('chest',20,40)), t3:scen(line(3,()=>{}),3,()=>put('chest',20,40)),
-      extend:scen(line(1,()=>{}),1,()=>{for(let x=20;x<24;x++)put('belt',x,40,0);put('chest',24,40);})};
+    const lim1=1.05/1.55, rel={t1:scen(line(1,()=>{}),1,()=>sink(20,40)), t3:scen(line(3,()=>{}),3,()=>sink(20,40)),
+      extend:scen(line(1,()=>{}),1,()=>{for(let x=20;x<24;x++)put('belt',x,40,0);sink(24,40);})};
     ok('belt_queue_restart',Object.values(rel).every(v=>v.worst<=lim1&&v.backs===0),rel); }
   // same, on belts of mixed tiers (T1/T2/T3 side by side)
   { reset(); G.research.done=Object.keys(TECHS);
     for(let x=10;x<16;x++)put('belt',x,40,0); put('belt',16,40,1); for(let y=41;y<44;y++)put('belt',16,y,1);
-    put('belt',16,44,0); put('splitter',17,44,0); for(let x=18;x<22;x++)put('belt',x,44,0); put('chest',22,44);
+    put('belt',16,44,0); put('splitter',17,44,0); for(let x=18;x<22;x++)put('belt',x,44,0); sink(22,44);
     for(const m of Object.values(G.machines))if(BELT_TYPES.includes(m.type))m.tier=1+(m.x+m.y)%3;
     G.map[40][10].items=[{id:'eff_module',prog:0}];
     G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5; sizeCanvas(); G.cam.zoom=.5; G.cam.x=8*TILE*.5; G.cam.y=36*TILE*.5;
@@ -298,21 +300,21 @@ const r=await p.evaluate(async()=>{
     window.drawItem=(c,id,x,y,sz)=>{if(id==='eff_module')frame.push([x,y]);};
     let maxStep=0, missing=0, last=null, frames=0, still=0, maxStill=0;
     for(let t=0;t<130;t++){ run(1); const t0=T; for(let f=0;f<5;f++){ T=t0+f*50; frame=[]; draw(); frames++;
-        const inChest=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+        const inChest=Object.values(G.machines).some(m=>m.type==='quantum_chest'&&m._sent?.eff_module);
         if(!frame.length){ if(!inChest)missing++; last=null; continue; }
         const [x,y]=frame[0]; if(last){const d=Math.hypot(x-last[0],y-last[1])/(TILE*.5); maxStep=Math.max(maxStep,d); still=d<1e-6?still+1:0; maxStill=Math.max(maxStill,still);} last=[x,y]; }
       T=t0; }
     window.drawItem=orig;
-    const delivered=Object.values(G.machines).some(m=>m.type==='chest'&&m.chestInv.eff_module);
+    const delivered=Object.values(G.machines).some(m=>m.type==='quantum_chest'&&m._sent?.eff_module);
     ok('belt_item_smooth_mixed_tiers',missing===0&&maxStep<0.2&&maxStill===0&&delivered,{missing,maxStep:+maxStep.toFixed(3),maxStill,delivered,frames}); }
   // ── no item may sit on two tiles at once (T2/T3 speed sums landed just under 1 and copied items), full belts carry
   //    the same in every direction, and a tunnel mouth holds 4 like a belt
   { const line=(tier,dir,n)=>{reset(); const[dx,dy]=D_VEC[dir], sx=40-dx*10, sy=40-dy*10;
-      for(let k=0;k<20;k++){const b=put('belt',sx+dx*k,sy+dy*k,dir); b.tier=tier;} const ch=put('chest',sx+dx*20,sy+dy*20);
+      for(let k=0;k<20;k++){const b=put('belt',sx+dx*k,sy+dy*k,dir); b.tier=tier;} const ch=sink(sx+dx*20,sy+dy*20);
       const src=G.map[sy][sx]; let dup=0;
       for(let t=0;t<n;t++){while(src.items.length<4)src.items.push({id:'coal',prog:0}); runBelts();
         const seen=new Set(); for(let k=0;k<20;k++)for(const it of G.map[sy+dy*k][sx+dx*k].items){if(seen.has(it))dup++;seen.add(it);}}
-      return {dup,got:ch.chestInv.coal||0};};
+      return {dup,got:ch._sent.coal||0};};
     const r={t2:line(2,0,600),t3:line(3,1,600),right:line(3,0,960).got,left:line(3,2,960).got,down:line(1,1,960).got,up:line(1,3,960).got};
     ok('belt_no_duplicates',r.t2.dup===0&&r.t3.dup===0&&r.t3.got>=180,r);
     ok('belt_same_speed_every_way',Math.abs(r.right-r.left)<=4&&Math.abs(r.down-r.up)<=4,r);
@@ -333,8 +335,8 @@ const r=await p.evaluate(async()=>{
       reset(); power(2,2); res(10,40,1,1,'iron_ore'); const m2=put('miner',10,40); m2.tier=tier; put('inserter',11,40,0).tier=tier;
       for(let x=12;x<24;x++)put('belt',x,40,0).tier=tier; put('inserter',24,40,0).tier=tier; const ch=put('chest',25,40);
       run(200); ch.chestInv={}; n=0; for(let t=0;t<480;t++){run(1); n+=ch.chestInv.iron_ore||0; ch.chestInv={};} r['chain'+tier]=n/2;
-      reset(); for(let x=5;x<45;x++){put('belt',x,44,0).tier=tier; G.map[44][x].items=[{id:'coal',prog:0},{id:'coal',prog:.5}];} const pc=put('chest',45,44);
-      for(let t=0;t<40;t++)runBelts(); r['belt'+tier]=(pc.chestInv.coal||0)*6;
+      reset(); for(let x=5;x<45;x++){put('belt',x,44,0).tier=tier; G.map[44][x].items=[{id:'coal',prog:0},{id:'coal',prog:.5}];} const pc=sink(45,44);
+      for(let t=0;t<40;t++)runBelts(); r['belt'+tier]=(pc._sent.coal||0)*6;
     }
     ok('satisfactory_rates',r.miner1===60&&r.miner2===120&&r.miner3===240&&r.belt1===60&&r.belt2===120&&r.belt3===270,r);
     ok('satisfactory_chain_keeps_up',r.chain1>=58&&r.chain2>=116&&r.chain3>=232,r);
@@ -376,26 +378,26 @@ const r=await p.evaluate(async()=>{
     put('inserter',14,40,0); const ca=put('chest',15,40); const ib=put('inserter',14,41,0); const cb=put('chest',15,41); cb.chestInv={stone:200}; // full
     run(480); ok('splitter_side_blocked',(ca.chestInv.coal||0)>=60&&(cb.chestInv.coal||0)===0,{a:ca.chestInv.coal,b:cb.chestInv}); }
   // ── a machine's output arrow drops straight onto a belt: no inserter needed to take things out
-  { reset(); power(2,2); res(10,40,1,1,'iron_ore'); put('miner',10,40); for(let x=11;x<20;x++)put('belt',x,40,0); const ch=put('chest',20,40);
-    run(120); ch.chestInv={}; let n=0; for(let t=0;t<480;t++){run(1); n+=ch.chestInv.iron_ore||0; ch.chestInv={};} // 9 tiles at 2s each before the first one arrives
+  { reset(); power(2,2); res(10,40,1,1,'iron_ore'); put('miner',10,40); for(let x=11;x<20;x++)put('belt',x,40,0); const ch=sink(20,40);
+    run(120); ch._sent={}; let n=0; for(let t=0;t<480;t++){run(1); n+=ch._sent.iron_ore||0; ch._sent={};} // 9 tiles at 2s each before the first one arrives
     // a furnace fed by inserters, its plates leave on a belt
     reset(); power(2,2); const ore=put('chest',8,44); ore.chestInv.iron_ore=999; put('inserter',9,44,0); const fu=put('stone_furnace',10,44); fu.recipe='fn_iron';
-    const coal=put('chest',10,42); coal.chestInv.coal=999; put('inserter',10,43,1); for(let x=11;x<16;x++)put('belt',x,44,0); const pc=put('chest',16,44);
+    const coal=put('chest',10,42); coal.chestInv.coal=999; put('inserter',10,43,1); for(let x=11;x<16;x++)put('belt',x,44,0); const pc=sink(16,44);
     run(480);
     // a belt pointing back into the machine is left alone
     reset(); power(2,2); res(10,48,1,1,'iron_ore'); const mb=put('miner',10,48); const back=put('belt',11,48,2); run(40);
     // a Cracker's right arrow carries only raw fuel (plastic leaves by the bottom arrow, unbelted here)
     reset(); power(2,2); G.research.done=Object.keys(TECHS); const cr=put('cracker',10,52); cr.outBuf={raw_fuel:6,plastic:6};
-    for(let x=12;x<20;x++){put('belt',x,52,0);} const cc=put('chest',20,52); run(120);
-    ok('outputs_onto_belts',Math.abs(n/2-60)<=1&&(pc.chestInv.iron_plate||0)>=25&&G.map[48][11].items.length===0&&(mb.outBuf.iron_ore||0)>0
-      &&(cc.chestInv.raw_fuel||0)>=4&&!cc.chestInv.plastic&&cr.outBuf.plastic===6, // plastic has its own (bottom) arrow
-      {miner:n/2,plates:pc.chestInv.iron_plate,back:G.map[48][11].items.length,crack:cc.chestInv}); }
+    for(let x=12;x<20;x++){put('belt',x,52,0);} const cc=sink(20,52); run(120);
+    ok('outputs_onto_belts',Math.abs(n/2-60)<=1&&(pc._sent.iron_plate||0)>=25&&G.map[48][11].items.length===0&&(mb.outBuf.iron_ore||0)>0
+      &&(cc._sent.raw_fuel||0)>=4&&!cc._sent.plastic&&cr.outBuf.plastic===6, // plastic has its own (bottom) arrow
+      {miner:n/2,plates:pc._sent.iron_plate,back:G.map[48][11].items.length,crack:cc._sent}); }
   // ── a two-output recipe puts one item out of each arrow: Cracker raw fuel right, plastic bottom
   { reset(); power(2,2); G.research.done=Object.keys(TECHS); const cr=put('cracker',20,20); cr.recipe='z2_crack'; cr.outBuf={raw_fuel:10,plastic:10};
-    for(let x=22;x<26;x++)put('belt',x,20,0); const right=put('chest',26,20);     // right arrow → belt → chest
-    for(let y=22;y<26;y++)put('belt',20,y,1); const down=put('chest',20,26);      // bottom arrow → belt → chest
+    for(let x=22;x<26;x++)put('belt',x,20,0); const right=sink(26,20);     // right arrow → belt → chest
+    for(let y=22;y<26;y++)put('belt',20,y,1); const down=sink(20,26);      // bottom arrow → belt → chest
     run(160);
-    const beltOK=(right.chestInv.raw_fuel||0)>=8&&!right.chestInv.plastic&&(down.chestInv.plastic||0)>=8&&!down.chestInv.raw_fuel;
+    const beltOK=(right._sent.raw_fuel||0)>=8&&!right._sent.plastic&&(down._sent.plastic||0)>=8&&!down._sent.raw_fuel;
     // inserters on each arrow take only that arrow's item
     reset(); power(2,2); G.research.done=Object.keys(TECHS); const c2=put('cracker',20,30); c2.recipe='z2_crack'; c2.outBuf={raw_fuel:10,plastic:10};
     put('inserter',22,30,0); const ri=put('chest',23,30); put('inserter',21,32,1); const bi=put('chest',21,33);
@@ -403,10 +405,10 @@ const r=await p.evaluate(async()=>{
     const insOK=(ri.chestInv.raw_fuel||0)>=5&&!ri.chestInv.plastic&&(bi.chestInv.plastic||0)>=5&&!bi.chestInv.raw_fuel;
     openMachinePanel(c2); const html=document.getElementById('pMachBody').innerHTML; closePanel('machine');
     ok('two_outputs_two_arrows',beltOK&&insOK&&html.includes('RIGHT ARROW')&&html.includes('BOTTOM ARROW'),
-      {right:right.chestInv,down:down.chestInv,ri:ri.chestInv,bi:bi.chestInv}); }
+      {right:right._sent,down:down._sent,ri:ri.chestInv,bi:bi.chestInv}); }
   // ── smog: a pump + cracker + refinery raise it, a fuelled Scrubber brings it down, and panel rates hold still
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=0;
-    res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);
+    res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); sink(16,40);
     const ck=put('cracker',20,40); ck.recipe='z2_crack'; const rf=put('refinery',24,40); rf.recipe='z2_refine';
     const feed=()=>{ck.inBuf.crude_oil=50;rf.inBuf.raw_fuel=50;ck.outBuf={};rf.outBuf={};};
     for(let t=0;t<240;t++){feed();run(1);} const rose=G.smog;
@@ -494,10 +496,10 @@ const r=await p.evaluate(async()=>{
   { const missing=Object.keys(MDEFS).filter(t=>MDEFS[t].recipes?.length&&!PORTS[t]);
     const z0=G.zone; reset(); G.zone=4; G.research.done=Object.keys(TECHS); power(2,2);
     const av=put('algae_vat',20,40); av.recipe='z4_algae'; av.outBuf.algae=6; av.vit=60;
-    for(let x=22;x<26;x++)put('belt',x,40,0); const ch=put('chest',26,40);
+    for(let x=22;x<26;x++)put('belt',x,40,0); const ch=sink(26,40);
     const av2=put('algae_vat',20,44); av2.outBuf.algae=6; put('inserter',22,44,0); const ch2=put('chest',23,44);
     run(120); G.zone=z0;
-    ok('living_machines_output',!missing.length&&(ch.chestInv.algae||0)>=4&&(ch2.chestInv.algae||0)>=4,{missing,belt:ch.chestInv,ins:ch2.chestInv}); }
+    ok('living_machines_output',!missing.length&&(ch._sent.algae||0)>=4&&(ch2.chestInv.algae||0)>=4,{missing,belt:ch._sent,ins:ch2.chestInv}); }
   // ── every top-bar gauge opens its own live panel (Zone 5 shows them all), and the gauge row scrolls
   { const z0=G.zone; reset(); G.zone=5; G.research.done=Object.keys(TECHS); power(2,2);
     res(10,40,2,2,'brine'); put('brine_pump',10,40); for(let x=12;x<16;x++)put('pipe',x,40);
@@ -517,7 +519,7 @@ const r=await p.evaluate(async()=>{
     ok('hud_gauges_open_panels',Object.values(got).every(Boolean)&&needs&&toggled&&scroll==='auto',{got,needs,toggled,scroll}); }
   // ── smog panel: tap the gauge; it lists every source, the Scrubbers, and how many to add
   { const z0=G.zone; reset(); G.zone=2; G.research.done=Object.keys(TECHS); power(2,2); G.smog=30;
-    res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); put('chest',16,40);
+    res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); pu.mineRes='oil'; for(let x=12;x<16;x++)put('belt',x,40,0); sink(16,40);
     const ck=put('cracker',20,40); ck.recipe='z2_crack'; const rf=put('refinery',24,40); rf.recipe='z2_refine'; put('refinery',28,40);
     const feed=()=>{ck.inBuf.crude_oil=50;rf.inBuf.raw_fuel=50;ck.outBuf={};rf.outBuf={};};
     for(let t=0;t<8;t++){feed();run(1);}
@@ -847,13 +849,27 @@ const r=await p.evaluate(async()=>{
     startSandbox(1); closeModal(); clearInterval(tickId); const z1=G.zone===1&&G.tutorial.step===-1&&G.sandbox;
     localStorage.removeItem(SANDBOX_KEY); PRESTIGE=JSON.parse(saved); savePrestige();
     ok('sandbox_mode',locked&&z3&&quantum&&own&&noAch&&z5&&noDust&&back&&z1,{locked,z3,quantum,own,noAch,z5,noDust,back,z1,w:MAP_W}); }
-  // ── A chest holds 200: a belt running straight into it backs up instead of overfilling it (v2.0.42); inserters too
+  // ── Chests fill by inserter only (v2.0.43): a belt ending at a chest backs up and adds nothing; an inserter stops at 200
   { reset(); power(2,2); res(10,30,1,1,'stone'); put('miner',10,30,0);
-    for(let x=11;x<16;x++)put('belt',x,30,0); const c=put('chest',16,30); c.chestInv.stone=195;
-    run(2400); const tot=chestTotal(c), queued=[11,12,13,14,15].reduce((a,x)=>a+G.map[30][x].items.length,0);
+    for(let x=11;x<16;x++)put('belt',x,30,0); const c=put('chest',16,30); c.chestInv.stone=150;
+    run(2400); const tot=chestTotal(c)+50, queued=[11,12,13,14,15].reduce((a,x)=>a+G.map[30][x].items.length,0);
     reset(); power(2,2); const src=put('chest',10,32); src.chestInv.coal=150; put('inserter',11,32,0); const dst=put('chest',12,32); dst.chestInv.coal=190;
     run(800); const insTot=chestTotal(dst);
-    ok('chest_cap_200',tot===200&&queued>=5&&insTot===200,{tot,queued,insTot}); }
+    ok('chest_needs_inserter_cap_200',tot===200&&queued>=5&&insTot===200,{tot,queued,insTot}); }
+  // ── A furnace fed from a mixed chest: a full coal buffer never blocks the ore, and items it can't use stay put (v2.0.44)
+  { reset(); power(2,2); const mix=put('chest',10,34); mix.chestInv={coal:120,stone:40,iron_ore:40};
+    put('inserter',11,34,0); const fu=put('stone_furnace',12,34); fu.recipe='fn_iron'; fu.inBuf.coal=50;
+    put('inserter',13,34,0); const out=put('chest',14,34);
+    run(480); const plates=(out.chestInv.iron_plate||0)+(fu.outBuf.iron_plate||0), noStone=!fu.inBuf.stone, coalCap=(fu.inBuf.coal||0)<=50;
+    const arm=Object.values(G.machines).find(m=>m.type==='inserter'&&m.x===11)._arm, notStuck=!(arm&&arm.state==='waiting');
+    ok('furnace_inputs_dont_clog',plates>=8&&noStone&&coalCap&&notStuck&&mix.chestInv.stone===40,{plates,ore:fu.inBuf.iron_ore,coal:fu.inBuf.coal,stone:fu.inBuf.stone,arm:arm&&arm.state}); }
+  // ── The tester's case: a Blast Furnace starting on 25 coal + 25 ore, fed coal and ore 1:1 by one inserter off a belt
+  //    that carries on past it. It uses 2 ore per coal, so coal fills its buffer to 50; ore must keep coming (v2.0.44)
+  { reset(); power(40,40); for(let x=2;x<22;x++)put('belt',x,20,0); sink(22,20); put('inserter',12,21,1);
+    const f=put('blast_furnace',12,22); f.recipe='bf_iron'; f.inBuf={coal:25,iron_ore:25};
+    let k=0; for(let t=0;t<2400;t++){ if(t%2===0){const tile=G.map[20][2]; if(beltRoom(tile,0))tile.items.push({id:k++%2?'coal':'iron_ore',prog:0});} run(1); f.outBuf={}; }
+    selectMachineById(f.id); const panel=document.getElementById('pMachine')?.innerText||document.body.innerText; closePanel('machine');
+    ok('blast_furnace_own_buffers',f.produced>=140&&(f.inBuf.coal||0)===50&&/INPUT BUFFERS/.test(panel)&&/Coal/.test(panel),{made:f.produced,coal:f.inBuf.coal,ore:f.inBuf.iron_ore}); }
   // ── Sound is one setting for the device: it survives a zone change and a new game; an old save hands its choice over once
   { const keep={sfx:PREFS.sfx,music:PREFS.music,musicVol:PREFS.musicVol,audioSet:PREFS.audioSet};
     PREFS.sfx=true; PREFS.audioSet=false; toggleSfx(); setMusicVol(0.3);

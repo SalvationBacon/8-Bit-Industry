@@ -600,7 +600,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.42 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.44 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -786,7 +786,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.42';
+const VER      = '2.0.44';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -3417,7 +3417,7 @@ function beltVisPass(){
     if(!g.entrance){
       const nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
       if(nm&&beltLike(nm.type))lim=(depth<400?visit(nx,ny,depth+1):Infinity)+1-BELT_GAP;
-      else if(!(nm&&((nm.type==='chest'&&!chestFull(nm))||nm.type==='quantum_chest')))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
+      else if(!(nm&&nm.type==='quantum_chest'))lim=g.m.type==='splitter'?1:END_HOLD; // end of the line: where the simulation holds it
     }
     const sp=base*beltTierMult(g.m);
     let mn=Infinity;
@@ -6064,11 +6064,12 @@ function beltDeadEnd(m,tx,ty){ // nothing ahead can take items: they queue on th
     if((p.x-m.x)*D_VEC[m.dir][0]+(p.y-m.y)*D_VEC[m.dir][1]>0)return false; // entrance: items go underground
   }
   const nt=G.map[ty+D_VEC[m.dir][1]]?.[tx+D_VEC[m.dir][0]]; if(!nt||nt.mid===null)return true;
-  const nm=G.machines[nt.mid]; return !nm||chestFull(nm)||!(beltLike(nm.type)||nm.type==='chest'||nm.type==='quantum_chest');
+  const nm=G.machines[nt.mid]; return !nm||!(beltLike(nm.type)||nm.type==='quantum_chest'); // a chest needs an inserter (v2.0.43)
 }
-// A chest holds CHEST_CAP items (v2.0.42: belts running straight into a chest ignored the cap, so belt-fed chests
-// grew without limit; only inserters checked it). A full chest is a dead end: the belt queues behind it.
+// A chest holds CHEST_CAP items, filled by inserters only. Belts fed chests directly until v2.0.43 (and ignored the cap
+// until v2.0.42); now a belt ending at a chest is a dead end like any machine. Quantum Storage still takes belts.
 const CHEST_CAP=200;
+let chestBeltWarned=false; // the one-time hint when a belt runs into a chest
 const chestTotal=m=>{let t=0;for(const k in m.chestInv)t+=m.chestInv[k];return t;};
 const chestFull=m=>m.type==='chest'&&chestTotal(m)>=CHEST_CAP;
 const carryProg=p=>Math.max(0,Math.min(.99,p-1)); // what's left of this tick's move, on the next tile
@@ -6198,12 +6199,11 @@ function runBelts(){
           it.prog=carryProg(it.prog);next.items.push(it);
         } else if(nm.type==='tunnel'&&beltRoom(next,carryProg(it.prog))){ // a tunnel mouth fills like a belt (it had no cap and swallowed thousands)
           it.prog=carryProg(it.prog);next.items.push(it);
-        } else if(nm.type==='chest'&&!chestFull(nm)){
-          nm.chestInv[it.id]=(nm.chestInv[it.id]||0)+1;
         } else if(nm.type==='quantum_chest'){
-          G.inv[it.id]=(G.inv[it.id]||0)+1; nm.produced++; nm._qt=G.tick;
+          G.inv[it.id]=(G.inv[it.id]||0)+1; nm.produced++; nm._qt=G.tick; (nm._sent||(nm._sent={}))[it.id]=(nm._sent[it.id]||0)+1; // per item, for tests and the panel
         } else {
-          // All other machines (assembler, furnace, etc), belts cannot feed directly, back-pressure
+          // All other machines (assembler, furnace, chest...), belts cannot feed directly, back-pressure
+          if(nm.type==='chest'&&!chestBeltWarned){chestBeltWarned=true;setTimeout(()=>toast('📦 Chests need an inserter: a belt can\'t fill one by itself','wrn'),0);}
           hold(it);
         }
       } else hold(it);
@@ -6349,8 +6349,7 @@ function stepInserter(m){
     // Waiting for room before even grabbing lost most of a swing per item (a T1 chain ran at 34/min, not 60)
 
     let item=null;
-    const acc=MDEFS[dm.type]?.accepts, want=k=>!acc||acc.includes(k);
-    if(acc&&(dm.inBuf[acc[0]]||0)>=(MDEFS[dm.type].bufCap||50))return; // full: wait
+    const toMachine=!beltLike(dm.type)&&dm.type!=='chest', want=k=>!toMachine||insTakes(dm,k);
     if(src.mid!==null){
       const sm=G.machines[src.mid];
       if(sm&&beltLike(sm.type)){ // belts, tunnel mouths and splitters
@@ -6459,6 +6458,23 @@ function isOutputFacing(dm,dvx,dvy){return outputPortFacing(dm,dvx,dvy)>=0;}
 function portItems(m,i){
   const ports=PORTS[m.type]?.outputs||[], rec=m.recipe&&RECIPES[m.recipe], outs=rec?Object.keys(rec.out):[];
   return outs.length>1&&ports.length>=outs.length?outs[i]||null:null;
+}
+// What a machine takes from an inserter right now (v2.0.44): only items it uses, and only while that item's own buffer
+// has room. Before, an arm grabbed whatever came first; when that item's buffer was full (a furnace's coal, say) it stood
+// holding it, so the other input (the ore) never got in and the machine clogged. Machines with recipes take the inputs of
+// the recipe set (or of any recipe they can run, before one is picked) and living machines their paste; machines without
+// recipes (generators, scrubbers, the reactor, the Singularity) take anything while there is room, as before.
+function insTakes(dm,k){
+  const def=MDEFS[dm.type]; if(!def)return false;
+  const cap=def.bufCap||50;
+  if((dm.inBuf[k]||0)>=cap)return false;
+  if(def.accepts)return def.accepts.includes(k);
+  if(def.recipes&&def.recipes.length){
+    if(def.living&&k==='nutrient')return true;
+    const rs=dm.recipe?[dm.recipe]:def.recipes.filter(r=>zoneRecipeOk(r));
+    return rs.some(r=>RECIPES[r]&&k in (RECIPES[r].in||{}));
+  }
+  return true;
 }
 function portTakes(m,i,k){const want=portItems(m,i); return !want||want===k||!(k in (RECIPES[m.recipe]?.out||{}));}
 // The turn group an inserter belongs to: one per chest, one per output arrow of a machine
@@ -7329,8 +7345,25 @@ function renderMachPanel(){
   } else if(def.recipes.length||m.type==='miner'){
     html+=`<div style="font-size:var(--f5);color:var(--text3);margin-bottom:6px">Output: empty</div>`;
   }
+  // Each input has its own buffer (v2.0.44): a bar per recipe input, so a full coal buffer is plainly not the ore's
+  const recIn=RECIPES[m.recipe]?.in;
+  if(recIn&&!def.accepts){
+    const cap=def.bufCap||50;
+    html+=`<div style="font-size:var(--f5);color:var(--blue);margin-bottom:4px">▼ INPUT BUFFERS (each holds ${cap})</div>`;
+    for(const k of Object.keys(recIn)){
+      const v=m.inBuf[k]||0, full=v>=cap;
+      html+=`<div style="display:flex;align-items:center;gap:6px;font-size:var(--f5);margin-bottom:3px">${iconHtml(k)}
+        <span style="flex:0 0 auto;min-width:90px;color:var(--text2)">${ITEMS[k]?.name||k}</span>
+        <span style="flex:1;height:6px;background:var(--bg3);border:1px solid var(--border)"><span style="display:block;height:100%;width:${Math.min(100,v/cap*100)}%;background:${full?'var(--amber)':'var(--blue)'}"></span></span>
+        <span style="color:${full?'var(--amber)':'var(--text2)'}">${v}/${cap}</span></div>`;
+    }
+  }
+  const extra=inItems.filter(([k])=>!(recIn&&k in recIn)&&!def.accepts);
+  if(inItems.length&&(!recIn||def.accepts||extra.length)){
+    const list=recIn&&!def.accepts?extra:inItems;
+    html+=`<div style="font-size:var(--f5);color:var(--blue);margin-bottom:4px">▼ ${recIn&&!def.accepts?'Also in the buffer':'Input buffer'}: ${list.map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ')}</div>`;
+  }
   if(inItems.length){
-    html+=`<div style="font-size:var(--f5);color:var(--blue);margin-bottom:4px">▼ Input buffer: ${inItems.map(([k,v])=>`${v}× ${ITEMS[k]?.name||k}`).join(', ')}</div>`;
     html+=`<button class="full-btn" style="font-size:var(--f5);border-color:var(--blue);color:var(--blue)" onclick="ejectBuf(${m.id})">↩ RETURN INPUTS TO INVENTORY</button>`;
   }
   // Feed coal manually for generators/burners/furnaces
