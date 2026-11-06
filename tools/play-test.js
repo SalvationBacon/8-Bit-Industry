@@ -896,6 +896,16 @@ const r=await p.evaluate(async()=>{
     G.inv.r_chassis=7; const short=!rocketReqs().every(r=>r.id!=='r_chassis'||r.have>=r.need);
     UNIVERSE_SCALE=keep; PRESTIGE.bangs=bangs; G.inv.sci_red=inv0;
     ok('research_scales_per_big_bang',base&&u2&&u3&&refused&&charged&&note&&tally&&rockets&&short,{base,u2,u3,refused,charged,note,tally,rockets,r1,r2,short}); }
+  // ── The Scar's tutorial explains smog before the first pump, names every machine that makes it, and the step clears when
+  //    the smog gauge is tapped (v2.0.47)
+  { const st=TUTORIALS[2].steps, z0=G.zone, t0=G.zoneTut, peek=G.stats.smogPeek;
+    const iSmog=st.findIndex(s=>/smog/i.test(s.text)&&/Combustion Gens/.test(s.text)), iPump=st.findIndex(s=>/\[\[oil_pump\]\] Oil Pump/.test(s.text));
+    const names=['Oil Pumps','Crackers','Refineries','Combustion Gens'].every(n=>st[iSmog]?.text.includes(n));
+    G.zone=2; G.stats.smogPeek=0; G.research.done=G.research.done.filter(k=>k!=='smog_control'); if(!G.research.done.includes('oil_extraction'))G.research.done.push('oil_extraction');
+    G.zoneTut=iSmog; tickTutorial(); const waits=G.zoneTut===iSmog;
+    togglePanel('smog'); tickTutorial(); const moved=G.zoneTut>iSmog; closePanel('smog');
+    G.zone=z0; G.zoneTut=t0; G.stats.smogPeek=peek; hideTutHint();
+    ok('scar_tutorial_smog_first',iSmog>=0&&iSmog<iPump&&names&&waits&&moved&&st.length===10,{iSmog,iPump,names,waits,moved,n:st.length}); }
   // ── New perks (v2.0.47): Quick Grip I/II speed inserters up 20%/40% (real throughput, chest to chest), Strong Arm halves
   //    the taps to mine, Nimble Hands halves hand-craft clicks, Field Research takes 15% off research (with the universe
   //    scale too), Deep Chests hold 300; the Perks panel lists them all

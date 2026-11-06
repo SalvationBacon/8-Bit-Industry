@@ -1805,7 +1805,7 @@ const ZONES={
      arrivalHtml:`Something went wrong.<br>You've crashed on <span style="color:var(--red)">The Scar</span>.<br><br>
        The rocket is wrecked. Your tools are gone.<br>But your knowledge survived.<br><br>
        <span style="color:var(--amber)">The ground smells of oil.</span><br>
-       <span style="color:var(--text3);font-size:var(--f5)">Find the oil deposits. Build the chain. Fix the rocket.</span>`},
+       <span style="color:var(--text3);font-size:var(--f5)">Find the oil deposits. Build the chain. Keep the air clear. Fix the rocket.</span>`},
   3:{name:'The Deep', icon:'🕳️', rocketTech:'lattice_fuel', parts:ROCKET_PARTS_Z3, fuel:null,
      partsCat:'rocket3', partsLabel:'Escape Shaft (Zone 3)', sci:['sci_deep','sci_pressure','sci_lattice'],
      hazards:['pressure','glow'], buildMap:()=>carveCaves(buildZoneMap(DEPOSITS_Z3,0x0dee9),0x5ca7e),
@@ -6979,6 +6979,7 @@ function togglePanel(id){
   if(openPanel)closePanel(openPanel);
   closeResInfo();
   openPanel=id;
+  if(id==='smog'&&G)G.stats.smogPeek=1; // the Zone 2 tutorial's smog step
   document.body.classList.add('sheet-open');
   document.getElementById('toolTip').classList.add('hidden');
   document.getElementById('p'+cap(id))?.classList.add('open');
@@ -9811,18 +9812,20 @@ const TUTORIALS={
      done:()=>(G.inv.iron_ore||0)>=20&&(G.inv.coal||0)>=10&&(G.inv.stone||0)>=10},
     {text:'Get power back: place a [[burner]] Burner and feed it coal (or a Miner + Inserter like before).',
      done:()=>machinesOf('burner').some(m=>(m.inBuf.coal||0)>0)||machinesOf('generator').some(m=>(m.inBuf.coal||0)>0)},
-    {text:'Study the ruins: hand-craft [[sci_scar]] Scar Notes (gear + 2 coal) in 🔨 CRAFT, or make them in a Lab.',
-     tally:[['sci_scar',10]], done:()=>(G.inv.sci_scar||0)>=10||researched('oil_extraction')},
-    {text:'Open 🔬 RESEARCH and unlock Oil Extraction.', done:()=>researched('oil_extraction')},
-    {text:'Place an [[oil_pump]] Oil Pump on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil.',
+    // v2.0.47 (user request): smog is explained before the first pump, with every machine that makes it
+    {text:'Study the ruins: hand-craft [[sci_scar]] Scar Notes (gear + 2 coal) in 🔨 CRAFT, or make them in a Lab, then open 🔬 RESEARCH and unlock Oil Extraction.',
+     tally:()=>techRows('oil_extraction'), done:()=>researched('oil_extraction')},
+    {text:'⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%) and clears only slowly. Tap 🌫️ in the top bar to see where it comes from.',
+     done:()=>!!G.stats.smogPeek||researched('smog_control')},
+    {text:'Place an [[oil_pump]] Oil Pump (BUILD → Liquids → [[oil_pump]]) on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil, and about 20 smog a minute.',
      done:()=>hasM('oil_pump')},
-    {text:'Inserter the crude into a [[cracker]] Cracker. It splits oil into [[raw_fuel]] raw fuel (right arrow) and [[plastic]] plastic (bottom arrow): put a belt or inserter on each.',
+    {text:'Inserter the crude into a [[cracker]] Cracker (BUILD → Refining → [[cracker]]). It splits oil into [[raw_fuel]] raw fuel (right arrow) and [[plastic]] plastic (bottom arrow): put a belt or inserter on each. It makes smog too.',
      done:()=>made('cracker')},
-    {text:'A [[refinery]] Refinery turns raw fuel into [[refined_fuel]] refined fuel. You will need lots of it.',
-     done:()=>made('refinery')},
-    {text:'⚠️ Pumps make smog (🌫️ in the top bar). Smog slows every machine. Make [[sci_smog]] Smog Data and research Smog Control.',
+    {text:'Get ahead of the smog: a Lab makes [[sci_smog]] Smog Data from plastic and wire. Research Smog Control now, before the air gets thick.',
      done:()=>researched('smog_control')},
-    {text:'Build a [[scrubber]] Scrubber and feed it refined fuel. Pumps, Crackers and Refineries all make smog: one Scrubber clears a pump with its Cracker and Refinery. GOAL shows what is rising.',
+    {text:'A [[refinery]] Refinery (BUILD → Refining → [[refinery]]) turns raw fuel into [[refined_fuel]] refined fuel, which Scrubbers and Combustion Gens burn. It makes smog as well.',
+     done:()=>made('refinery')},
+    {text:'Build a [[scrubber]] Scrubber (BUILD → Clean Air → [[scrubber]]) and feed it refined fuel. Each clears 60 smog a minute: one pump with its Cracker and Refinery makes about 50, and every Combustion Gen adds 20 more. Add Scrubbers as you grow; 🌫️ shows the balance.',
      done:()=>machinesOf('scrubber').some(m=>(m.inBuf.refined_fuel||0)>0)},
     {text:'Goal: research Rocket Repair, build the 6 kinds of repair part and stock 100 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
      final:true},
