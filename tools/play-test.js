@@ -415,7 +415,7 @@ const r=await p.evaluate(async()=>{
     const r0=JSON.stringify(machineRates(ck).out); G.smog=60; const r60=JSON.stringify(machineRates(ck).out); const note=machineRates(ck).notes.join(' ');
     const sc=put('scrubber',30,40); for(let t=0;t<480;t++){feed();sc.inBuf.refined_fuel=50;run(1);} const fell=G.smog;
     G.zone=z0;
-    ok('smog_rises_and_scrubs',rose>=25&&fell<60&&r0===r60&&note.includes('Smog is slowing it')&&note.includes('smog/min'),{rose:+rose.toFixed(1),fell:+fell.toFixed(1),r0,r60}); }
+    ok('smog_rises_and_scrubs',rose>=25*SMOG_SCALE&&fell<60&&r0===r60&&note.includes('Smog is slowing it')&&note.includes('smog/min'),{rose:+rose.toFixed(1),fell:+fell.toFixed(1),r0,r60}); }
   // ── power panel: tap the gauge; generators, consumers, idle ones, and what to build
   { reset(); G.research.done=Object.keys(TECHS).filter(k=>!TECHS[k].zone||TECHS[k].zone<=1);
     const g1=put('generator',2,2); g1.inBuf.coal=50; const g2=put('generator',2,5);   // one fuelled, one empty
@@ -529,7 +529,7 @@ const r=await p.evaluate(async()=>{
     sc.inBuf.refined_fuel=50; feed(); run(1); refreshOpenPanel(); const h3=document.getElementById('pSmogBody').innerText;
     findMachines(String(sc.id)); const found=openPanel==='machine'&&inspectId===sc.id; closePanel('machine');
     G.zone=z0; G.smog=0;
-    ok('smog_panel',opened&&Math.abs(rep.make-50)<1e-9&&rep.needNow===1&&rep.needMax===1&&h1.includes('Add 1 Scrubber')&&h1.includes('idle: 1 waiting for input')
+    ok('smog_panel',opened&&Math.abs(rep.make-50*SMOG_SCALE)<1e-9&&rep.needNow===1&&rep.needMax===1&&h1.includes('Add 1 Scrubber')&&h1.includes('idle: 1 waiting for input')
       &&h2.includes('1 out of refined fuel')&&h2.includes('FIND IDLE SCRUBBERS (1)')&&h3.includes('Enough')&&h3.includes('1 cleaning')&&found,
       {opened,make:rep.make,need:rep.needNow,found,h1:h1.slice(0,400)}); }
   // ── belt tiers: an item crosses 6 tiles faster on T2 / T3 belts; tier costs are per tile
@@ -921,15 +921,17 @@ const r=await p.evaluate(async()=>{
     const rate=machineRates(bp).out.brine, panel=/480\/min in/.test(hazPressureHtml());
     G.zone=z0;
     ok('later_machines_tiers',all&&costs&&t2&&refused&&c1===60&&c2===120&&c3===240&&k2===2*k1&&k1>0&&push===80&&rate===480&&panel,{all,costs,t2,refused,c1,c2,c3,k1,k2,push,rate,panel}); }
-  // ── Smog stops at 80% (v2.0.47): machines keep 20% speed, an old save at 100% drops to the cap, the panel says so
+  // ── Smog runs at 60% strength (v2.0.47): every source, natural clearing and the Scrubber scaled alike, so one Scrubber
+  //    still out-clears a pump with its Cracker and Refinery; smog still tops out at 100% (machines at 10%), and the
+  //    tutorial quotes the real numbers
   { const z0=G.zone; G.zone=2; reset(); power(2,2);
-    G.smog=70; addSmog(500); const capped=G.smog===SMOG_MAX&&SMOG_MAX===80;
-    G.smog=100; run(1); const oldSave=G.smog<=80;
-    G.smog=80; const cr=put('cracker',20,20); cr.recipe='z2_crack'; const note=machineRates(cr).notes.join(' ');
-    const slow=/20% right now/.test(note);
-    const op=put('oil_pump',30,30); G.smog=80; const panel=smogReport(); renderSmogPanel(); const txt=document.getElementById('pSmogBody')?.innerText||document.getElementById('pSmog')?.innerText||'';
+    const scaled=SMOG_SCALE===0.6&&SMOG_PER.oil_pump===12&&SMOG_PER.cracker===9&&SMOG_DECAY_MIN===3.6&&SCRUBBER_SMOG_MIN===36;
+    const holds=SCRUBBER_SMOG_MIN>SMOG_PER.oil_pump+SMOG_PER.cracker+SMOG_PER.refinery;
+    G.smog=95; addSmog(500); const top=G.smog===100;
+    const cr=put('cracker',20,20); cr.recipe='z2_crack'; const slow=/10% right now/.test(machineRates(cr).notes.join(' '));
+    const tut=TUTORIALS[2].steps.map(s=>s.text).join(' '), quoted=/about 12 smog a minute/.test(tut)&&/clears 36 smog/.test(tut)&&/about 30, and every Combustion Gen adds 12/.test(tut);
     G.smog=0; G.zone=z0;
-    ok('smog_caps_at_80',capped&&oldSave&&slow,{capped,oldSave,slow,note:note.slice(0,80)}); }
+    ok('smog_rates_scaled',scaled&&holds&&top&&slow&&quoted,{scaled,holds,top,slow,quoted}); }
   // ── The Scar's tutorial explains smog before the first pump, names every machine that makes it, and the step clears when
   //    the smog gauge is tapped (v2.0.47)
   { const st=TUTORIALS[2].steps, z0=G.zone, t0=G.zoneTut, peek=G.stats.smogPeek;

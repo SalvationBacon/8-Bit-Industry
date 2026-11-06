@@ -807,9 +807,11 @@ const STORE_BUILD=false;
 const TICK_MS  = 250;
 // Smog removed per scrubber every 4 ticks, one scrubber cancels ~3 oil pumps (each +0.5 per 8 ticks)
 // ── Smog (zones with the 'smog' hazard) ── per minute at T1 while working; higher tiers make more as they make more
-const SMOG_PER={oil_pump:20,cracker:15,refinery:15,combustion_gen:20};
-const SMOG_DECAY_MIN=6;       // clears by itself this much per minute
-const SCRUBBER_SMOG_MIN=60;   // each powered, fuelled Scrubber
+const SMOG_SCALE=0.6; // v2.0.47 (user request): every smog rate at 60%, sources, natural clearing and Scrubbers alike, so the balance holds and the early climb takes about 10 minutes, not 4
+const smogRate=n=>Math.round(n*SMOG_SCALE*100)/100; // whole hundredths, so 6 × 0.6 reads 3.6
+const SMOG_PER={oil_pump:smogRate(20),cracker:smogRate(15),refinery:smogRate(15),combustion_gen:smogRate(20)};
+const SMOG_DECAY_MIN=smogRate(6);       // clears by itself this much per minute
+const SCRUBBER_SMOG_MIN=smogRate(60);   // each powered, fuelled Scrubber
 const SCRUBBER_FUEL_TICKS=16; // a Scrubber burns 1 refined fuel per 4s (15/min)
 function machineSmog(m){ // smog/min this machine makes when working
   const base=SMOG_PER[m.type]; if(!base)return 0;
@@ -824,10 +826,7 @@ function smogBudget(){ // what is making and clearing smog right now, per minute
   }
   return {make,clear,makers,scrubbers};
 }
-// Smog stops at SMOG_MAX (v2.0.47, user request): at 100% machines crawled at 10% for minutes on end; at the 80% cap they
-// still run at 20%, and there is less to clear once Scrubbers start.
-const SMOG_MAX=80;
-function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(SMOG_MAX,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1)*hazardEase());} // Clean Burn: -30%
+function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(100,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1)*hazardEase());} // Clean Burn: -30%
 
 const T_FLOOR    = 0;
 const T_RESOURCE = 1;
@@ -5338,7 +5337,7 @@ function gameTick(){
   // Smog tick, natural decay + clamp
   if(zoneHas('smog')){
     if(G.smog===undefined)G.smog=0;
-    G.smog=Math.max(0,Math.min(SMOG_MAX,G.smog-SMOG_DECAY_MIN/TICKS_PER_MIN)); // an older save above the cap drops to it
+    G.smog=Math.max(0,Math.min(100,G.smog-SMOG_DECAY_MIN/TICKS_PER_MIN));
   }
 
   if(G.tick%4===0){checkAchievements();tickTutorial();}
@@ -8936,7 +8935,7 @@ function renderSmogPanel(){
   const rate=n=>fmtRate(Math.abs(n));
   const small='font-size:var(--f4);color:var(--text3)';
   let trend;
-  if(r.net>0.001)trend=pct>=SMOG_MAX?`<span style="color:var(--red)">At the ${SMOG_MAX}% cap: machines run at ${100-SMOG_MAX}%</span>`:`<span style="color:var(--red)">Rising ${rate(r.net)}/min · ${SMOG_MAX}% cap in ${fmtMins((SMOG_MAX-r.smog)/r.net)}</span>`;
+  if(r.net>0.001)trend=pct>=100?`<span style="color:var(--red)">At 100%: machines run at 10%</span>`:`<span style="color:var(--red)">Rising ${rate(r.net)}/min · 100% in ${fmtMins((100-r.smog)/r.net)}</span>`;
   else if(r.smog>0.05)trend=`<span style="color:var(--green)">Falling ${rate(r.net)}/min · clear in ${fmtMins(r.smog/-r.net)}</span>`;
   else trend=`<span style="color:var(--green)">Clear air</span>`;
   let html=`<div class="card">
@@ -9831,9 +9830,9 @@ const TUTORIALS={
     // v2.0.47 (user request): smog is explained before the first pump, with every machine that makes it
     {text:'Study the ruins: hand-craft [[sci_scar]] Scar Notes (gear + 2 coal) in 🔨 CRAFT, or make them in a Lab, then open 🔬 RESEARCH and unlock Oil Extraction.',
      tally:()=>techRows('oil_extraction'), done:()=>researched('oil_extraction')},
-    {text:'⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%, a fifth at its 80% cap) and clears only slowly. Tap 🌫️ in the top bar to see where it comes from.',
+    {text:'⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%, a tenth at 100%) and clears only slowly. Tap 🌫️ in the top bar to see where it comes from.',
      done:()=>!!G.stats.smogPeek||researched('smog_control')},
-    {text:'Place an [[oil_pump]] Oil Pump (BUILD → Liquids → [[oil_pump]]) on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil, and about 20 smog a minute.',
+    {text:`Place an [[oil_pump]] Oil Pump (BUILD → Liquids → [[oil_pump]]) on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil, and about ${SMOG_PER.oil_pump} smog a minute.`,
      done:()=>hasM('oil_pump')},
     {text:'Inserter the crude into a [[cracker]] Cracker (BUILD → Refining → [[cracker]]). It splits oil into [[raw_fuel]] raw fuel (right arrow) and [[plastic]] plastic (bottom arrow): put a belt or inserter on each. It makes smog too.',
      done:()=>made('cracker')},
@@ -9841,7 +9840,7 @@ const TUTORIALS={
      done:()=>researched('smog_control')},
     {text:'A [[refinery]] Refinery (BUILD → Refining → [[refinery]]) turns raw fuel into [[refined_fuel]] refined fuel, which Scrubbers and Combustion Gens burn. It makes smog as well.',
      done:()=>made('refinery')},
-    {text:'Build a [[scrubber]] Scrubber (BUILD → Clean Air → [[scrubber]]) and feed it refined fuel. Each clears 60 smog a minute: one pump with its Cracker and Refinery makes about 50, and every Combustion Gen adds 20 more. Add Scrubbers as you grow; 🌫️ shows the balance.',
+    {text:`Build a [[scrubber]] Scrubber (BUILD → Clean Air → [[scrubber]]) and feed it refined fuel. Each clears ${SCRUBBER_SMOG_MIN} smog a minute: one pump with its Cracker and Refinery makes about ${SMOG_PER.oil_pump+SMOG_PER.cracker+SMOG_PER.refinery}, and every Combustion Gen adds ${SMOG_PER.combustion_gen} more. Add Scrubbers as you grow; 🌫️ shows the balance.`,
      done:()=>machinesOf('scrubber').some(m=>(m.inBuf.refined_fuel||0)>0)},
     {text:'Goal: research Rocket Repair, build the 6 kinds of repair part and stock 100 [[refined_fuel]] refined fuel, then relaunch from 🚀 GOAL.',
      final:true},
