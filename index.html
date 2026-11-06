@@ -7808,17 +7808,14 @@ async function exportBlueprints(idx){
     <textarea id="bpCode" class="bk-area" readonly>${bpCode}</textarea>`,
     `<button class="btn btn-sm" onclick="closeModal();showPanel('blueprint')">◀</button>
      <button class="btn btn-sm" onclick="copyBpCode()">📋 COPY</button>
-     <button class="btn btn-sm btn-teal" onclick="downloadBpCode()">⬇ FILE</button>`);
+     <button class="btn btn-sm btn-teal" onclick="downloadBpCode()">${FILE_LABEL}</button>`);
 }
 async function copyBpCode(){
   let ok=false;
   try{await navigator.clipboard.writeText(bpCode);ok=true;}catch(e){const t=document.getElementById('bpCode'); if(t){t.select();try{ok=document.execCommand('copy');}catch(e2){}}}
   const b=[...document.querySelectorAll('#mFoot button')].find(x=>x.textContent.includes('COPY')); if(b)b.textContent=ok?'✓ COPIED':'SELECT + COPY';
 }
-function downloadBpCode(){
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bpCode],{type:'text/plain'}));
-  a.download=`8bit-industry-${bpCodeName}.txt`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-}
+function downloadBpCode(){saveTextFile(`8bit-industry-${bpCodeName}.txt`,bpCode);}
 function importBlueprintsUI(msg){
   if(openPanel==='blueprint')closePanel('blueprint');
   showModal('📥 IMPORT BLUEPRINTS',`<div style="font-size:var(--f5);color:var(--text2);line-height:2;margin-bottom:8px">Paste a blueprint code, or load a blueprint file. They are added to your library (up to ${BP_MAX}); nothing is replaced.</div>
@@ -10166,7 +10163,7 @@ async function exportBackup(){
     <textarea id="bkCode" class="bk-area" readonly>${backupCode}</textarea>`,
     `<button class="btn btn-sm" onclick="openBackup()">◀</button>
      <button class="btn btn-sm" onclick="copyBackup()">📋 COPY</button>
-     <button class="btn btn-sm btn-teal" onclick="downloadBackup()">⬇ FILE</button>`);
+     <button class="btn btn-sm btn-teal" onclick="downloadBackup()">${FILE_LABEL}</button>`);
 }
 async function copyBackup(){
   let ok=false;
@@ -10176,11 +10173,27 @@ async function copyBackup(){
   const b=[...document.querySelectorAll('#mFoot button')].find(x=>x.textContent.includes('COPY'));
   if(b)b.textContent=ok?'✓ COPIED':'SELECT + COPY';
 }
-function downloadBackup(){
+function downloadBackup(){saveTextFile(`8bit-industry-backup-${new Date().toISOString().slice(0,10)}.txt`,backupCode);}
+// Save a text file (backup or blueprint codes). The web downloads it. Android's WebView ignores download links, so the
+// FILE button did nothing in the app (a tester's report, v2.0.47): there the file is written to the app's cache with the
+// Capacitor Filesystem plugin and handed to Android's share sheet (Share plugin), where Save to Files, Drive, email or a
+// message keeps it. Cancelling the sheet is not an error.
+const FILE_LABEL=STORE_BUILD?'📤 SHARE FILE':'⬇ FILE';
+async function saveTextFile(name,text){
+  const P=window.Capacitor?.Plugins, FS=P?.Filesystem, SH=P?.Share;
+  if(STORE_BUILD&&FS&&SH){
+    try{
+      const {uri}=await FS.writeFile({path:name,data:text,directory:'CACHE',encoding:'utf8'});
+      await SH.share({title:name,files:[uri],dialogTitle:'Save or send your file'});
+    }catch(e){
+      if(/cancel/i.test(String(e&&e.message||e)))return;
+      toast('Could not save the file: use COPY instead ('+String(e&&e.message||e).slice(0,60)+')','bad');
+    }
+    return;
+  }
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([backupCode],{type:'text/plain'}));
-  a.download=`8bit-industry-backup-${new Date().toISOString().slice(0,10)}.txt`;
-  document.body.appendChild(a); a.click(); a.remove();
+  a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+  a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 function importBackupUI(msg){

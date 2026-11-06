@@ -136,6 +136,25 @@ const MOCK=()=>{ // Capacitor App plugin + CdvPurchase, just enough of each
       closeModal(); localStorage.removeItem(SAVE_KEY); localStorage.removeItem(BROKEN_KEY); return {kept,copy,title:onTitle(),noGame:G===null,msg:/left exactly as it is/.test(msg)};});
     ok('broken_save_kept',r.kept&&r.copy&&r.title&&r.noGame&&r.msg,r); await q.close(); }
 
+  // ── backup and blueprint files: Android's WebView ignores download links, so the app writes the file to its cache and
+  //    opens the share sheet (v2.0.47); cancelling the sheet says nothing
+  { const q=await b.newPage({viewport:{width:400,height:800}}); const pe=[]; q.on('pageerror',e=>pe.push(e.message));
+    await q.addInitScript(MOCK);
+    await q.addInitScript(()=>{window.__files={};window.__shared=[];window.__cancel=false;
+      Object.assign(window.Capacitor.Plugins,{Filesystem:{writeFile:async({path,data,directory,encoding})=>{window.__files[path]={data,directory,encoding};return {uri:'file:///cache/'+path};}},
+        Share:{share:async o=>{if(window.__cancel)throw new Error('Share canceled');window.__shared.push(o);return {};}}});});
+    await q.goto('file://'+path.resolve(__dirname,'..','www','index.html')); await q.waitForTimeout(500);
+    const t=await q.evaluate(async()=>{
+      newGame(); await new Promise(r=>setTimeout(r,800)); closeModal(); clearInterval(tickId); document.getElementById('toasts').innerHTML='';
+      await exportBackup(); const btn=[...document.querySelectorAll('#mFoot button')].find(x=>/SHARE FILE/.test(x.textContent));
+      btn.click(); await new Promise(r=>setTimeout(r,200));
+      const name=Object.keys(__files)[0], f=__files[name];
+      const wrote=!!f&&f.data===backupCode&&f.directory==='CACHE'&&f.encoding==='utf8'&&/^8bit-industry-backup-.*\.txt$/.test(name);
+      const shared=__shared.length===1&&__shared[0].files[0]==='file:///cache/'+name;
+      __cancel=true; await saveTextFile('x.txt','hi'); const quiet=!/Could not/.test(document.getElementById('toasts').innerText);
+      closeModal(); return {btn:!!btn,wrote,shared,quiet};});
+    ok('backup_file_shares_in_app',t.btn&&t.wrote&&t.shared&&t.quiet&&!pe.length,{t,pe}); await q.close(); }
+
   // ── the web game shows none of it
   const w=await b.newPage({viewport:{width:400,height:800}}); w.on('pageerror',e=>errs.push('web: '+e.message));
   await w.goto('file://'+path.resolve(__dirname,'..','index.html')); await w.waitForTimeout(300);
@@ -143,9 +162,10 @@ const MOCK=()=>{ // Capacitor App plugin + CdvPurchase, just enough of each
     const sup=getComputedStyle(document.getElementById('titleSupport')).display!=='none';
     newGame(); await new Promise(r=>setTimeout(r,800)); closeModal(); clearInterval(tickId);
     openBigMenu(); const menu=document.getElementById('mBody').innerText; closeModal();
-    return {store:STORE_BUILD,sup,dev:/DEV/.test(menu),support:/SUPPORT/.test(menu),golden:!PRESTIGE.owned.theme_golden};
+    await exportBackup(); const file=[...document.querySelectorAll('#mFoot button')].some(x=>/⬇ FILE|FILE/.test(x.textContent)&&!/SHARE/.test(x.textContent)); closeModal();
+    return {store:STORE_BUILD,sup,dev:/DEV/.test(menu),support:/SUPPORT/.test(menu),golden:!PRESTIGE.owned.theme_golden,file};
   });
-  ok('web_build_unchanged',!web.store&&!web.sup&&web.dev&&!web.support,web);
+  ok('web_build_unchanged',!web.store&&!web.sup&&web.dev&&!web.support&&web.file,web);
 
   for(const[k,v]of Object.entries(R))console.log(v.startsWith('PASS')?'  ':'✗ ',k.padEnd(32),v);
   console.log(errs.join('\n')||'no page errors'); await b.close();
