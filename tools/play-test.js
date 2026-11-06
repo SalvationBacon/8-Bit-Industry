@@ -870,6 +870,15 @@ const r=await p.evaluate(async()=>{
     let k=0; for(let t=0;t<2400;t++){ if(t%2===0){const tile=G.map[20][2]; if(beltRoom(tile,0))tile.items.push({id:k++%2?'coal':'iron_ore',prog:0});} run(1); f.outBuf={}; }
     selectMachineById(f.id); const panel=document.getElementById('pMachine')?.innerText||document.body.innerText; closePanel('machine');
     ok('blast_furnace_own_buffers',f.produced>=140&&(f.inBuf.coal||0)===50&&/INPUT BUFFERS/.test(panel)&&/Coal/.test(panel),{made:f.produced,coal:f.inBuf.coal,ore:f.inBuf.iron_ore}); }
+  // ── The tester's splitter (v2.0.45): belt in, an inserter into a FULL chest on one output, a belt on the other. Every item
+  //    goes out of the free side at full belt speed; with room in the chest the two sides share it exactly half and half
+  { const trial=full=>{ reset(); power(40,40); for(let y=2;y<10;y++)put('belt',10,y,1); put('splitter',10,10,1);
+      put('inserter',10,11,1); const ch=put('chest',10,12); ch.chestInv=full?{iron_plate:200}:{};
+      for(let y=11;y<20;y++)put('belt',11,y,1); const q=sink(11,20);
+      const feed=n=>{for(let t=0;t<n;t++){ if(t%2===0){const tl=G.map[2][10]; if(beltRoom(tl,0))tl.items.push({id:'iron_plate',prog:0});} run(1);}};
+      feed(480); q._sent={}; const c0=chestTotal(ch); feed(480); return {right:(q._sent.iron_plate||0)/2,left:(chestTotal(ch)-c0)/2}; };
+    const blocked=trial(true), open=trial(false);
+    ok('splitter_overflows_blocked_side',blocked.right>=58&&open.left>=28&&open.right>=28,{blocked,open}); }
   // ── Sound is one setting for the device: it survives a zone change and a new game; an old save hands its choice over once
   { const keep={sfx:PREFS.sfx,music:PREFS.music,musicVol:PREFS.musicVol,audioSet:PREFS.audioSet};
     PREFS.sfx=true; PREFS.audioSet=false; toggleSfx(); setMusicVol(0.3);
