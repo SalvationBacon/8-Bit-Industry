@@ -600,7 +600,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.44 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.45 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -786,7 +786,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.44';
+const VER      = '2.0.45';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -6052,7 +6052,7 @@ function spaceBeltQueues(){
       const nx=tx+D_VEC[m.dir][0], ny=ty+D_VEC[m.dir][1], nt=G.map[ny]?.[nx], nm=nt&&nt.mid!==null?G.machines[nt.mid]:null;
       if(nm&&beltLike(nm.type)&&depth<400)lim=visit(nx,ny,depth+1)+1-BELT_GAP;
     }
-    for(const it of t.items){if(it.prog>lim)it.prog=Math.max(0,lim); lim=it.prog-BELT_GAP;}
+    for(const it of t.items){if(it.prog>lim)it.prog=Math.max(0,lim); if(!it.park)lim=it.prog-BELT_GAP;} // on a splitter, an item parked for its side's inserter lets the next one pass
     const mn=t.items[t.items.length-1].prog; mins.set(key,mn); return mn;
   };
   for(let ty=0;ty<MAP_H;ty++)for(let tx=0;tx<MAP_W;tx++){const t=G.map[ty][tx]; if(t.items.length&&t.mid!==null)visit(tx,ty,0);}
@@ -6170,17 +6170,22 @@ function runBelts(){
         const nm=G.machines[nt.mid];
         return nm&&beltLike(nm.type)?nt:null;
       };
+      // An inserter side keeps one item waiting for its arm (v2.0.45); anything more goes out of the other side while it
+      // has room, so a full chest or a slow arm on one side never stops the other. Before, each item waited for its own
+      // side however long that took, and the next item queued behind it on the cell, so the free side got nothing.
+      const parked=s=>cells[s]?cells[s].items.filter(x=>x.park&&x.side===s).length:0;
+      const wait=(it,s)=>{it.side=s; it.park=1; if(here===s)hold(it); else{it.prog=.99;cells[s].items.push(it);}};
       for(const it of arrived){
         if(it.side===undefined){it.side=(m.splitSide||0)%2; m.splitSide=(m.splitSide||0)+1;}
-        const mine=it.side, dests=[mine===0?outA:outB, mine===0?outB:outA];
-        const own=tryBelt(dests[0]), c=carryProg(it.prog);
+        const mine=it.side, oth=1-mine, dests=[mine===0?outA:outB, mine===0?outB:outA];
+        const own=tryBelt(dests[0]), other=tryBelt(dests[1]), c=carryProg(it.prog);
+        delete it.park;
         if(own&&beltRoom(own,c)){it.prog=c;delete it.side;own.items.push(it);continue;}
-        if(!own&&here!==mine&&cells[mine]&&cells[mine].items.length<BELT_CAP){it.prog=.99;cells[mine].items.push(it);continue;} // waits on its side
-        if(!own&&here===mine){hold(it);continue;} // waiting on its own side for that side's inserter
-        const other=tryBelt(dests[1]);
-        if(other&&beltRoom(other,c)){it.prog=c;delete it.side;other.items.push(it);continue;}
-        if(!own&&here!==mine)it.side=here; // its side is backed up: it goes to this side instead, so nothing jams
-        hold(it);
+        const roomAt=s=>cells[s]&&(here===s||cells[s].items.length<BELT_CAP)&&parked(s)===0;
+        if(!own&&roomAt(mine)){wait(it,mine);continue;}              // first in line for its side's inserter
+        if(other&&beltRoom(other,c)){it.prog=c;delete it.side;other.items.push(it);continue;} // its side is full: the other belt
+        if(!other&&roomAt(oth)){wait(it,oth);continue;}              // or the other side's inserter
+        it.side=here; hold(it);                                     // both sides full: wait here, retried every tick
       }
       return left();
     }
@@ -6265,7 +6270,8 @@ function beltBaseSpeed(){return BELT_T1_SPEED*perkMult().belt;} // tiles per tic
 // Tiles that carry items: inserters take from and drop onto all of them (a drop onto a splitter used to land in
 // its unused input buffer and vanish)
 const beltLike=t=>t==='belt'||t==='tunnel'||t==='splitter';
-function beltRoom(tile,p=0){return tile.items.length<BELT_CAP&&tile.items.every(i=>i.prog>=p+BELT_GAP-1e-6);}
+// An item parked on a splitter for its side's inserter (park) waits to one side: it takes no room (v2.0.45)
+function beltRoom(tile,p=0){const its=tile.items.some(i=>i.park)?tile.items.filter(i=>!i.park):tile.items; return its.length<BELT_CAP&&its.every(i=>i.prog>=p+BELT_GAP-1e-6);}
 // Where an inserter can drop onto a belt tile: the start if it's clear, otherwise into the gap behind or ahead of the
 // item already there (-1 if none). Dropping only at the start made a belt fed from the side top out at 240 on T3
 function beltDropPos(tile){
