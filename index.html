@@ -612,7 +612,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.46 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.47 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -799,7 +799,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.46';
+const VER      = '2.0.47';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -2536,7 +2536,7 @@ function beltSpr(fr,tier=1){
   const stud=BELT_TIER_COL[tier]||BELT_TIER_COL[1], rail=tier>1?shade(stud,-.45):'#5a5a5a';
   return mkSpr(`belt:${fr}:${tier}`,16,16,({R,P})=>{
     R(0,0,16,16,'#1a1a1a'); R(0,2,16,12,'#2b2b2b');
-    for(let x=0;x<16;x++){if((x+fr)%4===0)R(x,3,1,10,'#3c3c3c');}
+    for(let x=0;x<16;x++){if((x-fr+4)%4===0)R(x,3,1,10,'#3c3c3c');} // ridges move with the items (v2.0.47: they ran backwards)
     R(0,1,16,1,rail); R(0,14,16,1,rail); R(0,0,16,1,'#0e0e0e'); R(0,15,16,1,'#0e0e0e');
     for(let x=2;x<16;x+=8){P(x+fr*2%8,1,stud);if(tier>1)P(x+fr*2%8,14,stud);}
   });
@@ -2558,7 +2558,7 @@ function beltCornerSpr(fr,turn,tier=1){
       if(yv===0||yv===15)c='#0e0e0e';
       else if(yv===1)c=((along-2-fr*2)%8+8)%8===0?stud:rail;
       else if(yv===14)c=tier>1&&((along-2-fr*2)%8+8)%8===0?stud:rail;
-      else if(yv>=3&&yv<=12&&(along+fr)%4===0)c='#3c3c3c';
+      else if(yv>=3&&yv<=12&&((along-fr)%4+4)%4===0)c='#3c3c3c';
       P(x,y,c);
     }
   });
@@ -2991,6 +2991,9 @@ function uiFlip({P},vert){
     put(xr,y,'#f5a623');
   }
 }
+// Belt direction arrows (v2.0.47): on every belt while building, using an EDIT tool or holding a paste, so the way a
+// line runs is clear when planning; drawn under the items, gone again in plain play.
+function beltArrowsOn(){return !!G&&(activeTool!=='select'||blueprintState.mode==='holding'||multiselState.mode==='pasting');}
 function arrowSpr(dir,col){return mkSpr(`arr:${dir}:${col}`,16,16,a=>uiArrow(a,dir,col));}
 function uiSpr(name){const f=UI_ART[name];return f?mkSpr(`ui:${name}`,16,16,a=>f(a)):null;}
 // Emoji in tutorial text and toasts → pixel icons. 'ui:x' is a UI_ART icon; anything else an item/machine id
@@ -3616,6 +3619,7 @@ function draw(){
   const ts=TILE*z;
   const now=performance.now();
   const at=now/TICK_MS; // smooth animation clock in tick units (game ticks only step 4×/s)
+  const planArrows=beltArrowsOn();
   ctx.imageSmoothingEnabled=false; // pixel sprites stay crisp (resizing the canvas resets this)
   ctx.fillStyle='#090909';
   ctx.fillRect(0,0,W,H);
@@ -3677,6 +3681,7 @@ function draw(){
           turn=beltTurn(m);
           ctx.save(); ctx.translate(px+ts/2,py+ts/2); ctx.rotate(m.dir*Math.PI/2);
           ctx.drawImage(turn?beltCornerSpr(fr,turn,tier):beltSpr(fr,tier),-ts/2,-ts/2,ts+.5,ts+.5); ctx.restore();
+          if(planArrows&&ts>12){const as=Math.floor(ts*.42);ctx.globalAlpha=.6;ctx.drawImage(arrowSpr(m.dir,'#f5a623'),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);ctx.globalAlpha=1;}
         } else {
         // Full dark surface
         ctx.fillStyle=BELT_BG; ctx.fillRect(px,py,ts,ts);
@@ -5078,6 +5083,7 @@ function applyUndoGroup(ops,verb){
   return done;
 }
 function undoLast(){
+  dropHeldMachine(); // a machine held by the Move tool goes back first, so undo sees it where it was
   const ops=undoStack[undoStack.length-1];
   if(!ops){toast('Nothing to undo','wrn');return;}
   const done=applyUndoGroup(ops,'undo'); if(!done)return;
@@ -5087,6 +5093,7 @@ function undoLast(){
   toast('↶ Undone','ok');
 }
 function redoLast(){
+  dropHeldMachine();
   const ops=redoStack[redoStack.length-1];
   if(!ops){toast('Nothing to redo','wrn');return;}
   const done=applyUndoGroup(ops,'redo'); if(!done)return;
@@ -6824,6 +6831,16 @@ function setDrawerCat(idx){
   buildDrawer();
 }
 
+function dropHeldMachine(){
+  if(!moveState.active)return;
+  const m=G.machines[moveState.machineId];
+  if(m){
+    const[mw,mh]=machSize(m);
+    m.x=moveState.origX; m.y=moveState.origY;
+    for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++){const t=G.map[moveState.origY+dy]?.[moveState.origX+dx]; if(t&&t.mid===null)t.mid=m.id;}
+  }
+  moveState={active:false,machineId:null,origX:0,origY:0};
+}
 function setTool(id){
   lineClear();
   if(activeTool==='upgrade'&&id!=='upgrade')upgClear();
@@ -6838,6 +6855,9 @@ function setTool(id){
     document.getElementById('multiselBar')?.classList.add('hidden');
     document.getElementById('ghostBar')?.classList.add('hidden');
   }
+  // Any tool change puts a machine held by the Move tool back where it was (v2.0.47: Rotate, Blueprint and Move itself
+  // returned early before this, leaving it drawn on the map with no tiles, so it could never be tapped again)
+  dropHeldMachine();
   if(id==='rotate'){
     activeTool='rotate'; closeResInfo(); buildDrawer(); updateSelectBtn(); updateBuildHUD();
     return;
@@ -6850,17 +6870,6 @@ function setTool(id){
     activeTool='blueprint';
     if(blueprintState.mode!=='holding') blueprintState={mode:'idle',x1:0,y1:0,x2:0,y2:0,data:[]};
     closeResInfo(); buildDrawer(); updateSelectBtn(); updateBuildHUD(); return;
-  }
-  // Switching away from move tool, restore any held machine
-  if(activeTool==='move'&&moveState.active){
-    const m=G.machines[moveState.machineId];
-    if(m){
-      const[mw,mh]=machSize(m);
-      m.x=moveState.origX; m.y=moveState.origY;
-      for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)
-        G.map[moveState.origY+dy][moveState.origX+dx].mid=m.id;
-    }
-    moveState={active:false,machineId:null,origX:0,origY:0};
   }
   const def=MDEFS[id];
   if(def?.stub){toast('[FUTURE] Not yet active in Zone 1','wrn');return;}
@@ -8177,6 +8186,7 @@ function launchRocket(){
 // Fresh start in zone n, keeps research, perks, audio settings and dev mode
 function transitionToZone(n){
   const zd=ZONES[n]; if(!zd)return;
+  moveState={active:false,machineId:null,origX:0,origY:0}; // a held machine stays behind with the old zone
   const researchDone=[...G.research.done];
   const dev={devMode:G.devMode,devTickSpeed:G.devTickSpeed,devFreeBuild:G.devFreeBuild,devFreeCraft:G.devFreeCraft,sandbox:G.sandbox};
   const perks=G.perks||{points:0,spent:{},awarded:{}};
@@ -10648,7 +10658,7 @@ function newGame(){
 }
 
 function startGame(isNew){
-  stopTitleScene(); clearUndo();
+  stopTitleScene(); clearUndo(); moveState={active:false,machineId:null,origX:0,origY:0}; // a held machine belonged to the old game
   if(STORE_BUILD&&!G.sandbox){G.devMode=false;G.devFreeBuild=false;G.devFreeCraft=false;G.devTickSpeed=1;} // a web backup carried into the app
   SING_REQS=singReqsFor(PRESTIGE.bangs); // this universe's Singularity (25% bigger per Big Bang)
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}

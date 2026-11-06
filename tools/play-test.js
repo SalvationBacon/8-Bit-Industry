@@ -879,6 +879,18 @@ const r=await p.evaluate(async()=>{
       feed(480); q._sent={}; const c0=chestTotal(ch); feed(480); return {right:(q._sent.iron_plate||0)/2,left:(chestTotal(ch)-c0)/2}; };
     const blocked=trial(true), open=trial(false);
     ok('splitter_overflows_blocked_side',blocked.right>=58&&open.left>=28&&open.right>=28,{blocked,open}); }
+  // ── A machine picked up with the Move tool goes back when the tool changes (v2.0.47: switching to Rotate, Blueprint or
+  //    Move again left a splitter drawn with no tiles, so it couldn't be tapped until a reload). Belt arrows show while planning
+  { reset(); const owns=m=>{const[w,h]=machSize(m);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)if(G.map[m.y+dy][m.x+dx].mid!==m.id)return false;return true;};
+    const res={};
+    for(const next of ['rotate','blueprint','move','select']){
+      const sp=put('splitter',30,30,0); setTool('move'); handleTap({x:30,y:30}); const held=moveState.active&&G.map[30][30].mid===null;
+      setTool(next); res[next]=held&&!moveState.active&&owns(sp)&&sp.x===30&&sp.y===30; tryRemove(30,30,true); }
+    const sp=put('splitter',30,30,0); setTool('move'); handleTap({x:30,y:30}); setTool('rotate'); const d0=sp.dir; handleTap({x:30,y:30});
+    const turned=sp.dir===(d0+1)%4&&owns(sp);
+    setTool('move'); handleTap({x:30,y:30}); undoLast(); const undoBack=owns(sp)&&!moveState.active;
+    setTool('select'); const offPlay=!beltArrowsOn(); setTool('belt'); const onBuild=beltArrowsOn(); setTool('rotate'); const onEdit=beltArrowsOn(); setTool('select');
+    ok('move_tool_switch_keeps_machine',Object.values(res).every(Boolean)&&turned&&undoBack&&offPlay&&onBuild&&onEdit,{res,turned,undoBack,offPlay,onBuild,onEdit}); }
   // ── Build tier picker (v2.0.46): T1/T2/T3 squares in the build drawer once upgrades are open; machines place at that
   //    tier and pay its machineWorth (a crafted one pays only the steps); undo gives back exactly what was paid
   { reset(); G.devFreeBuild=false; G.crafted={}; G.research.done=G.research.done.filter(k=>k!=='logistics');
