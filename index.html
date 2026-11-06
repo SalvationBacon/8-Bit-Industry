@@ -176,6 +176,16 @@ button .uico{vertical-align:-3px}
 .ditem .di{font-size:24px;line-height:1}
 .ditem .dn{font-size:var(--f5);color:var(--text);white-space:nowrap}
 .ditem.sel .dn{color:var(--amber)}
+/* Build tier picker (v2.0.46): T1/T2/T3 squares in the drawer's bottom right once upgrades are open */
+#tabDrawer{position:relative}
+#drawerTiers{display:none}
+#drawerTiers.on{display:flex;flex-direction:column;gap:3px;position:absolute;right:6px;bottom:6px;z-index:2}
+#tabDrawer.tiers #drawerItems{padding-right:44px}
+.dtier{width:30px;height:24px;padding:0;font-family:var(--font);font-size:var(--f5);border:1px solid var(--border2);background:var(--bg3);color:var(--text3);cursor:pointer}
+.dtier.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.14)}
+.dtier.t3.on{border-color:var(--teal);color:var(--teal);background:rgba(38,198,160,.12)}
+.ditem .dtb{font-size:var(--f4);color:var(--amber);line-height:1}
+.ditem .dtb.t3{color:var(--teal)}
 
 /* ── SIDE PANEL (Inventory, Machine, Rocket etc, infrequent reference panels) ── */
 .spanel{position:fixed;top:calc(var(--hud-h) + var(--sat));right:0;bottom:calc(var(--tab-h) + var(--sab));width:min(400px,100vw);padding-right:var(--sar);background:#111;border-left:2px solid var(--border2);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
@@ -378,6 +388,8 @@ body.sheet-open #tutMini{display:block}
   #drawerCats{flex-wrap:wrap;flex-shrink:0}
   #drawerItems{display:grid;grid-template-columns:repeat(2,1fr);overflow-y:auto;overflow-x:hidden;align-content:start;padding:6px}
   .ditem{min-width:0}
+  #drawerTiers.on{position:static;flex-direction:row;justify-content:flex-end;padding:5px 6px;border-top:1px solid var(--border);flex-shrink:0;margin-top:auto}
+  #tabDrawer.tiers #drawerItems{padding-right:6px}
   #wrap{grid-column:3;grid-row:2}
   .spanel{top:calc(var(--hud-h) + var(--sat));bottom:0;width:min(440px,50vw);padding-bottom:var(--sab)}
   #resInfo{left:auto;width:min(360px,48vw)}
@@ -600,7 +612,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.45 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.46 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -635,6 +647,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
   <div id="tabDrawer">
     <div id="drawerCats"></div>
     <div id="drawerItems"></div>
+    <div id="drawerTiers"></div>
   </div>
   <!-- Tab bar, always visible, replaces old toolbar -->
   <div id="tabBar">
@@ -786,7 +799,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.45';
+const VER      = '2.0.46';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -3569,7 +3582,7 @@ function blockedCross(px,py,w,h){
   ctx.beginPath(); ctx.moveTo(px+m,py+m); ctx.lineTo(px+w-m,py+h-m); ctx.moveTo(px+w-m,py+m); ctx.lineTo(px+m,py+h-m); ctx.stroke(); ctx.restore();
 }
 function drawLineGhost(def,ts,cx,cy){
-  const plan=linePlan(), isBelt=activeTool==='belt';
+  const plan=linePlan(), isBelt=activeTool==='belt', lt=placeTier(activeTool);
   for(const t of plan.tiles){
     const px=t.x*ts-cx, py=t.y*ts-cy;
     if(px+ts<0||py+ts<0||px>canvas.clientWidth||py>canvas.clientHeight)continue;
@@ -3577,6 +3590,7 @@ function drawLineGhost(def,ts,cx,cy){
     ctx.fillStyle=ok?'rgba(245,166,35,.14)':rgba(PAL.bad,.16); ctx.fillRect(px,py,ts,ts);
     if(t.state!=='bad'){
       ctx.globalAlpha=ok?.55:.3; drawGhostIcon(def,px,py,ts,ts,t.dir); ctx.globalAlpha=1;
+      if(lt>1&&ts>16){const u=Math.max(1,Math.round(ts/24));ctx.drawImage(tierSpr(lt),Math.floor(px+2),Math.floor(py+2),9*u,7*u);}
       if(isBelt&&ts>12){const as=Math.floor(ts*.45);ctx.drawImage(arrowSpr(t.dir,ok?'#f5a623':PAL.bad),Math.floor(px+ts/2-as/2),Math.floor(py+ts/2-as/2),as,as);}
     }
     ctx.strokeStyle=ok?'#f5a623':PAL.bad; ctx.lineWidth=1.5; ctx.strokeRect(px+.75,py+.75,ts-1.5,ts-1.5);
@@ -4059,6 +4073,7 @@ function draw(){
       ctx.fillStyle=ok?'rgba(245,166,35,.14)':rgba(PAL.bad,.14);
       ctx.fillRect(px,py,mw*ts,mh*ts);
       ctx.globalAlpha=.55; drawGhostIcon(def,px,py,mw*ts,mh*ts,placeDir); ctx.globalAlpha=1;
+      const gt=placeTier(activeTool); if(gt>1&&ts>16){const u=Math.max(1,Math.round(ts/24));ctx.drawImage(tierSpr(gt),Math.floor(px+2),Math.floor(py+2),9*u,7*u);}
       ctx.strokeStyle=ok?'#f5a623':PAL.bad;
       ctx.lineWidth=2; ctx.strokeRect(px,py,mw*ts,mh*ts);
       if(!ok)blockedCross(px,py,mw*ts,mh*ts);
@@ -4285,17 +4300,16 @@ function lineDir(i){
 }
 // What ✓ PLACE would do with each tile: 'ok' (built), 'short' (not enough materials), 'bad' (blocked, skipped)
 function linePlan(){
-  const type=activeTool, def=MDEFS[type];
-  let budget=Infinity;
-  if(!G.devFreeBuild){
-    budget=G.crafted[type]||0; let afford=Infinity;
-    for(const[k,n]of Object.entries(def.cost))afford=Math.min(afford,Math.floor((G.inv[k]||0)/n));
-    budget+=afford;
-  }
+  const type=activeTool, inv={...G.inv}; let used=0, out=false;
+  const take=()=>{ // pay for one more from a copy of the inventory (crafted pool first, at the picked tier)
+    if(out)return false; const pay=placePay(type,used);
+    if(shortOf(pay.cost,inv)){out=true;return false;}
+    for(const[k,n]of Object.entries(pay.cost))inv[k]-=n; if(pay.src==='crafted')used++; return true;
+  };
   const tiles=line.path.map((q,i)=>{
     const dir=lineDir(i);
     let state='bad';
-    if(canPlace(type,q.x,q.y,dir)){state=budget>0?'ok':'short'; if(budget>0)budget--;}
+    if(canPlace(type,q.x,q.y,dir))state=take()?'ok':'short';
     return {x:q.x,y:q.y,dir,state};
   });
   const count=st=>tiles.filter(t=>t.state===st).length;
@@ -4305,23 +4319,23 @@ function placeLine(){
   const type=activeTool, def=MDEFS[type]; if(!def)return;
   if(def.unlock&&!G.research.done.includes(def.unlock)){toast(`Requires: ${TECHS[def.unlock]?.name||def.unlock}`,'wrn');sfx('error');return;}
   const plan=linePlan();
-  if(!plan.ok){toast(plan.short?`Need ${Object.entries(def.cost).map(([k,n])=>`${n}× ${ITEMS[k]?.name||k}`).join(', ')} per ${def.name}`:'Cannot place here','bad');sfx('error');return;}
+  if(!plan.ok){toast(plan.short?`Need ${Object.entries(machineWorth(type,placeTier(type))).map(([k,n])=>`${n}× ${ITEMS[k]?.name||k}`).join(', ')} per ${def.name}`:'Cannot place here','bad');sfx('error');return;}
   let placed=0;
   undoBegin();
   for(const t of plan.tiles){
     if(t.state!=='ok'||!canPlace(type,t.x,t.y,t.dir))continue; // pipes: an earlier piece may have joined two fluids
-    let src='inv';
-    if(G.devFreeBuild)src='free';
-    else if((G.crafted[type]||0)>0){G.crafted[type]--;src='crafted';}
-    else for(const[k,n]of Object.entries(def.cost))G.inv[k]-=n;
-    stampMachine({type,dir:t.dir},t.x,t.y,src); placed++;
+    const pay=placePay(type); if(shortOf(pay.cost))break;
+    if(pay.src==='crafted')G.crafted[type]--;
+    for(const[k,n]of Object.entries(pay.cost))G.inv[k]-=n;
+    stampMachine({type,dir:t.dir,tier:pay.tier},t.x,t.y,pay.src); placed++;
   }
   undoEnd();
   const end=line.path[line.path.length-1];
   placeDir=lineDir(line.path.length-1);
   lineClear(); hov={x:end.x,y:end.y};
   const left=plan.tiles.length-placed;
-  toast(`Placed ${placed} ${def.name}${placed>1?'s':''}${left?` · ${left} skipped`:''}`,placed?'ok':'wrn');
+  const tl=placeTier(type)>1?` (T${placeTier(type)})`:'';
+  toast(`Placed ${placed} ${def.name}${placed>1?'s':''}${tl}${left?` · ${left} skipped`:''}`,placed?'ok':'wrn');
   updateHUD(); saveGame(); sfx('place'); buildDrawer(); updateBuildHUD();
 }
 
@@ -5097,7 +5111,7 @@ function stampMachine(e,x,y,src){
   for(let dy=0;dy<mh;dy++)for(let dx=0;dx<mw;dx++)G.map[y+dy][x+dx].mid=m.id;
   refreshMineRes(m); linkTunnel(m);
   G.stats.placed++;
-  undoRec({op:'place',id:m.id,src:src||(G.devFreeBuild?'free':'inv'),tier:m.tier});
+  undoRec({op:'place',id:m.id,src:src||(G.devFreeBuild?'free':'inv'),tier:src==='crafted'?1:m.tier}); // crafted: undo returns paid upgrade steps
   return m;
 }
 
@@ -5177,23 +5191,13 @@ function tryPlace(type,tx,ty){
     }
   }
 
-  // Check crafted pool first, then materials (skip cost if dev free build)
-  const crafted=(G.crafted[type]||0)>0;
-  if(G.devFreeBuild){
-    // free placement, no cost deducted
-  } else if(crafted){
-    G.crafted[type]--;
-  } else {
-    for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn'); sfx('error'); flashDrawerItem(); return;}
-    }
-    for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
-  }
+  // Crafted pool first, then materials (nothing in dev free build), at the tier picked in the drawer
+  const pay=placePay(type); if(!payPlace(pay))return;
 
   const under=beltsUnder(type,tx,ty); if(under.length)undoBegin();
   const kept=liftBelts(under);
-  const m=mkMachine(type,tx,ty,placeDir);
-  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
+  const m=mkMachine(type,tx,ty,placeDir); if(pay.tier>1)m.tier=pay.tier;
+  undoRec(placeOp(m,pay));
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
   if(def.pumps)m.mineRes=def.pumps;
@@ -5206,7 +5210,7 @@ function tryPlace(type,tx,ty){
 
   if(under.length){matchBeltTier(m,under);restoreBeltItems(kept,m);undoEnd();}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
-  toast(under.length?`Placed ${def.name}${m.tier>1?` (T${m.tier})`:''}, replacing ${under.length} belt${under.length>1?'s':''}`:`Placed ${def.name}`,'ok');
+  toast(`Placed ${def.name}${m.tier>1?` (T${m.tier})`:''}${under.length?`, replacing ${under.length} belt${under.length>1?'s':''}`:''}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
   updateBuildHUD(); // every machine stays selected: keep placing until CANCEL (v2.0.30)
 }
@@ -5215,21 +5219,11 @@ function completePlacement(type,tx,ty,quiet){
   // Called after player confirms power warning, skip power check and place
   const def=MDEFS[type]; if(!def)return;
   if(!canPlace(type,tx,ty,undefined,true)){toast('Cannot place here','bad');sfx('error');return;}
-  const crafted=(G.crafted[type]||0)>0;
-  if(G.devFreeBuild){
-    // free
-  } else if(crafted){
-    G.crafted[type]--;
-  } else {
-    for(const[item,need]of Object.entries(def.cost)){
-      if((G.inv[item]||0)<need){toast(`Need ${need}× ${ITEMS[item]?.name||item}`,'wrn');sfx('error');flashDrawerItem();return;}
-    }
-    for(const[item,need]of Object.entries(def.cost)) G.inv[item]-=need;
-  }
+  const pay=placePay(type); if(!payPlace(pay))return;
   const under=beltsUnder(type,tx,ty); if(under.length)undoBegin();
   const kept=liftBelts(under);
-  const m=mkMachine(type,tx,ty,placeDir);
-  undoRec({op:'place',id:m.id,src:G.devFreeBuild?'free':crafted?'crafted':'inv'});
+  const m=mkMachine(type,tx,ty,placeDir); if(pay.tier>1)m.tier=pay.tier;
+  undoRec(placeOp(m,pay));
   if(type==='miner')m.mineRes=G.map[ty][tx].res;
   if(type==='oil_pump')m.mineRes='oil';
   if(def.pumps)m.mineRes=def.pumps;
@@ -5240,7 +5234,7 @@ function completePlacement(type,tx,ty,quiet){
   if(under.length){matchBeltTier(m,under);restoreBeltItems(kept,m);undoEnd();}
   if(quiet){G.stats.placed++;saveGame();sfx('place');return;}
   G.stats.placed++; updateHUD(); saveGame(); sfx('place');
-  toast(`Placed ${def.name}`,'ok');
+  toast(`Placed ${def.name}${m.tier>1?` (T${m.tier})`:''}`,'ok');
   document.getElementById('toolTip').classList.add('hidden');
   updateBuildHUD();
 }
@@ -6558,7 +6552,7 @@ function costChips(cost,type){
 const STRIP_CATS=new Set(['raw','smelted','processed','parts','science']);
 function updateInvStrip(){
   const el=document.getElementById('invStrip'); if(!el||!G)return;
-  const need=MDEFS[activeTool]&&!(G.crafted[activeTool]>0)?MDEFS[activeTool].cost:{};
+  const need=MDEFS[activeTool]?placePay(activeTool).cost:{};
   const zc=zoneDef().partsCat;
   const ids=Object.keys(ITEMS).filter(id=>(G.inv[id]||0)>0&&(STRIP_CATS.has(ITEMS[id].cat)||ITEMS[id].cat===zc)||need[id]);
   const html=ids.length?ids.map(id=>{
@@ -6743,13 +6737,13 @@ function buildDrawerItems(cats,safeCatIdx){
   const html=cat.items.map(item=>{
     const def=MDEFS[item.id];
     const locked=def?.unlock&&!G.research.done.includes(def.unlock)&&!def.stub;
-    const unaffordable=!locked&&def&&Object.keys(def.cost).length>0&&
-      !Object.entries(def.cost).every(([k,v])=>(G.inv[k]||0)>=v);
+    const pay=def&&!def.stub?placePay(item.id):null, ptier=pay?pay.tier:1;
+    const unaffordable=!locked&&pay&&!!shortOf(pay.cost);
     const sel=activeTool===item.id?'sel':'';
     const lk=locked?'locked':'';
     const ua=unaffordable&&!locked&&!def?.stub?'unaffordable':'';
     const sub=!def?'':locked?`<span class="dc lock">🔒 ${TECHS[def.unlock]?.name||''}</span>`
-      :`<span class="dc">${costChips(def.cost,item.id)}</span>`;
+      :`<span class="dc">${buildChips(item.id)}</span>`;
     if(item.action){ // one-tap actions (Undo) rather than tools
       const n=item.id==='undo'?undoStack.length:item.id==='redo'?redoStack.length:1;
       return `<div class="ditem${n?'':' off'}" onclick="${item.action}">
@@ -6759,10 +6753,13 @@ function buildDrawerItems(cats,safeCatIdx){
     }
     return `<div class="ditem ${sel} ${lk} ${ua}" onclick="setTool('${item.id}')">
       <span class="di">${UI_ART[item.id]&&!MDEFS[item.id]?uiIcon(item.id):iconHtml(item.id,item.icon)}</span>
-      <span class="dn">${item.name}</span>${sub}
+      <span class="dn">${item.name}</span>${ptier>1&&!locked?`<span class="dtb t${ptier}">T${ptier}</span>`:''}${sub}
     </div>`;
   }).join('');
   if(itemsEl._html!==html){itemsEl.innerHTML=html;itemsEl._html=html;}
+  // the tier squares: build tab only, once upgrades are open
+  const tiers=document.getElementById('drawerTiers'), on=activeTab==='build'&&tiersOpen();
+  if(tiers){tiers.classList.toggle('on',on); document.getElementById('tabDrawer')?.classList.toggle('tiers',on); setHtml(tiers,on?tierPickHtml():'');}
 }
 
 function cycleDir(){
@@ -6802,12 +6799,15 @@ function updateBuildHUD(){
     rotBtn.textContent=ln?'⇆ FLIP':'↻ '+dirLabels[placeDir];
     rotBtn.style.display='';
     const pw=def.power>0?`<span class="cc">${uiIcon('power')}${def.power}kW</span>`:def.power<0?`<span class="cc ok">${uiIcon('power')}+${-def.power}kW</span>`:'';
-    let name=def.name.toUpperCase(), chips=costChips(def.cost,activeTool);
+    let name=def.name.toUpperCase(), chips=buildChips(activeTool);
+    if(!ln&&placeTier(activeTool)>1)name+=` T${placeTier(activeTool)}`;
     if(ln){ // a drawn line: how many get built and what they cost in total
-      const plan=linePlan(), n=plan.ok+plan.short, ready=Math.min(n,G.crafted[activeTool]||0);
-      const cost={}; for(const[k,c]of Object.entries(def.cost))cost[k]=c*(n-ready);
+      const plan=linePlan(), n=plan.ok+plan.short, ready=G.devFreeBuild?0:Math.min(n,G.crafted[activeTool]||0), tier=placeTier(activeTool);
+      const cost={}; for(const[k,c]of Object.entries(machineWorth(activeTool,tier)))cost[k]=c*(n-ready);
+      for(const[k,c]of Object.entries(tierSteps(activeTool,tier)))cost[k]=(cost[k]||0)+c*ready; // ready ones still pay their upgrade
+      if(tier>1)name+=` T${tier}`;
       name+=` ×${n}`;
-      chips=(ready?`<span class="cc ok">✓ ${ready} READY</span>`:'')+(n>ready||!ready?costChips(cost):'')+(plan.bad?`<span class="cc bad">${plan.bad} BLOCKED</span>`:'');
+      chips=(ready?`<span class="cc ok">✓ ${ready} READY</span>`:'')+(n>ready||!ready||tier>1?costChips(cost):'')+(plan.bad?`<span class="cc bad">${plan.bad} BLOCKED</span>`:'');
     }
     setHtml(document.getElementById('buildCost'),`<span class="bc-in"><span style="color:var(--amber)">${name}</span>${chips}${pw}<button class="bc-info${buildInfoOpen?' on':''}" onclick="toggleBuildInfo()" title="Details">i</button></span>`);
     if(confirmBtn) confirmBtn.style.display='';
@@ -7645,6 +7645,41 @@ function machineWorth(type,tier,modules){
   for(let k=2;k<=Math.min(3,tier||1);k++)addCost(t,tierCost(type,k));
   for(const mod of modules||[])if(mod)t[mod]=(t[mod]||0)+1;
   return t;
+}
+// ── Build tier (v2.0.46): the T1/T2/T3 squares in the build drawer pick the tier new machines are placed at, for every
+// machine that takes tiers (TIER_TYPES; belts only once Advanced Logistics allows their upgrades). Others place at T1.
+// A machine at T2/T3 costs its machineWorth (build cost plus each step); one waiting in G.crafted pays only the steps.
+let buildTier=1;
+function tiersOpen(){return G.research.done.includes('logistics')||Object.values(G.machines).some(m=>(m.tier||1)>1);}
+function placeTier(type){return TIER_TYPES.includes(type)&&!tierLocked(type)&&tiersOpen()?buildTier:1;}
+function tierSteps(type,tier){const t={};for(let k=2;k<=Math.min(3,tier||1);k++)addCost(t,tierCost(type,k));return t;}
+// What placing one costs now: {src:'free'|'crafted'|'inv', cost, tier}. crafted counts how many of the pool are spoken for.
+function placePay(type,used=0){
+  const tier=placeTier(type);
+  if(G.devFreeBuild)return {type,src:'free',cost:{},tier};
+  if((G.crafted[type]||0)>used)return {type,src:'crafted',cost:tierSteps(type,tier),tier};
+  return {type,src:'inv',cost:machineWorth(type,tier),tier};
+}
+const shortOf=(cost,inv=G.inv)=>Object.entries(cost).find(([k,n])=>(inv[k]||0)<n);
+function payPlace(pay){ // takes the cost (and the crafted one); false with a toast if it can't
+  const miss=shortOf(pay.cost);
+  if(miss){toast(`Need ${miss[1]}× ${ITEMS[miss[0]]?.name||miss[0]}`,'wrn');sfx('error');flashDrawerItem();return false;}
+  if(pay.src==='crafted')G.crafted[pay.type]--;
+  for(const[k,n]of Object.entries(pay.cost))G.inv[k]-=n;
+  return true;
+}
+// The undo op for a placement: a free one records its tier so undo takes back what demolish refunds; a crafted one
+// records none, so undo returns the upgrade steps that were paid along with the machine to the pool.
+function placeOp(m,pay){return {op:'place',id:m.id,src:pay.src,...(pay.src==='free'&&m.tier>1?{tier:m.tier}:{})};}
+function setBuildTier(t){buildTier=t; sfx('place'); buildDrawer(); updateBuildHUD(); updateInvStrip();}
+function tierPickHtml(){
+  return [1,2,3].map(t=>`<button class="dtier t${t}${t===buildTier?' on':''}" onclick="setBuildTier(${t})" title="Build at tier ${t}" aria-label="Build at tier ${t}">T${t}</button>`).join('');
+}
+// Cost chips for building one at the picked tier: READY plus the upgrade steps when one is waiting in CRAFT
+function buildChips(type){
+  const pay=placePay(type);
+  if(pay.src==='crafted')return `<span class="cc ok">✓ ${G.crafted[type]} READY</span>`+(pay.tier>1?costChips(pay.cost):'');
+  return costChips(pay.src==='free'?MDEFS[type].cost:pay.cost);
 }
 function upgradeMachine(id){
   const m=G.machines[id]; if(!m)return;

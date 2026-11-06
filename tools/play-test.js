@@ -879,6 +879,27 @@ const r=await p.evaluate(async()=>{
       feed(480); q._sent={}; const c0=chestTotal(ch); feed(480); return {right:(q._sent.iron_plate||0)/2,left:(chestTotal(ch)-c0)/2}; };
     const blocked=trial(true), open=trial(false);
     ok('splitter_overflows_blocked_side',blocked.right>=58&&open.left>=28&&open.right>=28,{blocked,open}); }
+  // ── Build tier picker (v2.0.46): T1/T2/T3 squares in the build drawer once upgrades are open; machines place at that
+  //    tier and pay its machineWorth (a crafted one pays only the steps); undo gives back exactly what was paid
+  { reset(); G.devFreeBuild=false; G.crafted={}; G.research.done=G.research.done.filter(k=>k!=='logistics');
+    if(activeTab)switchTab(activeTab); switchTab('build');
+    const shut=!tiersOpen()&&!document.getElementById('drawerTiers').classList.contains('on'); buildTier=3; const t1only=placeTier('assembler')===1;
+    G.research.done.push('logistics'); buildDrawer();
+    const sq=[...document.querySelectorAll('#drawerTiers .dtier')].map(b=>b.textContent).join(',');
+    setBuildTier(2); const shown=document.getElementById('drawerTiers').classList.contains('on')&&sq==='T1,T2,T3';
+    const inv0=JSON.parse(JSON.stringify(G.inv)); G.inv={}; addCost(G.inv,machineWorth('assembler',2));
+    setTool('assembler'); const bar=document.getElementById('buildCost').innerText;
+    const a=put('assembler',20,20,0); const paid=a&&a.tier===2&&Object.values(G.inv).every(n=>n===0);
+    undoLast(); const back=!G.machines[a?.id]&&Object.entries(machineWorth('assembler',2)).every(([k,n])=>G.inv[k]===n);
+    G.inv={iron_gear:2,circuit:1}; G.crafted={inserter:1}; const ins=put('inserter',20,24,0);
+    const fromPool=ins&&ins.tier===2&&G.crafted.inserter===0&&!G.inv.iron_gear&&!G.inv.circuit;
+    undoLast(); const poolBack=G.crafted.inserter===1&&G.inv.iron_gear===2&&G.inv.circuit===1;
+    setBuildTier(3); G.inv={}; G.crafted={}; addCost(G.inv,machineWorth('belt',3)); addCost(G.inv,machineWorth('belt',3)); addCost(G.inv,machineWorth('belt',3));
+    setTool('belt'); line.path=[0,1,2,3].map(i=>({x:20+i,y:28})); const lineBar=document.getElementById('buildCost')?.innerText||''; placeLine();
+    const belts=Object.values(G.machines).filter(m=>m.type==='belt'), lineOk=belts.length===3&&belts.every(b=>b.tier===3)&&Object.values(G.inv).every(n=>n===0);
+    G.inv={}; addCost(G.inv,MDEFS.stone_furnace.cost); const fu=put('stone_furnace',26,20,0); const plain=fu&&(fu.tier||1)===1&&Object.values(G.inv).every(n=>n===0);
+    setTool('select'); setBuildTier(1); switchTab('build'); G.inv=inv0; G.devFreeBuild=true;
+    ok('build_tier_picker',shut&&t1only&&shown&&/T2/.test(bar)&&paid&&back&&fromPool&&poolBack&&lineOk&&plain,{shut,t1only,sq,bar,paid,back,fromPool,poolBack,lineOk,belts:belts.length,lineBar,plain}); }
   // ── Sound is one setting for the device: it survives a zone change and a new game; an old save hands its choice over once
   { const keep={sfx:PREFS.sfx,music:PREFS.music,musicVol:PREFS.musicVol,audioSet:PREFS.audioSet};
     PREFS.sfx=true; PREFS.audioSet=false; toggleSfx(); setMusicVol(0.3);
