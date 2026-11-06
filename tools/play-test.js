@@ -925,14 +925,16 @@ const r=await p.evaluate(async()=>{
   //    still out-clears a pump with its Cracker and Refinery; smog still tops out at 100% (machines at 10%), and the
   //    tutorial quotes the real numbers
   { const z0=G.zone; G.zone=2; reset(); power(2,2);
-    const scaled=SMOG_SCALE===0.6&&SMOG_PER.oil_pump===12&&SMOG_PER.cracker===9&&SMOG_DECAY_MIN===3.6&&SCRUBBER_SMOG_MIN===36;
+    const scaled=SMOG_SCALE===0.6&&SMOG_PER.oil_pump===12&&SMOG_PER.cracker===9&&SCRUBBER_SMOG_MIN===36;
+    // natural clearing 10/min (v2.0.48): 100% clears in 10 minutes with nothing running
+    G.smog=100; G.machines={}; for(const row of G.map)for(const t of row)t.mid=null; run(2400); const cleared=G.smog===0&&SMOG_DECAY_MIN===10; G.smog=100; run(2360); const notYet=G.smog>0; power(2,2);
     const holds=SCRUBBER_SMOG_MIN>SMOG_PER.oil_pump+SMOG_PER.cracker+SMOG_PER.refinery;
     G.smog=95; addSmog(500); const top=G.smog===100;
     const cr=put('cracker',20,20); cr.recipe='z2_crack'; const slow=/10% right now/.test(machineRates(cr).notes.join(' '));
     const tut=TUTORIALS[2].steps.map(s=>s.text).join(' '), quoted=/about 12 smog a minute/.test(tut)&&/clears 36 smog/.test(tut)&&/about 30, and every Combustion Gen adds 12/.test(tut);
     G.smog=0; G.zone=z0;
     const cheap=TECHS.smog_control.cost.sci_smog===45&&TECHS.smog_control.cost.sci_scar===120; // v2.0.48: Smog Data 90 → 45
-    ok('smog_rates_scaled',scaled&&holds&&top&&slow&&quoted&&cheap,{scaled,holds,top,slow,quoted,cheap}); }
+    ok('smog_rates_scaled',scaled&&holds&&top&&slow&&quoted&&cheap&&cleared&&notYet,{scaled,holds,top,slow,quoted,cheap,cleared,notYet}); }
   // ── The Scar's tutorial explains smog before the first pump, names every machine that makes it, and the step clears when
   //    the smog gauge is tapped (v2.0.47)
   { const st=TUTORIALS[2].steps, z0=G.zone, t0=G.zoneTut, peek=G.stats.smogPeek;
