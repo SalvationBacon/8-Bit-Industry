@@ -931,7 +931,8 @@ const r=await p.evaluate(async()=>{
     const cr=put('cracker',20,20); cr.recipe='z2_crack'; const slow=/10% right now/.test(machineRates(cr).notes.join(' '));
     const tut=TUTORIALS[2].steps.map(s=>s.text).join(' '), quoted=/about 12 smog a minute/.test(tut)&&/clears 36 smog/.test(tut)&&/about 30, and every Combustion Gen adds 12/.test(tut);
     G.smog=0; G.zone=z0;
-    ok('smog_rates_scaled',scaled&&holds&&top&&slow&&quoted,{scaled,holds,top,slow,quoted}); }
+    const cheap=TECHS.smog_control.cost.sci_smog===45&&TECHS.smog_control.cost.sci_scar===120; // v2.0.48: Smog Data 90 → 45
+    ok('smog_rates_scaled',scaled&&holds&&top&&slow&&quoted&&cheap,{scaled,holds,top,slow,quoted,cheap}); }
   // ── The Scar's tutorial explains smog before the first pump, names every machine that makes it, and the step clears when
   //    the smog gauge is tapped (v2.0.47)
   { const st=TUTORIALS[2].steps, z0=G.zone, t0=G.zoneTut, peek=G.stats.smogPeek;

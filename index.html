@@ -612,7 +612,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.47 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.48 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -799,7 +799,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.47';
+const VER      = '2.0.48';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -1654,7 +1654,7 @@ const TECHS = {
   },
   smog_control: {
     name:'Smog Control', icon:'🌿', era:'The Scar · Era 2',
-    cost:{sci_scar:120,sci_smog:90}, req:['oil_extraction'],
+    cost:{sci_scar:120,sci_smog:45}, req:['oil_extraction'], // Smog Data 90 → 45 (v2.0.48, user request: the wait for Scrubbers dragged)
     desc:'Unlocks Scrubber and Combustion Generator. Required for Repair Data science pack.',
     zone:2,
   },
