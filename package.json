@@ -1,6 +1,6 @@
 {
   "name": "eight-bit-industry",
-  "version": "2.0.43",
+  "version": "2.0.44",
   "private": true,
   "description": "8-Bit Industry: the Android app wrapper (Capacitor). The game itself is index.html.",
   "scripts": {

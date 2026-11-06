@@ -856,6 +856,13 @@ const r=await p.evaluate(async()=>{
     reset(); power(2,2); const src=put('chest',10,32); src.chestInv.coal=150; put('inserter',11,32,0); const dst=put('chest',12,32); dst.chestInv.coal=190;
     run(800); const insTot=chestTotal(dst);
     ok('chest_needs_inserter_cap_200',tot===200&&queued>=5&&insTot===200,{tot,queued,insTot}); }
+  // ── A furnace fed from a mixed chest: a full coal buffer never blocks the ore, and items it can't use stay put (v2.0.44)
+  { reset(); power(2,2); const mix=put('chest',10,34); mix.chestInv={coal:120,stone:40,iron_ore:40};
+    put('inserter',11,34,0); const fu=put('stone_furnace',12,34); fu.recipe='fn_iron'; fu.inBuf.coal=50;
+    put('inserter',13,34,0); const out=put('chest',14,34);
+    run(480); const plates=(out.chestInv.iron_plate||0)+(fu.outBuf.iron_plate||0), noStone=!fu.inBuf.stone, coalCap=(fu.inBuf.coal||0)<=50;
+    const arm=Object.values(G.machines).find(m=>m.type==='inserter'&&m.x===11)._arm, notStuck=!(arm&&arm.state==='waiting');
+    ok('furnace_inputs_dont_clog',plates>=8&&noStone&&coalCap&&notStuck&&mix.chestInv.stone===40,{plates,ore:fu.inBuf.iron_ore,coal:fu.inBuf.coal,stone:fu.inBuf.stone,arm:arm&&arm.state}); }
   // ── Sound is one setting for the device: it survives a zone change and a new game; an old save hands its choice over once
   { const keep={sfx:PREFS.sfx,music:PREFS.music,musicVol:PREFS.musicVol,audioSet:PREFS.audioSet};
     PREFS.sfx=true; PREFS.audioSet=false; toggleSfx(); setMusicVol(0.3);

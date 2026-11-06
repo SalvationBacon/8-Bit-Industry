@@ -600,7 +600,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.43 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.44 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -786,7 +786,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.43';
+const VER      = '2.0.44';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -6349,8 +6349,7 @@ function stepInserter(m){
     // Waiting for room before even grabbing lost most of a swing per item (a T1 chain ran at 34/min, not 60)
 
     let item=null;
-    const acc=MDEFS[dm.type]?.accepts, want=k=>!acc||acc.includes(k);
-    if(acc&&(dm.inBuf[acc[0]]||0)>=(MDEFS[dm.type].bufCap||50))return; // full: wait
+    const toMachine=!beltLike(dm.type)&&dm.type!=='chest', want=k=>!toMachine||insTakes(dm,k);
     if(src.mid!==null){
       const sm=G.machines[src.mid];
       if(sm&&beltLike(sm.type)){ // belts, tunnel mouths and splitters
@@ -6459,6 +6458,23 @@ function isOutputFacing(dm,dvx,dvy){return outputPortFacing(dm,dvx,dvy)>=0;}
 function portItems(m,i){
   const ports=PORTS[m.type]?.outputs||[], rec=m.recipe&&RECIPES[m.recipe], outs=rec?Object.keys(rec.out):[];
   return outs.length>1&&ports.length>=outs.length?outs[i]||null:null;
+}
+// What a machine takes from an inserter right now (v2.0.44): only items it uses, and only while that item's own buffer
+// has room. Before, an arm grabbed whatever came first; when that item's buffer was full (a furnace's coal, say) it stood
+// holding it, so the other input (the ore) never got in and the machine clogged. Machines with recipes take the inputs of
+// the recipe set (or of any recipe they can run, before one is picked) and living machines their paste; machines without
+// recipes (generators, scrubbers, the reactor, the Singularity) take anything while there is room, as before.
+function insTakes(dm,k){
+  const def=MDEFS[dm.type]; if(!def)return false;
+  const cap=def.bufCap||50;
+  if((dm.inBuf[k]||0)>=cap)return false;
+  if(def.accepts)return def.accepts.includes(k);
+  if(def.recipes&&def.recipes.length){
+    if(def.living&&k==='nutrient')return true;
+    const rs=dm.recipe?[dm.recipe]:def.recipes.filter(r=>zoneRecipeOk(r));
+    return rs.some(r=>RECIPES[r]&&k in (RECIPES[r].in||{}));
+  }
+  return true;
 }
 function portTakes(m,i,k){const want=portItems(m,i); return !want||want===k||!(k in (RECIPES[m.recipe]?.out||{}));}
 // The turn group an inserter belongs to: one per chest, one per output arrow of a machine
