@@ -1847,8 +1847,8 @@ function rocketUnlocked(){const t=zoneDef().rocketTech;return !!t&&G.research.do
 // Everything the current zone's launch consumes: parts + any launch fuel
 function rocketReqs(){
   const zd=zoneDef();
-  const list=zd.parts.map(p=>({id:p.id,name:p.name,need:p.need}));
-  if(zd.fuel)list.push({id:zd.fuel.item,name:`${ITEMS[zd.fuel.item].name} (launch)`,need:zd.fuel.n});
+  const list=zd.parts.map(p=>({id:p.id,name:p.name,need:uniScale(p.need)})); // 25% more per Big Bang (v2.0.47)
+  if(zd.fuel)list.push({id:zd.fuel.item,name:`${ITEMS[zd.fuel.item].name} (launch)`,need:uniScale(zd.fuel.n)});
   return list.map(r=>({...r,icon:ITEMS[r.id]?.icon||'?',have:G.inv[r.id]||0}));
 }
 // Techs that belong to a zone (Zone 1 techs have no zone field)
@@ -5796,16 +5796,18 @@ function runReactor(m,def){
 const SING_BASE={grav_lens:500,stellar_casing:1000,void_engine:500,quantum_mind:500};
 function singReqsFor(bangs){const k=1+0.25*(bangs||0); return Object.fromEntries(Object.entries(SING_BASE).map(([id,n])=>[id,Math.round(n*k/10)*10]));}
 let SING_REQS=singReqsFor(0); // set for the current universe in startGame()
-// Research scales with the universe too (v2.0.47, user request): every Big Bang makes each tech cost 25% more science
-// packs, the same step as the Singularity, so later universes need bigger factories. techCost(id) is the only place a
-// tech's cost is read; costs of 20+ round to 5s. RESEARCH_SCALE is set for the current universe in startGame().
+// Research and rockets scale with the universe too (v2.0.47, user request): every Big Bang makes every tech in every zone
+// cost 25% more science packs, and every zone's rocket parts and launch fuel 25% more, the same step as the Singularity,
+// so later universes need bigger factories. techCost(id) is the only place a tech's cost is read, rocketReqs() the only
+// place a launch's needs are; uniScale(n) rounds (20+ to 5s). UNIVERSE_SCALE is set for the current universe in startGame().
 // Tutorial tally for a research step: the science packs it really costs in this universe
 function techRows(tid){return Object.entries(techCost(tid)).map(([id,need])=>({id,label:ITEMS[id]?.name||id,have:G.inv[id]||0,need}));}
-function researchScaleFor(bangs){return 1+0.25*(bangs||0);}
-let RESEARCH_SCALE=1;
+function universeScaleFor(bangs){return 1+0.25*(bangs||0);}
+let UNIVERSE_SCALE=1;
+function uniScale(n){if(UNIVERSE_SCALE===1)return n; const v=n*UNIVERSE_SCALE; return v>=20?Math.round(v/5)*5:Math.max(1,Math.round(v));}
 function techCost(id){
-  const c=TECHS[id]?.cost||{}; if(RESEARCH_SCALE===1)return c;
-  return Object.fromEntries(Object.entries(c).map(([k,n])=>{const v=n*RESEARCH_SCALE;return [k,v>=20?Math.round(v/5)*5:Math.max(1,Math.round(v))];}));
+  const c=TECHS[id]?.cost||{}; if(UNIVERSE_SCALE===1)return c;
+  return Object.fromEntries(Object.entries(c).map(([k,n])=>[k,uniScale(n)]));
 }
 function universeNum(){return (PRESTIGE.bangs||0)+(G&&G.bigBang?0:1);}
 const SING_POWER=5000, SING_SUSTAIN=240;
@@ -5933,7 +5935,7 @@ function triggerBigBang(){
       The Singularity holds for sixty seconds.<br>Then everything, every belt, every world, collapses to a point.<br><br>
       <span style="color:var(--purple);font-size:var(--f7)">A NEW UNIVERSE BEGINS</span><br><br>
       <span style="color:var(--amber)">+${dust} ✨ Stardust</span> <span style="color:var(--text3)">(${base}: 10 + 1 per 2 achievements, up to +${ACH_DUST_MAX}${ascend>1?`, ×${ascend.toFixed(2)} for Universe ${PRESTIGE.bangs}`:''})</span><br>
-      <span style="color:var(--text3);font-size:var(--f5)">Universe ${PRESTIGE.bangs+1} next: research and the Singularity need 25% more, and it pays 25% more</span><br>
+      <span style="color:var(--text3);font-size:var(--f5)">Universe ${PRESTIGE.bangs+1} next: research, rockets and the Singularity need 25% more, and it pays 25% more</span><br>
       <span style="color:var(--text3);font-size:var(--f5)">Big Bangs: ${PRESTIGE.bangs} · Stardust is permanent across runs</span>
       ${PREFS.timer?`<br>${splitLine('The Singularity:',split)}${run?splitLine('Full run:',run):''}`:''}
     </div>`,
@@ -5950,7 +5952,7 @@ function openStardustShop(){
   let html=`<div class="card" style="margin-bottom:8px;text-align:center">
     <div style="font-size:var(--f5);color:var(--text3)">STARDUST</div>
     <div style="font-size:var(--f10);color:var(--amber)">✨ ${PRESTIGE.stardust}</div>
-    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px;line-height:1.8">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}<br>${G&&G.bigBang?'Next: ':''}Universe ${G&&G.bigBang?u+1:u}: research and the Singularity need ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} and pays ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} Stardust</div>
+    <div style="font-size:var(--f4);color:var(--text3);margin-top:3px;line-height:1.8">Big Bangs: ${PRESTIGE.bangs} · lifetime ${PRESTIGE.total}<br>${G&&G.bigBang?'Next: ':''}Universe ${G&&G.bigBang?u+1:u}: research, rockets and the Singularity need ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} and pays ×${(1+0.25*((G&&G.bigBang?u+1:u)-1)).toFixed(2)} Stardust</div>
   </div>`;
   let cat='';
   for(const it of PRESTIGE_SHOP){
@@ -8026,7 +8028,7 @@ function renderResPanel(){
   let html=`<div class="card" style="margin-bottom:12px">
     <span class="sec-label">SCIENCE PACKS</span>
     <div style="font-size:var(--f6);color:var(--text2);line-height:2">${sciHtml}</div>
-    ${RESEARCH_SCALE>1?`<div style="font-size:var(--f5);color:var(--text3);margin-top:6px">Universe ${(PRESTIGE.bangs||0)+1}: research costs ×${RESEARCH_SCALE.toFixed(2)}</div>`:''}
+    ${UNIVERSE_SCALE>1?`<div style="font-size:var(--f5);color:var(--text3);margin-top:6px">Universe ${(PRESTIGE.bangs||0)+1}: research and rockets cost ×${UNIVERSE_SCALE.toFixed(2)}</div>`:''}
   </div>`;
 
   // Show this zone's techs (Zone 5 merges every zone, so it shows all)
@@ -8120,7 +8122,7 @@ function renderRocketPanel(){
       Research <span style="color:var(--amber)">${TECHS[zd.rocketTech]?.name}</span> to see the rocket parts.
     </div>`+milestonesHtml(); return;
   }
-  let html=goalHeaderHtml()+`<span class="sec-label">COMPONENTS REQUIRED</span>${rocketReqRows(false)}`;
+  let html=goalHeaderHtml()+`<span class="sec-label">COMPONENTS REQUIRED</span>${UNIVERSE_SCALE>1?`<div style="font-size:var(--f5);color:var(--text3);margin:-2px 0 6px">Universe ${(PRESTIGE.bangs||0)+1}: ×${UNIVERSE_SCALE.toFixed(2)} parts</div>`:''}${rocketReqRows(false)}`;
   html+=rocketReady()
     ?`<button class="full-btn launch" onclick="launchRocket()">🚀 ${zd.launchLabel}</button>`
     :`<div style="font-size:var(--f5);color:var(--text3);text-align:center;margin-top:10px;padding:8px;border:1px solid var(--border)">
@@ -10418,7 +10420,7 @@ function devGiveAll(){
 
 function devCompleteRocket(){
   if(!G.research.done.includes('rocket_tech'))G.research.done.push('rocket_tech');
-  for(const p of ROCKET_PARTS) G.inv[p.id]=(G.inv[p.id]||0)+p.need;
+  for(const p of ROCKET_PARTS) G.inv[p.id]=(G.inv[p.id]||0)+uniScale(p.need);
   buildToolbar(); updateHUD();
   toast('Rocket components given','ok');
 }
@@ -10675,7 +10677,7 @@ function startGame(isNew){
   stopTitleScene(); clearUndo(); moveState={active:false,machineId:null,origX:0,origY:0}; // a held machine belonged to the old game
   if(STORE_BUILD&&!G.sandbox){G.devMode=false;G.devFreeBuild=false;G.devFreeCraft=false;G.devTickSpeed=1;} // a web backup carried into the app
   SING_REQS=singReqsFor(PRESTIGE.bangs); // this universe's Singularity (25% bigger per Big Bang)
-  RESEARCH_SCALE=researchScaleFor(PRESTIGE.bangs); // and its research (25% more science packs per Big Bang)
+  UNIVERSE_SCALE=universeScaleFor(PRESTIGE.bangs); // and its research and rockets (25% more per Big Bang)
   if(G._newFloor){delete G._newFloor;setTimeout(()=>toast('New: the Factory Floor! Scroll down past the ore fields for open ground','ok'),1500);}
   if(G._coolant){delete G._coolant;setTimeout(()=>toast('New: Heat Sinks need coolant. Pipe enzymes or brine to them, or reactors overheat','wrn'),3000);}
   if(G._gaskets){delete G._gaskets;setTimeout(()=>toast('New: Relief Valves wear out Gaskets. Yours have 4 spares each: tap a valve to see','wrn'),2600);}

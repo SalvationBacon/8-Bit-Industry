@@ -881,16 +881,21 @@ const r=await p.evaluate(async()=>{
     ok('splitter_overflows_blocked_side',blocked.right>=58&&open.left>=28&&open.right>=28,{blocked,open}); }
   // ── Research scales with the universe (v2.0.47): every Big Bang, each tech costs 25% more science packs (the Singularity's
   //    step); research charges the scaled cost, the panel says so, and the tutorial tallies show what research really costs
-  { reset(); const keep=RESEARCH_SCALE, bangs=PRESTIGE.bangs;
-    RESEARCH_SCALE=researchScaleFor(0); const base=techCost('logistics').sci_red===60&&techCost('automation').sci_red===5;
-    RESEARCH_SCALE=researchScaleFor(1); const u2=techCost('logistics').sci_red===75&&techCost('automation').sci_red===6&&techCost('rocket_tech').sci_blue===75;
-    RESEARCH_SCALE=researchScaleFor(2); const u3=techCost('logistics').sci_red===90&&techCost('singularity').sci_void===180;
+  { reset(); const keep=UNIVERSE_SCALE, bangs=PRESTIGE.bangs;
+    UNIVERSE_SCALE=universeScaleFor(0); const base=techCost('logistics').sci_red===60&&techCost('automation').sci_red===5;
+    UNIVERSE_SCALE=universeScaleFor(1); const u2=techCost('logistics').sci_red===75&&techCost('automation').sci_red===6&&techCost('rocket_tech').sci_blue===75;
+    UNIVERSE_SCALE=universeScaleFor(2); const u3=techCost('logistics').sci_red===90&&techCost('singularity').sci_void===180;
     G.research.done=G.research.done.filter(k=>k!=='logistics'); const inv0=G.inv.sci_red; G.inv.sci_red=89; doResearch('logistics'); const refused=!G.research.done.includes('logistics');
     G.inv.sci_red=95; doResearch('logistics'); const charged=G.research.done.includes('logistics')&&G.inv.sci_red===5;
-    PRESTIGE.bangs=2; renderResPanel(); const note=/research costs ×1\.50/.test(document.getElementById('pResBody').innerText);
+    PRESTIGE.bangs=2; renderResPanel(); const note=/research and rockets cost ×1\.50/.test(document.getElementById('pResBody').innerText);
     const tally=techRows('fluid_handling')[0].need===45&&techRows('singularity')[0].need===180;
-    RESEARCH_SCALE=keep; PRESTIGE.bangs=bangs; G.inv.sci_red=inv0;
-    ok('research_scales_per_big_bang',base&&u2&&u3&&refused&&charged&&note&&tally,{base,u2,u3,refused,charged,note,tally}); }
+    // every zone's rocket parts and launch fuel by the same step (Universe 3: ×1.5)
+    const zone0=G.zone, need=z=>{G.zone=z;const r=Object.fromEntries(rocketReqs().map(q=>[q.id,q.need]));return r;};
+    const r1=need(1), r2=need(2), r3=need(3), r4=need(4); G.zone=zone0;
+    const rockets=r1.r_chassis===8&&r1.r_propellant===15&&r2.r_hull===30&&r2.refined_fuel===150&&r3.fuel_rod===30&&r4.hyperfuel===45&&r4.r_core===8;
+    G.inv.r_chassis=7; const short=!rocketReqs().every(r=>r.id!=='r_chassis'||r.have>=r.need);
+    UNIVERSE_SCALE=keep; PRESTIGE.bangs=bangs; G.inv.sci_red=inv0;
+    ok('research_scales_per_big_bang',base&&u2&&u3&&refused&&charged&&note&&tally&&rockets&&short,{base,u2,u3,refused,charged,note,tally,rockets,r1,r2,short}); }
   // ── A machine picked up with the Move tool goes back when the tool changes (v2.0.47: switching to Rotate, Blueprint or
   //    Move again left a splitter drawn with no tiles, so it couldn't be tapped until a reload). Belt arrows show while planning
   { reset(); const owns=m=>{const[w,h]=machSize(m);for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)if(G.map[m.y+dy][m.x+dx].mid!==m.id)return false;return true;};
