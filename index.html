@@ -824,7 +824,10 @@ function smogBudget(){ // what is making and clearing smog right now, per minute
   }
   return {make,clear,makers,scrubbers};
 }
-function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(100,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1)*hazardEase());} // Clean Burn: -30%
+// Smog stops at SMOG_MAX (v2.0.47, user request): at 100% machines crawled at 10% for minutes on end; at the 80% cap they
+// still run at 20%, and there is less to clear once Scrubbers start.
+const SMOG_MAX=80;
+function addSmog(n){if(zoneHas('smog'))G.smog=Math.min(SMOG_MAX,(G.smog||0)+n*(G.perks?.spent?.smog1?0.7:1)*hazardEase());} // Clean Burn: -30%
 
 const T_FLOOR    = 0;
 const T_RESOURCE = 1;
@@ -5335,7 +5338,7 @@ function gameTick(){
   // Smog tick, natural decay + clamp
   if(zoneHas('smog')){
     if(G.smog===undefined)G.smog=0;
-    G.smog=Math.max(0,Math.min(100,G.smog-SMOG_DECAY_MIN/TICKS_PER_MIN));
+    G.smog=Math.max(0,Math.min(SMOG_MAX,G.smog-SMOG_DECAY_MIN/TICKS_PER_MIN)); // an older save above the cap drops to it
   }
 
   if(G.tick%4===0){checkAchievements();tickTutorial();}
@@ -5646,9 +5649,10 @@ function runPump(m,def){
   if(!net){m._fluidStatus='nopipe';return;}
   m._fluidStatus='ok';
   net.type=def.pumps;
-  net.amt=Math.min(net.cap,net.amt+(m.tier===3?2:m.tier===2?1.5:1));
+  const sp=MACHINE_TIER_SPEED[m.tier||1]||1; // ×1 / ×2 / ×4 like every tier (it was 1 / 1.5 / 2, unreachable until v2.0.47)
+  net.amt=Math.min(net.cap,net.amt+sp);
   net.inflow++;
-  m.produced++; recordOutput(m,1,def.pumps);
+  m.produced+=sp; recordOutput(m,sp,def.pumps);
 }
 
 function fluidReady(m,rec){
@@ -7656,15 +7660,27 @@ const BELT_TIER_COSTS={ // per belt tile, splitter or tunnel
 // Machines that take tier upgrades; module slots are only for the production machines
 const MODULE_TYPES=['miner','blast_furnace','electric_smelter','assembler','lab'];
 const BELT_TYPES=['belt','splitter','tunnel'];
-const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES];
+// Later zones' production machines take tiers too (v2.0.47, user request: Oil Pumps, Crackers and the rest had none).
+// Speed ×1 / ×2 / ×4 like every machine, paid in what their home zone makes: The Scar Polymer Sheets, The Deep
+// Silicon, Magnets and Batteries, The Bloom Luminite Crystals and Bio-Composite (in Zone 5 too, by home zone).
+const ZONE_TIER_HOME={oil_pump:2,cracker:2,refinery:2, brine_pump:3,evaporator:3,separator:3,rod_press:3,
+  enzyme_pump:4,algae_vat:4,bioreactor:4,spore_incubator:4,hyper_synth:4};
+const ZONE_TIER_COSTS={
+  2:{2:{polymer_sheet:5,iron_gear:5,circuit:2},  3:{polymer_sheet:10,steel_plate:6,engine:2}},
+  3:{2:{silicon:5,steel_plate:4,circuit:3},      3:{magnet:6,battery:2,steel_plate:6}},
+  4:{2:{lum_crystal:4,steel_plate:4,circuit:3},  3:{bio_composite:6,lum_crystal:6,engine:2}},
+};
+const TIER_TYPES=[...MODULE_TYPES,'inserter','long_inserter',...BELT_TYPES,...Object.keys(ZONE_TIER_HOME)];
 const isInserter=t=>t==='inserter'||t==='long_inserter';
 // Belt upgrades need Advanced Logistics (it used to give +50% belt speed instead)
 function tierLocked(type){return BELT_TYPES.includes(type)&&!G.research.done.includes('logistics')?'Advanced Logistics':null;}
-function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:TIER_COSTS)[tier];}
+function tierCost(type,tier){return (isInserter(type)?INS_TIER_COSTS:BELT_TYPES.includes(type)?BELT_TIER_COSTS:ZONE_TIER_HOME[type]?ZONE_TIER_COSTS[ZONE_TIER_HOME[type]]:TIER_COSTS)[tier];}
 function tierBonus(type,tier){
   if(isInserter(type))return `${60*INS_TIER_SPEED[tier]} items/min`;
   if(BELT_TYPES.includes(type))return `${60*BELT_TIER_SPEED[tier]} items/min`;
   if(type==='miner')return `${60*MINER_TIER_SPEED[tier]} items/min`;
+  if(type==='oil_pump')return `${60*MINER_TIER_SPEED[tier]} crude oil/min`;
+  if(MDEFS[type]?.pumps)return `${fmtRate(TICKS_PER_MIN/2*MACHINE_TIER_SPEED[tier])} ${ITEMS[MDEFS[type].pumps]?.name.toLowerCase()||'fluid'}/min`;
   return `${MACHINE_TIER_SPEED[tier]}× speed`;
 }
 function addCost(totals,cost){for(const[k,n]of Object.entries(cost))totals[k]=(totals[k]||0)+n;return totals;}
@@ -8920,7 +8936,7 @@ function renderSmogPanel(){
   const rate=n=>fmtRate(Math.abs(n));
   const small='font-size:var(--f4);color:var(--text3)';
   let trend;
-  if(r.net>0.001)trend=pct>=100?`<span style="color:var(--red)">At 100%: machines run at 10%</span>`:`<span style="color:var(--red)">Rising ${rate(r.net)}/min · 100% in ${fmtMins((100-r.smog)/r.net)}</span>`;
+  if(r.net>0.001)trend=pct>=SMOG_MAX?`<span style="color:var(--red)">At the ${SMOG_MAX}% cap: machines run at ${100-SMOG_MAX}%</span>`:`<span style="color:var(--red)">Rising ${rate(r.net)}/min · ${SMOG_MAX}% cap in ${fmtMins((SMOG_MAX-r.smog)/r.net)}</span>`;
   else if(r.smog>0.05)trend=`<span style="color:var(--green)">Falling ${rate(r.net)}/min · clear in ${fmtMins(r.smog/-r.net)}</span>`;
   else trend=`<span style="color:var(--green)">Clear air</span>`;
   let html=`<div class="card">
@@ -9131,7 +9147,7 @@ function hazPressureHtml(){
     const p=Math.round(pressureOf(n)), ports=[...n.ports];
     const pumps=ports.filter(m=>MDEFS[m.type].pumps), users=ports.filter(m=>!MDEFS[m.type].pumps);
     const valves=n.members.filter(m=>m.type==='relief_valve'), jammed=valves.filter(valveJammed);
-    const pushMin=pumps.reduce((a,m)=>a+(m.mineRes===MDEFS[m.type].pumps&&m.active?(m.tier===3?2:m.tier===2?1.5:1)*TICKS_PER_MIN/2:0),0);
+    const pushMin=pumps.reduce((a,m)=>a+(m.mineRes===MDEFS[m.type].pumps&&m.active?(MACHINE_TIER_SPEED[m.tier||1]||1)*TICKS_PER_MIN/2:0),0);
     const col=n.strain>0?'var(--red)':p>=RELIEF_AT?'var(--amber)':p<LOW_PRESSURE?'var(--blue)':'var(--teal)';
     let advice;
     if(n.strain>0)advice=`<span style="color:var(--red)">Strain ${Math.round(n.strain/burstStrain()*100)}%: a pipe will burst.</span> Add a Relief Valve${jammed.length?`, load Gaskets into the ${jammed.length} jammed one${jammed.length>1?'s':''}`:''}, or add machines that use it.`;
@@ -9815,7 +9831,7 @@ const TUTORIALS={
     // v2.0.47 (user request): smog is explained before the first pump, with every machine that makes it
     {text:'Study the ruins: hand-craft [[sci_scar]] Scar Notes (gear + 2 coal) in 🔨 CRAFT, or make them in a Lab, then open 🔬 RESEARCH and unlock Oil Extraction.',
      tally:()=>techRows('oil_extraction'), done:()=>researched('oil_extraction')},
-    {text:'⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%) and clears only slowly. Tap 🌫️ in the top bar to see where it comes from.',
+    {text:'⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%, a fifth at its 80% cap) and clears only slowly. Tap 🌫️ in the top bar to see where it comes from.',
      done:()=>!!G.stats.smogPeek||researched('smog_control')},
     {text:'Place an [[oil_pump]] Oil Pump (BUILD → Liquids → [[oil_pump]]) on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil, and about 20 smog a minute.',
      done:()=>hasM('oil_pump')},

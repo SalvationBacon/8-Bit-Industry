@@ -896,6 +896,40 @@ const r=await p.evaluate(async()=>{
     G.inv.r_chassis=7; const short=!rocketReqs().every(r=>r.id!=='r_chassis'||r.have>=r.need);
     UNIVERSE_SCALE=keep; PRESTIGE.bangs=bangs; G.inv.sci_red=inv0;
     ok('research_scales_per_big_bang',base&&u2&&u3&&refused&&charged&&note&&tally&&rockets&&short,{base,u2,u3,refused,charged,note,tally,rockets,r1,r2,short}); }
+  // ── Later zones' production machines take tiers (v2.0.47): paid in their home zone's goods, ×1/×2/×4 like the rest, and
+  //    the panel's numbers agree (Oil Pump crude onto a belt, a Cracker's cracks, a Brine Pump's push into its pipes)
+  { const z0=G.zone, inv0=JSON.parse(JSON.stringify(G.inv));
+    const all=Object.keys(ZONE_TIER_HOME).every(t=>TIER_TYPES.includes(t)&&tierCost(t,2)&&tierCost(t,3));
+    const costs=tierCost('cracker',2).polymer_sheet===5&&tierCost('evaporator',3).magnet===6&&tierCost('hyper_synth',2).lum_crystal===4;
+    // buying T2 then T3 with the zone's goods
+    G.zone=2; reset(); res(10,40,2,2,'oil'); const pu=put('oil_pump',10,40); G.devFreeBuild=false;
+    G.inv={}; addCost(G.inv,tierCost('oil_pump',2)); upgradeMachine(pu.id); const t2=pu.tier===2&&Object.values(G.inv).every(n=>!n);
+    G.inv={}; upgradeMachine(pu.id); const refused=pu.tier===2;
+    G.devFreeBuild=true; G.inv=inv0;
+    // crude per minute onto a belt at T1, T2, T3
+    const crude=t=>{ G.zone=2; reset(); power(2,2); power(2,5); res(10,40,2,2,'oil'); const q=put('oil_pump',10,40); q.mineRes='oil'; q.tier=t;
+      for(let x=12;x<20;x++){put('belt',x,40,0).tier=3; put('belt',x,41,0).tier=3;} const k=sink(20,40), k2=sink(20,41); G.smog=0;
+      run(80); k._sent={}; k2._sent={}; run(240); G.smog=0; return ((k._sent.crude_oil||0)+(k2._sent.crude_oil||0)); };
+    const c1=crude(1), c2=crude(2), c3=crude(3);
+    // a Cracker at T2 cracks twice as often
+    const cracks=t=>{ G.zone=2; reset(); power(2,2); const cr=put('cracker',20,20); cr.recipe='z2_crack'; cr.tier=t; cr.inBuf.crude_oil=50; G.smog=0;
+      let n=0; for(let i=0;i<240;i++){ run(1); G.smog=0; cr.inBuf.crude_oil=50; n+=cr.outBuf.plastic||0; cr.outBuf={}; } return n; };
+    const k1=cracks(1), k2=cracks(2);
+    // a Brine Pump at T3 pushes four times as much, and the pressure panel says so
+    G.zone=3; reset(); power(2,2); power(2,5); res(10,40,2,2,'brine'); const bp=put('brine_pump',10,40); bp.tier=3; for(let x=12;x<30;x++)put('pipe',x,40); put('fluid_tank',30,40);
+    run(40); const net=bp._nets?.[0]; const before=net?net.amt:0; run(40); const after=bp._nets?.[0]?.amt||0; const push=Math.round(after-before);
+    const rate=machineRates(bp).out.brine, panel=/480\/min in/.test(hazPressureHtml());
+    G.zone=z0;
+    ok('later_machines_tiers',all&&costs&&t2&&refused&&c1===60&&c2===120&&c3===240&&k2===2*k1&&k1>0&&push===80&&rate===480&&panel,{all,costs,t2,refused,c1,c2,c3,k1,k2,push,rate,panel}); }
+  // ── Smog stops at 80% (v2.0.47): machines keep 20% speed, an old save at 100% drops to the cap, the panel says so
+  { const z0=G.zone; G.zone=2; reset(); power(2,2);
+    G.smog=70; addSmog(500); const capped=G.smog===SMOG_MAX&&SMOG_MAX===80;
+    G.smog=100; run(1); const oldSave=G.smog<=80;
+    G.smog=80; const cr=put('cracker',20,20); cr.recipe='z2_crack'; const note=machineRates(cr).notes.join(' ');
+    const slow=/20% right now/.test(note);
+    const op=put('oil_pump',30,30); G.smog=80; const panel=smogReport(); renderSmogPanel(); const txt=document.getElementById('pSmogBody')?.innerText||document.getElementById('pSmog')?.innerText||'';
+    G.smog=0; G.zone=z0;
+    ok('smog_caps_at_80',capped&&oldSave&&slow,{capped,oldSave,slow,note:note.slice(0,80)}); }
   // ── The Scar's tutorial explains smog before the first pump, names every machine that makes it, and the step clears when
   //    the smog gauge is tapped (v2.0.47)
   { const st=TUTORIALS[2].steps, z0=G.zone, t0=G.zoneTut, peek=G.stats.smogPeek;
