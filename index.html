@@ -612,7 +612,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.47 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.48 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -799,7 +799,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.47';
+const VER      = '2.0.48';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -810,7 +810,7 @@ const TICK_MS  = 250;
 const SMOG_SCALE=0.6; // v2.0.47 (user request): every smog rate at 60%, sources, natural clearing and Scrubbers alike, so the balance holds and the early climb takes about 10 minutes, not 4
 const smogRate=n=>Math.round(n*SMOG_SCALE*100)/100; // whole hundredths, so 6 × 0.6 reads 3.6
 const SMOG_PER={oil_pump:smogRate(20),cracker:smogRate(15),refinery:smogRate(15),combustion_gen:smogRate(20)};
-const SMOG_DECAY_MIN=smogRate(6);       // clears by itself this much per minute
+const SMOG_DECAY_MIN=10;                // clears by itself this much per minute: 100% to clear air in 10 minutes with nothing running (v2.0.48, user request; it was 3.6)
 const SCRUBBER_SMOG_MIN=smogRate(60);   // each powered, fuelled Scrubber
 const SCRUBBER_FUEL_TICKS=16; // a Scrubber burns 1 refined fuel per 4s (15/min)
 function machineSmog(m){ // smog/min this machine makes when working
@@ -1654,7 +1654,7 @@ const TECHS = {
   },
   smog_control: {
     name:'Smog Control', icon:'🌿', era:'The Scar · Era 2',
-    cost:{sci_scar:120,sci_smog:90}, req:['oil_extraction'],
+    cost:{sci_scar:120,sci_smog:45}, req:['oil_extraction'], // Smog Data 90 → 45 (v2.0.48, user request: the wait for Scrubbers dragged)
     desc:'Unlocks Scrubber and Combustion Generator. Required for Repair Data science pack.',
     zone:2,
   },
@@ -9830,7 +9830,7 @@ const TUTORIALS={
     // v2.0.47 (user request): smog is explained before the first pump, with every machine that makes it
     {text:'Study the ruins: hand-craft [[sci_scar]] Scar Notes (gear + 2 coal) in 🔨 CRAFT, or make them in a Lab, then open 🔬 RESEARCH and unlock Oil Extraction.',
      tally:()=>techRows('oil_extraction'), done:()=>researched('oil_extraction')},
-    {text:'⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%, a tenth at 100%) and clears only slowly. Tap 🌫️ in the top bar to see where it comes from.',
+    {text:`⚠️ Before you pump: Oil Pumps, Crackers, Refineries and Combustion Gens all make smog. Smog slows EVERY machine (half speed at 50%, a tenth at 100%). It clears by itself at ${SMOG_DECAY_MIN}% a minute, faster with Scrubbers. Tap 🌫️ in the top bar to see where it comes from.`,
      done:()=>!!G.stats.smogPeek||researched('smog_control')},
     {text:`Place an [[oil_pump]] Oil Pump (BUILD → Liquids → [[oil_pump]]) on an oil deposit (black pools with a purple sheen). It pumps [[crude_oil]] crude oil, and about ${SMOG_PER.oil_pump} smog a minute.`,
      done:()=>hasM('oil_pump')},
