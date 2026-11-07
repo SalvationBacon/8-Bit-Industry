@@ -896,6 +896,23 @@ const r=await p.evaluate(async()=>{
     G.inv.r_chassis=7; const short=!rocketReqs().every(r=>r.id!=='r_chassis'||r.have>=r.need);
     UNIVERSE_SCALE=keep; PRESTIGE.bangs=bangs; G.inv.sci_red=inv0;
     ok('research_scales_per_big_bang',base&&u2&&u3&&refused&&charged&&note&&tally&&rockets&&short,{base,u2,u3,refused,charged,note,tally,rockets,r1,r2,short}); }
+  // ── Two inserters on one output, one into a machine that can't take anything: the other gets it all (v2.0.49). The
+  //    blocked arm never grabbed, so it was never served and stayed first in line, and the free one waited forever
+  { const z0=G.zone; G.zone=1; reset(); power(2,2);
+    const src=put('chest',20,20); src.chestInv={iron_ore:200};
+    put('inserter',20,19,3); const fu=put('stone_furnace',20,18); fu.recipe='fn_iron'; fu.inBuf.iron_ore=50; // no coal: stays full
+    put('inserter',20,21,1); const c=put('chest',20,22);
+    run(40); const c0=chestTotal(c); run(480); const fromChest=(chestTotal(c)-c0)/2;
+    reset(); power(2,2); const a=put('assembler',20,20); a.recipe='mk_gear';
+    put('inserter',22,20,0); const lab=put('lab',23,19); lab.recipe='sci_r';
+    put('inserter',22,21,0); const c2=put('chest',23,21);
+    for(let t=0;t<40;t++){a.outBuf.iron_gear=20;run(1);} const d0=chestTotal(c2); for(let t=0;t<480;t++){a.outBuf.iron_gear=20;run(1);} const fromMachine=(chestTotal(c2)-d0)/2;
+    // both free: an even split
+    reset(); power(2,2); const s2=put('chest',20,20); s2.chestInv={iron_ore:200};
+    put('inserter',21,20,0); const up=put('chest',22,20); put('inserter',19,20,2); const dn=put('chest',18,20); // a chest's bottom is its output face
+    run(320); const even=Math.abs(chestTotal(up)-chestTotal(dn))<=2&&chestTotal(up)>50;
+    G.zone=z0;
+    ok('shared_output_skips_blocked_arm',fromChest>=59&&fromMachine>=59&&even,{fromChest,fromMachine,up:chestTotal(up),dn:chestTotal(dn)}); }
   // ── Later zones' production machines take tiers (v2.0.47): paid in their home zone's goods, ×1/×2/×4 like the rest, and
   //    the panel's numbers agree (Oil Pump crude onto a belt, a Cracker's cracks, a Brine Pump's push into its pipes)
   { const z0=G.zone, inv0=JSON.parse(JSON.stringify(G.inv));

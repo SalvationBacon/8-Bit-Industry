@@ -612,7 +612,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.48 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.49 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -799,7 +799,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.48';
+const VER      = '2.0.49';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -6326,19 +6326,27 @@ function buildTakers(){
     const sm=insSource(m); if(sm){const k=takerKey(m,sm);(INS_TAKERS[k]||(INS_TAKERS[k]=[])).push(m.id);}
   }
 }
-function insReady(m){ // idle, with somewhere to put an item (the same gate the idle step uses)
+function insReady(m,sm){ // idle, with somewhere to put an item (the same gate the idle step uses)
   if(m._arm&&m._arm.state!=='idle')return false;
   const[dvx,dvy]=D_VEC[m.dir], r=m.type==='long_inserter'?2:1, dst=G.map[m.y+dvy*r]?.[m.x+dvx*r];
   if(!dst||dst.mid===null)return false;
   const dm=G.machines[dst.mid]; if(!dm||MDEFS[dm.type]?.noItems)return false;
   if(!beltLike(dm.type)&&dm.type!=='inserter'&&isOutputFacing(dm,dvx,dvy))return false;
+  // A machine that can't take anything the source offers right now (full buffer, an item it doesn't use) makes the arm
+  // stand idle without grabbing, so it never got served and stayed first in line: the other inserters on that output
+  // waited forever (a tester's report, v2.0.48). It only counts as waiting for its turn if it could take something.
+  if(sm&&!beltLike(dm.type)&&dm.type!=='chest'){
+    const offer=sm.type==='chest'?Object.keys(sm.chestInv).filter(k=>sm.chestInv[k]>0)
+      :(p=>p<0?[]:Object.keys(sm.outBuf).filter(k=>sm.outBuf[k]>0&&portTakes(sm,p,k)))(outputPortFacing(sm,-dvx,-dvy));
+    if(!offer.some(k=>insTakes(dm,k)))return false;
+  }
   return true; // a belt drop waits at the belt (claw shows blocked), so the arm keeps its 1s rhythm
 }
 function myTurn(m,sm){
   const ids=INS_TAKERS[takerKey(m,sm)]; if(!ids||ids.length<2)return true;
   const served=sm._served||{}; let best=null,bestN=Infinity;
   for(const id of ids){
-    const t=G.machines[id]; if(!t||(id!==m.id&&!insReady(t)))continue;
+    const t=G.machines[id]; if(!t||(id!==m.id&&!insReady(t,sm)))continue;
     const n=served[id]??-1; if(n<bestN||(n===bestN&&id<best)){bestN=n;best=id;}
   }
   return best===m.id;
