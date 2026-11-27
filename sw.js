@@ -1,4 +1,4 @@
-const CACHE = 'ebi-v194';
+const CACHE = 'ebi-v195';
 const ASSETS = [
   './',
   './index.html',
@@ -33,6 +33,8 @@ self.addEventListener('activate', e => {
 //   Everything else → cache-first (fast loads, offline support)
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  // Visit counts go straight to GoatCounter. Caching them would drop or replay hits.
+  if (url.hostname === 'gc.zgo.at' || url.hostname === 'salvationbacon.goatcounter.com') return;
   const isHTML = e.request.destination === 'document' ||
                  url.pathname.endsWith('.html') ||
                  url.pathname === '/' ||
