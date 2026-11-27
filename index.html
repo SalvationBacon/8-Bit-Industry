@@ -10,7 +10,23 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>8-BIT INDUSTRY</title>
+<title>8-Bit Industry</title>
+<meta name="description" content="A free pixel-art factory game. Start with nothing, automate everything, and launch. Five worlds, from Ironfield to the Singularity.">
+<link rel="canonical" href="https://salvationbacon.github.io/8-Bit-Industry/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SalvationBacon Games">
+<meta property="og:title" content="8-Bit Industry">
+<meta property="og:description" content="A free pixel-art factory game. Start with nothing, automate everything, and launch. Five worlds, from Ironfield to the Singularity.">
+<meta property="og:url" content="https://salvationbacon.github.io/8-Bit-Industry/">
+<meta property="og:image" content="https://salvationbacon.github.io/8-Bit-Industry/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A pixel-art factory in 8-Bit Industry, with miners, belts, furnaces and assemblers.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="8-Bit Industry">
+<meta name="twitter:description" content="A free pixel-art factory game. Start with nothing, automate everything, and launch. Five worlds, from Ironfield to the Singularity.">
+<meta name="twitter:image" content="https://salvationbacon.github.io/8-Bit-Industry/og.png">
+<script data-goatcounter="https://salvationbacon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -612,7 +628,7 @@ body.kh #toasts{bottom:calc(var(--cb) + 112px)}
       <button class="btn btn-sm" id="titleSettings" onclick="openSettings()" style="width:100%"><span data-ui="settings"></span>SETTINGS</button>
       <button class="btn btn-sm" id="titleSupport" onclick="openSupport()" style="width:100%;display:none"><span data-ui="support"></span>SUPPORTER PACK</button>
     </div>
-    <p class="v-num">v2.0.49 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
+    <p class="v-num">v2.0.50 · 5 ZONES · IRONFIELD → THE SINGULARITY</p>
   </div>
 </div>
 
@@ -799,7 +815,7 @@ const BASE_MAP_H = 64;
 let MAP_W = BASE_MAP_W;   // per-zone, set by syncMapSize() / zone mapSize
 let MAP_H = BASE_MAP_H;
 const SAVE_KEY = 'ebi_save';
-const VER      = '2.0.49';
+const VER      = '2.0.50';
 // The Google Play app (v2.0.38): tools/build-app.js copies the game into the Android project with this set to true.
 // It hides the dev menu (outside a sandbox), the service worker and the install button, wires the Android back button,
 // stops the factory while the app is in the background, and offers the Supporter Pack. Leave it false here.
@@ -10725,6 +10741,23 @@ function newGame(){
   startGame(true);
 }
 
+// Website only: one GoatCounter event when a game starts (new game, continue, or a loaded slot).
+// The script is async, so wait until count() exists. The Play Store app never loads the script.
+function countGameStart(){
+  if(STORE_BUILD)return;
+  try{
+    const ev={path:'8-bit-industry-start',title:'Game started',event:true,no_session:true};
+    let n=0;
+    const t=setInterval(()=>{
+      try{
+        if(window.goatcounter&&typeof window.goatcounter.count==='function'){
+          window.goatcounter.count(ev); clearInterval(t);
+        }else if(++n>40) clearInterval(t);
+      }catch(e){clearInterval(t);}
+    },250);
+  }catch(e){}
+}
+
 function startGame(isNew){
   stopTitleScene(); clearUndo(); moveState={active:false,machineId:null,origX:0,origY:0}; // a held machine belonged to the old game
   if(STORE_BUILD&&!G.sandbox){G.devMode=false;G.devFreeBuild=false;G.devFreeCraft=false;G.devTickSpeed=1;} // a web backup carried into the app
@@ -10778,6 +10811,7 @@ function startGame(isNew){
       `<button class="btn btn-teal btn-sm" onclick="closeModal()">${zd.arrivalBtn}</button>`
     ),700);
   }
+  try{countGameStart();}catch(e){}
 }
 
 // ═══════════════════════════════════════════════════

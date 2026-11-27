@@ -23,7 +23,11 @@ swap('<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&displa
 @font-face{font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/press-start-2p-latin-ext-400-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 </style>`);
 swap('<link rel="manifest" href="manifest.json">\n', ''); // a PWA manifest means nothing inside the app
+// The website counts visits. The Play Store app must not: its data-safety answer is that it collects nothing,
+// and it has to keep working offline. The start-game event already does nothing when STORE_BUILD is set.
+swap('<script data-goatcounter="https://salvationbacon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>\n', '');
 if (/fonts\.googleapis|fonts\.gstatic/.test(html)) throw new Error('build-app: index.html still loads a web font');
+if (/gc\.zgo\.at|data-goatcounter/.test(html)) throw new Error('build-app: store build must not include GoatCounter');
 if (!html.startsWith('<!DOCTYPE html>')) throw new Error('build-app: index.html must start with <!DOCTYPE html>');
 fs.writeFileSync(path.join(out, 'index.html'), html);
 
