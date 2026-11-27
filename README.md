@@ -9,8 +9,10 @@ On a computer you click to place (drag a belt or pipe to lay a line, Shift+drag 
 ## Play
 https://salvationbacon.github.io/8-Bit-Industry/
 
-## Android
-The game is also an Android app for Google Play, the same `index.html` wrapped with Capacitor (no dev menu, works offline, the back button steps back). An optional one-time **Supporter Pack** unlocks the Golden Hour theme and Gilded Machines (cosmetic only). GitHub Actions builds it; see `docs/PLAY_STORE.md`.
+## Free, with donations
+The game is free to play in the browser, with no ads and nothing to buy. If you enjoy it you can chip in on Ko-fi (title screen or ☰ menu → SUPPORT): https://ko-fi.com/salvationbacon
+
+More games: https://salvationbacon.github.io/
 
 ## Files
 | File | Purpose |
@@ -19,24 +21,20 @@ The game is also an Android app for Google Play, the same `index.html` wrapped w
 | `manifest.json` | PWA manifest: standalone install, icons, theme |
 | `sw.js` | Service worker: offline support, auto-updates |
 | `icon-192.png` | Android home screen icon |
-| `icon-512.png` | Splash / store icon |
+| `icon-512.png` | Large home screen / splash icon |
 | `apple-touch-icon.png` | iOS home screen icon |
 | `icon-maskable-512.png` | Android adaptive icon (art inset for round masks) |
 | `CLAUDE.md` | Project instructions: design, systems, roadmap, conventions |
 | `docs/GDD.md` | Original Game Design Document (long-term vision) |
 | `docs/ZONE3_DESIGN.md` | Zone 3: The Deep: design (implemented) |
 | `tools/check.js` | Headless test: `node tools/check.js` (needs Playwright) |
-| `tools/make-icons.js` | Regenerates the pixel-art app icons (web and Android) |
-| `tools/build-app.js` | Builds `www/` for the Android app |
-| `tools/store-test.js` | Tests the Android build (Supporter Pack, back button) |
-| `android/`, `capacitor.config.json`, `package.json` | The Android app project |
+| `tools/make-icons.js` | Regenerates the pixel-art app icons |
+| `tools/play-test.js`, `tools/touch-test.js`, `tools/web-test.js` | Play, touch/keyboard and site tests (Playwright) |
 | `privacy.html` | Privacy policy |
-| `store/` | Google Play listing text and graphics |
-| `docs/PLAY_STORE.md` | How to publish and update on Google Play |
 
 ## Deploying updates
 1. Upload changed files via GitHub's web UI (`Add file → Upload files`) or the `.` editor
-2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v171` → `ebi-v172`) on every update, and `version` in `package.json` (it must match `VER`)
+2. **Always bump the cache version** in `sw.js` (e.g. `ebi-v171` → `ebi-v172`) on every update
 3. **Always bump `VER`** in `index.html` and the `v-num` line on the title screen
 4. GitHub Pages redeploys within 1–2 minutes
 5. Players get the update automatically on their next session open
@@ -77,4 +75,4 @@ After your first Big Bang, SANDBOX on the title screen opens a creative mode: pi
 ☰ menu → Settings (or SETTINGS on the title screen), shared by every save on the device: sound effects, music and volume, FPS (30/60), resolution (100% down to 10%) and a one-tap 🔋 Battery Saver (30 FPS + 50%). The factory runs at the same speed whatever you pick.
 
 ## Version
-v2.0.37: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
+v2.0.50: all five zones: Ironfield · The Scar · The Deep · The Bloom · The Singularity, plus the Big Bang and Stardust prestige
